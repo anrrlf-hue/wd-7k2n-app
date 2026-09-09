@@ -24,7 +24,7 @@ const CASES = [
     hour: 14,
     minute: 30,
     gender: "남",
-    big5Answers: { e1: 5, e2: 1, a1: 4, a2: 2, c1: 5, c2: 1, n1: 2, n2: 4, o1: 4, o2: 2 },
+    personalityAnswers: { speed: 1, plan: 2, risk: 1, autonomy: 2, relationMoney: 4, opportunity: 1 },
     mbti: "ENTJ",
   },
 ];

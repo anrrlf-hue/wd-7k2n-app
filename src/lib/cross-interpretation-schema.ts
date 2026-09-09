@@ -11,7 +11,7 @@ export const CrossInterpretationSchema = z.object({
   selfComparisonQuestion: z.string().min(5),
   /** 손금 분석의 한계/불확실성을 명시하는 문장 */
   uncertaintyNote: z.string().min(10),
-  /** SAJU_FACTS+PALM_FACTS에 자기보고 성향(MBTI/Big5)까지 더한 최종 통합
+  /** SAJU_FACTS+PALM_FACTS에 자기보고 성향(MBTI/간단 성향 체크)까지 더한 최종 통합
    * 비교. 성향정보가 없으면 null — 억지로 채우지 않는다. */
   personalityNote: z.string().min(10).nullable(),
 });

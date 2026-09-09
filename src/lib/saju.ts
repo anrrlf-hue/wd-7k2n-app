@@ -17,7 +17,7 @@ export interface BirthInput {
 /** 무료 사주 단계에서 함께 받은 자기보고 성향정보. 손금 페이지로 넘어갈 때도
  * 다시 써서 "사주+손금+성향" 통합 비교를 만든다. */
 export interface PersonalityInputEcho {
-  big5Answers: Record<string, number> | null;
+  personalityAnswers: Record<string, number> | null;
   mbti: MbtiType | null;
 }
 

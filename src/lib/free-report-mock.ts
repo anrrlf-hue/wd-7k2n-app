@@ -10,7 +10,7 @@
 
 import type { SajuFacts, PillarFact } from "@/lib/saju-facts";
 import type { FreeSajuReport } from "@/lib/free-report-schema";
-import type { Big5Facts } from "@/lib/big5-facts";
+import type { PersonalityCheckFacts } from "@/lib/personality-check";
 import type { MbtiSelfReport } from "@/lib/mbti-facts";
 import { dayStrengthLabel, dayStrengthShort, elementTemperamentPhrase } from "@/lib/saju-labels";
 import { buildPersonalityComparisonText } from "@/lib/personality-reconcile";
@@ -86,7 +86,7 @@ function levelOf(count: number): "없음" | "적음" | "보통" | "강함" {
 
 export function buildFreeSajuReport(
   facts: SajuFacts,
-  personality?: { big5: Big5Facts | null; mbti: MbtiSelfReport | null },
+  personality?: { check: PersonalityCheckFacts | null; mbti: MbtiSelfReport | null },
 ): FreeSajuReport {
   const {
     dayStemKo,
@@ -403,9 +403,9 @@ export function buildFreeSajuReport(
     `${daeunFlowNote} ` +
     `오행 분포는 ${Object.entries(fiveElements).map(([k, v]) => `${k} ${v}개`).join(", ")}였고, 그중 ${이가(dominantElement)} 가장 강했어요${missingElements.length > 0 ? `, 반대로 ${은는(missingElements.join(", "))} 아예 없었고요` : ""}.`;
 
-  // 성향정보(Big5/MBTI) 비교 — 있을 때만
+  // 성향정보(간단 성향 체크/MBTI) 비교 — 있을 때만
   const personalityComparison = personality
-    ? buildPersonalityComparisonText(facts, personality.big5, personality.mbti)
+    ? buildPersonalityComparisonText(facts, personality.check, personality.mbti)
     : null;
 
   return {

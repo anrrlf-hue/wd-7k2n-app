@@ -13,7 +13,7 @@ export const CROSS_INTERPRETATION_SYSTEM_PROMPT = `당신은 사주(四柱) 해�
 3. "부자가 된다", "성공한다", "수익을 보장한다" 같은 확정적 미래·보장 표현을 쓰지 마세요.
 4. common(공통점)과 differences(차이점)는 반드시 사주 요약의 구체적 내용과 PalmFacts의 구체적 값(손 모양, 검출된 선 이름)을 근거로 연결하세요. 막연한 말을 쓰지 마세요.
 5. selfComparisonQuestion에는 사용자가 자기 경험과 비교하게 만드는 질문형 문장을 넣으세요.
-6. personalityNote는 Big5/MBTI 자기보고가 주어졌을 때만 채우고, 없으면 null로 두세요. 사주·손금 결과를 성향정보에 맞춰 억지로 고치지 말고, 일치하면 일치한다고 다르면 다르다고 쓰세요.
+6. personalityNote는 간단 성향 체크/MBTI 자기보고가 주어졌을 때만 채우고, 없으면 null로 두세요. 사주·손금 결과를 성향정보에 맞춰 억지로 고치지 말고, 일치하면 일치한다고 다르면 다르다고 쓰세요.
 7. 반드시 요청된 JSON 스키마로만 응답하세요.`;
 
 export function buildCrossInterpretationUserPrompt(
@@ -30,10 +30,10 @@ export function buildCrossInterpretationUserPrompt(
     .join(" / ");
 
   const personalityBlock =
-    personality && (personality.big5 || personality.mbti)
+    personality && (personality.check || personality.mbti)
       ? `
 ## 자기보고 성향정보 (있을 때만 personalityNote에 반영)
-${personality.big5 ? `- Big5: ${Object.entries(personality.big5.levels).map(([k, v]) => `${k} ${v}`).join(", ")}` : "- Big5: 없음"}
+${personality.check ? `- 간단 성향 체크: ${Object.entries(personality.check.levels).map(([k, v]) => `${k} ${v}`).join(", ")}` : "- 간단 성향 체크: 없음"}
 ${personality.mbti && "type" in personality.mbti ? `- MBTI: ${personality.mbti.type}` : "- MBTI: 없음"}
 `
       : "\n## 자기보고 성향정보\n없음 (personalityNote는 null로 응답)\n";
@@ -57,6 +57,6 @@ ${personalityBlock}
   "moneyConnection": "돈/일/결정 스타일과 연결한 해석",
   "selfComparisonQuestion": "자기 경험과 비교하게 만드는 질문",
   "uncertaintyNote": "이 손금 분석의 한계(사진 기반 단순 특징 추출이며 정밀 인식이 아님)를 명시하는 문장",
-  "personalityNote": "Big5/MBTI가 있을 때만 채우는 비교 문단, 없으면 null"
+  "personalityNote": "간단 성향 체크/MBTI가 있을 때만 채우는 비교 문단, 없으면 null"
 }`;
 }

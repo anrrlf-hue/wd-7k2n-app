@@ -3,20 +3,22 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Camera, ImagePlus, RotateCcw, HandMetal } from "lucide-react";
+import { Camera, ImagePlus, RotateCcw, HandMetal, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepBadge } from "@/components/diagnosis/step-badge";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
 import { FreeBoundaryMarker } from "@/components/diagnosis/free-boundary-marker";
 import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
 import { LockedCard } from "@/components/diagnosis/locked-card";
-import { ReportSection } from "@/components/diagnosis/report-section";
+import { ReportSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
 import {
   analyzePalmFromCanvas,
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
 import { isPalmFactsUsable, type PalmFacts, type LineFeature } from "@/lib/palm-facts";
+import { buildRealObservationText, buildTraditionalReadingText } from "@/lib/palm-observation-text";
 import type { CrossInterpretation } from "@/lib/cross-interpretation-schema";
+import type { FreeSajuReport } from "@/lib/free-report-schema";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 
 type Stage = "upload" | "detecting" | "retake" | "cross_loading" | "result" | "error";
@@ -61,6 +63,7 @@ export function PalmPageClient({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
   const [crossResult, setCrossResult] = useState<{ source: "llm" | "mock"; interpretation: CrossInterpretation } | null>(null);
+  const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -101,7 +104,7 @@ export function PalmPageClient({
         body: JSON.stringify({
           ...birthInput,
           palmFacts: facts,
-          big5Answers: personalityInput?.big5Answers ?? undefined,
+          personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
           mbti: personalityInput?.mbti ?? undefined,
         }),
       });
@@ -116,6 +119,7 @@ export function PalmPageClient({
       }
 
       setCrossResult({ source: data.source, interpretation: data.interpretation });
+      setFinalReport(data.freeReport?.report ?? null);
       setStage("result");
     } catch {
       setErrorMsg("분석 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
@@ -127,6 +131,7 @@ export function PalmPageClient({
     setStage("upload");
     setPalmFacts(null);
     setCrossResult(null);
+    setFinalReport(null);
     setErrorMsg(null);
   }
 
@@ -322,31 +327,100 @@ export function PalmPageClient({
             </div>
           </motion.div>
 
-          {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소 */}
+          {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소. "실제 관측값"과
+           * "손금 전통 해석"을 먼저 분리해서 보여준 다음(원칙 8), 사주/자기보고와
+           * 교차한 통합 해석을 잇는다 — 손금 전통 해석을 과학적 사실처럼
+           * 말하지 않는다. */}
           <div className="mt-5">
-            <ReportSection step="①" title="사주와 공통으로 보이는 성향">
+            <ReportSection step="①" title="실제 이미지에서 관측된 것">
+              <p>{buildRealObservationText(palmFacts)}</p>
+            </ReportSection>
+            <ReportSection step="②" title="손금 전통 해석 (참고용)">
+              <p className="text-sm text-muted-foreground">{buildTraditionalReadingText(palmFacts)}</p>
+            </ReportSection>
+            <ReportSection step="③" title="사주와 공통으로 보이는 성향">
               <p>{crossResult.interpretation.common}</p>
             </ReportSection>
-            <ReportSection step="②" title="사주와 다르게 나타나는 부분">
+            <ReportSection step="④" title="사주와 다르게 나타나는 부분">
               <p>{crossResult.interpretation.differences}</p>
             </ReportSection>
-            <ReportSection step="③" title="돈을 대하는 방식·의사결정 스타일">
+            <ReportSection step="⑤" title="돈을 대하는 방식·의사결정 스타일">
               <p>{crossResult.interpretation.moneyConnection}</p>
             </ReportSection>
             {crossResult.interpretation.personalityNote && (
-              <ReportSection step="④" title="자기보고 성향과 비교하면">
+              <ReportSection step="⑥" title="자기보고 성향과 비교하면">
                 <p>{crossResult.interpretation.personalityNote}</p>
               </ReportSection>
             )}
-            <ReportSection step={crossResult.interpretation.personalityNote ? "⑤" : "④"} title="나와 비교해볼까요">
+            <ReportSection step={crossResult.interpretation.personalityNote ? "⑦" : "⑥"} title="종합하면">
               <p className="rounded-xl bg-accent p-3.5 text-accent-foreground">
-                {crossResult.interpretation.selfComparisonQuestion}
+                서로 다른 데이터({crossResult.interpretation.personalityNote ? "사주·손금·자기보고" : "사주·손금"})가 이 한 사람을 각자의 방식으로 가리키고 있어요. {crossResult.interpretation.selfComparisonQuestion}
               </p>
             </ReportSection>
-            <ReportSection step={crossResult.interpretation.personalityNote ? "⑥" : "⑤"} title="이 분석의 한계">
+            <ReportSection step={crossResult.interpretation.personalityNote ? "⑧" : "⑦"} title="이 분석의 한계">
               <p className="text-xs text-muted-foreground">{crossResult.interpretation.uncertaintyNote}</p>
             </ReportSection>
           </div>
+
+          {/* 최종 무료 통합 리포트 — 17섹션 전체는 손금까지 끝난 뒤 여기서 이어진다. */}
+          {finalReport && (
+            <div className="mt-8">
+              <p className="flex items-center gap-1.5 text-sm font-medium">
+                <HandMetal className="size-4 text-(--gold)" />
+                여기부터는 사주 심층 리포트 전체예요
+              </p>
+              <div className="mt-3">
+                <ReportSection title="재물운·돈복의 큰 구조">
+                  <p>{finalReport.wealthStructure}</p>
+                </ReportSection>
+                <ReportSection title="큰돈·기회와 관계된 성향">
+                  <p>{finalReport.bigMoneyAffinity}</p>
+                </ReportSection>
+                <ReportSection title="조직에서 강한 부분">
+                  <p>{finalReport.teamStrength}</p>
+                </ReportSection>
+                <ReportSection title="독립적으로 움직일 때 강한 부분">
+                  <p>{finalReport.soloStrength}</p>
+                </ReportSection>
+                <ReportSection title="사람과 돈">
+                  <p>{finalReport.peopleAndMoney}</p>
+                </ReportSection>
+                <ReportSection title="의사결정 스타일">
+                  <p>{finalReport.decisionStyle}</p>
+                </ReportSection>
+                <ReportSection title="기회를 잡는 방식">
+                  <p>{finalReport.opportunityStyle}</p>
+                </ReportSection>
+                <ReportSection title="나의 강점 3가지">
+                  <div className="space-y-2.5">
+                    {finalReport.strengths.map((s, i) => (
+                      <EvidenceItemCard key={s.title} index={i + 1} title={s.title} detail={s.detail} evidence={s.evidence} />
+                    ))}
+                  </div>
+                </ReportSection>
+                <ReportSection title="조심하면 좋은 점 3가지">
+                  <div className="space-y-2.5">
+                    {finalReport.cautions.map((c, i) => (
+                      <EvidenceItemCard key={c.title} index={i + 1} title={c.title} detail={c.detail} evidence={c.evidence} />
+                    ))}
+                  </div>
+                </ReportSection>
+                <ReportSection title="나와 비교해볼까요">
+                  <div className="space-y-2">
+                    {finalReport.selfCheckQuestions.map((q) => (
+                      <p key={q} className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm">
+                        <HelpCircle className="mt-0.5 size-3.5 shrink-0 text-(--gold)" />
+                        {q}
+                      </p>
+                    ))}
+                  </div>
+                </ReportSection>
+                <ReportSection title="왜 이런 결과가 나왔을까">
+                  <p className="text-sm text-muted-foreground">{finalReport.evidenceExplainer}</p>
+                </ReportSection>
+              </div>
+            </div>
+          )}
 
           <FreeBoundaryMarker />
 
@@ -357,11 +431,11 @@ export function PalmPageClient({
             />
           </div>
 
+          {/* 현실 재무검증은 유료가 아니라 무료 별도 단계다 — 포함 목록에 넣지 않는다. */}
           <PaywallOffer
             includedItems={[
               "사주+손금 심화 교차 비교(대운 흐름까지 반영)",
               "앞으로 1~3년 재물 흐름 정확한 시기",
-              "현실 재무정보와 비교 검증",
               "지금 시기에 필요한 구체적 행동",
               "전체 계산 근거 원문",
             ]}
@@ -369,12 +443,15 @@ export function PalmPageClient({
           />
 
           <div className="mt-auto flex flex-col gap-3 pt-8">
+            <p className="text-center text-xs text-muted-foreground">
+              재미로 본 돈 성향과 실제 내 돈생활도 같은지 확인해볼까요?
+            </p>
+            <Button asChild size="lg" className="h-13 w-full rounded-full text-base">
+              <Link href="/diagnosis?step=money-check">현실 돈 고민도 체크해보기</Link>
+            </Button>
             <Button size="lg" variant="outline" onClick={reset} className="h-13 w-full rounded-full text-base">
               <RotateCcw className="size-4" />
               다른 사진으로 다시 보기
-            </Button>
-            <Button asChild size="lg" className="h-13 w-full rounded-full text-base">
-              <Link href="/diagnosis">처음 화면으로</Link>
             </Button>
           </div>
         </div>

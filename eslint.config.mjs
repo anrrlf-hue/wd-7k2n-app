@@ -15,6 +15,11 @@ const eslintConfig = defineConfig([
     // Vendored MediaPipe WASM glue code copied into public/ for
     // self-hosting (see src/lib/palm-detection.ts) — generated, not ours.
     "public/mediapipe/**",
+    // Vendored onnxruntime-web WASM bundle, self-hosted the same way.
+    "public/ort/**",
+    // Vendored third-party source (palm-line-reader by Sam Barber, MIT) —
+    // kept verbatim for license/attribution, not ours to reformat.
+    "src/lib/vendor/**",
   ]),
 ]);
 

@@ -2,14 +2,14 @@
 // -> 검증). 무료 사주 V2 17섹션 전용. 이 함수도 절대 throw하지 않는다.
 
 import type { SajuFacts } from "@/lib/saju-facts";
-import type { Big5Facts } from "@/lib/big5-facts";
+import type { PersonalityCheckFacts } from "@/lib/personality-check";
 import type { MbtiSelfReport } from "@/lib/mbti-facts";
 import { FREE_SAJU_REPORT_SYSTEM_PROMPT, buildFreeSajuReportUserPrompt } from "@/lib/free-report-prompt";
 import { validateFreeSajuReport, type FreeSajuReport } from "@/lib/free-report-schema";
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
 
 export interface PersonalityInput {
-  big5: Big5Facts | null;
+  check: PersonalityCheckFacts | null;
   mbti: MbtiSelfReport | null;
 }
 

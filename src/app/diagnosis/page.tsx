@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StepShell } from "@/components/diagnosis/step-shell";
 import { BirthDateStep } from "@/components/diagnosis/birth-date-step";
 import { BirthTimeStep } from "@/components/diagnosis/birth-time-step";
@@ -23,12 +23,24 @@ export default function DiagnosisPage() {
   const [gender, setGender] = useState<"남" | "여">("남");
   const [knowsTime, setKnowsTime] = useState(false);
   const [birthTime, setBirthTime] = useState("");
-  const [big5Answers, setBig5Answers] = useState<Record<string, number>>({});
+  const [personalityAnswers, setPersonalityAnswers] = useState<Record<string, number>>({});
   const [mbti, setMbti] = useState<MbtiType | "모름">("모름");
   const [diagnosis, setDiagnosis] = useState<FullSajuDiagnosis | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [moneyResult, setMoneyResult] = useState<MoneyCheckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // 손금 결과 화면(별도 라우트)에서 "현실 재무검증도 볼까요?"로 넘어올 때,
+  // 처음부터 다시 시작하지 않고 바로 무료 재무검증 단계로 진입하게 한다.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("step") === "money-check") {
+      // 마운트 시 한 번만 외부 URL 상태를 내부 상태로 동기화하는 의도적인
+      // 리다이렉트 패턴 — 손금 결과 화면에서 넘어올 때만 발생한다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStep("money-check");
+    }
+  }, []);
 
   async function handleFetchDiagnosis() {
     setStep("loading");
@@ -46,7 +58,7 @@ export default function DiagnosisPage() {
     const clientTimeout = setTimeout(() => controller.abort(), 15000);
 
     try {
-      const hasBig5 = Object.keys(big5Answers).length > 0;
+      const hasPersonality = Object.keys(personalityAnswers).length > 0;
       const [res] = await Promise.all([
         fetch("/api/saju", {
           method: "POST",
@@ -58,7 +70,7 @@ export default function DiagnosisPage() {
             hour,
             minute,
             gender,
-            big5Answers: hasBig5 ? big5Answers : undefined,
+            personalityAnswers: hasPersonality ? personalityAnswers : undefined,
             mbti: mbti !== "모름" ? mbti : undefined,
           }),
           signal: controller.signal,
@@ -123,13 +135,13 @@ export default function DiagnosisPage() {
 
       {step === "personality" && (
         <PersonalityStep
-          big5Answers={big5Answers}
-          onBig5Change={(id, value) => setBig5Answers((prev) => ({ ...prev, [id]: value }))}
+          personalityAnswers={personalityAnswers}
+          onPersonalityChange={(id, value) => setPersonalityAnswers((prev) => ({ ...prev, [id]: value }))}
           mbti={mbti}
           onMbtiChange={setMbti}
           onNext={handleFetchDiagnosis}
           onSkip={() => {
-            setBig5Answers({});
+            setPersonalityAnswers({});
             setMbti("모름");
             handleFetchDiagnosis();
           }}

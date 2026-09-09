@@ -4,7 +4,7 @@
 import type { MoneyTendency } from "@/lib/money-tendency";
 import type { PalmFacts } from "@/lib/palm-facts";
 import type { SajuFacts } from "@/lib/saju-facts";
-import type { Big5Facts } from "@/lib/big5-facts";
+import type { PersonalityCheckFacts } from "@/lib/personality-check";
 import type { MbtiSelfReport } from "@/lib/mbti-facts";
 import {
   CROSS_INTERPRETATION_SYSTEM_PROMPT,
@@ -15,7 +15,7 @@ import { buildMockCrossInterpretation } from "@/lib/cross-interpretation-mock";
 
 export interface CrossPersonalityInput {
   facts: SajuFacts | null;
-  big5: Big5Facts | null;
+  check: PersonalityCheckFacts | null;
   mbti: MbtiSelfReport | null;
 }
 

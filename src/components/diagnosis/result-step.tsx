@@ -14,7 +14,7 @@ import { TeaserRow } from "@/components/diagnosis/teaser-row";
 import { PowerGauge } from "@/components/diagnosis/power-gauge";
 import { JobSpectrum } from "@/components/diagnosis/job-spectrum";
 import { FlowLine } from "@/components/diagnosis/flow-line";
-import { ReportSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
+import { ReportSection } from "@/components/diagnosis/report-section";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 
@@ -145,85 +145,32 @@ export function ResultStep({
         {saving ? "저장 중..." : "이미지로 저장하고 공유하기"}
       </Button>
 
-      {/* 무료 사주 V2 — 3~5분 읽기에 맞춘 문단 중심 콘텐츠, 17섹션 */}
+      {/* 1차 무료 결과 — 손금 전에는 핵심 5~7개만 보여준다("조금 맞는 것 같은데,
+       * 손금까지 보면 어떻게 나오지?"를 만드는 게 목적). 17섹션 전체는 손금까지
+       * 끝난 뒤 palm-page-client.tsx의 최종 통합 리포트에서 보여준다. */}
       <div className="mt-6">
         {report ? (
           <>
             <ReportSection step="②" title="타고난 성향">
               <p>{report.temperament}</p>
             </ReportSection>
-            <ReportSection step="③" title="재물운·돈복의 큰 구조">
-              <p>{report.wealthStructure}</p>
-            </ReportSection>
-            <ReportSection step="④" title="돈을 버는 방식">
+            <ReportSection step="③" title="돈을 버는 방식">
               <p>{report.earningStyle}</p>
             </ReportSection>
-            <ReportSection step="⑤" title="돈을 지키는 방식">
+            <ReportSection step="④" title="돈을 지키는 방식">
               <p>{report.keepingStyle}</p>
             </ReportSection>
-            <ReportSection step="⑥" title="돈을 놓치는 반복 패턴">
+            <ReportSection step="⑤" title="돈을 놓치는 반복 패턴">
               <p className="rounded-xl bg-accent p-3.5 text-accent-foreground">{report.leakPattern}</p>
             </ReportSection>
-            <ReportSection step="⑦" title="큰돈·기회와 관계된 성향">
-              <p>{report.bigMoneyAffinity}</p>
-            </ReportSection>
-            <ReportSection step="⑧" title="직장형일까, 사업형일까">
+            <ReportSection step="⑥" title="직장형일까, 사업형일까">
               <p>{report.jobOrientation}</p>
             </ReportSection>
-            <ReportSection step="⑨" title="조직에서 강한 부분">
-              <p>{report.teamStrength}</p>
-            </ReportSection>
-            <ReportSection step="⑩" title="독립적으로 움직일 때 강한 부분">
-              <p>{report.soloStrength}</p>
-            </ReportSection>
-            <ReportSection step="⑪" title="사람과 돈">
-              <p>{report.peopleAndMoney}</p>
-            </ReportSection>
-            <ReportSection step="⑫" title="의사결정 스타일">
-              <p>{report.decisionStyle}</p>
-            </ReportSection>
-            <ReportSection step="⑬" title="기회를 잡는 방식">
-              <p>{report.opportunityStyle}</p>
-            </ReportSection>
-
-            {report.personalityComparison && (
-              <ReportSection title="자기보고 성향과 비교하면">
-                <p className="flex items-start gap-2">
-                  <Sparkles className="mt-0.5 size-3.5 shrink-0 text-(--gold)" />
-                  <span>{report.personalityComparison}</span>
-                </p>
-              </ReportSection>
-            )}
-
-            <ReportSection step="⑭" title="나의 강점 3가지">
-              <div className="space-y-2.5">
-                {report.strengths.map((s, i) => (
-                  <EvidenceItemCard key={s.title} index={i + 1} title={s.title} detail={s.detail} evidence={s.evidence} />
-                ))}
-              </div>
-            </ReportSection>
-
-            <ReportSection step="⑮" title="조심하면 좋은 점 3가지">
-              <div className="space-y-2.5">
-                {report.cautions.map((c, i) => (
-                  <EvidenceItemCard key={c.title} index={i + 1} title={c.title} detail={c.detail} evidence={c.evidence} />
-                ))}
-              </div>
-            </ReportSection>
-
-            <ReportSection step="⑯" title="나와 비교해볼까요">
-              <div className="space-y-2">
-                {report.selfCheckQuestions.map((q) => (
-                  <p key={q} className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm">
-                    <HelpCircle className="mt-0.5 size-3.5 shrink-0 text-(--gold)" />
-                    {q}
-                  </p>
-                ))}
-              </div>
-            </ReportSection>
-
-            <ReportSection step="⑰" title="왜 이런 결과가 나왔을까">
-              <p className="text-sm text-muted-foreground">{report.evidenceExplainer}</p>
+            <ReportSection step="⑦" title="나와 비교해볼까요">
+              <p className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm">
+                <HelpCircle className="mt-0.5 size-3.5 shrink-0 text-(--gold)" />
+                {report.selfCheckQuestions[0]}
+              </p>
             </ReportSection>
           </>
         ) : (
@@ -233,14 +180,16 @@ export function ResultStep({
         )}
       </div>
 
-      {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소 — 반드시 결제 안내보다 위 */}
+      {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소 — 반드시 결제 안내보다 위.
+       * 여기서 "조금 맞는 것 같은데, 손금까지 보면?" 궁금증을 만들고, 나머지
+       * 심층 섹션(⑧~⑰)은 손금까지 끝난 뒤 통합 리포트에서 이어서 보여준다. */}
       <div className="mt-8">
         <p className="flex items-center gap-1.5 text-sm font-medium">
           <Sparkles className="size-4 text-(--gold)" />
           여기까지 사주에서 본 성향, 손에도 같은 흐름이 있을까요?
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          손금 사진 한 장이면 30초 안에 사주와 교차 비교까지 볼 수 있어요.
+          손금 사진 한 장이면 30초 안에 사주와 교차 비교하고, 나머지 심층 리포트까지 이어서 볼 수 있어요.
         </p>
         <div className="mt-3">
           <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} />
@@ -283,15 +232,15 @@ export function ResultStep({
         <div className="mt-3 flex flex-col gap-3">
           <LockedCard title="앞으로 3년, 정확한 시기별 흐름" cta="정확한 시기 보기" />
           <LockedCard title="사주+손금 심화 교차 리포트" cta="심화 교차 리포트 보기" />
-          <LockedCard title="현실 재무 상태와 비교해보기" cta="현실 재무검증 시작하기" />
         </div>
 
+        {/* 현실 재무검증은 유료가 아니라 무료 별도 단계다(아래 onNext 버튼) —
+         * 여기 포함 목록에 다시 넣지 않는다. */}
         <PaywallOffer
           includedItems={[
             "앞으로 3년 정확한 시기별 흐름",
             "대운 전체 흐름 그래프",
             "사주+손금 심화 교차 비교",
-            "현실 재무정보와 비교 검증",
             "지금 시기에 필요한 구체적 행동",
             "전체 계산 근거 원문",
           ]}

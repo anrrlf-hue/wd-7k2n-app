@@ -1,7 +1,14 @@
 // 손 검출/손금 특징 추출 결과의 구조화 타입.
-// MediaPipe Hands(손 검출·랜드마크)는 그대로 재사용하고, "선 검출"은
-// 검증된 오픈소스 모델이 없어(REUSE-FIRST 조사 결과) 랜드마크 기반 관심영역
-// 위에서 계산하는 결정론적 엣지 휴리스틱으로 직접 만든다(GAP-only-BUILD).
+// MediaPipe Hands(손 검출·랜드마크)는 그대로 재사용한다. 선 검출은 두
+// 경로를 함께 유지한다:
+//   1) lineFeatures — 기존 결정론적 Sobel 엣지 휴리스틱(GAP-BUILD)
+//   2) onnxLines — samuelwbarber/palm-line-reader(MIT)의 실제 학습된
+//      가중치를 onnxruntime-web으로 브라우저에서 직접 추론한 결과
+//      (src/lib/palm-line-onnx.ts). 두 값을 하나로 평균내 섞지 않고
+//      "실제 모델 관측값"과 "휴리스틱 신호"를 분리해서 보관한다 —
+//      해석 레이어에서 "실제 관측값 vs 전통 해석"을 구분해 설명하기
+//      위함이다. ONNX 추론이 실패하면 onnxLines는 null이고, 화면은
+//      lineFeatures만으로 계속 동작한다(억지 해석 금지).
 // 절대 "클리닉 수준 정밀 인식"이라 주장하지 않고, 낮은 신뢰도는 재촬영으로
 // 유도한다.
 
@@ -33,14 +40,48 @@ export interface LineFeature {
   confidence: number;
 }
 
+/** ONNX 모델(samuelwbarber/palm-line-reader)이 실제로 반환한 선 하나의
+ * 구조화 관측값. 이 모델이 지원하지 않는 항목(분기/fork, 깊이의 물리적
+ * 측정치)은 절대 지어내지 않고 null로 둔다. */
+export interface OnnxLineDetail {
+  detected: boolean;
+  /** 0~1, 마스크 픽셀 커버리지 기반 — Sobel의 confidence와는 다른 산출식 */
+  confidence: number;
+  length: LineLength | null;
+  curve: LineDirection | null;
+  /** 마스크 픽셀 수(굵기·뚜렷함) 기반 근사치. 실제 "깊이"를 측정한 값이
+   * 아니라는 걸 명시하기 위해 depthStrength로 이름 붙였다. */
+  depthStrength: "약함" | "보통" | "강함" | null;
+  /** 512x512 모델 좌표계를 0~1로 정규화한 시작점/끝점(주성분 투영 극값) */
+  start: { x: number; y: number } | null;
+  end: { x: number; y: number } | null;
+  /** 이 모델은 분기(fork) 검출을 지원하지 않는다 — 항상 null. */
+  branchDetected: null;
+}
+
+export interface OnnxPalmLines {
+  modelExecuted: true;
+  heartLine: OnnxLineDetail;
+  headLine: OnnxLineDetail;
+  lifeLine: OnnxLineDetail;
+  /** 이 모델은 생명선/두뇌선/감정선 3종만 분할하며 재물선(fate line)은
+   * 지원하지 않는다 — 억지로 채우지 않고 명시적으로 unknown 처리. */
+  fateLine: { presence: "unknown"; note: string };
+  mounts: "unknown";
+  marks: "unknown";
+  modelConfidence: number;
+}
+
 export interface PalmFacts {
   handSide: HandSide;
   imageQuality: ImageQuality;
   handShape: HandShape;
   /** 신뢰 가능한 수준으로 "존재가 확인된" 선 이름만 포함 (없으면 빈 배열) */
   majorLines: LineName[];
-  /** 선별 상세 특징. 검출되지 않은 선은 detected:false, length/direction:null */
+  /** 선별 상세 특징(Sobel 엣지 휴리스틱). 검출되지 않은 선은 detected:false, length/direction:null */
   lineFeatures: LineFeature[];
+  /** 실제 ONNX 모델 추론 결과. 모델 로드/추론이 실패하면 null. */
+  onnxLines: OnnxPalmLines | null;
   /** 전체 파이프라인 신뢰도 0~1 (손 검출 신뢰도 x 이미지 품질 보정) */
   confidence: number;
   /** 사용자에게 보여줄 경고/재촬영 사유 */

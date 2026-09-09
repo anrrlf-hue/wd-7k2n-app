@@ -35,10 +35,10 @@ function parsePersonalityInput(sp: Record<string, string | string[] | undefined>
     return Array.isArray(v) ? v[0] : v;
   };
 
-  const b5Raw = get("b5");
-  const big5Answers: Record<string, number> | null = b5Raw
+  const pcRaw = get("pc");
+  const personalityAnswers: Record<string, number> | null = pcRaw
     ? Object.fromEntries(
-        b5Raw
+        pcRaw
           .split(",")
           .map((pair) => pair.split(":"))
           .filter((pair): pair is [string, string] => pair.length === 2 && !Number.isNaN(Number(pair[1])))
@@ -50,7 +50,7 @@ function parsePersonalityInput(sp: Record<string, string | string[] | undefined>
   const mbti: MbtiType | null = mbtiRaw && (MBTI_TYPES as readonly string[]).includes(mbtiRaw) ? (mbtiRaw as MbtiType) : null;
 
   return {
-    big5Answers: big5Answers && Object.keys(big5Answers).length > 0 ? big5Answers : null,
+    personalityAnswers: personalityAnswers && Object.keys(personalityAnswers).length > 0 ? personalityAnswers : null,
     mbti,
   };
 }

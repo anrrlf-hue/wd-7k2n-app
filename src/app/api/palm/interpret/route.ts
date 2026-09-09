@@ -3,9 +3,10 @@ import { z } from "zod";
 import { diagnoseSaju } from "@/lib/saju";
 import { computeSajuFacts, type SajuFacts } from "@/lib/saju-facts";
 import { getInterpretation } from "@/lib/interpretation-engine";
+import { getFreeSajuReport } from "@/lib/free-report-engine";
 import { getCrossInterpretation } from "@/lib/cross-interpretation-engine";
 import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
-import { scoreBig5 } from "@/lib/big5-facts";
+import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 
 // 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe로 이미
@@ -13,6 +14,28 @@ import { MBTI_TYPES } from "@/lib/mbti-facts";
 // 사주를 다시 계산해 "사주 요약"을 만들고 (2) PalmFacts와 함께 교차 해석을
 // 생성한다. PalmFacts가 재촬영이 필요한 상태면 해석을 만들지 않고 그 이유를
 // 그대로 돌려준다("억지 해석 금지").
+
+const onnxLineDetailSchema = z.object({
+  detected: z.boolean(),
+  confidence: z.number().min(0).max(1),
+  length: z.enum(["짧음", "보통", "김"]).nullable(),
+  curve: z.enum(["완만한 곡선", "직선에 가까움"]).nullable(),
+  depthStrength: z.enum(["약함", "보통", "강함"]).nullable(),
+  start: z.object({ x: z.number(), y: z.number() }).nullable(),
+  end: z.object({ x: z.number(), y: z.number() }).nullable(),
+  branchDetected: z.null(),
+});
+
+const onnxPalmLinesSchema = z.object({
+  modelExecuted: z.literal(true),
+  heartLine: onnxLineDetailSchema,
+  headLine: onnxLineDetailSchema,
+  lifeLine: onnxLineDetailSchema,
+  fateLine: z.object({ presence: z.literal("unknown"), note: z.string() }),
+  mounts: z.literal("unknown"),
+  marks: z.literal("unknown"),
+  modelConfidence: z.number(),
+});
 
 const palmFactsSchema = z.object({
   handSide: z.enum(["left", "right", "unknown"]),
@@ -28,6 +51,9 @@ const palmFactsSchema = z.object({
       confidence: z.number().min(0).max(1),
     }),
   ),
+  /** 실제 ONNX 모델(samuelwbarber/palm-line-reader) 추론 결과. 클라이언트에서
+   * 추론이 실패했으면 null — 서버는 그 값을 그대로 통과시킨다(억지로 채우지 않음). */
+  onnxLines: onnxPalmLinesSchema.nullable(),
   confidence: z.number().min(0).max(1),
   warnings: z.array(z.string()),
 });
@@ -40,7 +66,7 @@ const bodySchema = z.object({
   minute: z.number().int().min(0).max(59).nullable(),
   gender: z.enum(["남", "여"]),
   palmFacts: palmFactsSchema,
-  big5Answers: z.record(z.string(), z.number().min(1).max(5)).optional(),
+  personalityAnswers: z.record(z.string(), z.number().min(1).max(5)).optional(),
   mbti: z.enum(MBTI_TYPES).optional(),
 });
 
@@ -84,20 +110,28 @@ export async function POST(request: Request) {
 
     const personality = {
       facts: deepFacts,
-      big5: parsed.data.big5Answers ? scoreBig5(parsed.data.big5Answers) : null,
+      check: parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null,
       mbti: parsed.data.mbti ? { type: parsed.data.mbti } : null,
     };
 
-    const result = await getCrossInterpretation(sajuSummaryText, tendency, palmFacts, {
-      timeoutMs: 9000,
-      personality,
-    });
+    const [result, freeReportResult] = await Promise.all([
+      getCrossInterpretation(sajuSummaryText, tendency, palmFacts, { timeoutMs: 9000, personality }),
+      // 손금까지 끝난 뒤에만 보여주는 최종 통합 리포트(17섹션 전체)도 여기서
+      // 함께 계산한다 — 손금 페이지가 별도 라우트라 사주 결과 화면의 계산을
+      // 재사용할 수 없어서, deepFacts가 있으면 같은 파이프라인으로 다시 만든다.
+      deepFacts
+        ? getFreeSajuReport(deepFacts, { timeoutMs: 9000, personality: { check: personality.check, mbti: personality.mbti } }).catch(
+            () => null,
+          )
+        : Promise.resolve(null),
+    ]);
 
     return NextResponse.json({
       usable: true,
       source: result.source,
       palmFacts,
       interpretation: result.interpretation,
+      freeReport: freeReportResult ? { source: freeReportResult.source, report: freeReportResult.report } : null,
     });
   } catch (err) {
     return NextResponse.json(

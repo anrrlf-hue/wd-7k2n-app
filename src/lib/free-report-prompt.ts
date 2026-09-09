@@ -3,7 +3,7 @@
 // 이 프롬프트가 그대로 free-report-engine.ts에서 쓰인다.
 
 import type { SajuFacts } from "@/lib/saju-facts";
-import type { Big5Facts } from "@/lib/big5-facts";
+import type { PersonalityCheckFacts } from "@/lib/personality-check";
 import type { MbtiSelfReport } from "@/lib/mbti-facts";
 
 export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 데이터를 근거로, "무료인데 이렇게까지 해준다고?"라는 반응이 나올 만큼 구체적이고 재미있는 무료 성향·재물 리포트를 쓰는 에디터입니다. 정확한 계산 결과를 나열하는 보고서가 아니라, 3~5분 동안 몰입해서 읽을 만한 글을 씁니다.
@@ -11,7 +11,7 @@ export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 �
 절대 규칙 (사실 관련):
 1. 아래 SajuFacts 바깥의 사실을 지어내지 마세요. 계산에 없는 대운/신살/십성을 언급하지 마세요.
 2. 절대 확정적 미래·보장 표현("부자가 된다", "성공한다", "수익 보장")을 쓰지 마세요.
-3. 이 리포트는 현재 직업, 소득, 지출, 자산, 부채, 재무 목표를 절대 묻지도 언급하지도 않습니다. 오직 태어난 날짜(사주 원국)와, 주어졌다면 자기보고 성향정보(Big5/MBTI)만 근거로 삼으세요.
+3. 이 리포트는 현재 직업, 소득, 지출, 자산, 부채, 재무 목표를 절대 묻지도 언급하지도 않습니다. 오직 태어난 날짜(사주 원국)와, 주어졌다면 자기보고 성향정보(간단 성향 체크/MBTI)만 근거로 삼으세요.
 
 절대 규칙 (글쓰기 품질 관련 — 가장 중요):
 4. 모든 문단은 다음 순서를 지키되, 문장 구조 자체는 섹션마다 다르게 쓰세요: 결론을 생활 언어로 먼저 → 구체적인 행동/생활 패턴 → 독자가 자기 경험과 비교하게 만드는 장치 → 맨 마지막에만 일간/격국/십성 같은 전문용어 근거를 붙이세요.
@@ -20,18 +20,18 @@ export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 �
 7. 부사 남발("정말", "진짜", "솔직히")을 피하고, 수동태보다 능동태를 쓰세요.
 8. 십성이 어느 자리(연/월/일/시)에 있는지("궁위")를 최대한 활용해 해석을 구체화하세요.
 9. strengths와 cautions는 각각 최소 3개, 실제 SajuFacts 필드 값을 evidence에 짧게(8~16자) 남기세요.
-10. personalityComparison은 Big5/MBTI 자기보고가 주어졌을 때만 채우고, 없으면 null로 두세요. 사주 결과를 성향정보에 맞춰 억지로 고치지 말고, 일치하면 일치한다고 다르면 다르다고 쓰세요.
+10. personalityComparison은 간단 성향 체크/MBTI 자기보고가 주어졌을 때만 채우고, 없으면 null로 두세요. 사주 결과를 성향정보에 맞춰 억지로 고치지 말고, 일치하면 일치한다고 다르면 다르다고 쓰세요.
 11. 반드시 요청된 JSON 스키마로만 응답하세요.`;
 
 export function buildFreeSajuReportUserPrompt(
   facts: SajuFacts,
-  personality?: { big5: Big5Facts | null; mbti: MbtiSelfReport | null },
+  personality?: { check: PersonalityCheckFacts | null; mbti: MbtiSelfReport | null },
 ): string {
   const personalityBlock =
-    personality && (personality.big5 || personality.mbti)
+    personality && (personality.check || personality.mbti)
       ? `
 ## 자기보고 성향정보 (주어진 경우에만 personalityComparison에 반영)
-${personality.big5 ? `- Big5: ${Object.entries(personality.big5.levels).map(([k, v]) => `${k} ${v}`).join(", ")}` : "- Big5: 없음"}
+${personality.check ? `- 간단 성향 체크: ${Object.entries(personality.check.levels).map(([k, v]) => `${k} ${v}`).join(", ")}` : "- 간단 성향 체크: 없음"}
 ${personality.mbti && "type" in personality.mbti ? `- MBTI: ${personality.mbti.type}` : "- MBTI: 없음"}
 `
       : "\n## 자기보고 성향정보\n없음 (personalityComparison은 null로 응답)\n";
@@ -71,6 +71,6 @@ ${personalityBlock}
   "cautions": [{"title": "...", "detail": "...", "evidence": "..."}] (최소 3개),
   "selfCheckQuestions": ["..."] (2~5개),
   "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명)",
-  "personalityComparison": "Big5/MBTI가 있을 때만 채우는 비교 문단, 없으면 null"
+  "personalityComparison": "간단 성향 체크/MBTI가 있을 때만 채우는 비교 문단, 없으면 null"
 }`;
 }

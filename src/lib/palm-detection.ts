@@ -9,7 +9,16 @@ import {
   type NormalizedLandmark,
 } from "@mediapipe/tasks-vision";
 import { analyzeEdgeBand } from "@/lib/palm-line-features";
-import type { HandShape, HandSide, ImageQuality, LineFeature, LineName, PalmFacts } from "@/lib/palm-facts";
+import { runPalmLineOnnx, preloadPalmLineModel, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
+import type {
+  HandShape,
+  HandSide,
+  ImageQuality,
+  LineFeature,
+  LineName,
+  OnnxLineDetail,
+  PalmFacts,
+} from "@/lib/palm-facts";
 
 let handLandmarkerPromise: Promise<HandLandmarker> | null = null;
 
@@ -34,6 +43,7 @@ function getHandLandmarker(): Promise<HandLandmarker> {
 /** 앱 진입 시 미리 불러 첫 분석 지연을 줄이고 싶을 때 호출 (실패해도 무시) */
 export function preloadHandLandmarker() {
   getHandLandmarker().catch(() => {});
+  preloadPalmLineModel();
 }
 
 interface Rect {
@@ -130,6 +140,63 @@ function extractLineFeatures(imageData: ImageData, landmarksPx: { x: number; y: 
   });
 }
 
+/** MediaPipe 손 랜드마크로 잡은 손바닥 영역을 여유(padding)를 두고 잘라낸다.
+ * palm-line-reader 모델은 "손금이 프레임을 채운 근접 크롭"으로 학습돼서,
+ * 원본 전체 사진을 그대로 넣는 것보다 이렇게 잘라 넣어야 학습 조건에 가깝다. */
+function cropToCanvas(source: HTMLCanvasElement, box: Rect, padding = 0.18): HTMLCanvasElement {
+  const padX = box.width * padding;
+  const padY = box.height * padding;
+  const x = Math.max(0, box.x - padX);
+  const y = Math.max(0, box.y - padY);
+  const w = Math.min(source.width - x, box.width + padX * 2);
+  const h = Math.min(source.height - y, box.height + padY * 2);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(w));
+  canvas.height = Math.max(1, Math.round(h));
+  const ctx = canvas.getContext("2d");
+  ctx?.drawImage(source, x, y, w, h, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+const ONNX_CLASS_TO_LINE_NAME: Record<OnnxLineClass, LineName> = {
+  heart_line: "감정선",
+  head_line: "두뇌선",
+  life_line: "생명선",
+};
+
+/** ONNX 추론이 실제로 반환한 픽셀 통계(lineLength/avgThickness/curveScore)를
+ * 사람이 읽는 라벨로 분류한다. 라벨 경계값은 우리가 정한 근사 기준이지만,
+ * 그 재료(픽셀 수·주성분 투영 범위)는 전부 실제 모델 출력에서 나온다. */
+function mapOnnxObservation(obs: OnnxLineObservation): OnnxLineDetail {
+  if (!obs.detected) {
+    return {
+      detected: false,
+      confidence: Math.min(1, obs.coverage * 40),
+      length: null,
+      curve: null,
+      depthStrength: null,
+      start: null,
+      end: null,
+      branchDetected: null,
+    };
+  }
+  const length = obs.lineLength < 150 ? "짧음" : obs.lineLength < 320 ? "보통" : "김";
+  const curve = obs.curveScore > 0.35 ? "완만한 곡선" : "직선에 가까움";
+  const depthStrength = obs.avgThickness < 2.2 ? "약함" : obs.avgThickness < 4 ? "보통" : "강함";
+  const norm = (p: { x: number; y: number } | null) => (p ? { x: p.x / 512, y: p.y / 512 } : null);
+  return {
+    detected: true,
+    confidence: Math.min(1, obs.coverage * 40),
+    length,
+    curve,
+    depthStrength,
+    start: norm(obs.start),
+    end: norm(obs.end),
+    branchDetected: null,
+  };
+}
+
 export interface PalmAnalysisSource {
   image: CanvasImageSource & { width: number; height: number };
   canvas: HTMLCanvasElement;
@@ -149,6 +216,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
       handShape: "unknown",
       majorLines: [],
       lineFeatures: [],
+      onnxLines: null,
       confidence: 0,
       warnings: ["이미지를 처리할 수 없어요. 다른 사진으로 다시 시도해주세요."],
     };
@@ -164,6 +232,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
       handShape: "unknown",
       majorLines: [],
       lineFeatures: [],
+      onnxLines: null,
       confidence: 0,
       warnings: ["사진이 너무 어두워요. 밝은 곳에서 손바닥이 잘 보이게 다시 찍어주세요."],
     };
@@ -179,6 +248,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
       handShape: "unknown",
       majorLines: [],
       lineFeatures: [],
+      onnxLines: null,
       confidence: 0,
       warnings: ["손이 잘 안 보여요. 손바닥 전체가 프레임 안에 들어오게 다시 찍어주세요."],
     };
@@ -196,6 +266,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
       handShape: "unknown",
       majorLines: [],
       lineFeatures: [],
+      onnxLines: null,
       confidence: 0,
       warnings: ["손바닥 일부가 사진 밖으로 잘렸어요. 손 전체가 나오게 조금 더 멀리서 다시 찍어주세요."],
     };
@@ -212,7 +283,34 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
 
   const handShape = classifyHandShape(landmarksPx);
   const lineFeatures = extractLineFeatures(imageData, landmarksPx);
-  const majorLines = lineFeatures.filter((f) => f.detected).map((f) => f.name);
+
+  // 실제 ONNX 모델 추론 — MediaPipe로 잡은 손바닥 영역만 크롭해서 넣는다.
+  // 실패해도(모델 로드 실패, 추론 오류) null만 반환하고 Sobel 결과로 계속 진행한다.
+  const box = palmBoundingBox(landmarksPx);
+  const palmCrop = cropToCanvas(canvas, box);
+  const onnxRaw = await runPalmLineOnnx(palmCrop);
+  const onnxLines: PalmFacts["onnxLines"] = onnxRaw
+    ? {
+        modelExecuted: true,
+        heartLine: mapOnnxObservation(onnxRaw.observations.find((o) => o.class === "heart_line")!),
+        headLine: mapOnnxObservation(onnxRaw.observations.find((o) => o.class === "head_line")!),
+        lifeLine: mapOnnxObservation(onnxRaw.observations.find((o) => o.class === "life_line")!),
+        fateLine: { presence: "unknown", note: "이 모델은 재물선(fate line)을 분할하지 않아 확인할 수 없어요." },
+        mounts: "unknown",
+        marks: "unknown",
+        modelConfidence:
+          onnxRaw.observations.filter((o) => o.detected).reduce((sum, o) => sum + Math.min(1, o.coverage * 40), 0) /
+          Math.max(1, onnxRaw.observations.filter((o) => o.detected).length),
+      }
+    : null;
+
+  const onnxDetectedNames: LineName[] = onnxLines
+    ? (["heart_line", "head_line", "life_line"] as const)
+        .filter((cls) => onnxLines[cls === "heart_line" ? "heartLine" : cls === "head_line" ? "headLine" : "lifeLine"].detected)
+        .map((cls) => ONNX_CLASS_TO_LINE_NAME[cls])
+    : [];
+  const sobelDetectedNames = lineFeatures.filter((f) => f.detected).map((f) => f.name);
+  const majorLines = Array.from(new Set([...sobelDetectedNames, ...onnxDetectedNames]));
 
   const lineConfidences = lineFeatures.map((f) => f.confidence);
   const avgLineConfidence =
@@ -231,6 +329,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
     handShape,
     majorLines,
     lineFeatures,
+    onnxLines,
     confidence,
     warnings,
   };

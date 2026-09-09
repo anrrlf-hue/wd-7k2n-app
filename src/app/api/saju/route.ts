@@ -4,7 +4,7 @@ import { diagnoseSaju, type FullSajuDiagnosis } from "@/lib/saju";
 import { computeSajuFacts } from "@/lib/saju-facts";
 import { getInterpretation } from "@/lib/interpretation-engine";
 import { getFreeSajuReport } from "@/lib/free-report-engine";
-import { scoreBig5 } from "@/lib/big5-facts";
+import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
@@ -21,7 +21,7 @@ const bodySchema = z.object({
   minute: z.number().int().min(0).max(59).nullable(),
   gender: z.enum(["남", "여"]),
   /** 성향 스텝은 완전히 선택 사항 — 안 보내면 undefined */
-  big5Answers: z.record(z.string(), z.number().min(1).max(5)).optional(),
+  personalityAnswers: z.record(z.string(), z.number().min(1).max(5)).optional(),
   mbti: z.enum(MBTI_TYPES).optional(),
 });
 
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   try {
     const facts = computeSajuFacts(parsed.data);
     const personality = {
-      big5: parsed.data.big5Answers ? scoreBig5(parsed.data.big5Answers) : null,
+      check: parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null,
       mbti: parsed.data.mbti ? { type: parsed.data.mbti } : null,
     };
 
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     freeReport,
     birthInput: parsed.data,
     personalityInput: {
-      big5Answers: parsed.data.big5Answers ?? null,
+      personalityAnswers: parsed.data.personalityAnswers ?? null,
       mbti: parsed.data.mbti ?? null,
     },
   };
