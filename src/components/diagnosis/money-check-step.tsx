@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Coins } from "lucide-react";
+import { StepBadge } from "@/components/diagnosis/step-badge";
 import { MONEY_CHECK_QUESTIONS } from "@/lib/money-check";
 
 export function MoneyCheckStep({
@@ -18,8 +20,10 @@ export function MoneyCheckStep({
 
   return (
     <div className="flex flex-1 flex-col">
-      <p className="text-sm font-medium text-muted-foreground">
-        간이 진단 · {index + 1}/{MONEY_CHECK_QUESTIONS.length}
+      <StepBadge icon={<Coins className="size-5" />} />
+
+      <p className="text-sm font-medium text-(--gold)">
+        이제 진짜 내 얘기예요 · {index + 1}/{MONEY_CHECK_QUESTIONS.length}
       </p>
       <h2 className="mt-3 text-xl font-semibold leading-snug tracking-tight">
         {question.question}
@@ -40,7 +44,7 @@ export function MoneyCheckStep({
             }}
             className={`rounded-xl border p-4 text-left text-sm transition-colors ${
               answers[question.id] === opt.score
-                ? "border-primary bg-accent"
+                ? "mystic-card border-(--gold-soft)"
                 : "border-border"
             }`}
           >

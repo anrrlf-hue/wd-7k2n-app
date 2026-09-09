@@ -27,6 +27,10 @@ const BANNED_PATTERNS: RegExp[] = [
   /(수익|돈)\s*(을|를)?\s*보장/,
   /틀림없이/,
   /운명(적으)?으로\s*정해져/,
+  // 계산 라이브러리의 영문/raw enum 값이 따옴표째로 그대로 노출되는 디버그성
+  // 문구 방지 (실제 스크린샷 검수에서 "강약: 'neutral'" 노출을 발견해 추가).
+  /['"](strong|weak|neutral)['"]/i,
+  /강약\s*[:：]\s*(strong|weak|neutral)/i,
 ];
 
 export interface ValidationResult {

@@ -58,7 +58,7 @@ export function ResultStep({
 
   const lockedCards = getLockedReportCards(tendency);
   const deepLockedCards = isDeep
-    ? [...lockedCards, { title: "이 해석의 전체 근거 다시보기", cta: "근거 전체 보기" }]
+    ? [...lockedCards, { title: "이 해석은 어떤 근거로 나왔을까", cta: "근거 전체 다시보기" }]
     : lockedCards;
 
   return (
@@ -218,6 +218,9 @@ export function ResultStep({
       </div>
 
       <div className="mt-auto pt-8">
+        <p className="mb-3 text-center text-xs text-muted-foreground">
+          재밌게 보셨다면, 이제 진짜 내 상황도 1분만 체크해볼까요?
+        </p>
         <Button
           size="lg"
           onClick={onNext}

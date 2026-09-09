@@ -7,6 +7,7 @@
 
 import type { SajuFacts } from "@/lib/saju-facts";
 import type { Interpretation } from "@/lib/interpretation-schema";
+import { dayStrengthLabel, dayStrengthShort } from "@/lib/saju-labels";
 
 function wealthLevel(count: number): "없음" | "보통" | "강함" {
   if (count === 0) return "없음";
@@ -37,7 +38,7 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
     outputStarCount === peerStarCount ? "tie" : outputStarCount > peerStarCount ? "output" : "peer";
 
   const summary =
-    `일간 ${dayStemKo}(${dayElement})에 강약은 '${dayStrength}', 격국은 '${geukguk}'로 나와요. ` +
+    `일간 ${dayStemKo}(${dayElement}) 기준으로 ${dayStrengthLabel(dayStrength)}이고, 격국은 ${geukguk}예요. ` +
     `원국에서 가장 강한 오행은 ${dominantElement}이고, 재성(재물을 뜻하는 십성)은 ${wLevel} 수준(${wealthStarCount}개)이에요. ` +
     `혹시 실제로도 ${activeCompare === "peer" ? "묵묵히 반복해서 자리를 잡는" : "일단 벌여놓고 결과로 증명하는"} 편이라는 말을 주변에서 듣나요?`;
 
@@ -69,8 +70,8 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
 
   const career_business =
     geukguk.includes("재") || geukguk.includes("식상")
-      ? `격국이 '${geukguk}'로 나와요. 정해진 틀 안에서 일하기보다, 성과가 곧바로 보이는 구조(사업/프리랜서/성과제)에서 재물운이 더 크게 열리는 편이에요.`
-      : `격국이 '${geukguk}'로 나와요. 안정적인 체계 안에서 신뢰를 쌓아가는 직장형 구조에서 재물이 더 안정적으로 늘어나는 편이에요.`;
+      ? `격국이 ${geukguk}예요. 정해진 틀 안에서 일하기보다, 성과가 곧바로 보이는 구조(사업/프리랜서/성과제)에서 재물운이 더 크게 열리는 편이에요.`
+      : `격국이 ${geukguk}예요. 안정적인 체계 안에서 신뢰를 쌓아가는 직장형 구조에서 재물이 더 안정적으로 늘어나는 편이에요.`;
 
   const timing = currentDaeun
     ? `지금은 ${currentDaeun.ageRange}세, ${currentDaeun.ganzhi}(${currentDaeun.stemTenGod}/${currentDaeun.branchTenGod}) 대운이에요. ` +
@@ -88,12 +89,15 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
           ? "혼자 판단하지 말고, 이번 결정 하나만큼은 믿을 만한 사람에게 먼저 물어보고 진행해보세요."
           : "새로운 걸 벌이기 전에, 지금 가진 재성(용신 방향)을 어디에 쓸지부터 한 줄로 정리해보세요.";
 
+  // 화면에 그대로 칩으로 노출되므로 짧고 읽기 좋은 형태로 쓴다.
+  // (JSON.stringify나 영문 enum을 그대로 넣지 않는다 — 실제 스크린샷 검수에서
+  // "강약: 'neutral'" 처럼 디버그 로그 같은 문구가 노출되는 문제를 발견해 수정.)
   const evidence = [
-    `일간 ${dayStemKo}(${dayElement}), 강약: ${dayStrength}(${facts.dayStrengthScore})`,
-    `격국: ${geukguk}, 용신: ${facts.yongsin.join(", ")}`,
-    `오행 분포: ${JSON.stringify(facts.fiveElements)} (최다: ${dominantElement})`,
-    `재성 ${wealthStarCount}개, 비겁 ${peerStarCount}개, 식상 ${outputStarCount}개`,
-    currentDaeun ? `현재 대운 ${currentDaeun.ganzhi} (${currentDaeun.stemTenGod}/${currentDaeun.branchTenGod})` : "대운 정보 없음",
+    `일간 ${dayStemKo}(${dayElement}) · ${dayStrengthShort(dayStrength)}`,
+    `격국 ${geukguk}`,
+    `오행 최다 ${dominantElement}`,
+    `재성 ${wealthStarCount}개 · 비겁 ${peerStarCount}개 · 식상 ${outputStarCount}개`,
+    currentDaeun ? `현재 대운 ${currentDaeun.ganzhi}(${currentDaeun.stemTenGod})` : "대운 정보 없음",
   ];
 
   return {
