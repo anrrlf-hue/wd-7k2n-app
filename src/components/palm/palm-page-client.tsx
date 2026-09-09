@@ -7,11 +7,15 @@ import { Camera, ImagePlus, RotateCcw, HandMetal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepBadge } from "@/components/diagnosis/step-badge";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
+import { FreeBoundaryMarker } from "@/components/diagnosis/free-boundary-marker";
+import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
+import { LockedCard } from "@/components/diagnosis/locked-card";
+import { TeaserRow } from "@/components/diagnosis/teaser-row";
 import {
   analyzePalmFromCanvas,
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
-import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
+import { isPalmFactsUsable, type PalmFacts, type LineFeature } from "@/lib/palm-facts";
 import type { CrossInterpretation } from "@/lib/cross-interpretation-schema";
 import type { BirthInput } from "@/lib/saju";
 
@@ -23,6 +27,14 @@ const HAND_SHAPE_KO: Record<PalmFacts["handShape"], string> = {
   elongated: "길쭉한 손바닥 · 짧은 손가락",
   slender: "길쭉한 손바닥 · 긴 손가락",
   unknown: "확인 안 됨",
+};
+
+/** confidence 낮은 항목을 과신하지 않도록 표현 강도를 다르게 문구화한다. */
+function lineConfidencePhrase(f: LineFeature): string {
+  if (!f.detected) return "이번 사진에서는 뚜렷하게 잡히지 않았어요";
+  if (f.confidence >= 0.6) return `뚜렷하게 보여요 (${f.length}, ${f.direction})`;
+  if (f.confidence >= 0.35) return `은은하게 보이는 편이에요 (${f.length}, ${f.direction})`;
+  return `약하게 보여서 참고만 해주세요 (${f.length}, ${f.direction})`;
 };
 
 async function fileToCanvas(file: File, maxDim = 1280): Promise<HTMLCanvasElement> {
@@ -277,23 +289,29 @@ export function PalmPageClient({ birthInput }: { birthInput: BirthInput | null }
                   {HAND_SHAPE_KO[palmFacts.handShape]}
                 </p>
                 <p className="mt-0.5 text-xs text-(--gold)">
-                  검출된 선: {palmFacts.majorLines.length > 0 ? palmFacts.majorLines.join(", ") : "없음"}
+                  분석 신뢰도 {(palmFacts.confidence * 100).toFixed(0)}%
                 </p>
               </div>
             </div>
 
+            <div className="mt-4 space-y-2 rounded-xl border border-border p-3.5">
+              <p className="text-xs font-medium text-muted-foreground">손에서 검출된 특징</p>
+              {palmFacts.lineFeatures.map((f) => (
+                <div key={f.name} className="flex items-start gap-2 text-sm">
+                  <span
+                    className={`mt-1.5 size-1.5 shrink-0 rounded-full ${f.detected ? "bg-(--gold)" : "bg-muted"}`}
+                  />
+                  <p>
+                    <span className="font-medium">{f.name}</span> — {lineConfidencePhrase(f)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
             <div className="mt-4 space-y-3 text-sm leading-relaxed">
               <div>
-                <p className="text-xs font-medium text-(--gold)">공통으로 보이는 성향</p>
+                <p className="text-xs font-medium text-(--gold)">사주와 공통으로 보이는 성향</p>
                 <p className="mt-1">{crossResult.interpretation.common}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-(--gold)">서로 다른 부분</p>
-                <p className="mt-1">{crossResult.interpretation.differences}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-(--gold)">돈과 연결해보면</p>
-                <p className="mt-1">{crossResult.interpretation.moneyConnection}</p>
               </div>
               <p className="rounded-xl bg-accent p-3 text-accent-foreground">
                 {crossResult.interpretation.selfComparisonQuestion}
@@ -304,6 +322,29 @@ export function PalmPageClient({ birthInput }: { birthInput: BirthInput | null }
               {crossResult.interpretation.uncertaintyNote}
             </p>
           </motion.div>
+
+          <FreeBoundaryMarker />
+
+          <div className="mt-5 flex flex-col gap-3">
+            <TeaserRow label="사주와 다르게 나타나는 부분" text={crossResult.interpretation.differences} />
+            <TeaserRow label="돈과 연결해보면" text={crossResult.interpretation.moneyConnection} />
+            <LockedCard
+              title="사주 + 손금 전체 교차 리포트"
+              cta="사주와 손 전체 비교 열어보기"
+            />
+          </div>
+
+          <PaywallOffer
+            includedItems={[
+              "사주와 손금이 다르게 나타나는 부분 전체",
+              "손금 기반 돈/일 결정 스타일 상세",
+              "앞으로 1~3년 재물 흐름",
+              "돈을 놓치는 반복 패턴",
+              "지금 바꿔야 할 행동 3가지",
+              "전체 계산 근거",
+            ]}
+            ctaText="사주+손금 전체 해석 열기"
+          />
 
           <div className="mt-auto flex flex-col gap-3 pt-8">
             <Button size="lg" variant="outline" onClick={reset} className="h-13 w-full rounded-full text-base">

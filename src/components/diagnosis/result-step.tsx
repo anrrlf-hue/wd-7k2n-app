@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LockedCard } from "@/components/diagnosis/locked-card";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
+import { FreeBoundaryMarker } from "@/components/diagnosis/free-boundary-marker";
+import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
+import { TeaserRow } from "@/components/diagnosis/teaser-row";
 import { PowerGauge } from "@/components/diagnosis/power-gauge";
 import { JobSpectrum } from "@/components/diagnosis/job-spectrum";
 import { FlowLine } from "@/components/diagnosis/flow-line";
@@ -171,7 +174,9 @@ export function ResultStep({
         {saving ? "저장 중..." : "이미지로 저장하고 공유하기"}
       </Button>
 
-      <div className="mt-8">
+      <FreeBoundaryMarker />
+
+      <div className="mt-5">
         <p className="flex items-center gap-1.5 text-sm font-medium">
           <Eye className="size-4 text-(--gold)" />
           조금 더 보이는 이야기
@@ -211,6 +216,19 @@ export function ResultStep({
             <LockedCard key={card.title} title={card.title} cta={card.cta} />
           ))}
         </div>
+
+        <PaywallOffer
+          includedItems={[
+            "앞으로 1~3년 재물 흐름",
+            "돈이 강해지는 시기",
+            "피해야 할 돈 선택",
+            "직장형·사업형 상세 분석",
+            "돈을 놓치는 반복 패턴",
+            "지금 바꿔야 할 행동 3가지",
+            "전체 계산 근거",
+          ]}
+          ctaText="내 사주에서 돈이 크게 움직이는 시기 보기"
+        />
       </div>
 
       <div className="mt-8">
@@ -229,15 +247,6 @@ export function ResultStep({
           현실 돈 고민도 체크해보기
         </Button>
       </div>
-    </div>
-  );
-}
-
-function TeaserRow({ label, text }: { label: string; text: string }) {
-  return (
-    <div className="rounded-2xl border border-border p-4">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="blur-teaser mt-1.5 text-sm leading-relaxed">{text}</p>
     </div>
   );
 }
