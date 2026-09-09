@@ -33,13 +33,19 @@ async function main() {
       console.log("FAILED", JSON.stringify(r.json, null, 2));
       continue;
     }
-    const { resultSource, deep, tendency, dayPillar } = r.json;
-    console.log(`dayPillar=${dayPillar} resultSource=${resultSource} deepSource=${deep?.source ?? "-"}`);
+    const { resultSource, deep, freeReport, tendency, dayPillar } = r.json;
+    console.log(`dayPillar=${dayPillar} resultSource=${resultSource} deepSource=${deep?.source ?? "-"} freeReportSource=${freeReport?.source ?? "-"}`);
     if (deep) {
       console.log(`summary: ${deep.interpretation.summary}`);
       console.log(`evidencePreview: ${JSON.stringify(deep.evidencePreview)}`);
     } else {
       console.log(`fallback tendency.wealthType: ${tendency.wealthType}`);
+    }
+    if (freeReport) {
+      console.log(`freeReport.snapshot: ${freeReport.report.snapshot}`);
+      console.log(`freeReport.strengths: ${freeReport.report.strengths.map((s) => s.title).join(", ")}`);
+    } else {
+      console.log("freeReport: 없음(실패)");
     }
   }
 
@@ -49,10 +55,17 @@ async function main() {
   );
   console.log(`서로 다른 4개 입력의 고유 결과 개수: ${distinct.size} / 4`);
 
+  const distinctFree = new Set(
+    results.filter((r) => ["A", "B", "C", "E"].includes(r.label.replace(/\(.*\)/, ""))).map((r) => JSON.stringify(r.json.freeReport?.report)),
+  );
+  console.log(`서로 다른 4개 입력의 freeReport 고유 결과 개수: ${distinctFree.size} / 4`);
+
   const a = results.find((r) => r.label === "A");
   const d = results.find((r) => r.label.startsWith("D"));
   const same = JSON.stringify(a.json.deep) === JSON.stringify(d.json.deep) && a.json.dayPillar === d.json.dayPillar;
   console.log(`A와 D(동일 입력) 일관성: ${same ? "일치" : "불일치"}`);
+  const sameFree = JSON.stringify(a.json.freeReport) === JSON.stringify(d.json.freeReport);
+  console.log(`A와 D(동일 입력) freeReport 일관성: ${sameFree ? "일치" : "불일치"}`);
 
   const latencies = results.filter((r) => r.status === 200).map((r) => r.ms);
   console.log(`응답 시간: min=${Math.min(...latencies)}ms max=${Math.max(...latencies)}ms avg=${Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)}ms`);

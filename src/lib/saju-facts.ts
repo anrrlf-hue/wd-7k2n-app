@@ -31,6 +31,17 @@ export interface DaeunFact {
   isCurrent: boolean;
 }
 
+export interface PillarStageFact {
+  pillar: "year" | "month" | "day" | "hour";
+  /** 봉법 12운성(지지 기준) */
+  bong: string;
+  /** 거법 12운성(일간 기준) */
+  geo: string;
+  twelveSal: string;
+  /** 천을귀인 등 개별 특살. 없으면 빈 배열 */
+  specialSals: string[];
+}
+
 export interface SajuFacts {
   hasTimeInput: boolean;
   dayStem: string;
@@ -49,13 +60,27 @@ export interface SajuFacts {
   peerStarCount: number;
   /** 식상(식신+상관) 개수 — "돈을 만들어내는 활동력"의 근거 */
   outputStarCount: number;
+  /** 관성(편관+정관) 개수 — "조직/규율/책임"과의 관계 근거 */
+  officerStarCount: number;
+  /** 인성(편인+정인) 개수 — "정보/신중함/도움받는 힘"의 근거 */
+  resourceStarCount: number;
+  /** 재성이 실제로 앉아 있는 자리(궁위) — 어느 자리인지에 따라 해석 영역이 달라진다 */
+  wealthStarPillars: PillarFact["pillar"][];
+  /** 식상이 앉아 있는 자리(궁위) */
+  outputStarPillars: PillarFact["pillar"][];
   pillars: PillarFact[];
   keyRelations: string[];
+  /** 귀문(鬼門)만 따로 — "궁위론" 해석(어느 자리끼리 귀문인지)에 쓴다 */
+  gwimunRelations: string[];
+  /** 핀(연/월/일/시)별 12운성·12살·특살. hasTimeInput=false면 hour 제외 */
+  pillarStages: PillarStageFact[];
   gilsin: string[];
   hyungsin: string[];
   gongmang: string[];
   currentDaeun: DaeunFact | null;
   nextDaeun: DaeunFact | null;
+  /** 앞으로의 대운 전체 흐름(현재 포함). "정밀 시기"가 아니라 "평생 흐름 존재"의 근거로만 쓴다 */
+  daeunList: DaeunFact[];
   /** LLM 프롬프트에 그대로 삽입할 수 있는 사람이 읽기 좋은 원국 요약 */
   compactText: string;
 }
@@ -82,9 +107,25 @@ function toDaeunFact(item: NonNullable<SajuResult["daeun"]["current"]>, isCurren
   };
 }
 
+function toPillarStageFact(result: SajuResult, key: PillarStageFact["pillar"]): PillarStageFact {
+  return {
+    pillar: key,
+    bong: result.stages12.bong[key],
+    geo: result.stages12.geo[key],
+    twelveSal: result.sals[key].twelveSal,
+    specialSals: result.sals[key].specialSals,
+  };
+}
+
 const WEALTH_STARS = new Set(["편재", "정재"]);
 const PEER_STARS = new Set(["비견", "겁재"]);
 const OUTPUT_STARS = new Set(["식신", "상관"]);
+const OFFICER_STARS = new Set(["편관", "정관"]);
+const RESOURCE_STARS = new Set(["편인", "정인"]);
+
+function pillarsWithTenGod(pillars: PillarFact[], stars: Set<string>): PillarFact["pillar"][] {
+  return pillars.filter((p) => stars.has(p.stemTenGod) || stars.has(p.branchTenGod)).map((p) => p.pillar);
+}
 
 export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
   const genderKo: Gender = input.gender;
@@ -106,6 +147,10 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
   const wealthStarTypes = allTenGods.filter((t) => WEALTH_STARS.has(t));
   const peerStarCount = allTenGods.filter((t) => PEER_STARS.has(t)).length;
   const outputStarCount = allTenGods.filter((t) => OUTPUT_STARS.has(t)).length;
+  const officerStarCount = allTenGods.filter((t) => OFFICER_STARS.has(t)).length;
+  const resourceStarCount = allTenGods.filter((t) => RESOURCE_STARS.has(t)).length;
+  const wealthStarPillars = pillarsWithTenGod(pillars, WEALTH_STARS);
+  const outputStarPillars = pillarsWithTenGod(pillars, OUTPUT_STARS);
 
   const dominantElement = Object.entries(result.fiveElements).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
 
@@ -117,14 +162,23 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     ...Object.values(result.branchRelations.육합),
     ...Object.values(result.branchRelations.충),
     ...Object.values(result.branchRelations.형),
+    ...Object.values(result.branchRelations.파),
+    ...Object.values(result.branchRelations.해),
     ...Object.values(result.branchRelations.원진),
   ].filter((v): v is string => Boolean(v));
 
-  const daeunList = result.daeun.list;
-  const currentIdx = daeunList.findIndex((d) => d === result.daeun.current);
+  const gwimunRelations = Object.values(result.branchRelations.귀문).filter((v): v is string => Boolean(v));
+
+  const pillarStages: PillarStageFact[] = (["year", "month", "day", "hour"] as const)
+    .filter((key) => key !== "hour" || input.hour !== null)
+    .map((key) => toPillarStageFact(result, key));
+
+  const rawDaeunList = result.daeun.list;
+  const currentIdx = rawDaeunList.findIndex((d) => d === result.daeun.current);
   const currentDaeun = result.daeun.current ? toDaeunFact(result.daeun.current, true) : null;
   const nextDaeun =
-    currentIdx >= 0 && daeunList[currentIdx + 1] ? toDaeunFact(daeunList[currentIdx + 1], false) : null;
+    currentIdx >= 0 && rawDaeunList[currentIdx + 1] ? toDaeunFact(rawDaeunList[currentIdx + 1], false) : null;
+  const daeunList = rawDaeunList.map((d) => toDaeunFact(d, d === result.daeun.current));
 
   return {
     hasTimeInput: input.hour !== null,
@@ -141,13 +195,20 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     wealthStarTypes,
     peerStarCount,
     outputStarCount,
+    officerStarCount,
+    resourceStarCount,
+    wealthStarPillars,
+    outputStarPillars,
     pillars,
     keyRelations,
+    gwimunRelations,
+    pillarStages,
     gilsin: result.advanced.sinsal.gilsin,
     hyungsin: result.advanced.sinsal.hyungsin,
     gongmang: result.gongmang.branchesKo,
     currentDaeun,
     nextDaeun,
+    daeunList,
     compactText: result.toCompact(),
   };
 }

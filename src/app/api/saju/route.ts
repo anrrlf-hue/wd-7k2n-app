@@ -3,6 +3,7 @@ import { z } from "zod";
 import { diagnoseSaju, type FullSajuDiagnosis } from "@/lib/saju";
 import { computeSajuFacts } from "@/lib/saju-facts";
 import { getInterpretation } from "@/lib/interpretation-engine";
+import { getFreeSajuReport } from "@/lib/free-report-engine";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
 // 요청 1회로 (1) 얕은 사주팔자+money-tendency(fallback/게이지 근거로 항상 유지)
@@ -40,28 +41,43 @@ export async function POST(request: Request) {
     );
   }
 
-  // 딥 파이프라인은 별도 try/catch로 감싸, 여기서 무엇이 터지든 얕은 결과는
-  // 이미 계산되어 있으므로 fallback으로 응답할 수 있다.
+  // 딥 파이프라인(유료 업셀용 8필드)과 무료 사주 V2(12섹션)는 서로 독립
+  // 시도한다 — 하나가 실패해도 다른 하나는 화면에 나갈 수 있어야 한다.
   let deep: FullSajuDiagnosis["deep"] = null;
   let resultSource: FullSajuDiagnosis["resultSource"] = "fallback";
+  let freeReport: FullSajuDiagnosis["freeReport"] = null;
 
   try {
     const facts = computeSajuFacts(parsed.data);
-    const result = await getInterpretation(facts, { timeoutMs: 9000 });
 
-    deep = {
-      source: result.source,
-      interpretation: result.interpretation,
-      evidencePreview: result.interpretation.evidence.slice(0, 3),
-    };
-    resultSource = "deep";
+    const [interpretationResult, freeReportResult] = await Promise.all([
+      getInterpretation(facts, { timeoutMs: 9000 }).catch((err) => {
+        console.error("deep interpretation pipeline failed:", err);
+        return null;
+      }),
+      getFreeSajuReport(facts, { timeoutMs: 9000 }).catch((err) => {
+        console.error("free saju report pipeline failed:", err);
+        return null;
+      }),
+    ]);
+
+    if (interpretationResult) {
+      deep = {
+        source: interpretationResult.source,
+        interpretation: interpretationResult.interpretation,
+        evidencePreview: interpretationResult.interpretation.evidence.slice(0, 3),
+      };
+      resultSource = "deep";
+    }
+
+    if (freeReportResult) {
+      freeReport = { source: freeReportResult.source, report: freeReportResult.report };
+    }
   } catch (err) {
-    // 딥 계산 자체(ssaju 등)가 실패한 경우. 로그만 남기고 fallback으로 응답한다.
-    console.error("deep interpretation pipeline failed, falling back to shallow result:", err);
-    deep = null;
-    resultSource = "fallback";
+    // facts 계산 자체(ssaju 등)가 실패한 경우. 로그만 남기고 fallback으로 응답한다.
+    console.error("saju facts computation failed, falling back to shallow result:", err);
   }
 
-  const payload: FullSajuDiagnosis = { ...shallow, resultSource, deep, birthInput: parsed.data };
+  const payload: FullSajuDiagnosis = { ...shallow, resultSource, deep, freeReport, birthInput: parsed.data };
   return NextResponse.json(payload);
 }

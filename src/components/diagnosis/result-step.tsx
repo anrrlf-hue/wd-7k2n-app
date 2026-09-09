@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
-import { Eye, ScrollText, TrendingUp } from "lucide-react";
+import { Eye, ScrollText, TrendingUp, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LockedCard } from "@/components/diagnosis/locked-card";
@@ -14,8 +14,8 @@ import { TeaserRow } from "@/components/diagnosis/teaser-row";
 import { PowerGauge } from "@/components/diagnosis/power-gauge";
 import { JobSpectrum } from "@/components/diagnosis/job-spectrum";
 import { FlowLine } from "@/components/diagnosis/flow-line";
-import { ExpandableSection } from "@/components/diagnosis/expandable-section";
-import { getLockedReportCards } from "@/lib/money-tendency";
+import { ReportSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
+import { PersonalityAddendumCard } from "@/components/diagnosis/personality-addendum-card";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 
@@ -55,14 +55,10 @@ export function ResultStep({
     }
   }
 
-  const { tendency, deep, resultSource } = diagnosis;
+  const { tendency, deep, freeReport, resultSource } = diagnosis;
   const isDeep = resultSource === "deep" && deep !== null;
   const interp = deep?.interpretation;
-
-  const lockedCards = getLockedReportCards(tendency);
-  const deepLockedCards = isDeep
-    ? [...lockedCards, { title: "이 해석은 어떤 근거로 나왔을까", cta: "근거 전체 다시보기" }]
-    : lockedCards;
+  const report = freeReport?.report ?? null;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -96,7 +92,7 @@ export function ResultStep({
             {tendency.wealthType}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            {isDeep ? interp!.summary : tendency.summary}
+            {report ? report.snapshot : isDeep ? interp!.summary : tendency.summary}
           </p>
 
           {isDeep && deep!.evidencePreview.length > 0 && (
@@ -136,30 +132,6 @@ export function ResultStep({
           </div>
         </motion.div>
 
-        {isDeep ? (
-          <motion.div variants={itemVariants}>
-            <ExpandableSection title="돈을 버는 방식 · 지키는 방식 더 보기">
-              <div>
-                <p className="text-xs font-medium text-(--gold)">돈을 버는 방식</p>
-                <p className="mt-1 text-muted-foreground">{interp!.earning_style}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-(--gold)">돈을 지키는 방식</p>
-                <p className="mt-1 text-muted-foreground">{interp!.keeping_style}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-(--gold)">사람과 돈의 관계</p>
-                <p className="mt-1 text-muted-foreground">{interp!.money_style}</p>
-              </div>
-            </ExpandableSection>
-          </motion.div>
-        ) : (
-          <motion.div variants={itemVariants} className="mt-5 rounded-xl bg-accent p-3.5">
-            <p className="text-xs font-medium text-accent-foreground">나의 강점</p>
-            <p className="mt-1 text-sm leading-relaxed">{tendency.topStrength}</p>
-          </motion.div>
-        )}
-
         <p className="mt-6 text-[11px] text-muted-foreground">
           재미로 보는 콘텐츠예요 · 일주 {diagnosis.dayPillar}
         </p>
@@ -174,28 +146,88 @@ export function ResultStep({
         {saving ? "저장 중..." : "이미지로 저장하고 공유하기"}
       </Button>
 
+      {/* 무료 사주 V2 — 3~5분 읽기에 맞춘 밝은 리딩 테마 */}
+      <div className="result-bright mt-6 rounded-2xl border border-border p-5">
+        {report ? (
+          <>
+            <ReportSection step="②" title="타고난 성향">
+              <p>{report.temperament}</p>
+            </ReportSection>
+            <ReportSection step="③" title="돈을 버는 방식">
+              <p>{report.earningStyle}</p>
+            </ReportSection>
+            <ReportSection step="④" title="돈을 지키는 방식">
+              <p>{report.keepingStyle}</p>
+            </ReportSection>
+            <ReportSection step="⑤" title="돈을 놓치는 반복 패턴">
+              <p className="rounded-xl bg-accent p-3.5 text-accent-foreground">{report.leakPattern}</p>
+            </ReportSection>
+            <ReportSection step="⑥" title="직장형일까, 사업형일까">
+              <p>{report.workStyle}</p>
+            </ReportSection>
+            <ReportSection step="⑦" title="사람과 돈">
+              <p>{report.peopleAndMoney}</p>
+            </ReportSection>
+            <ReportSection step="⑧" title="의사결정 스타일">
+              <p>{report.decisionStyle}</p>
+            </ReportSection>
+
+            <ReportSection step="⑨" title="나의 강점 3가지">
+              <div className="space-y-2.5">
+                {report.strengths.map((s, i) => (
+                  <EvidenceItemCard key={s.title} index={i + 1} title={s.title} detail={s.detail} evidence={s.evidence} />
+                ))}
+              </div>
+            </ReportSection>
+
+            <ReportSection step="⑩" title="조심하면 좋은 점 3가지">
+              <div className="space-y-2.5">
+                {report.cautions.map((c, i) => (
+                  <EvidenceItemCard key={c.title} index={i + 1} title={c.title} detail={c.detail} evidence={c.evidence} />
+                ))}
+              </div>
+            </ReportSection>
+
+            <ReportSection step="⑪" title="나와 비교해볼까요">
+              <div className="space-y-2">
+                {report.selfCheckQuestions.map((q) => (
+                  <p key={q} className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm">
+                    <HelpCircle className="mt-0.5 size-3.5 shrink-0 text-(--gold)" />
+                    {q}
+                  </p>
+                ))}
+              </div>
+            </ReportSection>
+
+            <ReportSection step="⑫" title="왜 이런 결과가 나왔을까">
+              <p className="text-sm text-muted-foreground">{report.evidenceExplainer}</p>
+            </ReportSection>
+          </>
+        ) : (
+          <ReportSection title="나의 강점">
+            <p>{tendency.topStrength}</p>
+          </ReportSection>
+        )}
+      </div>
+
       <FreeBoundaryMarker />
 
       <div className="mt-5">
         <p className="flex items-center gap-1.5 text-sm font-medium">
           <Eye className="size-4 text-(--gold)" />
-          조금 더 보이는 이야기
+          정확한 시기가 궁금하다면
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          흐리게 보이는 부분은 아래 리포트를 열면 전체를 볼 수 있어요.
+          지금까지는 &ldquo;어떤 사람인지&rdquo;를 봤다면, 여기부터는 &ldquo;언제&rdquo;에 대한 이야기예요.
         </p>
         <div className="mt-3 flex flex-col gap-3">
           {isDeep ? (
             <>
-              <TeaserRow label="돈을 놓치는 패턴" text={interp!.risk_pattern} />
-              <TeaserRow label="직업·사업 성향" text={interp!.career_business} />
-              <TeaserRow label="앞으로의 흐름" text={interp!.timing} />
-              <TeaserRow label="지금 필요한 행동" text={interp!.action} />
+              <TeaserRow label="앞으로의 흐름이 바뀌는 시기" text={interp!.timing} />
+              <TeaserRow label="지금 시기에 필요한 행동" text={interp!.action} />
             </>
           ) : (
             <>
-              <TeaserRow label="돈이 새기 쉬운 패턴" text={tendency.leakPattern} />
-              <TeaserRow label="직업·사업 방향 힌트" text={tendency.careerHint} />
               <TeaserRow label="앞으로의 흐름 힌트" text={tendency.flowHint} />
               <TeaserRow label="나에게 맞는 행동 힌트" text={tendency.actionHint} />
             </>
@@ -209,23 +241,22 @@ export function ResultStep({
           더 깊은 재물 리포트
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          십성·대운까지 반영한 상세 리포트로 이어져요.
+          대운 전체 흐름과 손금 심화 비교까지 반영한 상세 리포트로 이어져요.
         </p>
         <div className="mt-3 flex flex-col gap-3">
-          {deepLockedCards.map((card) => (
-            <LockedCard key={card.title} title={card.title} cta={card.cta} />
-          ))}
+          <LockedCard title="앞으로 3년, 정확한 시기별 흐름" cta="정확한 시기 보기" />
+          <LockedCard title="사주+손금 심화 교차 리포트" cta="심화 교차 리포트 보기" />
+          <LockedCard title="현실 재무 상태와 비교해보기" cta="현실 재무검증 시작하기" />
         </div>
 
         <PaywallOffer
           includedItems={[
-            "앞으로 1~3년 재물 흐름",
-            "돈이 강해지는 시기",
-            "피해야 할 돈 선택",
-            "직장형·사업형 상세 분석",
-            "돈을 놓치는 반복 패턴",
-            "지금 바꿔야 할 행동 3가지",
-            "전체 계산 근거",
+            "앞으로 3년 정확한 시기별 흐름",
+            "대운 전체 흐름 그래프",
+            "사주+손금 심화 교차 비교",
+            "현실 재무정보와 비교 검증",
+            "지금 시기에 필요한 구체적 행동",
+            "전체 계산 근거 원문",
           ]}
           ctaText="내 사주에서 돈이 크게 움직이는 시기 보기"
         />
@@ -233,6 +264,10 @@ export function ResultStep({
 
       <div className="mt-8">
         <PalmEntryCard birthInput={diagnosis.birthInput} />
+      </div>
+
+      <div className="mt-4">
+        <PersonalityAddendumCard birthInput={diagnosis.birthInput} />
       </div>
 
       <div className="mt-auto pt-8">

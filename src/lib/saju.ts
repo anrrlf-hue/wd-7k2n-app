@@ -1,6 +1,7 @@
 import { calculateSaju, calculateSajuSimple } from "@fullstackfamily/manseryeok";
 import { getMoneyTendency, type MoneyTendency } from "./money-tendency";
 import type { Interpretation } from "./interpretation-schema";
+import type { FreeSajuReport } from "./free-report-schema";
 
 export interface BirthInput {
   year: number;
@@ -29,10 +30,17 @@ export interface DeepResultPayload {
   evidencePreview: string[];
 }
 
+export interface FreeReportPayload {
+  source: "llm" | "mock";
+  report: FreeSajuReport;
+}
+
 export interface FullSajuDiagnosis extends SajuDiagnosis {
   /** "deep" = 딥 해석 성공(LLM 또는 검증 통과한 mock), "fallback" = 딥 파이프라인 자체가 실패해 얕은 결과만 있음 */
   resultSource: "deep" | "fallback";
   deep: DeepResultPayload | null;
+  /** 무료 사주 V2(12섹션). 딥 파이프라인이 실패해도 이건 별도로 계산을 시도한다. */
+  freeReport: FreeReportPayload | null;
   /** 손금 교차 분석 페이지로 넘어갈 때 다시 쓰기 위해 입력값을 그대로 echo. */
   birthInput: BirthInput;
 }

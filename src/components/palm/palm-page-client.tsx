@@ -10,7 +10,7 @@ import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustrat
 import { FreeBoundaryMarker } from "@/components/diagnosis/free-boundary-marker";
 import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
 import { LockedCard } from "@/components/diagnosis/locked-card";
-import { TeaserRow } from "@/components/diagnosis/teaser-row";
+import { ReportSection } from "@/components/diagnosis/report-section";
 import {
   analyzePalmFromCanvas,
   preloadHandLandmarker,
@@ -307,43 +307,47 @@ export function PalmPageClient({ birthInput }: { birthInput: BirthInput | null }
                 </div>
               ))}
             </div>
+          </motion.div>
 
-            <div className="mt-4 space-y-3 text-sm leading-relaxed">
-              <div>
-                <p className="text-xs font-medium text-(--gold)">사주와 공통으로 보이는 성향</p>
-                <p className="mt-1">{crossResult.interpretation.common}</p>
-              </div>
-              <p className="rounded-xl bg-accent p-3 text-accent-foreground">
+          {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소 — 3~5분 읽기용 밝은 테마 */}
+          <div className="result-bright mt-5 rounded-2xl border border-border p-5">
+            <ReportSection step="①" title="사주와 공통으로 보이는 성향">
+              <p>{crossResult.interpretation.common}</p>
+            </ReportSection>
+            <ReportSection step="②" title="사주와 다르게 나타나는 부분">
+              <p>{crossResult.interpretation.differences}</p>
+            </ReportSection>
+            <ReportSection step="③" title="돈을 대하는 방식·의사결정 스타일">
+              <p>{crossResult.interpretation.moneyConnection}</p>
+            </ReportSection>
+            <ReportSection step="④" title="나와 비교해볼까요">
+              <p className="rounded-xl bg-accent p-3.5 text-accent-foreground">
                 {crossResult.interpretation.selfComparisonQuestion}
               </p>
-            </div>
-
-            <p className="mt-4 text-[11px] text-muted-foreground">
-              {crossResult.interpretation.uncertaintyNote}
-            </p>
-          </motion.div>
+            </ReportSection>
+            <ReportSection step="⑤" title="이 분석의 한계">
+              <p className="text-xs text-muted-foreground">{crossResult.interpretation.uncertaintyNote}</p>
+            </ReportSection>
+          </div>
 
           <FreeBoundaryMarker />
 
           <div className="mt-5 flex flex-col gap-3">
-            <TeaserRow label="사주와 다르게 나타나는 부분" text={crossResult.interpretation.differences} />
-            <TeaserRow label="돈과 연결해보면" text={crossResult.interpretation.moneyConnection} />
             <LockedCard
-              title="사주 + 손금 전체 교차 리포트"
-              cta="사주와 손 전체 비교 열어보기"
+              title="사주 + 손금 심화 교차 리포트"
+              cta="심화 교차 리포트 열어보기"
             />
           </div>
 
           <PaywallOffer
             includedItems={[
-              "사주와 손금이 다르게 나타나는 부분 전체",
-              "손금 기반 돈/일 결정 스타일 상세",
-              "앞으로 1~3년 재물 흐름",
-              "돈을 놓치는 반복 패턴",
-              "지금 바꿔야 할 행동 3가지",
-              "전체 계산 근거",
+              "사주+손금 심화 교차 비교(대운 흐름까지 반영)",
+              "앞으로 1~3년 재물 흐름 정확한 시기",
+              "현실 재무정보와 비교 검증",
+              "지금 시기에 필요한 구체적 행동",
+              "전체 계산 근거 원문",
             ]}
-            ctaText="사주+손금 전체 해석 열기"
+            ctaText="사주+손금 심화 교차 리포트 열기"
           />
 
           <div className="mt-auto flex flex-col gap-3 pt-8">

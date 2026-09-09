@@ -224,3 +224,40 @@
     0 0 0 1px var(--gold-soft),
     0 12px 40px -18px oklch(0.8 0.14 85 / 45%);
 }
+
+/* 결과를 3~5분 읽는 화면 전용 밝은 테마. 랜딩/입력 단계의 어두운 신비 테마는
+ * 그대로 두고, 이 클래스로 감싼 하위 트리에서만 변수를 덮어써 가독성을
+ * 우선한다(카드보다 문단 중심, 아이보리 배경 + 짙은 먹색/네이비 본문,
+ * 인디고·골드는 포인트로만). mystic-card/mystic-ring 등 기존 컴포넌트는
+ * var(--card)/var(--gold) 등을 그대로 참조하므로 별도 리팩터 없이 밝은
+ * 톤으로 자연스럽게 전환된다. */
+.result-bright {
+  --background: oklch(0.975 0.01 85);
+  --foreground: oklch(0.26 0.03 265);
+  --card: oklch(0.995 0.006 85);
+  --card-foreground: oklch(0.26 0.03 265);
+  --popover: oklch(0.995 0.006 85);
+  --popover-foreground: oklch(0.26 0.03 265);
+  --primary: oklch(0.4 0.1 275);
+  --primary-foreground: oklch(0.98 0.006 85);
+  --secondary: oklch(0.94 0.014 85);
+  --secondary-foreground: oklch(0.26 0.03 265);
+  --muted: oklch(0.94 0.014 85);
+  --muted-foreground: oklch(0.47 0.025 265);
+  --accent: oklch(0.92 0.035 290);
+  --accent-foreground: oklch(0.32 0.08 285);
+  --destructive: oklch(0.55 0.19 25);
+  --border: oklch(0.3 0.03 265 / 12%);
+  --input: oklch(0.3 0.03 265 / 14%);
+  --ring: oklch(0.58 0.13 78);
+  --gold: oklch(0.55 0.13 78);
+  --gold-soft: oklch(0.55 0.13 78 / 16%);
+
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.result-bright p,
+.result-bright li {
+  line-height: 1.7;
+}
