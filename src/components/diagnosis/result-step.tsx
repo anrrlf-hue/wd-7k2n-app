@@ -3,11 +3,14 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
-import { Eye, ScrollText } from "lucide-react";
+import { Eye, ScrollText, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LockedCard } from "@/components/diagnosis/locked-card";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
+import { PowerGauge } from "@/components/diagnosis/power-gauge";
+import { JobSpectrum } from "@/components/diagnosis/job-spectrum";
+import { FlowLine } from "@/components/diagnosis/flow-line";
 import { getLockedReportCards } from "@/lib/money-tendency";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { SajuDiagnosis } from "@/lib/saju";
@@ -88,9 +91,26 @@ export function ResultStep({
         </motion.div>
 
         <motion.div variants={itemVariants} className="mt-5 grid grid-cols-3 gap-2">
-          <PowerStat title="버는 힘" stat={tendency.earningPower} />
-          <PowerStat title="지키는 힘" stat={tendency.keepingPower} />
-          <PowerStat title="기회 잡는 힘" stat={tendency.opportunityPower} />
+          <PowerGauge title="버는 힘" label={tendency.earningPower.label} level={tendency.earningPower.level} />
+          <PowerGauge title="지키는 힘" label={tendency.keepingPower.label} level={tendency.keepingPower.level} />
+          <PowerGauge title="기회 잡는 힘" label={tendency.opportunityPower.label} level={tendency.opportunityPower.level} />
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="mt-5 rounded-xl border border-border p-3.5">
+          <p className="text-xs font-medium text-muted-foreground">직장형일까, 사업형일까</p>
+          <div className="mt-2">
+            <JobSpectrum jobType={tendency.jobType} />
+          </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="mt-5 rounded-xl border border-border p-3.5">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <TrendingUp className="size-3.5 text-(--gold)" />
+            나의 재물 흐름 (등급 기준)
+          </p>
+          <div className="mt-2">
+            <FlowLine curve={tendency.flowCurve} />
+          </div>
         </motion.div>
 
         <motion.div variants={itemVariants} className="mt-5 rounded-xl bg-accent p-3.5">
@@ -156,23 +176,6 @@ export function ResultStep({
           현실 돈 고민도 체크해보기
         </Button>
       </div>
-    </div>
-  );
-}
-
-function PowerStat({
-  title,
-  stat,
-}: {
-  title: string;
-  stat: { label: string; description: string };
-}) {
-  return (
-    <div className="rounded-xl border border-border p-2.5 text-center">
-      <p className="text-[11px] text-muted-foreground">{title}</p>
-      <p className="mt-1 text-xs leading-snug font-semibold text-(--gold)">
-        {stat.label}
-      </p>
     </div>
   );
 }

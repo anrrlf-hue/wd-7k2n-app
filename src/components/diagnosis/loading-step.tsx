@@ -8,7 +8,9 @@ const STATUS_MESSAGES = [
   "명식을 펼치는 중이에요",
   "년주와 월주를 맞추는 중이에요",
   "일주와 시주를 계산하는 중이에요",
-  "재물운의 결을 읽는 중이에요",
+  "재물 흐름을 읽는 중이에요",
+  "직업·사업 흐름을 확인하는 중이에요",
+  "기회가 강해지는 시기를 찾는 중이에요",
 ];
 
 export function LoadingStep() {
@@ -24,7 +26,7 @@ export function LoadingStep() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
       <SajuFormingVisual />
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         <motion.p
           key={statusIndex}
           initial={{ opacity: 0, y: 6 }}

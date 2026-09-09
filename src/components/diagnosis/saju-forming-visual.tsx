@@ -1,11 +1,20 @@
 "use client";
 
-// 사주 여덟 글자(년/월/일/시주)가 하나씩 자리를 잡아가는 느낌의
-// "명식 형성" 로딩 비주얼. 실제 계산 로직과는 무관한 연출용 애니메이션.
+// 사주 여덟 글자(년/월/일/시주)가 하나씩 자리를 잡아가고, 오행이 순서대로
+// 활성화되는 "명식 형성" 로딩 비주얼. 실제 계산 로직과는 무관한 연출용 애니메이션.
 
 import { motion } from "framer-motion";
+import { ELEMENT_COLORS } from "@/lib/element-colors";
 
 const PILLARS = ["년주", "월주", "일주", "시주"];
+
+const ELEMENT_DOTS: { element: keyof typeof ELEMENT_COLORS; angle: number }[] = [
+  { element: "목", angle: -90 },
+  { element: "화", angle: -18 },
+  { element: "토", angle: 54 },
+  { element: "금", angle: 126 },
+  { element: "수", angle: 198 },
+];
 
 export function SajuFormingVisual() {
   return (
@@ -18,7 +27,23 @@ export function SajuFormingVisual() {
         }}
       />
 
-      <div className="animate-orbit-spin absolute inset-4 rounded-full border border-dashed border-(--border)" />
+      <div className="animate-orbit-spin absolute inset-4 rounded-full border border-dashed border-(--border)">
+        {ELEMENT_DOTS.map((d, i) => (
+          <motion.span
+            key={d.element}
+            className="absolute top-1/2 left-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-medium text-background"
+            style={{
+              transform: `rotate(${d.angle}deg) translate(4.4rem) rotate(${-d.angle}deg) translate(-50%, -50%)`,
+              backgroundColor: ELEMENT_COLORS[d.element],
+            }}
+            initial={{ opacity: 0.35, scale: 0.85 }}
+            animate={{ opacity: [0.35, 1, 0.35], scale: [0.85, 1.1, 0.85] }}
+            transition={{ duration: 3, repeat: Infinity, delay: i * 0.4, ease: "easeInOut" }}
+          >
+            {d.element}
+          </motion.span>
+        ))}
+      </div>
 
       <div className="absolute inset-10 rounded-full border border-(--gold-soft)" />
 

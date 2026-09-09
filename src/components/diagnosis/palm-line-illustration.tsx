@@ -34,8 +34,16 @@ export function PalmLineIllustration() {
           strokeWidth="2.2"
           strokeLinecap="round"
           initial={{ pathLength: 0.001, opacity: 0.9 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 1.4, delay: 0.2 + i * 0.25, ease: "easeInOut" }}
+          animate={{ pathLength: 1, opacity: [0.9, 1, 0.55, 1] }}
+          transition={{
+            pathLength: { duration: 1.2, delay: 0.15 + i * 0.25, ease: "easeInOut" },
+            opacity: {
+              duration: 2.6,
+              repeat: Infinity,
+              delay: 1.4 + i * 0.5,
+              ease: "easeInOut",
+            },
+          }}
         />
       ))}
     </svg>

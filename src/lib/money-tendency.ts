@@ -1,11 +1,22 @@
 // 일간(日干, 사주 여덟 글자 중 '나'를 뜻하는 글자)에 따른 재물운 콘텐츠.
 // 재미로 보는 엔터테인먼트 콘텐츠이며, 확정적 진단이나 수익을 보장하지 않는다.
+// level/leaning 계열 숫자는 실제 계산값이 아니라 콘텐츠 톤에 맞춘 표현용
+// 등급(1~5)이며, 화면에는 정밀한 수치가 아닌 게이지/스펙트럼으로만 노출한다.
 
 export interface PowerStat {
   /** 짧은 요약 라벨. e.g. "빠른 실행력" */
   label: string;
   /** 한 줄 설명 */
   description: string;
+  /** 게이지 등급 1~5 (정밀 수치 아님, 시각적 스케일용) */
+  level: 1 | 2 | 3 | 4 | 5;
+}
+
+export interface JobLeaning {
+  /** 직장형/사업형 성향 한 줄 */
+  label: string;
+  /** 1=완전 직장형 ~ 5=완전 사업형, 스펙트럼 그래픽용 */
+  leaning: 1 | 2 | 3 | 4 | 5;
 }
 
 export interface MoneyTendency {
@@ -24,8 +35,12 @@ export interface MoneyTendency {
   keepingPower: PowerStat;
   /** 기회를 잡는 힘 */
   opportunityPower: PowerStat;
+  /** 직장형 vs 사업형 스펙트럼 */
+  jobType: JobLeaning;
   /** 강점 1개 */
   topStrength: string;
+  /** 재물 흐름 라인 그래픽용 6개 포인트(1~5, 등급) */
+  flowCurve: [number, number, number, number, number, number];
 
   // --- 일부 공개(블러 티저) 영역 ---
   /** 돈이 새기 쉬운 패턴 */
@@ -43,10 +58,12 @@ const TENDENCY_BY_STEM: Record<string, MoneyTendency> = {
     stemHanja: "甲", stemName: "갑목", element: "목",
     wealthType: "개척형 재물운",
     summary: "돈이 될 것 같으면 일단 움직이고 보는 타입이에요. 추진력은 최고지만, 벌인 일을 끝까지 챙기는 습관이 자산을 지켜줘요.",
-    earningPower: { label: "빠른 실행력", description: "기회다 싶으면 망설임 없이 뛰어들어서 돈 버는 속도 자체가 빨라요." },
-    keepingPower: { label: "아직은 헐거운 편", description: "버는 힘에 비해 지키는 힘이 약한 편이라 관리 시스템이 필요해요." },
-    opportunityPower: { label: "기회 포착 1순위", description: "새로운 흐름을 남들보다 먼저 알아채고 바로 뛰어드는 감각이 있어요." },
+    earningPower: { label: "빠른 실행력", description: "기회다 싶으면 망설임 없이 뛰어들어서 돈 버는 속도 자체가 빨라요.", level: 4 },
+    keepingPower: { label: "아직은 헐거운 편", description: "버는 힘에 비해 지키는 힘이 약한 편이라 관리 시스템이 필요해요.", level: 2 },
+    opportunityPower: { label: "기회 포착 1순위", description: "새로운 흐름을 남들보다 먼저 알아채고 바로 뛰어드는 감각이 있어요.", level: 5 },
+    jobType: { label: "스스로 판을 짜는 사업가형에 가까워요", leaning: 4 },
     topStrength: "장기 목표를 세우면 끝까지 밀어붙이는 추진력",
+    flowCurve: [2, 3, 3, 4, 3, 5],
     leakPattern: "벌여놓은 일이 많아질수록 돈이 여기저기 흩어지는 패턴이 반복돼요.",
     careerHint: "정해진 틀보다 스스로 판을 짜는 자리에서 진짜 힘을 발휘하는 편이에요.",
     flowHint: "지금 벌여둔 일 중 하나가 예상보다 빠르게 결실을 맺을 조짐이 보여요.",
@@ -56,10 +73,12 @@ const TENDENCY_BY_STEM: Record<string, MoneyTendency> = {
     stemHanja: "乙", stemName: "을목", element: "목",
     wealthType: "실속형 재물운",
     summary: "상황에 맞춰 돈을 유연하게 쓰는 편이라 큰 손해는 잘 안 봐요. 다만 결정을 미루는 습관이 좋은 타이밍을 놓치게 만들 수 있어요.",
-    earningPower: { label: "틈새 감각", description: "작은 기회도 놓치지 않고 실속 있게 챙기는 감각이 있어요." },
-    keepingPower: { label: "안정적인 편", description: "무리한 지출을 피하고 예산 안에서 조정하는 힘이 좋아요." },
-    opportunityPower: { label: "신중한 선택", description: "주변 정보를 잘 활용하지만 결정까지는 시간이 걸리는 편이에요." },
+    earningPower: { label: "틈새 감각", description: "작은 기회도 놓치지 않고 실속 있게 챙기는 감각이 있어요.", level: 3 },
+    keepingPower: { label: "안정적인 편", description: "무리한 지출을 피하고 예산 안에서 조정하는 힘이 좋아요.", level: 4 },
+    opportunityPower: { label: "신중한 선택", description: "주변 정보를 잘 활용하지만 결정까지는 시간이 걸리는 편이에요.", level: 2 },
+    jobType: { label: "혼자보다 함께 조율하는 자리에서 강해요", leaning: 3 },
     topStrength: "예산에 맞춰 유연하게 조정하는 감각",
+    flowCurve: [3, 3, 2, 3, 4, 4],
     leakPattern: "남에게 맞춰주다 정작 내 계획이 흔들리는 순간이 반복돼요.",
     careerHint: "혼자보다 함께 조율하며 만드는 자리에서 성과가 더 잘 나는 편이에요.",
     flowHint: "미뤄뒀던 결정 하나를 지금 내리면 흐름이 빠르게 풀릴 시기예요.",
@@ -69,10 +88,12 @@ const TENDENCY_BY_STEM: Record<string, MoneyTendency> = {
     stemHanja: "丙", stemName: "병화", element: "화",
     wealthType: "폭발형 재물운",
     summary: "돈을 쓸 때도 벌 때도 화끈한 편이에요. 에너지가 넘치는 만큼 큰 지출도 순간적으로 결정하는 경향이 있어요.",
-    earningPower: { label: "순발력 최강", description: "기회가 왔을 때 즉시 잡아채는 순발력이 돈 버는 힘으로 이어져요." },
-    keepingPower: { label: "감정에 흔들림", description: "기분에 따라 지출이 크게 널뛰는 편이라 지키는 힘은 상대적으로 약해요." },
-    opportunityPower: { label: "사람이 곧 기회", description: "사람을 통해 돈이 들어오는 흐름을 잘 만들어요." },
+    earningPower: { label: "순발력 최강", description: "기회가 왔을 때 즉시 잡아채는 순발력이 돈 버는 힘으로 이어져요.", level: 5 },
+    keepingPower: { label: "감정에 흔들림", description: "기분에 따라 지출이 크게 널뛰는 편이라 지키는 힘은 상대적으로 약해요.", level: 2 },
+    opportunityPower: { label: "사람이 곧 기회", description: "사람을 통해 돈이 들어오는 흐름을 잘 만들어요.", level: 4 },
+    jobType: { label: "사람을 직접 상대하는 자리에서 크게 터져요", leaning: 4 },
     topStrength: "기회를 잡는 순발력과 사람을 끌어당기는 에너지",
+    flowCurve: [3, 4, 2, 5, 3, 4],
     leakPattern: "충동적으로 결정한 큰 지출이 자산 흐름을 흔드는 패턴이 있어요.",
     careerHint: "사람을 직접 상대하고 반응이 바로 오는 일에서 빛을 발하는 편이에요.",
     flowHint: "가까운 시일 내 예상 못 한 곳에서 돈이 들어올 신호가 보여요.",
@@ -82,10 +103,12 @@ const TENDENCY_BY_STEM: Record<string, MoneyTendency> = {
     stemHanja: "丁", stemName: "정화", element: "화",
     wealthType: "은근형 재물운",
     summary: "겉으론 화려해 보여도 속은 알뜰하게 계산하는 편이에요. 다만 감정적인 소비가 종종 계획을 흔들어요.",
-    earningPower: { label: "세밀한 감각", description: "작은 흐름까지 놓치지 않는 꼼꼼함이 돈 버는 기반이 돼요." },
-    keepingPower: { label: "가계부 체질", description: "세밀하게 계산하고 관리하는 힘이 자산을 지켜줘요." },
-    opportunityPower: { label: "위기에 강함", description: "위기 상황에서 오히려 침착하게 기회를 찾아내는 편이에요." },
+    earningPower: { label: "세밀한 감각", description: "작은 흐름까지 놓치지 않는 꼼꼼함이 돈 버는 기반이 돼요.", level: 3 },
+    keepingPower: { label: "가계부 체질", description: "세밀하게 계산하고 관리하는 힘이 자산을 지켜줘요.", level: 4 },
+    opportunityPower: { label: "위기에 강함", description: "위기 상황에서 오히려 침착하게 기회를 찾아내는 편이에요.", level: 3 },
+    jobType: { label: "겉으로 안 드러나도 꾸준히 성과 내는 직장형", leaning: 2 },
     topStrength: "위기 상황에서도 침착하게 대응하는 힘",
+    flowCurve: [2, 2, 3, 3, 4, 4],
     leakPattern: "스트레스를 소비로 푸는 패턴이 작은 지출을 계속 쌓이게 해요.",
     careerHint: "겉으로 드러나지 않아도 꾸준히 성과를 쌓는 자리가 잘 맞아요.",
     flowHint: "그동안 쌓아온 노력이 조용히 결실을 맺기 시작하는 흐름이에요.",
@@ -95,10 +118,12 @@ const TENDENCY_BY_STEM: Record<string, MoneyTendency> = {
     stemHanja: "戊", stemName: "무토", element: "토",
     wealthType: "축적형 재물운",
     summary: "당장의 수익보다 오래 갈 자산을 선호해요. 신중한 만큼 좋은 기회를 너무 오래 재다가 놓치기도 해요.",
-    earningPower: { label: "느리지만 확실", description: "단기 수익보다 오래 유지되는 수익 구조를 만드는 데 강해요." },
-    keepingPower: { label: "최고 수준", description: "장기 저축과 자산 방어에서 가장 강한 힘을 가진 유형이에요." },
-    opportunityPower: { label: "신중한 판단", description: "위험을 미리 대비하는 습관 덕에 큰 손해는 잘 피해요." },
+    earningPower: { label: "느리지만 확실", description: "단기 수익보다 오래 유지되는 수익 구조를 만드는 데 강해요.", level: 3 },
+    keepingPower: { label: "최고 수준", description: "장기 저축과 자산 방어에서 가장 강한 힘을 가진 유형이에요.", level: 5 },
+    opportunityPower: { label: "신중한 판단", description: "위험을 미리 대비하는 습관 덕에 큰 손해는 잘 피해요.", level: 2 },
+    jobType: { label: "긴 호흡으로 신뢰를 쌓는 직장형에 가까워요", leaning: 2 },
     topStrength: "장기 저축·투자에서 흔들리지 않는 뚝심",
+    flowCurve: [2, 2, 3, 3, 3, 4],
     leakPattern: "새로운 시도를 지나치게 미루다 보면 기회비용이 쌓여요.",
     careerHint: "긴 호흡으로 신뢰를 쌓아가는 자리에서 재물이 안정적으로 늘어요.",
     flowHint: "오래 준비해온 것이 이제 슬슬 자리를 잡기 시작하는 시기예요.",
@@ -108,10 +133,12 @@ const TENDENCY_BY_STEM: Record<string, MoneyTendency> = {
     stemHanja: "己", stemName: "기토", element: "토",
     wealthType: "정밀관리형 재물운",
     summary: "가계부와 친한 타입. 작은 돈의 흐름까지 꼼꼼히 챙기지만, 그만큼 큰 그림을 놓칠 때가 있어요.",
-    earningPower: { label: "꾸준한 축적", description: "화려하진 않아도 놓치는 돈 없이 차곡차곡 모으는 힘이 있어요." },
-    keepingPower: { label: "디테일의 힘", description: "세부 지출 관리 능력이 뛰어나 새는 돈이 거의 없는 편이에요." },
-    opportunityPower: { label: "약속은 반드시", description: "한번 정한 저축 계획은 끝까지 지키는 실행력이 강점이에요." },
+    earningPower: { label: "꾸준한 축적", description: "화려하진 않아도 놓치는 돈 없이 차곡차곡 모으는 힘이 있어요.", level: 3 },
+    keepingPower: { label: "디테일의 힘", description: "세부 지출 관리 능력이 뛰어나 새는 돈이 거의 없는 편이에요.", level: 5 },
+    opportunityPower: { label: "약속은 반드시", description: "한번 정한 저축 계획은 끝까지 지키는 실행력이 강점이에요.", level: 3 },
+    jobType: { label: "숫자와 디테일을 다루는 직장형이 잘 맞아요", leaning: 2 },
     topStrength: "약속한 저축은 반드시 지키는 실행력",
+    flowCurve: [3, 3, 2, 3, 3, 4],
     leakPattern: "작은 절약에 매몰되다 더 큰 기회를 놓치는 패턴이 있어요.",
     careerHint: "숫자와 디테일을 다루는 자리에서 재물운이 특히 잘 풀리는 편이에요.",
     flowHint: "완벽주의 때문에 미뤄온 결정 하나가 곧 방향을 정할 시기예요.",
@@ -121,10 +148,12 @@ const TENDENCY_BY_STEM: Record<string, MoneyTendency> = {
     stemHanja: "庚", stemName: "경금", element: "금",
     wealthType: "결단형 재물운",
     summary: "쓸 땐 쓰고 아낄 땐 확실히 아끼는 편이에요. 결단력이 강점이지만 유연성이 부족해 손해를 볼 때도 있어요.",
-    earningPower: { label: "명확한 기준", description: "기준이 확실해서 벌어야 할 때와 아껴야 할 때를 정확히 구분해요." },
-    keepingPower: { label: "손절 빠름", description: "아니다 싶으면 미련 없이 정리하는 결단력이 자산을 지켜줘요." },
-    opportunityPower: { label: "원칙 기반 판단", description: "원칙에 맞는 기회만 골라내는 힘이 있지만 유연성은 약한 편이에요." },
+    earningPower: { label: "명확한 기준", description: "기준이 확실해서 벌어야 할 때와 아껴야 할 때를 정확히 구분해요.", level: 4 },
+    keepingPower: { label: "손절 빠름", description: "아니다 싶으면 미련 없이 정리하는 결단력이 자산을 지켜줘요.", level: 4 },
+    opportunityPower: { label: "원칙 기반 판단", description: "원칙에 맞는 기회만 골라내는 힘이 있지만 유연성은 약한 편이에요.", level: 3 },
+    jobType: { label: "기준이 분명한 조직·전문직 직장형이 잘 맞아요", leaning: 2 },
     topStrength: "손절할 때 빠르게 결정하는 명확한 기준",
+    flowCurve: [3, 3, 4, 3, 3, 4],
     leakPattern: "원칙이 너무 강해 협상할 수 있었던 기회를 놓치는 패턴이 있어요.",
     careerHint: "기준과 원칙이 분명한 조직이나 전문직에서 힘을 잘 발휘해요.",
     flowHint: "미뤄뒀던 정리 하나를 마무리하면 새로운 흐름이 열릴 시기예요.",
@@ -134,10 +163,12 @@ const TENDENCY_BY_STEM: Record<string, MoneyTendency> = {
     stemHanja: "辛", stemName: "신금", element: "금",
     wealthType: "안목형 재물운",
     summary: "싼 것보다 좋은 것에 돈을 쓰는 편. 안목은 좋지만 그만큼 지출 단가가 높아지기 쉬워요.",
-    earningPower: { label: "가치 판별력", description: "가치 있는 것을 알아보는 안목이 곧 돈 버는 감각으로 이어져요." },
-    keepingPower: { label: "기준이 관건", description: "기준을 세워두면 잘 지키지만, 기준이 흔들리면 지출도 흔들려요." },
-    opportunityPower: { label: "트렌드 감각", description: "트렌드를 읽는 감각이 좋아 좋은 타이밍을 잘 잡는 편이에요." },
+    earningPower: { label: "가치 판별력", description: "가치 있는 것을 알아보는 안목이 곧 돈 버는 감각으로 이어져요.", level: 4 },
+    keepingPower: { label: "기준이 관건", description: "기준을 세워두면 잘 지키지만, 기준이 흔들리면 지출도 흔들려요.", level: 3 },
+    opportunityPower: { label: "트렌드 감각", description: "트렌드를 읽는 감각이 좋아 좋은 타이밍을 잘 잡는 편이에요.", level: 4 },
+    jobType: { label: "안목과 취향이 무기가 되는 사업형에 가까워요", leaning: 4 },
     topStrength: "가치 있는 곳에 집중적으로 투자하는 안목",
+    flowCurve: [3, 4, 3, 4, 3, 5],
     leakPattern: "과시성 소비를 합리화하다 예산을 넘기는 패턴이 반복돼요.",
     careerHint: "안목과 취향이 무기가 되는 분야에서 재물운이 크게 열려요.",
     flowHint: "눈여겨보던 곳에 지금 움직이면 좋은 결과로 이어질 흐름이에요.",
@@ -147,10 +178,12 @@ const TENDENCY_BY_STEM: Record<string, MoneyTendency> = {
     stemHanja: "壬", stemName: "임수", element: "수",
     wealthType: "기회포착형 재물운",
     summary: "돈의 흐름을 잘 읽고 기회가 오면 크게 베팅하는 편이에요. 다만 감당 못 할 리스크까지 떠안을 수 있어요.",
-    earningPower: { label: "큰 베팅", description: "기회다 싶으면 크게 움직여서 한 번에 큰 수익을 만드는 힘이 있어요." },
-    keepingPower: { label: "리스크에 취약", description: "안전자산 비중이 낮아지기 쉬워 지키는 힘은 보완이 필요해요." },
-    opportunityPower: { label: "흐름을 읽는 감각", description: "시장의 큰 흐름을 남들보다 먼저 읽어내는 감각이 탁월해요." },
+    earningPower: { label: "큰 베팅", description: "기회다 싶으면 크게 움직여서 한 번에 큰 수익을 만드는 힘이 있어요.", level: 5 },
+    keepingPower: { label: "리스크에 취약", description: "안전자산 비중이 낮아지기 쉬워 지키는 힘은 보완이 필요해요.", level: 2 },
+    opportunityPower: { label: "흐름을 읽는 감각", description: "시장의 큰 흐름을 남들보다 먼저 읽어내는 감각이 탁월해요.", level: 5 },
+    jobType: { label: "판을 읽는 힘이 필요한 사업형에 가까워요", leaning: 5 },
     topStrength: "시장 흐름을 읽고 새로운 수익원을 발굴하는 감각",
+    flowCurve: [2, 4, 2, 5, 2, 5],
     leakPattern: "감당 범위를 넘는 리스크를 떠안다가 크게 흔들리는 패턴이 있어요.",
     careerHint: "변화가 잦고 판을 읽는 힘이 필요한 분야에서 두각을 나타내요.",
     flowHint: "읽고 있던 흐름 하나가 곧 눈에 보이는 결과로 나타날 시기예요.",
@@ -160,10 +193,12 @@ const TENDENCY_BY_STEM: Record<string, MoneyTendency> = {
     stemHanja: "癸", stemName: "계수", element: "수",
     wealthType: "신중축적형 재물운",
     summary: "겉으로 드러내지 않지만 나름의 계획으로 차근차근 자산을 불려가는 타입이에요. 정보 부족이 발목을 잡을 수 있어요.",
-    earningPower: { label: "조용한 성장", description: "눈에 띄지 않아도 꾸준히 쌓아가는 방식으로 자산을 늘려요." },
-    keepingPower: { label: "안정적 관리", description: "꾸준한 저축 습관이 몸에 배어 있어 잘 새지 않는 편이에요." },
-    opportunityPower: { label: "리스크 감지", description: "위험을 미리 감지하는 촉이 좋아 큰 실패를 잘 피해요." },
+    earningPower: { label: "조용한 성장", description: "눈에 띄지 않아도 꾸준히 쌓아가는 방식으로 자산을 늘려요.", level: 3 },
+    keepingPower: { label: "안정적 관리", description: "꾸준한 저축 습관이 몸에 배어 있어 잘 새지 않는 편이에요.", level: 4 },
+    opportunityPower: { label: "리스크 감지", description: "위험을 미리 감지하는 촉이 좋아 큰 실패를 잘 피해요.", level: 3 },
+    jobType: { label: "혼자만의 전문성을 쌓는 균형형에 가까워요", leaning: 3 },
     topStrength: "꾸준한 저축 습관과 위험을 미리 감지하는 촉",
+    flowCurve: [2, 2, 3, 3, 4, 4],
     leakPattern: "혼자 판단하다 정보가 부족해 손해를 보는 패턴이 있어요.",
     careerHint: "혼자만의 전문성을 쌓아가는 자리에서 재물이 조용히 늘어나요.",
     flowHint: "그동안 아무도 모르게 쌓아온 것이 곧 드러나기 시작할 시기예요.",
@@ -186,29 +221,33 @@ export interface LockedReportCard {
   cta: string;
 }
 
-/** 잠금 리포트 카드 5종. 일간 이름을 넣어 제목/CTA를 구체적으로 구성한다. */
+/** 잠금 리포트 카드 6종. 제목 자체가 결제 이유가 되도록 자극적으로 구성한다. */
 export function getLockedReportCards(tendency: MoneyTendency): LockedReportCard[] {
   const { stemName } = tendency;
   return [
     {
-      title: `${stemName} 재성 지도 — 돈이 모이는 자리`,
-      cta: "내 돈이 풀리는 방식 전체 보기",
+      title: "앞으로 3년, 돈 흐름이 강해지는 시기",
+      cta: "돈 흐름 강해지는 시기 보기",
     },
     {
-      title: "10년 단위로 보는 나의 재물 대운",
-      cta: "10년 재물 대운 열어보기",
+      title: `${stemName}이(가) 돈을 놓치는 결정`,
+      cta: "내가 반복하는 실수 확인하기",
     },
     {
-      title: "앞으로 3년, 재물이 흐르는 방향",
-      cta: "앞으로 3년 재물 흐름 열기",
+      title: "나는 직장형일까, 사업형일까?",
+      cta: "내 벌이 방식 정체 확인하기",
     },
     {
-      title: `${stemName}이(가) 피해야 할 돈의 함정`,
-      cta: "내가 조심해야 할 돈 선택 보기",
+      title: "큰돈 앞에서 내가 반복하는 패턴",
+      cta: "큰돈 앞 내 패턴 열어보기",
     },
     {
-      title: `${stemName} 맞춤 돈관리 행동 가이드`,
-      cta: "나에게 맞는 행동 가이드 보기",
+      title: `${stemName}에게 맞는 돈 버는 방식`,
+      cta: "나에게 맞는 방식 전체 보기",
+    },
+    {
+      title: "지금부터 바꿔야 할 행동 3가지",
+      cta: "지금 바꿀 행동 3가지 보기",
     },
   ];
 }
