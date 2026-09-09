@@ -1,5 +1,6 @@
 import { PalmPageClient } from "@/components/palm/palm-page-client";
-import type { BirthInput } from "@/lib/saju";
+import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
+import { MBTI_TYPES, type MbtiType } from "@/lib/mbti-facts";
 
 function parseBirthInput(sp: Record<string, string | string[] | undefined>): BirthInput | null {
   const get = (key: string) => {
@@ -26,6 +27,34 @@ function parseBirthInput(sp: Record<string, string | string[] | undefined>): Bir
   };
 }
 
+/** 무료 사주 단계에서 넘어온 성향정보를 압축 형식(id:value,id:value)에서 복원.
+ * 형식이 이상하면 그냥 무시한다(손금 핵심 흐름을 막으면 안 됨). */
+function parsePersonalityInput(sp: Record<string, string | string[] | undefined>): PersonalityInputEcho {
+  const get = (key: string) => {
+    const v = sp[key];
+    return Array.isArray(v) ? v[0] : v;
+  };
+
+  const b5Raw = get("b5");
+  const big5Answers: Record<string, number> | null = b5Raw
+    ? Object.fromEntries(
+        b5Raw
+          .split(",")
+          .map((pair) => pair.split(":"))
+          .filter((pair): pair is [string, string] => pair.length === 2 && !Number.isNaN(Number(pair[1])))
+          .map(([id, v]) => [id, Number(v)]),
+      )
+    : null;
+
+  const mbtiRaw = get("mbti");
+  const mbti: MbtiType | null = mbtiRaw && (MBTI_TYPES as readonly string[]).includes(mbtiRaw) ? (mbtiRaw as MbtiType) : null;
+
+  return {
+    big5Answers: big5Answers && Object.keys(big5Answers).length > 0 ? big5Answers : null,
+    mbti,
+  };
+}
+
 export default async function PalmPage({
   searchParams,
 }: {
@@ -33,6 +62,7 @@ export default async function PalmPage({
 }) {
   const sp = await searchParams;
   const birthInput = parseBirthInput(sp);
+  const personalityInput = parsePersonalityInput(sp);
 
-  return <PalmPageClient birthInput={birthInput} />;
+  return <PalmPageClient birthInput={birthInput} personalityInput={personalityInput} />;
 }

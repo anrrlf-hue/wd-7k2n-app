@@ -3,12 +3,21 @@
 
 import type { MoneyTendency } from "@/lib/money-tendency";
 import type { PalmFacts } from "@/lib/palm-facts";
+import type { SajuFacts } from "@/lib/saju-facts";
+import type { Big5Facts } from "@/lib/big5-facts";
+import type { MbtiSelfReport } from "@/lib/mbti-facts";
 import {
   CROSS_INTERPRETATION_SYSTEM_PROMPT,
   buildCrossInterpretationUserPrompt,
 } from "@/lib/cross-interpretation-prompt";
 import { validateCrossInterpretation, type CrossInterpretation } from "@/lib/cross-interpretation-schema";
 import { buildMockCrossInterpretation } from "@/lib/cross-interpretation-mock";
+
+export interface CrossPersonalityInput {
+  facts: SajuFacts | null;
+  big5: Big5Facts | null;
+  mbti: MbtiSelfReport | null;
+}
 
 export interface CrossInterpretationResult {
   source: "llm" | "mock";
@@ -58,10 +67,10 @@ export async function getCrossInterpretation(
   sajuSummaryText: string,
   tendency: MoneyTendency,
   palm: PalmFacts,
-  options?: { timeoutMs?: number },
+  options?: { timeoutMs?: number; personality?: CrossPersonalityInput },
 ): Promise<CrossInterpretationResult> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const userPrompt = buildCrossInterpretationUserPrompt(sajuSummaryText, palm);
+  const userPrompt = buildCrossInterpretationUserPrompt(sajuSummaryText, palm, options?.personality);
 
   let raw: unknown = null;
   let fallbackReason: string | undefined;
@@ -84,7 +93,7 @@ export async function getCrossInterpretation(
 
   return {
     source: "mock",
-    interpretation: buildMockCrossInterpretation(tendency, palm),
+    interpretation: buildMockCrossInterpretation(tendency, palm, options?.personality),
     fallbackReason,
   };
 }

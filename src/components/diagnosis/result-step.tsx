@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
-import { Eye, ScrollText, TrendingUp, HelpCircle } from "lucide-react";
+import { Eye, ScrollText, TrendingUp, HelpCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LockedCard } from "@/components/diagnosis/locked-card";
@@ -15,7 +15,6 @@ import { PowerGauge } from "@/components/diagnosis/power-gauge";
 import { JobSpectrum } from "@/components/diagnosis/job-spectrum";
 import { FlowLine } from "@/components/diagnosis/flow-line";
 import { ReportSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
-import { PersonalityAddendumCard } from "@/components/diagnosis/personality-addendum-card";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 
@@ -55,7 +54,7 @@ export function ResultStep({
     }
   }
 
-  const { tendency, deep, freeReport, resultSource } = diagnosis;
+  const { tendency, deep, freeReport, resultSource, personalityInput } = diagnosis;
   const isDeep = resultSource === "deep" && deep !== null;
   const interp = deep?.interpretation;
   const report = freeReport?.report ?? null;
@@ -146,33 +145,57 @@ export function ResultStep({
         {saving ? "저장 중..." : "이미지로 저장하고 공유하기"}
       </Button>
 
-      {/* 무료 사주 V2 — 3~5분 읽기에 맞춘 문단 중심 콘텐츠 */}
+      {/* 무료 사주 V2 — 3~5분 읽기에 맞춘 문단 중심 콘텐츠, 17섹션 */}
       <div className="mt-6">
         {report ? (
           <>
             <ReportSection step="②" title="타고난 성향">
               <p>{report.temperament}</p>
             </ReportSection>
-            <ReportSection step="③" title="돈을 버는 방식">
+            <ReportSection step="③" title="재물운·돈복의 큰 구조">
+              <p>{report.wealthStructure}</p>
+            </ReportSection>
+            <ReportSection step="④" title="돈을 버는 방식">
               <p>{report.earningStyle}</p>
             </ReportSection>
-            <ReportSection step="④" title="돈을 지키는 방식">
+            <ReportSection step="⑤" title="돈을 지키는 방식">
               <p>{report.keepingStyle}</p>
             </ReportSection>
-            <ReportSection step="⑤" title="돈을 놓치는 반복 패턴">
+            <ReportSection step="⑥" title="돈을 놓치는 반복 패턴">
               <p className="rounded-xl bg-accent p-3.5 text-accent-foreground">{report.leakPattern}</p>
             </ReportSection>
-            <ReportSection step="⑥" title="직장형일까, 사업형일까">
-              <p>{report.workStyle}</p>
+            <ReportSection step="⑦" title="큰돈·기회와 관계된 성향">
+              <p>{report.bigMoneyAffinity}</p>
             </ReportSection>
-            <ReportSection step="⑦" title="사람과 돈">
+            <ReportSection step="⑧" title="직장형일까, 사업형일까">
+              <p>{report.jobOrientation}</p>
+            </ReportSection>
+            <ReportSection step="⑨" title="조직에서 강한 부분">
+              <p>{report.teamStrength}</p>
+            </ReportSection>
+            <ReportSection step="⑩" title="독립적으로 움직일 때 강한 부분">
+              <p>{report.soloStrength}</p>
+            </ReportSection>
+            <ReportSection step="⑪" title="사람과 돈">
               <p>{report.peopleAndMoney}</p>
             </ReportSection>
-            <ReportSection step="⑧" title="의사결정 스타일">
+            <ReportSection step="⑫" title="의사결정 스타일">
               <p>{report.decisionStyle}</p>
             </ReportSection>
+            <ReportSection step="⑬" title="기회를 잡는 방식">
+              <p>{report.opportunityStyle}</p>
+            </ReportSection>
 
-            <ReportSection step="⑨" title="나의 강점 3가지">
+            {report.personalityComparison && (
+              <ReportSection title="자기보고 성향과 비교하면">
+                <p className="flex items-start gap-2">
+                  <Sparkles className="mt-0.5 size-3.5 shrink-0 text-(--gold)" />
+                  <span>{report.personalityComparison}</span>
+                </p>
+              </ReportSection>
+            )}
+
+            <ReportSection step="⑭" title="나의 강점 3가지">
               <div className="space-y-2.5">
                 {report.strengths.map((s, i) => (
                   <EvidenceItemCard key={s.title} index={i + 1} title={s.title} detail={s.detail} evidence={s.evidence} />
@@ -180,7 +203,7 @@ export function ResultStep({
               </div>
             </ReportSection>
 
-            <ReportSection step="⑩" title="조심하면 좋은 점 3가지">
+            <ReportSection step="⑮" title="조심하면 좋은 점 3가지">
               <div className="space-y-2.5">
                 {report.cautions.map((c, i) => (
                   <EvidenceItemCard key={c.title} index={i + 1} title={c.title} detail={c.detail} evidence={c.evidence} />
@@ -188,7 +211,7 @@ export function ResultStep({
               </div>
             </ReportSection>
 
-            <ReportSection step="⑪" title="나와 비교해볼까요">
+            <ReportSection step="⑯" title="나와 비교해볼까요">
               <div className="space-y-2">
                 {report.selfCheckQuestions.map((q) => (
                   <p key={q} className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm">
@@ -199,7 +222,7 @@ export function ResultStep({
               </div>
             </ReportSection>
 
-            <ReportSection step="⑫" title="왜 이런 결과가 나왔을까">
+            <ReportSection step="⑰" title="왜 이런 결과가 나왔을까">
               <p className="text-sm text-muted-foreground">{report.evidenceExplainer}</p>
             </ReportSection>
           </>
@@ -208,6 +231,20 @@ export function ResultStep({
             <p>{tendency.topStrength}</p>
           </ReportSection>
         )}
+      </div>
+
+      {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소 — 반드시 결제 안내보다 위 */}
+      <div className="mt-8">
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          <Sparkles className="size-4 text-(--gold)" />
+          여기까지 사주에서 본 성향, 손에도 같은 흐름이 있을까요?
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          손금 사진 한 장이면 30초 안에 사주와 교차 비교까지 볼 수 있어요.
+        </p>
+        <div className="mt-3">
+          <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} />
+        </div>
       </div>
 
       <FreeBoundaryMarker />
@@ -260,14 +297,6 @@ export function ResultStep({
           ]}
           ctaText="내 사주에서 돈이 크게 움직이는 시기 보기"
         />
-      </div>
-
-      <div className="mt-8">
-        <PalmEntryCard birthInput={diagnosis.birthInput} />
-      </div>
-
-      <div className="mt-4">
-        <PersonalityAddendumCard birthInput={diagnosis.birthInput} />
       </div>
 
       <div className="mt-auto pt-8">

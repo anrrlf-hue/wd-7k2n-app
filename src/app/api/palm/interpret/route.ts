@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { diagnoseSaju } from "@/lib/saju";
-import { computeSajuFacts } from "@/lib/saju-facts";
+import { computeSajuFacts, type SajuFacts } from "@/lib/saju-facts";
 import { getInterpretation } from "@/lib/interpretation-engine";
 import { getCrossInterpretation } from "@/lib/cross-interpretation-engine";
 import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
+import { scoreBig5 } from "@/lib/big5-facts";
+import { MBTI_TYPES } from "@/lib/mbti-facts";
 
 // 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe로 이미
 // 분석해 만든 PalmFacts(구조화 JSON)만 받는다. 여기서는 (1) 생년월일로
@@ -38,6 +40,8 @@ const bodySchema = z.object({
   minute: z.number().int().min(0).max(59).nullable(),
   gender: z.enum(["남", "여"]),
   palmFacts: palmFactsSchema,
+  big5Answers: z.record(z.string(), z.number().min(1).max(5)).optional(),
+  mbti: z.enum(MBTI_TYPES).optional(),
 });
 
 export async function POST(request: Request) {
@@ -68,16 +72,26 @@ export async function POST(request: Request) {
     const { tendency } = shallow;
 
     let sajuSummaryText = `${tendency.wealthType}. ${tendency.summary} 버는 힘: ${tendency.earningPower.label}. 지키는 힘: ${tendency.keepingPower.label}. ${tendency.jobType.label}.`;
+    let deepFacts: SajuFacts | null = null;
 
     try {
-      const facts = computeSajuFacts(parsed.data);
-      const deep = await getInterpretation(facts, { timeoutMs: 7000 });
+      deepFacts = computeSajuFacts(parsed.data);
+      const deep = await getInterpretation(deepFacts, { timeoutMs: 7000 });
       sajuSummaryText = `${deep.interpretation.summary} ${deep.interpretation.money_style} ${deep.interpretation.earning_style}`;
     } catch {
       // 딥 사주 해석 실패 시 얕은 tendency 기반 요약을 그대로 쓴다.
     }
 
-    const result = await getCrossInterpretation(sajuSummaryText, tendency, palmFacts, { timeoutMs: 9000 });
+    const personality = {
+      facts: deepFacts,
+      big5: parsed.data.big5Answers ? scoreBig5(parsed.data.big5Answers) : null,
+      mbti: parsed.data.mbti ? { type: parsed.data.mbti } : null,
+    };
+
+    const result = await getCrossInterpretation(sajuSummaryText, tendency, palmFacts, {
+      timeoutMs: 9000,
+      personality,
+    });
 
     return NextResponse.json({
       usable: true,

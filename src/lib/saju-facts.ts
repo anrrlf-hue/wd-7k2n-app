@@ -68,6 +68,15 @@ export interface SajuFacts {
   wealthStarPillars: PillarFact["pillar"][];
   /** 식상이 앉아 있는 자리(궁위) */
   outputStarPillars: PillarFact["pillar"][];
+  /** 관성이 앉아 있는 자리(궁위) — "조직에서 강한 부분" 해석에 쓴다 */
+  officerStarPillars: PillarFact["pillar"][];
+  /** 오행 중 원국에 아예 없는(0개) 것들 — "없는 오행"은 통변에서 자주 쓰는 별도 근거 */
+  missingElements: string[];
+  /** 대운 전체 중 재성(편재/정재)이 천간이나 지지에 나타나는 회차 수.
+   * "정확한 시기"가 아니라 "인생 전체에 이런 흐름이 몇 번 있다"는 구조적 사실로만 쓴다 */
+  wealthOpportunityDaeunCount: number;
+  /** 12운성 중 건록/제왕(정점)이 놓인 자리 — "기회를 잡는 방식"의 근거 */
+  peakStagePillars: PillarFact["pillar"][];
   pillars: PillarFact[];
   keyRelations: string[];
   /** 귀문(鬼門)만 따로 — "궁위론" 해석(어느 자리끼리 귀문인지)에 쓴다 */
@@ -127,6 +136,8 @@ function pillarsWithTenGod(pillars: PillarFact[], stars: Set<string>): PillarFac
   return pillars.filter((p) => stars.has(p.stemTenGod) || stars.has(p.branchTenGod)).map((p) => p.pillar);
 }
 
+const PEAK_STAGES = new Set(["건록", "제왕"]);
+
 export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
   const genderKo: Gender = input.gender;
 
@@ -151,8 +162,12 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
   const resourceStarCount = allTenGods.filter((t) => RESOURCE_STARS.has(t)).length;
   const wealthStarPillars = pillarsWithTenGod(pillars, WEALTH_STARS);
   const outputStarPillars = pillarsWithTenGod(pillars, OUTPUT_STARS);
+  const officerStarPillars = pillarsWithTenGod(pillars, OFFICER_STARS);
 
   const dominantElement = Object.entries(result.fiveElements).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+  const missingElements = Object.entries(result.fiveElements)
+    .filter(([, count]) => count === 0)
+    .map(([el]) => el);
 
   const keyRelations: string[] = [
     ...result.stemRelations.map((r) => r.desc),
@@ -173,12 +188,17 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     .filter((key) => key !== "hour" || input.hour !== null)
     .map((key) => toPillarStageFact(result, key));
 
+  const peakStagePillars = pillarStages.filter((s) => PEAK_STAGES.has(s.geo)).map((s) => s.pillar);
+
   const rawDaeunList = result.daeun.list;
   const currentIdx = rawDaeunList.findIndex((d) => d === result.daeun.current);
   const currentDaeun = result.daeun.current ? toDaeunFact(result.daeun.current, true) : null;
   const nextDaeun =
     currentIdx >= 0 && rawDaeunList[currentIdx + 1] ? toDaeunFact(rawDaeunList[currentIdx + 1], false) : null;
   const daeunList = rawDaeunList.map((d) => toDaeunFact(d, d === result.daeun.current));
+  const wealthOpportunityDaeunCount = rawDaeunList.filter(
+    (d) => WEALTH_STARS.has(d.stemTenGod) || WEALTH_STARS.has(d.branchTenGod),
+  ).length;
 
   return {
     hasTimeInput: input.hour !== null,
@@ -199,6 +219,10 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     resourceStarCount,
     wealthStarPillars,
     outputStarPillars,
+    officerStarPillars,
+    missingElements,
+    wealthOpportunityDaeunCount,
+    peakStagePillars,
     pillars,
     keyRelations,
     gwimunRelations,

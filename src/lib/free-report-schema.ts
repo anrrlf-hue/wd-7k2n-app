@@ -1,8 +1,9 @@
-// 무료 사주 V2의 12섹션 구조. 기존 Interpretation(유료 업셀용, timing/action
+// 무료 사주 V2의 17섹션 구조. 기존 Interpretation(유료 업셀용, timing/action
 // 등 "정밀 시기" 지향)과는 목적이 달라 별도 스키마로 둔다 — 이쪽은 "이번
 // 생애 전반의 성향/패턴"을 완결된 형태로 설명하는 데 집중한다.
 // 모든 문단은 "결론(생활언어) -> 구체적 행동/패턴 -> 자기확인 질문성 문장
-// -> 마지막에만 전문용어 근거" 순서를 따라야 한다(mock/LLM 공통 규칙).
+// -> 마지막에만 전문용어 근거" 순서를 따르되, 문단마다 도입/마무리 방식과
+// 문장 리듬을 다르게 해서 같은 패턴이 반복되지 않아야 한다(mock/LLM 공통).
 
 import { z } from "zod";
 
@@ -13,18 +14,26 @@ const evidenceItem = z.object({
 });
 
 export const FreeSajuReportSchema = z.object({
-  snapshot: z.string().min(10),
-  temperament: z.string().min(10),
-  earningStyle: z.string().min(10),
-  keepingStyle: z.string().min(10),
-  leakPattern: z.string().min(10),
-  workStyle: z.string().min(10),
-  peopleAndMoney: z.string().min(10),
-  decisionStyle: z.string().min(10),
-  strengths: z.array(evidenceItem).length(3),
-  cautions: z.array(evidenceItem).length(3),
-  selfCheckQuestions: z.array(z.string().min(5)).min(2).max(4),
-  evidenceExplainer: z.string().min(10),
+  snapshot: z.string().min(10), // ① 한눈에 보는 나
+  temperament: z.string().min(10), // ② 타고난 성향
+  wealthStructure: z.string().min(10), // ③ 재물운/돈복의 큰 구조
+  earningStyle: z.string().min(10), // ④ 돈을 버는 방식
+  keepingStyle: z.string().min(10), // ⑤ 돈을 지키는 방식
+  leakPattern: z.string().min(10), // ⑥ 돈을 놓치는 반복 패턴
+  bigMoneyAffinity: z.string().min(10), // ⑦ 큰돈/기회와 관계된 성향
+  jobOrientation: z.string().min(10), // ⑧ 직장형/사업형 성향
+  teamStrength: z.string().min(10), // ⑨ 조직에서 강한 부분
+  soloStrength: z.string().min(10), // ⑩ 독립적으로 움직일 때 강한 부분
+  peopleAndMoney: z.string().min(10), // ⑪ 사람과 돈
+  decisionStyle: z.string().min(10), // ⑫ 의사결정 스타일
+  opportunityStyle: z.string().min(10), // ⑬ 기회를 잡는 방식
+  strengths: z.array(evidenceItem).min(3), // ⑭ 강점 3개 이상
+  cautions: z.array(evidenceItem).min(3), // ⑮ 조심할 점 3개 이상
+  selfCheckQuestions: z.array(z.string().min(5)).min(2).max(5), // ⑯ 실제 경험 비교 질문
+  evidenceExplainer: z.string().min(10), // ⑰ 왜 이런 결과가 나왔는지
+  /** MBTI/Big5 자기보고가 있을 때만 채워지는 비교 문단. 없으면 null.
+   * 사주 결과를 성향정보에 맞춰 되돌려 고치지 않고, 일치/불일치를 있는 그대로 말한다. */
+  personalityComparison: z.string().min(10).nullable(),
 });
 
 export type FreeSajuReport = z.infer<typeof FreeSajuReportSchema>;
@@ -52,18 +61,25 @@ export function validateFreeSajuReport(raw: unknown): ValidationResult & { data?
     return { ok: false, violations: parsed.error.issues.map((i) => `schema: ${i.path.join(".")} ${i.message}`) };
   }
 
+  const d = parsed.data;
   const fullText = [
-    parsed.data.snapshot,
-    parsed.data.temperament,
-    parsed.data.earningStyle,
-    parsed.data.keepingStyle,
-    parsed.data.leakPattern,
-    parsed.data.workStyle,
-    parsed.data.peopleAndMoney,
-    parsed.data.decisionStyle,
-    ...parsed.data.strengths.map((s) => s.detail),
-    ...parsed.data.cautions.map((c) => c.detail),
-    parsed.data.evidenceExplainer,
+    d.snapshot,
+    d.temperament,
+    d.wealthStructure,
+    d.earningStyle,
+    d.keepingStyle,
+    d.leakPattern,
+    d.bigMoneyAffinity,
+    d.jobOrientation,
+    d.teamStrength,
+    d.soloStrength,
+    d.peopleAndMoney,
+    d.decisionStyle,
+    d.opportunityStyle,
+    ...d.strengths.map((s) => s.detail),
+    ...d.cautions.map((c) => c.detail),
+    d.evidenceExplainer,
+    d.personalityComparison ?? "",
   ].join("\n");
 
   const violations = BANNED_PATTERNS.filter((re) => re.test(fullText)).map((re) => `banned phrase: ${re.source}`);

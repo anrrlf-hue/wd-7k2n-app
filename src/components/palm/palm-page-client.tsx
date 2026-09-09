@@ -17,7 +17,7 @@ import {
 } from "@/lib/palm-detection";
 import { isPalmFactsUsable, type PalmFacts, type LineFeature } from "@/lib/palm-facts";
 import type { CrossInterpretation } from "@/lib/cross-interpretation-schema";
-import type { BirthInput } from "@/lib/saju";
+import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 
 type Stage = "upload" | "detecting" | "retake" | "cross_loading" | "result" | "error";
 
@@ -50,7 +50,13 @@ async function fileToCanvas(file: File, maxDim = 1280): Promise<HTMLCanvasElemen
   return canvas;
 }
 
-export function PalmPageClient({ birthInput }: { birthInput: BirthInput | null }) {
+export function PalmPageClient({
+  birthInput,
+  personalityInput,
+}: {
+  birthInput: BirthInput | null;
+  personalityInput?: PersonalityInputEcho;
+}) {
   const [stage, setStage] = useState<Stage>("upload");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
@@ -92,7 +98,12 @@ export function PalmPageClient({ birthInput }: { birthInput: BirthInput | null }
       const res = await fetch("/api/palm/interpret", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...birthInput, palmFacts: facts }),
+        body: JSON.stringify({
+          ...birthInput,
+          palmFacts: facts,
+          big5Answers: personalityInput?.big5Answers ?? undefined,
+          mbti: personalityInput?.mbti ?? undefined,
+        }),
       });
       const data = await res.json();
 
@@ -322,12 +333,17 @@ export function PalmPageClient({ birthInput }: { birthInput: BirthInput | null }
             <ReportSection step="③" title="돈을 대하는 방식·의사결정 스타일">
               <p>{crossResult.interpretation.moneyConnection}</p>
             </ReportSection>
-            <ReportSection step="④" title="나와 비교해볼까요">
+            {crossResult.interpretation.personalityNote && (
+              <ReportSection step="④" title="자기보고 성향과 비교하면">
+                <p>{crossResult.interpretation.personalityNote}</p>
+              </ReportSection>
+            )}
+            <ReportSection step={crossResult.interpretation.personalityNote ? "⑤" : "④"} title="나와 비교해볼까요">
               <p className="rounded-xl bg-accent p-3.5 text-accent-foreground">
                 {crossResult.interpretation.selfComparisonQuestion}
               </p>
             </ReportSection>
-            <ReportSection step="⑤" title="이 분석의 한계">
+            <ReportSection step={crossResult.interpretation.personalityNote ? "⑥" : "⑤"} title="이 분석의 한계">
               <p className="text-xs text-muted-foreground">{crossResult.interpretation.uncertaintyNote}</p>
             </ReportSection>
           </div>

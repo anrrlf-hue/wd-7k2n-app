@@ -4,16 +4,18 @@ import { useState } from "react";
 import { StepShell } from "@/components/diagnosis/step-shell";
 import { BirthDateStep } from "@/components/diagnosis/birth-date-step";
 import { BirthTimeStep } from "@/components/diagnosis/birth-time-step";
+import { PersonalityStep } from "@/components/diagnosis/personality-step";
 import { LoadingStep } from "@/components/diagnosis/loading-step";
 import { ResultStep } from "@/components/diagnosis/result-step";
 import { MoneyCheckStep } from "@/components/diagnosis/money-check-step";
 import { SummaryStep } from "@/components/diagnosis/summary-step";
 import type { FullSajuDiagnosis } from "@/lib/saju";
+import type { MbtiType } from "@/lib/mbti-facts";
 import { scoreMoneyCheck, type MoneyCheckResult } from "@/lib/money-check";
 
-type Step = "date" | "time" | "loading" | "result" | "money-check" | "summary";
+type Step = "date" | "time" | "personality" | "loading" | "result" | "money-check" | "summary";
 
-const STEP_ORDER: Step[] = ["date", "time", "loading", "result", "money-check", "summary"];
+const STEP_ORDER: Step[] = ["date", "time", "personality", "loading", "result", "money-check", "summary"];
 
 export default function DiagnosisPage() {
   const [step, setStep] = useState<Step>("date");
@@ -21,6 +23,8 @@ export default function DiagnosisPage() {
   const [gender, setGender] = useState<"남" | "여">("남");
   const [knowsTime, setKnowsTime] = useState(false);
   const [birthTime, setBirthTime] = useState("");
+  const [big5Answers, setBig5Answers] = useState<Record<string, number>>({});
+  const [mbti, setMbti] = useState<MbtiType | "모름">("모름");
   const [diagnosis, setDiagnosis] = useState<FullSajuDiagnosis | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [moneyResult, setMoneyResult] = useState<MoneyCheckResult | null>(null);
@@ -42,11 +46,21 @@ export default function DiagnosisPage() {
     const clientTimeout = setTimeout(() => controller.abort(), 15000);
 
     try {
+      const hasBig5 = Object.keys(big5Answers).length > 0;
       const [res] = await Promise.all([
         fetch("/api/saju", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ year, month, day, hour, minute, gender }),
+          body: JSON.stringify({
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            gender,
+            big5Answers: hasBig5 ? big5Answers : undefined,
+            mbti: mbti !== "모름" ? mbti : undefined,
+          }),
           signal: controller.signal,
         }),
         new Promise((resolve) => setTimeout(resolve, 900)),
@@ -102,8 +116,24 @@ export default function DiagnosisPage() {
           time={birthTime}
           onKnowsTimeChange={setKnowsTime}
           onTimeChange={setBirthTime}
-          onNext={handleFetchDiagnosis}
+          onNext={() => setStep("personality")}
           onBack={() => setStep("date")}
+        />
+      )}
+
+      {step === "personality" && (
+        <PersonalityStep
+          big5Answers={big5Answers}
+          onBig5Change={(id, value) => setBig5Answers((prev) => ({ ...prev, [id]: value }))}
+          mbti={mbti}
+          onMbtiChange={setMbti}
+          onNext={handleFetchDiagnosis}
+          onSkip={() => {
+            setBig5Answers({});
+            setMbti("모름");
+            handleFetchDiagnosis();
+          }}
+          onBack={() => setStep("time")}
         />
       )}
 

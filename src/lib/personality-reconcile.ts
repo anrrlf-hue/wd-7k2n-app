@@ -42,3 +42,24 @@ export function buildPersonalityAddendum(
 
   return { extraversionCompare, conscientiousnessCompare, mbtiNote };
 }
+
+/** big5/mbti 중 하나라도 있으면 비교 문단(1개 문자열)을, 둘 다 없으면 null을
+ * 반환한다. free-report-mock.ts(무료 사주 리포트)와 cross-interpretation-mock.ts
+ * (사주+손금 통합 결과) 양쪽에서 같은 로직을 공유한다. */
+export function buildPersonalityComparisonText(
+  facts: SajuFacts,
+  big5: Big5Facts | null,
+  mbti: MbtiSelfReport | null,
+): string | null {
+  if (!big5 && !mbti) return null;
+
+  const parts: string[] = [];
+  if (big5) {
+    const addendum = buildPersonalityAddendum(facts, big5, mbti ?? { type: "모름" });
+    parts.push(addendum.extraversionCompare, addendum.conscientiousnessCompare);
+  }
+  if (mbti && "type" in mbti && mbti.type !== "모름") {
+    parts.push(`MBTI(${mbti.type})는 참고로 함께 봤어요 — 이 결과의 정확도 자체에는 영향을 주지 않았어요.`);
+  }
+  return parts.length > 0 ? parts.join(" ") : null;
+}

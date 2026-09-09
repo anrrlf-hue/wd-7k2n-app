@@ -3,9 +3,15 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
-import type { BirthInput } from "@/lib/saju";
+import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 
-export function PalmEntryCard({ birthInput }: { birthInput: BirthInput }) {
+export function PalmEntryCard({
+  birthInput,
+  personalityInput,
+}: {
+  birthInput: BirthInput;
+  personalityInput?: PersonalityInputEcho;
+}) {
   const params = new URLSearchParams({
     year: String(birthInput.year),
     month: String(birthInput.month),
@@ -14,6 +20,20 @@ export function PalmEntryCard({ birthInput }: { birthInput: BirthInput }) {
     minute: birthInput.minute === null ? "" : String(birthInput.minute),
     gender: birthInput.gender,
   });
+
+  // 성향정보를 손금 페이지까지 이어가 "사주+손금+성향" 통합 비교를 만든다.
+  // 압축 형식(id:value,id:value)으로만 넘기고, 손금 페이지에서 다시 검증해 채점한다.
+  if (personalityInput?.big5Answers) {
+    params.set(
+      "b5",
+      Object.entries(personalityInput.big5Answers)
+        .map(([id, v]) => `${id}:${v}`)
+        .join(","),
+    );
+  }
+  if (personalityInput?.mbti) {
+    params.set("mbti", personalityInput.mbti);
+  }
 
   return (
     <Link

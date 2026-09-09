@@ -4,6 +4,8 @@ import { diagnoseSaju, type FullSajuDiagnosis } from "@/lib/saju";
 import { computeSajuFacts } from "@/lib/saju-facts";
 import { getInterpretation } from "@/lib/interpretation-engine";
 import { getFreeSajuReport } from "@/lib/free-report-engine";
+import { scoreBig5 } from "@/lib/big5-facts";
+import { MBTI_TYPES } from "@/lib/mbti-facts";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
 // 요청 1회로 (1) 얕은 사주팔자+money-tendency(fallback/게이지 근거로 항상 유지)
@@ -18,6 +20,9 @@ const bodySchema = z.object({
   hour: z.number().int().min(0).max(23).nullable(),
   minute: z.number().int().min(0).max(59).nullable(),
   gender: z.enum(["남", "여"]),
+  /** 성향 스텝은 완전히 선택 사항 — 안 보내면 undefined */
+  big5Answers: z.record(z.string(), z.number().min(1).max(5)).optional(),
+  mbti: z.enum(MBTI_TYPES).optional(),
 });
 
 export async function POST(request: Request) {
@@ -49,13 +54,17 @@ export async function POST(request: Request) {
 
   try {
     const facts = computeSajuFacts(parsed.data);
+    const personality = {
+      big5: parsed.data.big5Answers ? scoreBig5(parsed.data.big5Answers) : null,
+      mbti: parsed.data.mbti ? { type: parsed.data.mbti } : null,
+    };
 
     const [interpretationResult, freeReportResult] = await Promise.all([
       getInterpretation(facts, { timeoutMs: 9000 }).catch((err) => {
         console.error("deep interpretation pipeline failed:", err);
         return null;
       }),
-      getFreeSajuReport(facts, { timeoutMs: 9000 }).catch((err) => {
+      getFreeSajuReport(facts, { timeoutMs: 9000, personality }).catch((err) => {
         console.error("free saju report pipeline failed:", err);
         return null;
       }),
@@ -78,6 +87,16 @@ export async function POST(request: Request) {
     console.error("saju facts computation failed, falling back to shallow result:", err);
   }
 
-  const payload: FullSajuDiagnosis = { ...shallow, resultSource, deep, freeReport, birthInput: parsed.data };
+  const payload: FullSajuDiagnosis = {
+    ...shallow,
+    resultSource,
+    deep,
+    freeReport,
+    birthInput: parsed.data,
+    personalityInput: {
+      big5Answers: parsed.data.big5Answers ?? null,
+      mbti: parsed.data.mbti ?? null,
+    },
+  };
   return NextResponse.json(payload);
 }

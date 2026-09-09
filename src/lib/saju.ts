@@ -2,6 +2,7 @@ import { calculateSaju, calculateSajuSimple } from "@fullstackfamily/manseryeok"
 import { getMoneyTendency, type MoneyTendency } from "./money-tendency";
 import type { Interpretation } from "./interpretation-schema";
 import type { FreeSajuReport } from "./free-report-schema";
+import type { MbtiType } from "./mbti-facts";
 
 export interface BirthInput {
   year: number;
@@ -11,6 +12,13 @@ export interface BirthInput {
   hour: number | null;
   minute: number | null;
   gender: "남" | "여";
+}
+
+/** 무료 사주 단계에서 함께 받은 자기보고 성향정보. 손금 페이지로 넘어갈 때도
+ * 다시 써서 "사주+손금+성향" 통합 비교를 만든다. */
+export interface PersonalityInputEcho {
+  big5Answers: Record<string, number> | null;
+  mbti: MbtiType | null;
 }
 
 export interface SajuDiagnosis {
@@ -43,6 +51,8 @@ export interface FullSajuDiagnosis extends SajuDiagnosis {
   freeReport: FreeReportPayload | null;
   /** 손금 교차 분석 페이지로 넘어갈 때 다시 쓰기 위해 입력값을 그대로 echo. */
   birthInput: BirthInput;
+  /** 성향정보 입력을 손금 페이지까지 이어가기 위한 echo. 입력 안 했으면 둘 다 null. */
+  personalityInput: PersonalityInputEcho;
 }
 
 export function diagnoseSaju(input: BirthInput): SajuDiagnosis {

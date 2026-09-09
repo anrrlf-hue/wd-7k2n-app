@@ -5,7 +5,11 @@
 
 import type { MoneyTendency } from "@/lib/money-tendency";
 import type { PalmFacts } from "@/lib/palm-facts";
+import type { SajuFacts } from "@/lib/saju-facts";
+import type { Big5Facts } from "@/lib/big5-facts";
+import type { MbtiSelfReport } from "@/lib/mbti-facts";
 import type { CrossInterpretation } from "@/lib/cross-interpretation-schema";
+import { buildPersonalityComparisonText } from "@/lib/personality-reconcile";
 
 const HAND_SHAPE_LABEL: Record<PalmFacts["handShape"], string> = {
   square: "사각형에 가까운 손바닥과 짧은 편인 손가락",
@@ -18,6 +22,7 @@ const HAND_SHAPE_LABEL: Record<PalmFacts["handShape"], string> = {
 export function buildMockCrossInterpretation(
   tendency: MoneyTendency,
   palm: PalmFacts,
+  personality?: { facts: SajuFacts | null; big5: Big5Facts | null; mbti: MbtiSelfReport | null },
 ): CrossInterpretation {
   const handShapeLabel = HAND_SHAPE_LABEL[palm.handShape];
   const hasLifeLine = palm.majorLines.includes("생명선");
@@ -42,11 +47,17 @@ export function buildMockCrossInterpretation(
 
   const uncertaintyNote = `이 손금 분석은 사진 속 손 랜드마크를 기반으로 한 단순 특징 추출(선의 존재·길이·방향 추정)이며, 정밀 의학적·전문 관상 수준의 인식이 아니에요. 참고용으로만 봐주세요.`;
 
+  const personalityNote =
+    personality?.facts && (personality.big5 || personality.mbti)
+      ? buildPersonalityComparisonText(personality.facts, personality.big5, personality.mbti)
+      : null;
+
   return {
     common,
     differences,
     moneyConnection,
     selfComparisonQuestion,
     uncertaintyNote,
+    personalityNote,
   };
 }

@@ -1,10 +1,17 @@
 // interpretation-engine.ts와 동일한 패턴(facts -> prompt -> Claude 또는 mock
-// -> 검증). 무료 사주 V2 12섹션 전용. 이 함수도 절대 throw하지 않는다.
+// -> 검증). 무료 사주 V2 17섹션 전용. 이 함수도 절대 throw하지 않는다.
 
 import type { SajuFacts } from "@/lib/saju-facts";
+import type { Big5Facts } from "@/lib/big5-facts";
+import type { MbtiSelfReport } from "@/lib/mbti-facts";
 import { FREE_SAJU_REPORT_SYSTEM_PROMPT, buildFreeSajuReportUserPrompt } from "@/lib/free-report-prompt";
 import { validateFreeSajuReport, type FreeSajuReport } from "@/lib/free-report-schema";
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
+
+export interface PersonalityInput {
+  big5: Big5Facts | null;
+  mbti: MbtiSelfReport | null;
+}
 
 export interface FreeSajuReportResult {
   source: "llm" | "mock";
@@ -52,10 +59,10 @@ async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: n
 
 export async function getFreeSajuReport(
   facts: SajuFacts,
-  options?: { timeoutMs?: number },
+  options?: { timeoutMs?: number; personality?: PersonalityInput },
 ): Promise<FreeSajuReportResult> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const userPrompt = buildFreeSajuReportUserPrompt(facts);
+  const userPrompt = buildFreeSajuReportUserPrompt(facts, options?.personality);
 
   let raw: unknown = null;
   let fallbackReason: string | undefined;
@@ -78,7 +85,7 @@ export async function getFreeSajuReport(
 
   return {
     source: "mock",
-    report: buildFreeSajuReport(facts),
+    report: buildFreeSajuReport(facts, options?.personality),
     fallbackReason,
   };
 }
