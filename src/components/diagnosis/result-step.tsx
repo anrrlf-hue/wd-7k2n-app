@@ -214,7 +214,7 @@ export function ResultStep({
       </div>
 
       <div className="mt-8">
-        <PalmEntryCard />
+        <PalmEntryCard birthInput={diagnosis.birthInput} />
       </div>
 
       <div className="mt-auto pt-8">

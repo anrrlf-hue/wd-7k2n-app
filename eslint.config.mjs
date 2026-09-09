@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored MediaPipe WASM glue code copied into public/ for
+    // self-hosting (see src/lib/palm-detection.ts) — generated, not ours.
+    "public/mediapipe/**",
   ]),
 ]);
 

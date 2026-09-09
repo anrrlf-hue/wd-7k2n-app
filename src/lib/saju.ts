@@ -33,6 +33,8 @@ export interface FullSajuDiagnosis extends SajuDiagnosis {
   /** "deep" = 딥 해석 성공(LLM 또는 검증 통과한 mock), "fallback" = 딥 파이프라인 자체가 실패해 얕은 결과만 있음 */
   resultSource: "deep" | "fallback";
   deep: DeepResultPayload | null;
+  /** 손금 교차 분석 페이지로 넘어갈 때 다시 쓰기 위해 입력값을 그대로 echo. */
+  birthInput: BirthInput;
 }
 
 export function diagnoseSaju(input: BirthInput): SajuDiagnosis {

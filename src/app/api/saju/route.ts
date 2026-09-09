@@ -62,6 +62,6 @@ export async function POST(request: Request) {
     resultSource = "fallback";
   }
 
-  const payload: FullSajuDiagnosis = { ...shallow, resultSource, deep };
+  const payload: FullSajuDiagnosis = { ...shallow, resultSource, deep, birthInput: parsed.data };
   return NextResponse.json(payload);
 }

@@ -1,12 +1,25 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
+import type { BirthInput } from "@/lib/saju";
 
-// 손금 교차분석 기능은 이번 범위에서 제외. UI 자리만 마련해두고
-// 실제 촬영/분석 로직은 연결하지 않는다.
-export function PalmEntryCard() {
+export function PalmEntryCard({ birthInput }: { birthInput: BirthInput }) {
+  const params = new URLSearchParams({
+    year: String(birthInput.year),
+    month: String(birthInput.month),
+    day: String(birthInput.day),
+    hour: birthInput.hour === null ? "" : String(birthInput.hour),
+    minute: birthInput.minute === null ? "" : String(birthInput.minute),
+    gender: birthInput.gender,
+  });
+
   return (
-    <div className="mystic-card flex items-center gap-3 border-dashed p-4">
+    <Link
+      href={`/diagnosis/palm?${params.toString()}`}
+      className="mystic-card flex items-center gap-3 border-dashed p-4 transition-colors hover:border-(--gold-soft)"
+    >
       <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-(--gold-soft)">
         <PalmLineIllustration />
       </span>
@@ -15,12 +28,10 @@ export function PalmEntryCard() {
           사주에서 보인 돈 성향, 손에도 같은 흐름이 있을까?
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          손금 사진 한 장으로 사주 재물운과 교차 분석하는 기능을 준비하고 있어요.
+          손금 사진 한 장으로 사주 재물운과 교차 분석해봐요.
         </p>
       </div>
-      <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-        곧 만나요
-      </span>
-    </div>
+      <ArrowRight className="size-4 shrink-0 text-(--gold)" />
+    </Link>
   );
 }
