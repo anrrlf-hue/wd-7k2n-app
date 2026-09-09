@@ -16,7 +16,7 @@ export function StepShell({
   return (
     <div className="mx-auto flex w-full max-w-sm flex-1 flex-col px-6 py-10">
       <Progress value={progress} className="mb-8 h-1.5" />
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={stepKey}
           initial={{ opacity: 0, x: 12 }}
