@@ -51,27 +51,31 @@
 
 :root {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", sans-serif;
-  /* 현대적 동양미 + 프리미엄 신비감: 딥 인디고/플럼 바탕에 웜 골드를 포인트로만 사용 */
-  --background: oklch(0.15 0.028 280);
+  /* 현대적 동양미 + 프리미엄 신비감: 짙은 블랙그린 바탕에 절제된 채도의 딥
+   * 에메랄드를 포인트로만 사용. "재물/돈"과 색상이 바로 연결되면서도, 채도를
+   * 낮게 눌러(chroma 0.1) 카지노st 네온 그린이 되지 않도록 했다.
+   * --gold/--gold-soft 변수명은 하위 호환을 위해 유지하되(수십 개 컴포넌트가
+   * 참조 중) 실제 값은 에메랄드 그린이다. */
+  --background: oklch(0.15 0.022 165);
   --foreground: oklch(0.95 0.012 85);
-  --card: oklch(0.2 0.032 280);
+  --card: oklch(0.2 0.026 165);
   --card-foreground: oklch(0.95 0.012 85);
-  --popover: oklch(0.2 0.032 280);
+  --popover: oklch(0.2 0.026 165);
   --popover-foreground: oklch(0.95 0.012 85);
-  --primary: oklch(0.8 0.14 85);
-  --primary-foreground: oklch(0.18 0.03 280);
-  --secondary: oklch(0.27 0.03 280);
+  --primary: oklch(0.66 0.1 162);
+  --primary-foreground: oklch(0.16 0.02 165);
+  --secondary: oklch(0.27 0.024 165);
   --secondary-foreground: oklch(0.95 0.012 85);
-  --muted: oklch(0.25 0.028 280);
-  --muted-foreground: oklch(0.7 0.02 270);
-  --accent: oklch(0.33 0.055 290);
-  --accent-foreground: oklch(0.92 0.03 85);
+  --muted: oklch(0.25 0.022 165);
+  --muted-foreground: oklch(0.7 0.016 165);
+  --accent: oklch(0.3 0.045 162);
+  --accent-foreground: oklch(0.92 0.05 150);
   --destructive: oklch(0.62 0.21 25);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.8 0.14 85);
-  --gold: oklch(0.8 0.14 85);
-  --gold-soft: oklch(0.8 0.14 85 / 35%);
+  --ring: oklch(0.66 0.1 162);
+  --gold: oklch(0.66 0.1 162);
+  --gold-soft: oklch(0.66 0.1 162 / 32%);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -222,15 +226,16 @@
 .mystic-ring {
   box-shadow:
     0 0 0 1px var(--gold-soft),
-    0 12px 40px -18px oklch(0.8 0.14 85 / 45%);
+    0 12px 40px -18px oklch(0.66 0.1 162 / 45%);
 }
 
 /* 결과를 3~5분 읽는 화면 전용 밝은 테마. 랜딩/입력 단계의 어두운 신비 테마는
  * 그대로 두고, 이 클래스로 감싼 하위 트리에서만 변수를 덮어써 가독성을
  * 우선한다(카드보다 문단 중심, 아이보리 배경 + 짙은 먹색/네이비 본문,
- * 인디고·골드는 포인트로만). mystic-card/mystic-ring 등 기존 컴포넌트는
- * var(--card)/var(--gold) 등을 그대로 참조하므로 별도 리팩터 없이 밝은
- * 톤으로 자연스럽게 전환된다. */
+ * 에메랄드 그린은 포인트로만 — 어두운 테마와 동일한 브랜드 컬러를 유지해
+ * 화면이 전환돼도 "재물운=에메랄드" 톤이 이어지게 한다). mystic-card/
+ * mystic-ring 등 기존 컴포넌트는 var(--card)/var(--gold) 등을 그대로
+ * 참조하므로 별도 리팩터 없이 밝은 톤으로 자연스럽게 전환된다. */
 .result-bright {
   --background: oklch(0.975 0.01 85);
   --foreground: oklch(0.26 0.03 265);
@@ -238,20 +243,20 @@
   --card-foreground: oklch(0.26 0.03 265);
   --popover: oklch(0.995 0.006 85);
   --popover-foreground: oklch(0.26 0.03 265);
-  --primary: oklch(0.4 0.1 275);
+  --primary: oklch(0.4 0.09 162);
   --primary-foreground: oklch(0.98 0.006 85);
   --secondary: oklch(0.94 0.014 85);
   --secondary-foreground: oklch(0.26 0.03 265);
   --muted: oklch(0.94 0.014 85);
   --muted-foreground: oklch(0.47 0.025 265);
-  --accent: oklch(0.92 0.035 290);
-  --accent-foreground: oklch(0.32 0.08 285);
+  --accent: oklch(0.92 0.035 155);
+  --accent-foreground: oklch(0.32 0.08 160);
   --destructive: oklch(0.55 0.19 25);
   --border: oklch(0.3 0.03 265 / 12%);
   --input: oklch(0.3 0.03 265 / 14%);
-  --ring: oklch(0.58 0.13 78);
-  --gold: oklch(0.55 0.13 78);
-  --gold-soft: oklch(0.55 0.13 78 / 16%);
+  --ring: oklch(0.42 0.1 162);
+  --gold: oklch(0.42 0.1 162);
+  --gold-soft: oklch(0.42 0.1 162 / 16%);
 
   background: var(--background);
   color: var(--foreground);
