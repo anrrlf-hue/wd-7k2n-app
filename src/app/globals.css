@@ -51,28 +51,28 @@
 
 :root {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", sans-serif;
-  /* 현대적 동양미 + 프리미엄 신비감: 짙은 블랙그린 바탕에 절제된 채도의 딥
-   * 에메랄드를 포인트로만 사용. "재물/돈"과 색상이 바로 연결되면서도, 채도를
-   * 낮게 눌러(chroma 0.1) 카지노st 네온 그린이 되지 않도록 했다.
-   * --gold/--gold-soft 변수명은 하위 호환을 위해 유지하되(수십 개 컴포넌트가
-   * 참조 중) 실제 값은 에메랄드 그린이다. */
-  --background: oklch(0.15 0.022 165);
+  /* 현대적 동양미 + 프리미엄 신비감: 딥 틸(청록) 배경에, 포인트는 절제된
+   * 채도의 에메랄드 그린("재물/돈"과 직관적으로 연결되는 색). A/B 비교
+   * 끝에 5개 후보(기본/에메랄드/버건디/바이올렛/틸) 중 틸을 확정.
+   * --gold/--gold-soft 변수명은 하위 호환을 위해 유지하되(수십 개
+   * 컴포넌트가 참조 중) 실제 값은 에메랄드 그린이다. */
+  --background: oklch(0.28 0.035 200);
   --foreground: oklch(0.95 0.012 85);
-  --card: oklch(0.2 0.026 165);
+  --card: oklch(0.33 0.04 200);
   --card-foreground: oklch(0.95 0.012 85);
-  --popover: oklch(0.2 0.026 165);
+  --popover: oklch(0.33 0.04 200);
   --popover-foreground: oklch(0.95 0.012 85);
   --primary: oklch(0.66 0.1 162);
-  --primary-foreground: oklch(0.16 0.02 165);
-  --secondary: oklch(0.27 0.024 165);
+  --primary-foreground: oklch(0.14 0.03 158);
+  --secondary: oklch(0.4 0.035 200);
   --secondary-foreground: oklch(0.95 0.012 85);
-  --muted: oklch(0.25 0.022 165);
-  --muted-foreground: oklch(0.7 0.016 165);
-  --accent: oklch(0.3 0.045 162);
+  --muted: oklch(0.38 0.032 200);
+  --muted-foreground: oklch(0.72 0.035 158);
+  --accent: oklch(0.46 0.06 200);
   --accent-foreground: oklch(0.92 0.05 150);
   --destructive: oklch(0.62 0.21 25);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 14%);
+  --border: oklch(0.7 0.06 158 / 16%);
+  --input: oklch(0.7 0.06 158 / 18%);
   --ring: oklch(0.66 0.1 162);
   --gold: oklch(0.66 0.1 162);
   --gold-soft: oklch(0.66 0.1 162 / 32%);
