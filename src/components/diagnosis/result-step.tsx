@@ -3,11 +3,13 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
+import { Eye, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LockedCard } from "@/components/diagnosis/locked-card";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
 import { getLockedReportCards } from "@/lib/money-tendency";
+import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { SajuDiagnosis } from "@/lib/saju";
 
 const revealVariants = {
@@ -58,10 +60,23 @@ export function ResultStep({
         initial="hidden"
         animate="show"
         variants={revealVariants}
-        className="mt-4 rounded-2xl border border-(--gold-soft) bg-card p-6"
+        className="mystic-ring relative mt-4 overflow-hidden rounded-2xl border border-(--gold-soft) bg-card p-6"
       >
-        <motion.div variants={itemVariants}>
-          <Badge variant="secondary" className="mb-3">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full opacity-40 blur-3xl"
+          style={{ backgroundColor: ELEMENT_COLORS[tendency.element] }}
+        />
+
+        <motion.div variants={itemVariants} className="relative">
+          <Badge
+            variant="secondary"
+            className="mb-3 gap-1.5 border border-(--gold-soft)"
+          >
+            <span
+              className="size-2 rounded-full"
+              style={{ backgroundColor: ELEMENT_COLORS[tendency.element] }}
+            />
             {tendency.element}(五行) · {tendency.stemName}
           </Badge>
           <h2 className="text-xl leading-snug font-semibold tracking-tight text-(--gold)">
@@ -98,7 +113,10 @@ export function ResultStep({
       </Button>
 
       <div className="mt-8">
-        <p className="text-sm font-medium">조금 더 보이는 이야기</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          <Eye className="size-4 text-(--gold)" />
+          조금 더 보이는 이야기
+        </p>
         <p className="mt-1 text-xs text-muted-foreground">
           흐리게 보이는 부분은 아래 리포트를 열면 전체를 볼 수 있어요.
         </p>
@@ -111,7 +129,10 @@ export function ResultStep({
       </div>
 
       <div className="mt-8">
-        <p className="text-sm font-medium">더 깊은 재물 리포트</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          <ScrollText className="size-4 text-(--gold)" />
+          더 깊은 재물 리포트
+        </p>
         <p className="mt-1 text-xs text-muted-foreground">
           십성·대운까지 반영한 상세 리포트로 이어져요.
         </p>

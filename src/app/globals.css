@@ -192,3 +192,35 @@
   color: transparent;
   animation: shimmer-sweep 2.4s ease-in-out infinite;
 }
+
+/* 별빛 배경 및 명식 카드 공용 프리미티브 */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: var(--twinkle-min, 0.15);
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: var(--twinkle-max, 0.9);
+    transform: scale(1);
+  }
+}
+
+.animate-twinkle {
+  animation: twinkle var(--twinkle-duration, 3.5s) ease-in-out infinite;
+}
+
+.mystic-card {
+  position: relative;
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--gold-soft);
+  background:
+    radial-gradient(circle at 15% -10%, var(--gold-soft), transparent 45%),
+    var(--card);
+}
+
+.mystic-ring {
+  box-shadow:
+    0 0 0 1px var(--gold-soft),
+    0 12px 40px -18px oklch(0.8 0.14 85 / 45%);
+}

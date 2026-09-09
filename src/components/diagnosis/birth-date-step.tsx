@@ -1,8 +1,10 @@
 "use client";
 
+import { Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { StepBadge } from "@/components/diagnosis/step-badge";
 
 export function BirthDateStep({
   value,
@@ -15,6 +17,8 @@ export function BirthDateStep({
 }) {
   return (
     <div className="flex flex-1 flex-col">
+      <StepBadge icon={<Moon className="size-5" />} />
+
       <h2 className="text-2xl font-semibold tracking-tight">
         생년월일을
         <br />
@@ -24,8 +28,10 @@ export function BirthDateStep({
         음력이든 양력이든 실제 태어난 날짜면 돼요.
       </p>
 
-      <div className="mt-10 flex flex-col gap-2">
-        <Label htmlFor="birthDate">생년월일</Label>
+      <div className="mystic-card mt-10 flex flex-col gap-2 p-5">
+        <Label htmlFor="birthDate" className="text-(--gold)">
+          생년월일
+        </Label>
         <Input
           id="birthDate"
           type="date"
@@ -33,7 +39,7 @@ export function BirthDateStep({
           min="1930-01-01"
           max="2020-12-31"
           onChange={(e) => onChange(e.target.value)}
-          className="h-13 text-base"
+          className="h-13 border-none bg-transparent p-0 text-base focus-visible:ring-0"
         />
       </div>
 

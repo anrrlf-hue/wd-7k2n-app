@@ -1,8 +1,10 @@
 "use client";
 
+import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { StepBadge } from "@/components/diagnosis/step-badge";
 
 export function BirthTimeStep({
   knowsTime,
@@ -21,6 +23,8 @@ export function BirthTimeStep({
 }) {
   return (
     <div className="flex flex-1 flex-col">
+      <StepBadge icon={<Clock className="size-5" />} />
+
       <h2 className="text-2xl font-semibold tracking-tight">
         태어난 시간도
         <br />
@@ -35,21 +39,23 @@ export function BirthTimeStep({
           type="button"
           onClick={() => onKnowsTimeChange(true)}
           className={`rounded-xl border p-4 text-left transition-colors ${
-            knowsTime ? "border-primary bg-accent" : "border-border"
+            knowsTime ? "mystic-card border-(--gold-soft)" : "border-border"
           }`}
         >
           <p className="text-sm font-medium">시간을 알아요</p>
         </button>
 
         {knowsTime && (
-          <div className="flex flex-col gap-2 pl-1">
-            <Label htmlFor="birthTime">출생 시간</Label>
+          <div className="mystic-card flex flex-col gap-2 p-5">
+            <Label htmlFor="birthTime" className="text-(--gold)">
+              출생 시간
+            </Label>
             <Input
               id="birthTime"
               type="time"
               value={time}
               onChange={(e) => onTimeChange(e.target.value)}
-              className="h-13 text-base"
+              className="h-13 border-none bg-transparent p-0 text-base focus-visible:ring-0"
             />
           </div>
         )}
@@ -58,7 +64,7 @@ export function BirthTimeStep({
           type="button"
           onClick={() => onKnowsTimeChange(false)}
           className={`rounded-xl border p-4 text-left transition-colors ${
-            !knowsTime ? "border-primary bg-accent" : "border-border"
+            !knowsTime ? "mystic-card border-(--gold-soft)" : "border-border"
           }`}
         >
           <p className="text-sm font-medium">모르겠어요</p>
@@ -75,7 +81,7 @@ export function BirthTimeStep({
           onClick={onNext}
           className="h-13 flex-1 rounded-full text-base"
         >
-          내 돈 성향 보기
+          내 재물운 보기
         </Button>
       </div>
     </div>

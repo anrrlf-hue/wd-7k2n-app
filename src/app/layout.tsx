@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Starfield } from "@/components/ui/starfield";
 
 export const metadata: Metadata = {
   title: "내 사주엔 얼마나 큰 재물운이 숨어 있을까?",
@@ -9,7 +10,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Starfield />
+        {children}
+      </body>
     </html>
   );
 }

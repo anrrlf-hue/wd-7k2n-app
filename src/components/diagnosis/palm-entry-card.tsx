@@ -1,14 +1,14 @@
 "use client";
 
-import { Camera } from "lucide-react";
+import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
 
 // 손금 교차분석 기능은 이번 범위에서 제외. UI 자리만 마련해두고
 // 실제 촬영/분석 로직은 연결하지 않는다.
 export function PalmEntryCard() {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border p-4">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
-        <Camera className="size-4.5 text-muted-foreground" />
+    <div className="mystic-card flex items-center gap-3 border-dashed p-4">
+      <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-(--gold-soft)">
+        <PalmLineIllustration />
       </span>
       <div className="flex-1">
         <p className="text-sm font-medium">사진 한 장으로 재물운 교차 확인</p>
