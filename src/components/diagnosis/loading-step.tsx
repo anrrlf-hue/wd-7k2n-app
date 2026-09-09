@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { SajuFormingVisual } from "@/components/diagnosis/saju-forming-visual";
 
+// 실제 파이프라인 4단계(사주 계산 -> 구조 분석 -> 재물/직업 흐름 분석 ->
+// 개인 해석 생성)에 맞춘 문구. 딥 해석 호출이 오래 걸리면 마지막 문구에서
+// 자연스럽게 반복된다.
 const STATUS_MESSAGES = [
-  "명식을 펼치는 중이에요",
-  "년주와 월주를 맞추는 중이에요",
-  "일주와 시주를 계산하는 중이에요",
-  "재물 흐름을 읽는 중이에요",
-  "직업·사업 흐름을 확인하는 중이에요",
-  "기회가 강해지는 시기를 찾는 중이에요",
+  "사주를 계산하는 중이에요",
+  "명식 구조를 분석하는 중이에요",
+  "재물·직업 흐름을 분석하는 중이에요",
+  "나만의 해석을 만드는 중이에요",
 ];
 
 export function LoadingStep() {
@@ -18,8 +19,10 @@ export function LoadingStep() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setStatusIndex((i) => (i + 1) % STATUS_MESSAGES.length);
-    }, 850);
+      // 마지막 문구("나만의 해석을 만드는 중이에요")에 도달하면 거기서 멈춘다.
+      // 딥 해석 호출이 오래 걸려도 "처음부터 다시" 도는 것처럼 보이지 않게.
+      setStatusIndex((i) => Math.min(i + 1, STATUS_MESSAGES.length - 1));
+    }, 1100);
     return () => clearInterval(timer);
   }, []);
 

@@ -11,9 +11,10 @@ import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
 import { PowerGauge } from "@/components/diagnosis/power-gauge";
 import { JobSpectrum } from "@/components/diagnosis/job-spectrum";
 import { FlowLine } from "@/components/diagnosis/flow-line";
+import { ExpandableSection } from "@/components/diagnosis/expandable-section";
 import { getLockedReportCards } from "@/lib/money-tendency";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
-import type { SajuDiagnosis } from "@/lib/saju";
+import type { FullSajuDiagnosis } from "@/lib/saju";
 
 const revealVariants = {
   hidden: {},
@@ -31,7 +32,7 @@ export function ResultStep({
   diagnosis,
   onNext,
 }: {
-  diagnosis: SajuDiagnosis;
+  diagnosis: FullSajuDiagnosis;
   onNext: () => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -51,8 +52,14 @@ export function ResultStep({
     }
   }
 
-  const { tendency } = diagnosis;
+  const { tendency, deep, resultSource } = diagnosis;
+  const isDeep = resultSource === "deep" && deep !== null;
+  const interp = deep?.interpretation;
+
   const lockedCards = getLockedReportCards(tendency);
+  const deepLockedCards = isDeep
+    ? [...lockedCards, { title: "이 해석의 전체 근거 다시보기", cta: "근거 전체 보기" }]
+    : lockedCards;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -86,8 +93,21 @@ export function ResultStep({
             {tendency.wealthType}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            {tendency.summary}
+            {isDeep ? interp!.summary : tendency.summary}
           </p>
+
+          {isDeep && deep!.evidencePreview.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {deep!.evidencePreview.map((ev) => (
+                <span
+                  key={ev}
+                  className="rounded-full bg-(--gold-soft) px-2.5 py-1 text-[10px] leading-none text-(--gold)"
+                >
+                  {ev}
+                </span>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         <motion.div variants={itemVariants} className="mt-5 grid grid-cols-3 gap-2">
@@ -113,10 +133,29 @@ export function ResultStep({
           </div>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="mt-5 rounded-xl bg-accent p-3.5">
-          <p className="text-xs font-medium text-accent-foreground">나의 강점</p>
-          <p className="mt-1 text-sm leading-relaxed">{tendency.topStrength}</p>
-        </motion.div>
+        {isDeep ? (
+          <motion.div variants={itemVariants}>
+            <ExpandableSection title="돈을 버는 방식 · 지키는 방식 더 보기">
+              <div>
+                <p className="text-xs font-medium text-(--gold)">돈을 버는 방식</p>
+                <p className="mt-1 text-muted-foreground">{interp!.earning_style}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-(--gold)">돈을 지키는 방식</p>
+                <p className="mt-1 text-muted-foreground">{interp!.keeping_style}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-(--gold)">사람과 돈의 관계</p>
+                <p className="mt-1 text-muted-foreground">{interp!.money_style}</p>
+              </div>
+            </ExpandableSection>
+          </motion.div>
+        ) : (
+          <motion.div variants={itemVariants} className="mt-5 rounded-xl bg-accent p-3.5">
+            <p className="text-xs font-medium text-accent-foreground">나의 강점</p>
+            <p className="mt-1 text-sm leading-relaxed">{tendency.topStrength}</p>
+          </motion.div>
+        )}
 
         <p className="mt-6 text-[11px] text-muted-foreground">
           재미로 보는 콘텐츠예요 · 일주 {diagnosis.dayPillar}
@@ -141,10 +180,21 @@ export function ResultStep({
           흐리게 보이는 부분은 아래 리포트를 열면 전체를 볼 수 있어요.
         </p>
         <div className="mt-3 flex flex-col gap-3">
-          <TeaserRow label="돈이 새기 쉬운 패턴" text={tendency.leakPattern} />
-          <TeaserRow label="직업·사업 방향 힌트" text={tendency.careerHint} />
-          <TeaserRow label="앞으로의 흐름 힌트" text={tendency.flowHint} />
-          <TeaserRow label="나에게 맞는 행동 힌트" text={tendency.actionHint} />
+          {isDeep ? (
+            <>
+              <TeaserRow label="돈을 놓치는 패턴" text={interp!.risk_pattern} />
+              <TeaserRow label="직업·사업 성향" text={interp!.career_business} />
+              <TeaserRow label="앞으로의 흐름" text={interp!.timing} />
+              <TeaserRow label="지금 필요한 행동" text={interp!.action} />
+            </>
+          ) : (
+            <>
+              <TeaserRow label="돈이 새기 쉬운 패턴" text={tendency.leakPattern} />
+              <TeaserRow label="직업·사업 방향 힌트" text={tendency.careerHint} />
+              <TeaserRow label="앞으로의 흐름 힌트" text={tendency.flowHint} />
+              <TeaserRow label="나에게 맞는 행동 힌트" text={tendency.actionHint} />
+            </>
+          )}
         </div>
       </div>
 
@@ -157,7 +207,7 @@ export function ResultStep({
           십성·대운까지 반영한 상세 리포트로 이어져요.
         </p>
         <div className="mt-3 flex flex-col gap-3">
-          {lockedCards.map((card) => (
+          {deepLockedCards.map((card) => (
             <LockedCard key={card.title} title={card.title} cta={card.cta} />
           ))}
         </div>

@@ -9,10 +9,14 @@ import { StepBadge } from "@/components/diagnosis/step-badge";
 export function BirthDateStep({
   value,
   onChange,
+  gender,
+  onGenderChange,
   onNext,
 }: {
   value: string;
   onChange: (v: string) => void;
+  gender: "남" | "여";
+  onGenderChange: (v: "남" | "여") => void;
   onNext: () => void;
 }) {
   return (
@@ -25,7 +29,7 @@ export function BirthDateStep({
         알려주세요
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        음력이든 양력이든 실제 태어난 날짜면 돼요.
+        음력이든 양력이든 실제 태어난 날짜면 돼요. 대운 방향 계산에 성별도 함께 써요.
       </p>
 
       <div className="mystic-card mt-10 flex flex-col gap-2 p-5">
@@ -41,6 +45,21 @@ export function BirthDateStep({
           onChange={(e) => onChange(e.target.value)}
           className="h-13 border-none bg-transparent p-0 text-base focus-visible:ring-0"
         />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        {(["남", "여"] as const).map((g) => (
+          <button
+            key={g}
+            type="button"
+            onClick={() => onGenderChange(g)}
+            className={`rounded-xl border p-3 text-sm font-medium transition-colors ${
+              gender === g ? "mystic-card border-(--gold-soft)" : "border-border"
+            }`}
+          >
+            {g}성
+          </button>
+        ))}
       </div>
 
       <div className="mt-auto pt-10">
