@@ -133,7 +133,9 @@ export function PalmPageClient({ birthInput }: { birthInput: BirthInput | null }
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-1 flex-col px-6 py-10">
+    <div
+      className={`mx-auto flex w-full max-w-sm flex-1 flex-col px-6 py-10 ${stage === "result" ? "result-bright" : ""}`}
+    >
       <StepBadge icon={<HandMetal className="size-5" />} />
       <p className="text-sm font-medium text-(--gold)">손금 x 사주 교차 분석</p>
       <h1 className="mt-2 text-xl leading-snug font-semibold tracking-tight">
@@ -309,8 +311,8 @@ export function PalmPageClient({ birthInput }: { birthInput: BirthInput | null }
             </div>
           </motion.div>
 
-          {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소 — 3~5분 읽기용 밝은 테마 */}
-          <div className="result-bright mt-5 rounded-2xl border border-border p-5">
+          {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소 */}
+          <div className="mt-5">
             <ReportSection step="①" title="사주와 공통으로 보이는 성향">
               <p>{crossResult.interpretation.common}</p>
             </ReportSection>

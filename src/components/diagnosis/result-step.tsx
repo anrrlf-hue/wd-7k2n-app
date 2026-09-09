@@ -61,7 +61,7 @@ export function ResultStep({
   const report = freeReport?.report ?? null;
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="result-bright flex flex-1 flex-col">
       <p className="text-sm font-medium text-(--gold)">나의 재물운</p>
 
       <motion.div
@@ -146,8 +146,8 @@ export function ResultStep({
         {saving ? "저장 중..." : "이미지로 저장하고 공유하기"}
       </Button>
 
-      {/* 무료 사주 V2 — 3~5분 읽기에 맞춘 밝은 리딩 테마 */}
-      <div className="result-bright mt-6 rounded-2xl border border-border p-5">
+      {/* 무료 사주 V2 — 3~5분 읽기에 맞춘 문단 중심 콘텐츠 */}
+      <div className="mt-6">
         {report ? (
           <>
             <ReportSection step="②" title="타고난 성향">
