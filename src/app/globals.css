@@ -51,24 +51,27 @@
 
 :root {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", sans-serif;
-  --background: oklch(0.98 0.004 80);
-  --foreground: oklch(0.24 0.014 280);
-  --card: oklch(0.995 0.003 80);
-  --card-foreground: oklch(0.24 0.014 280);
-  --popover: oklch(0.995 0.003 80);
-  --popover-foreground: oklch(0.24 0.014 280);
-  --primary: oklch(0.42 0.11 285);
-  --primary-foreground: oklch(0.98 0.004 80);
-  --secondary: oklch(0.94 0.006 80);
-  --secondary-foreground: oklch(0.24 0.014 280);
-  --muted: oklch(0.94 0.006 80);
-  --muted-foreground: oklch(0.5 0.014 270);
-  --accent: oklch(0.91 0.02 285);
-  --accent-foreground: oklch(0.3 0.05 285);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0.006 80);
-  --input: oklch(0.9 0.006 80);
-  --ring: oklch(0.6 0.08 285);
+  /* 현대적 동양미 + 프리미엄 신비감: 딥 인디고/플럼 바탕에 웜 골드를 포인트로만 사용 */
+  --background: oklch(0.15 0.028 280);
+  --foreground: oklch(0.95 0.012 85);
+  --card: oklch(0.2 0.032 280);
+  --card-foreground: oklch(0.95 0.012 85);
+  --popover: oklch(0.2 0.032 280);
+  --popover-foreground: oklch(0.95 0.012 85);
+  --primary: oklch(0.8 0.14 85);
+  --primary-foreground: oklch(0.18 0.03 280);
+  --secondary: oklch(0.27 0.03 280);
+  --secondary-foreground: oklch(0.95 0.012 85);
+  --muted: oklch(0.25 0.028 280);
+  --muted-foreground: oklch(0.7 0.02 270);
+  --accent: oklch(0.33 0.055 290);
+  --accent-foreground: oklch(0.92 0.03 85);
+  --destructive: oklch(0.62 0.21 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.8 0.14 85);
+  --gold: oklch(0.8 0.14 85);
+  --gold-soft: oklch(0.8 0.14 85 / 35%);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -129,4 +132,63 @@
   html {
     @apply font-sans;
   }
+}
+
+/* 은은한 빛/입자 모티프 및 잠금 카드 리빌용 모션 프리미티브 */
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateY(-14px) scale(1.05);
+    opacity: 0.85;
+  }
+}
+
+@keyframes orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    background-position: -150% 0;
+  }
+  100% {
+    background-position: 150% 0;
+  }
+}
+
+.animate-float-soft {
+  animation: float-soft 6.5s ease-in-out infinite;
+}
+
+.animate-orbit-spin {
+  animation: orbit-spin 40s linear infinite;
+}
+
+.blur-teaser {
+  filter: blur(3.5px);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.shimmer-text {
+  background: linear-gradient(
+    100deg,
+    var(--muted-foreground) 40%,
+    var(--gold) 50%,
+    var(--muted-foreground) 60%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-sweep 2.4s ease-in-out infinite;
 }

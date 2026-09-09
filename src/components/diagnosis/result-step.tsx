@@ -2,9 +2,25 @@
 
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { LockedCard } from "@/components/diagnosis/locked-card";
+import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
+import { getLockedReportCards } from "@/lib/money-tendency";
 import type { SajuDiagnosis } from "@/lib/saju";
+
+const revealVariants = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.08, delayChildren: 0.05 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } },
+};
 
 export function ResultStep({
   diagnosis,
@@ -22,7 +38,7 @@ export function ResultStep({
     try {
       const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
       const link = document.createElement("a");
-      link.download = "내-돈-성향.png";
+      link.download = "내-재물운.png";
       link.href = dataUrl;
       link.click();
     } finally {
@@ -31,52 +47,46 @@ export function ResultStep({
   }
 
   const { tendency } = diagnosis;
+  const lockedCards = getLockedReportCards(tendency);
 
   return (
     <div className="flex flex-1 flex-col">
-      <p className="text-sm font-medium text-muted-foreground">나의 돈 성향</p>
+      <p className="text-sm font-medium text-(--gold)">나의 재물운</p>
 
-      <div
+      <motion.div
         ref={cardRef}
-        className="mt-4 rounded-2xl border border-border bg-card p-6"
+        initial="hidden"
+        animate="show"
+        variants={revealVariants}
+        className="mt-4 rounded-2xl border border-(--gold-soft) bg-card p-6"
       >
-        <Badge variant="secondary" className="mb-3">
-          {tendency.element}(五行) · {tendency.stemName}
-        </Badge>
-        <h2 className="text-xl font-semibold leading-snug tracking-tight">
-          {tendency.title}
-        </h2>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          {tendency.summary}
-        </p>
+        <motion.div variants={itemVariants}>
+          <Badge variant="secondary" className="mb-3">
+            {tendency.element}(五行) · {tendency.stemName}
+          </Badge>
+          <h2 className="text-xl leading-snug font-semibold tracking-tight text-(--gold)">
+            {tendency.wealthType}
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            {tendency.summary}
+          </p>
+        </motion.div>
 
-        <div className="mt-5 grid grid-cols-1 gap-4">
-          <div>
-            <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-              강점
-            </p>
-            <ul className="space-y-1 text-sm">
-              {tendency.strengths.map((s) => (
-                <li key={s}>· {s}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-              주의할 점
-            </p>
-            <ul className="space-y-1 text-sm">
-              {tendency.watchOuts.map((s) => (
-                <li key={s}>· {s}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        <motion.div variants={itemVariants} className="mt-5 grid grid-cols-3 gap-2">
+          <PowerStat title="버는 힘" stat={tendency.earningPower} />
+          <PowerStat title="지키는 힘" stat={tendency.keepingPower} />
+          <PowerStat title="기회 잡는 힘" stat={tendency.opportunityPower} />
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="mt-5 rounded-xl bg-accent p-3.5">
+          <p className="text-xs font-medium text-accent-foreground">나의 강점</p>
+          <p className="mt-1 text-sm leading-relaxed">{tendency.topStrength}</p>
+        </motion.div>
 
         <p className="mt-6 text-[11px] text-muted-foreground">
           재미로 보는 콘텐츠예요 · 일주 {diagnosis.dayPillar}
         </p>
-      </div>
+      </motion.div>
 
       <Button
         variant="outline"
@@ -87,6 +97,35 @@ export function ResultStep({
         {saving ? "저장 중..." : "이미지로 저장하고 공유하기"}
       </Button>
 
+      <div className="mt-8">
+        <p className="text-sm font-medium">조금 더 보이는 이야기</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          흐리게 보이는 부분은 아래 리포트를 열면 전체를 볼 수 있어요.
+        </p>
+        <div className="mt-3 flex flex-col gap-3">
+          <TeaserRow label="돈이 새기 쉬운 패턴" text={tendency.leakPattern} />
+          <TeaserRow label="직업·사업 방향 힌트" text={tendency.careerHint} />
+          <TeaserRow label="앞으로의 흐름 힌트" text={tendency.flowHint} />
+          <TeaserRow label="나에게 맞는 행동 힌트" text={tendency.actionHint} />
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <p className="text-sm font-medium">더 깊은 재물 리포트</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          십성·대운까지 반영한 상세 리포트로 이어져요.
+        </p>
+        <div className="mt-3 flex flex-col gap-3">
+          {lockedCards.map((card) => (
+            <LockedCard key={card.title} title={card.title} cta={card.cta} />
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <PalmEntryCard />
+      </div>
+
       <div className="mt-auto pt-8">
         <Button
           size="lg"
@@ -96,6 +135,32 @@ export function ResultStep({
           현실 돈 고민도 체크해보기
         </Button>
       </div>
+    </div>
+  );
+}
+
+function PowerStat({
+  title,
+  stat,
+}: {
+  title: string;
+  stat: { label: string; description: string };
+}) {
+  return (
+    <div className="rounded-xl border border-border p-2.5 text-center">
+      <p className="text-[11px] text-muted-foreground">{title}</p>
+      <p className="mt-1 text-xs leading-snug font-semibold text-(--gold)">
+        {stat.label}
+      </p>
+    </div>
+  );
+}
+
+function TeaserRow({ label, text }: { label: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-border p-4">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="blur-teaser mt-1.5 text-sm leading-relaxed">{text}</p>
     </div>
   );
 }
