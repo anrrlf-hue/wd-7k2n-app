@@ -50,6 +50,9 @@ export const FreeSajuReportSchema = z.object({
    * 성격이라 전문용어를 포함해도 된다(방법론 요약이 목적). UI에서도 항상
    * 접힌 상태로 시작하는 전체 리포트용 보조 섹션으로 다룬다. */
   evidenceExplainer: z.string().min(10),
+  /** ⑰ MBTI/6문항이 있을 때만 채워지는 "현실에서 어떻게 나타나는지" 개인화
+   * 문단 — 없으면 null(성향체크를 건너뛴 사람에게 억지로 만들지 않음). */
+  realWorldPersonalization: paragraph.nullable(),
 });
 
 export type FreeSajuReport = z.infer<typeof FreeSajuReportSchema>;
@@ -112,6 +115,7 @@ export function validateFreeSajuReport(raw: unknown): ValidationResult & { data?
     d.peopleAndMoney,
     d.decisionStyle,
     d.opportunityStyle,
+    ...(d.realWorldPersonalization ? [d.realWorldPersonalization] : []),
   ].map((p) => p.text);
 
   const fullText = [...paragraphTexts, ...d.strengths.map((s) => s.detail), ...d.cautions.map((c) => c.detail)].join(

@@ -128,6 +128,9 @@ export function ResultStep({
             <ParagraphSection step="④" title="돈을 지키는 방식" paragraph={report.keepingStyle} />
             <ParagraphSection step="⑤" title="돈을 놓치는 반복 패턴" paragraph={report.leakPattern} boxed />
             <ParagraphSection step="⑥" title="직장형일까, 사업형일까" paragraph={report.jobOrientation} />
+            {report.realWorldPersonalization && (
+              <ParagraphSection step="⑦" title="현실에서는 이렇게 나타나요" paragraph={report.realWorldPersonalization} />
+            )}
           </>
         ) : (
           <ReportSection title="나의 강점">

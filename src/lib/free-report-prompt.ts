@@ -13,6 +13,7 @@
 // 구조가 LLM 경로로 되살아나도 검증에서 차단된다.
 
 import type { SajuFacts } from "@/lib/saju-facts";
+import type { PersonalityInput } from "@/lib/personality-check";
 
 export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 데이터를 근거로, "무료인데 이렇게까지 해준다고?"라는 반응이 나올 만큼 구체적이고 재미있는 무료 성향·재물 리포트를 쓰는 에디터입니다. 정확한 계산 결과를 나열하는 보고서가 아니라, 3~5분 동안 몰입해서 읽을 만한 글을 씁니다.
 
@@ -28,10 +29,19 @@ export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 �
 7. 전문용어로 문장을 시작하지 마세요("일간이 ~라서"로 시작 금지). 부사 남발("정말", "진짜", "솔직히")을 피하고, 수동태보다 능동태를 쓰세요.
 8. 십성이 어느 자리(연/월/일/시)에 있는지("궁위")를 evidence에 최대한 활용해 근거를 구체화하세요.
 9. strengths와 cautions는 각각 최소 3개, detail은 전문용어 없는 생활 언어로, evidence에만 실제 SajuFacts 필드 값을 짧게(8~16자) 남기세요.
-10. 반드시 요청된 JSON 스키마로만 응답하세요.`;
+10. realWorldPersonalization: MBTI/6문항 데이터가 함께 주어졌을 때만 채우세요(없으면 null). 이 필드는 "사주 계산을 MBTI로 다시 맞추는" 자리가 아니라 "이미 위에서 설명한 사주 구조가 현실에서 어떻게 나타나는지"를 MBTI 4축(E/I=에너지 방향, S/N=정보를 받아들이는 방식, T/F=판단 기준, J/P=구조화 선호)으로 구체화하는 자리입니다. 6문항 직접 응답(특히 speed/plan/autonomy)이 있으면 그 응답을 1차 근거로 쓰고, MBTI는 6문항이 다루지 않는 축(E/I, S/N)을 채우거나 겹치는 축에서 "다른 얼굴"을 설명하는 보조 시선으로만 쓰세요. MBTI와 6문항이 다르면 오류로 처리하지 말고 "상황에 따라 다르게 나타난다"로 풀어쓰세요. "J라서 빠르게 결정한다", "F라서 감정적이다" 같은 단순 이분법 문장은 금지합니다 — 반드시 구체적 생활 장면(돈/일/관계 중 최소 2개)으로 풀어쓰세요.
+11. 반드시 요청된 JSON 스키마로만 응답하세요.`;
 
-export function buildFreeSajuReportUserPrompt(facts: SajuFacts): string {
-  return `다음은 한 사람의 사주 원국 계산 결과입니다. 이 데이터만 근거로 16섹션 무료 리포트를 만들어주세요.
+export function buildFreeSajuReportUserPrompt(facts: SajuFacts, personality?: PersonalityInput): string {
+  const personalitySection = personality?.mbti || personality?.check
+    ? `
+
+## 성향체크 (MBTI/6문항 — realWorldPersonalization 작성에만 사용, 사주 계산 근거로 쓰지 말 것)
+${personality.mbti ? `- MBTI: ${personality.mbti}` : "- MBTI: 입력 안 함"}
+${personality.check ? `- 6문항 응답(왼쪽/중간/오른쪽): ${Object.entries(personality.check.levels).map(([k, v]) => `${k}=${v}`).join(", ")}` : "- 6문항: 입력 안 함"}`
+    : "";
+
+  return `다음은 한 사람의 사주 원국 계산 결과입니다. 이 데이터만 근거로 16섹션 무료 리포트를 만들어주세요.${personalitySection}
 
 ## 원국 요약 (라이브러리 계산 원문)
 ${facts.compactText}
@@ -64,6 +74,7 @@ ${facts.compactText}
   "opportunityStyle": {"text": "기회를 잡는 방식", "evidence": "..."},
   "strengths": [{"title": "...", "detail": "전문용어 없는 생활 언어", "evidence": "..."}] (최소 3개, 실제 근거가 있는 것만 — 근거가 약하면 개수를 억지로 채우지 말고 톤을 낮추세요),
   "cautions": [{"title": "...", "detail": "전문용어 없는 생활 언어", "evidence": "..."}] (최소 3개, 위와 동일 원칙),
-  "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명 — 이 필드는 이미 근거 요약이 목적이라 전문용어 포함 가능)"
+  "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명 — 이 필드는 이미 근거 요약이 목적이라 전문용어 포함 가능)",
+  "realWorldPersonalization": ${personality?.mbti || personality?.check ? '{"text": "위 성향체크 섹션 참고해서 규칙 10번대로 작성", "evidence": "MBTI/6문항 중 실제로 쓴 축"}' : "null // 성향체크 입력이 없으므로 반드시 null"}
 }`;
 }

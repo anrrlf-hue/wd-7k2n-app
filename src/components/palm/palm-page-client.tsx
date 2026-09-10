@@ -47,10 +47,10 @@ async function fileToCanvas(file: File, maxDim = 1280): Promise<HTMLCanvasElemen
 /** 최종 통합 리포트(finalReport)를 렌더링한다. 손금이 있을 때(withPalm)와
  * 없을 때(saju-only) 양쪽에서 재사용한다. NO_DUPLICATION: 1차 무료 결과
  * (result-step.tsx)에서 이미 보여준 타고난 성향/돈 버는 방식/돈 지키는
- * 방식/돈을 놓치는 반복 패턴/직장·사업형은 여기서 다시 보여주지 않는다 —
- * "아까 본 얘기 또 하네"를 만들지 않기 위해 아직 안 보여준 나머지 섹션만
- * 싣는다. 별도의 "이 분석의 한계" 섹션은 만들지 않는다 — 필요한 고지는
- * 화면 맨 아래에 한 줄로만 둔다. */
+ * 방식/돈을 놓치는 반복 패턴/직장·사업형/realWorldPersonalization(있으면)은
+ * 여기서 다시 보여주지 않는다 — "아까 본 얘기 또 하네"를 만들지 않기
+ * 위해 아직 안 보여준 나머지 섹션만 싣는다. 별도의 "이 분석의 한계"
+ * 섹션은 만들지 않는다 — 필요한 고지는 화면 맨 아래에 한 줄로만 둔다. */
 function FinalReportSections({ report }: { report: FreeSajuReport }) {
   return (
     <div className="mt-3">

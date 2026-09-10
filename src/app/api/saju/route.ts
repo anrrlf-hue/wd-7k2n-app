@@ -4,6 +4,7 @@ import { diagnoseSaju, type FullSajuDiagnosis } from "@/lib/saju";
 import { computeSajuFacts } from "@/lib/saju-facts";
 import { getInterpretation } from "@/lib/interpretation-engine";
 import { getFreeSajuReport } from "@/lib/free-report-engine";
+import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
@@ -53,13 +54,17 @@ export async function POST(request: Request) {
 
   try {
     const facts = computeSajuFacts(parsed.data);
+    const personality = {
+      mbti: parsed.data.mbti ?? null,
+      check: parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null,
+    };
 
     const [interpretationResult, freeReportResult] = await Promise.all([
       getInterpretation(facts, { timeoutMs: 9000 }).catch((err) => {
         console.error("deep interpretation pipeline failed:", err);
         return null;
       }),
-      getFreeSajuReport(facts, { timeoutMs: 9000 }).catch((err) => {
+      getFreeSajuReport(facts, { timeoutMs: 9000, personality }).catch((err) => {
         console.error("free saju report pipeline failed:", err);
         return null;
       }),

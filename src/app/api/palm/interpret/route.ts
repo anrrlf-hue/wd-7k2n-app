@@ -109,9 +109,12 @@ export async function POST(request: Request) {
     const mbti = parsed.data.mbti ?? null;
 
     const onnxLines = palmFacts?.onnxLines ?? null;
-    const freeReportResult = await getFreeSajuReport(deepFacts, { timeoutMs: 9000 });
+    const freeReportResult = await getFreeSajuReport(deepFacts, {
+      timeoutMs: 9000,
+      personality: { mbti, check: personalityCheck },
+    });
     const fortuneCandidates = buildFortuneCandidates(deepFacts, onnxLines);
-    const tripleCompare = buildTripleCompare(deepFacts, onnxLines, personalityCheck, mbti);
+    const tripleCompare = buildTripleCompare(deepFacts, onnxLines, personalityCheck);
 
     return NextResponse.json({
       usable: true,

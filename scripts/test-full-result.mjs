@@ -1,8 +1,7 @@
 // /api/saju(실제 화면이 호출하는 통합 엔드포인트)를 10개 대표 입력으로
 // 검증한다: 개인화(서로 다름), 일관성(동일 입력), 근거 연결, 응답 시간,
-// 6문항 성향체크+MBTI가 무료 리포트 자체를 왜곡하지 않는지(둘 다 이
-// 엔드포인트에서는 echo만 되고, 실제 활용은 /api/palm/interpret의
-// triple-compare에서 일어난다).
+// 6문항 성향체크+MBTI가 사주 계산(16섹션)은 그대로 두고
+// realWorldPersonalization 한 문단에만 반영되는지.
 
 const BASE = "http://localhost:3000";
 
@@ -82,13 +81,17 @@ async function main() {
   const sameFree = JSON.stringify(a.json.freeReport) === JSON.stringify(d.json.freeReport);
   console.log(`1과 1-repeat(동일 입력) freeReport 일관성: ${sameFree ? "일치" : "불일치"}`);
 
-  // 이번 라운드부터 /api/saju의 무료 리포트는 사주 사실만 본다(§3: 손금·
-  // 자기응답 비교는 /api/palm/interpret의 triple-compare로 이동) — 그래서
-  // personalityAnswers를 보내도 1과 1-with-personality의 freeReport는
-  // 동일해야 정상이다(사주 계산 입력 자체가 같으므로).
+  // 이번 라운드: MBTI+6문항이 realWorldPersonalization 한 문단에만 반영된다
+  // (§6/§8) — 사주 계산 자체(snapshot 등 나머지 16섹션)는 그대로 동일해야
+  // 하고, realWorldPersonalization만 성향 유무에 따라 달라져야 한다.
   const withP = results.find((r) => r.label === "1-with-personality");
-  const sameAsBase = JSON.stringify(withP?.json?.freeReport) === JSON.stringify(a?.json?.freeReport);
-  console.log(`1-with-personality의 freeReport가 기본 1과 동일한가(성향이 무료 리포트를 더 이상 왜곡하지 않는지) = ${sameAsBase}`);
+  const repA = a?.json?.freeReport?.report;
+  const repP = withP?.json?.freeReport?.report;
+  const coreKeys = Object.keys(repA ?? {}).filter((k) => k !== "realWorldPersonalization");
+  const coreSame = coreKeys.every((k) => JSON.stringify(repA?.[k]) === JSON.stringify(repP?.[k]));
+  console.log(`1-with-personality의 나머지 16섹션(사주 계산)이 기본 1과 동일한가 = ${coreSame} (PASS여야 함)`);
+  console.log(`기본 1의 realWorldPersonalization = ${JSON.stringify(repA?.realWorldPersonalization)}`);
+  console.log(`1-with-personality의 realWorldPersonalization이 실제로 채워졌는가 = ${repP?.realWorldPersonalization !== null} (PASS여야 함)`);
 
   // JARGON_IN_TEXT_PATTERNS와 동일한 검사를 mock 출력 10개 전체에 직접
   // 돌려서, LLM 검증 경로를 안 타는 mock도 실제로 전문용어가 안 새는지
@@ -108,6 +111,7 @@ async function main() {
     if (!rep) continue;
     const texts = [
       ...PARAGRAPH_KEYS.map((k) => rep[k]?.text ?? ""),
+      rep.realWorldPersonalization?.text ?? "",
       ...(rep.strengths ?? []).map((s) => s.detail),
       ...(rep.cautions ?? []).map((c) => c.detail),
     ];

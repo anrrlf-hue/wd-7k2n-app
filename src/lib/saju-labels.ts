@@ -41,6 +41,30 @@ export function pillarLifeAreaLabel(pillar: "year" | "month" | "day" | "hour"): 
   }
 }
 
+/** 일간 10종 물상(物像) + 핵심 기질. be-realdeveloper/saju의
+ * interpretation.md 해석 사전(제2장 "일간 10종 — 타고난 본질")을 그대로
+ * 옮겼다 — 새로 지어낸 이미지가 아니라 실제 명리학 레퍼런스다.
+ * elementTemperamentPhrase(5개 오행)는 갑/을처럼 같은 오행 안의 두 일간을
+ * 구분하지 못했다 — 실제 사주 서비스 벤치마크(예시 리딩)를 보면 "태양처럼",
+ * "호랑이의 기상"처럼 일간 단위 물상으로 문장을 여는 경우가 많았는데,
+ * 우리는 오행 단위로만 뭉뚱그려서 갑목과 을목이 똑같은 문장을 받았다.
+ * 이 함수는 10개 일간 각각의 물상으로 그 차이를 살린다. */
+export function dayStemImagery(dayStemKo: string): { image: string; core: string } {
+  const table: Record<string, { image: string; core: string }> = {
+    갑: { image: "큰 나무", core: "곧고 진취적으로 앞장서는" },
+    을: { image: "화초·덩굴", core: "유연하게 적응하며 살아남는" },
+    병: { image: "태양", core: "밝고 화통하게 표현하는" },
+    정: { image: "촛불·등불", core: "섬세하게 몰입하고 헌신하는" },
+    무: { image: "산·대지", core: "듬직하게 포용하고 중심을 잡는" },
+    기: { image: "논밭·정원", core: "섬세하게 챙기고 관리하는" },
+    경: { image: "원석·도끼", core: "강직하게 밀어붙이고 결단하는" },
+    신: { image: "보석·칼", core: "예리하고 세련되게 기준을 세우는" },
+    임: { image: "바다·강", core: "큰 그릇으로 통찰하고 유연한" },
+    계: { image: "비·이슬", core: "총명하고 섬세하게 감지하는" },
+  };
+  return table[dayStemKo] ?? { image: "고유한 결", core: "자기만의 방향을 가진" };
+}
+
 /** 오행별 전통적 기질 키워드. 특정 일간 하나에 고정된 문장이 아니라
  * dayElement와 dayStrength를 조합해 문장을 만드는 재료로만 쓴다. */
 export function elementTemperamentPhrase(element: string): string {

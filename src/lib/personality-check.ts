@@ -19,13 +19,16 @@ export interface PersonalityCheckItem {
   rightLabel: string;
 }
 
+// 라벨은 320px 화면에서 좌우 두 줄로 나란히 놓인다 — 원래 문장형 라벨이
+// 길어서(예: "돈이 어디로 나가는지 잘 모르는 편" 18자) 작은 화면에서
+// 지저분하게 줄바꿈됐다. 뜻은 그대로 두고 8~9자 안팎의 짧은 구로 줄였다.
 export const PERSONALITY_CHECK_ITEMS: PersonalityCheckItem[] = [
-  { id: "speed", leftLabel: "빠르게 결정하는 편", rightLabel: "충분히 생각한 후 결정하는 편" },
-  { id: "plan", leftLabel: "계획적으로 움직이는 편", rightLabel: "즉흥적으로 움직이는 편" },
-  { id: "risk", leftLabel: "새로운 기회·위험을 감수하는 편", rightLabel: "안정을 우선하는 편" },
-  { id: "autonomy", leftLabel: "혼자 결정하는 편", rightLabel: "사람 의견·관계에 영향받는 편" },
-  { id: "spendAwareness", leftLabel: "소비·지출을 잘 파악하는 편", rightLabel: "돈이 어디로 나가는지 잘 모르는 편" },
-  { id: "savingConsistency", leftLabel: "저축·목표관리가 일정한 편", rightLabel: "남으면 하거나 계획이 약한 편" },
+  { id: "speed", leftLabel: "빠르게 결정", rightLabel: "신중하게 결정" },
+  { id: "plan", leftLabel: "계획적으로 움직임", rightLabel: "즉흥적으로 움직임" },
+  { id: "risk", leftLabel: "기회·위험 감수", rightLabel: "안정 우선" },
+  { id: "autonomy", leftLabel: "혼자 결정", rightLabel: "관계·의견 영향받음" },
+  { id: "spendAwareness", leftLabel: "지출을 잘 파악", rightLabel: "지출이 잘 안 보임" },
+  { id: "savingConsistency", leftLabel: "저축이 일정함", rightLabel: "저축이 들쭉날쭉" },
 ];
 
 export type PersonalityCheckLevel = "왼쪽" | "중간" | "오른쪽";
@@ -48,4 +51,12 @@ export function scorePersonalityCheck(answers: Record<string, number>): Personal
     levels[item.id] = levelOf(answers[item.id] ?? 3);
   }
   return { answers, levels };
+}
+
+/** MBTI + 6문항을 함께 실어 나르는 입력 묶음. free-report-mock.ts의
+ * realWorldPersonalization이 이 둘을 우선순위를 두고 조합한다 — 둘 다
+ * 없으면(스킵) null로 둔다. */
+export interface PersonalityInput {
+  mbti: import("@/lib/mbti-facts").MbtiType | null;
+  check: PersonalityCheckFacts | null;
 }

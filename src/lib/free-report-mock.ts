@@ -15,16 +15,23 @@
 // "왜 이렇게 봤나요?" 보조 펼침영역에만 쓴다(free-report-schema.ts의
 // JARGON_IN_TEXT_PATTERNS가 text에 이 용어들이 들어가면 검증에서 걸러낸다).
 //
-// 손금/자기보고 비교 로직 이전(이번 라운드): 이전에는 각 주제 문단
+// 손금/자기보고 비교 로직 이전(Round D): 이전에는 각 주제 문단
 // (재물구조/의사결정/사람과 돈/기회) 안에 "감정선이 보이는 편이라..."처럼
-// 손금·자기보고 신호를 조용히 섞어 넣었다 — 이번 요구사항은 "손금은 사주와
-// 독립된 두 번째 분석이어야 한다"이므로, 그 비교는 여기서 빼고
+// 손금·자기보고 신호를 조용히 섞어 넣었다 — "손금은 사주와 독립된 두
+// 번째 분석이어야 한다"는 요구에 따라, 그 비교는 여기서 빼고
 // triple-compare.ts의 별도 통합 비교 섹션으로 옮겼다. 이 파일의 13개 주제
-// 문단은 다시 순수 사주 근거로만 구성된다.
+// 문단은 순수 사주 근거로만 구성된다.
+//
+// MBTI+6문항 재도입(이번 라운드): triple-compare에 boolean 투표로 넣는
+// 방식은 금지됐다 — 대신 realWorldPersonalization이라는 별도 문단 하나로
+// "사주에서 계산된 구조가 현실에서 어떻게 나타나는지"를 설명한다(성향체크를
+// 안 했으면 null). 실제 구성은 real-world-personalization.ts에 있다.
 
 import type { SajuFacts, PillarFact } from "@/lib/saju-facts";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
-import { dayStrengthLabel, dayStrengthShort, elementTemperamentPhrase } from "@/lib/saju-labels";
+import type { PersonalityInput } from "@/lib/personality-check";
+import { dayStrengthLabel, dayStrengthShort, elementTemperamentPhrase, dayStemImagery } from "@/lib/saju-labels";
+import { buildRealWorldPersonalization } from "@/lib/real-world-personalization";
 
 // ---------- 문장 구조 다양화 유틸 ----------
 
@@ -146,7 +153,7 @@ function findNamedSinsal(
 
 // ---------- 본체 ----------
 
-export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
+export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityInput): FreeSajuReport {
   const {
     dayStemKo,
     dayElement,
@@ -185,10 +192,14 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
   const socialCompare: "officer" | "resource" | "tie" =
     officerStarCount === resourceStarCount ? "tie" : officerStarCount > resourceStarCount ? "officer" : "resource";
 
-  // ① 한눈에 보는 나
+  // ① 한눈에 보는 나 — 일간 물상(10종)으로 열어서 갑/을처럼 같은 오행이라도
+  // 서로 다른 이미지로 시작하게 한다(벤치마크: 실제 사주 서비스는 "태양처럼",
+  // "호랑이의 기상처럼" 같은 물상으로 문장을 여는 경우가 많았는데, 우리는
+  // 오행 5종으로만 뭉뚱그려 갑목·을목이 같은 문장을 받고 있었다).
+  const imagery = dayStemImagery(dayStemKo);
   const snapshot: ReportParagraph = {
     text:
-      `${dayStrengthLabel(dayStrength)}에 ${elementTemperamentPhrase(dayElement)} 사람이에요. ` +
+      `${imagery.image}처럼 ${imagery.core} 사람이에요. ${dayStrengthLabel(dayStrength)}이라 ${dayStrength === "strong" ? "그 결이 겉으로도 뚜렷하게 드러나는 편이에요" : dayStrength === "weak" ? "그 결이 상황에 따라 완만하게 조절되는 편이에요" : "그 결이 상황 따라 유연하게 나타나는 편이에요"}. ` +
       `재물 신호는 ${wLevel === "없음" ? "사주에 직접 드러나 있진 않고" : `${wLevel} 수준으로 보이고`}${wealthStarPillars.length > 0 ? `(${pillarNamesKo(wealthStarPillars)} 자리)` : ""}, ` +
       `${activeCompare === "output" ? "뭔가를 만들어내는 활동이 곧 돈이 되는" : activeCompare === "peer" ? "직접 부딪히고 경쟁하는 자리에서 돈이 붙는" : "타고난 균형 쪽 흐름이 더 크게 작동하는"} 구조예요.`,
     evidence: `일간 ${dayStemKo}(${dayElement}), 격국 ${geukguk}, 재성 ${wealthStarCount}개`,
@@ -522,6 +533,11 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
     `${daeunFlowNote} ` +
     `오행 분포는 ${Object.entries(fiveElements).map(([k, v]) => `${k} ${v}개`).join(", ")}였고, 그중 ${이가(dominantElement)} 가장 강했어요${missingElements.length > 0 ? `, 반대로 ${은는(missingElements.join(", "))} 아예 없었고요` : ""}.`;
 
+  // ⑰ MBTI+6문항이 있을 때만 채워지는 "현실 발현" 개인화 문단.
+  const realWorldPersonalization = personality
+    ? buildRealWorldPersonalization(facts, personality)
+    : null;
+
   return {
     snapshot,
     temperament,
@@ -539,5 +555,6 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
     strengths,
     cautions,
     evidenceExplainer,
+    realWorldPersonalization,
   };
 }
