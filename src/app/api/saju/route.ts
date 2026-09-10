@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { diagnoseSaju, type FullSajuDiagnosis } from "@/lib/saju";
 import { computeSajuFacts } from "@/lib/saju-facts";
+import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { getInterpretation } from "@/lib/interpretation-engine";
 import { getFreeSajuReport } from "@/lib/free-report-engine";
 import { scorePersonalityCheck } from "@/lib/personality-check";
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
   let freeReport: FullSajuDiagnosis["freeReport"] = null;
 
   try {
-    const facts = computeSajuFacts(parsed.data);
+    const facts = enrichSajuFacts(computeSajuFacts(parsed.data), parsed.data);
     const personality = {
       mbti: parsed.data.mbti ?? null,
       check: parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null,

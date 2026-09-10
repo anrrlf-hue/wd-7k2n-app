@@ -20,6 +20,9 @@ const eslintConfig = defineConfig([
     // Vendored third-party source (palm-line-reader by Sam Barber, MIT) —
     // kept verbatim for license/attribution, not ours to reformat.
     "src/lib/vendor/**",
+    // Vendored oh-my-saju CLI bundle (Apache-2.0, JaeSang1998/oh-my-saju) —
+    // self-contained esbuild output, kept verbatim. See vendor/oh-my-saju/README.md.
+    "vendor/**",
   ]),
 ]);
 
