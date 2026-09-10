@@ -4,21 +4,27 @@
 // 있는 실제 값만 재사용해서 후보별 문구를 만든다.
 //
 // 이번 라운드 변경:
-//  - 자동 순위화(wealthScore/careerScore/...) 휴리스틱을 제거했다.
-//    "전문적으로 검증된 공통 비교척도가 없으면 자동추천하지 않는다"는
-//    요구에 따라, 이제 3개 후보를 고정된 순서로 그대로 제시하고 사용자가
-//    직접 고른다 — 순위를 매겨 우선순위를 암시하지 않는다.
-//  - "인연·사람의 흐름" 후보를 이번 라운드에서 제외했다(§7: 이번 우선
-//    선택지는 재물/직장·사업/변화·기회 3개).
-//  - reason/미니리딩 문구에서 "재성 2개", "비겁+관성" 같은 원자료 인용을
-//    모두 뺐다 — 실제 숫자는 여전히 이 함수 내부에서 조건 분기에 쓰이지만
-//    화면에 보이는 문장 자체에는 등장하지 않는다.
-//  - 미니리딩을 1~2문장에서 "타고난 방식 / 현재 대운 흐름 / 다음 흐름 변화
-//    / 손금과의 비교(있으면) / 생활 속 미래 장면 / 다음 질문 하나"로
-//    확장했다 — 화면 수가 아니라 실제 새 정보량을 늘리는 방향.
-//  - 미니리딩 뒤에 재무정보를 묻지 않는 현재상황 1문항을 추가했다(§9).
+//  - currentFlow/nextShift가 나이 구간만 인용하던 걸(§7), 실제 대운의
+//    십성(stemTenGod/branchTenGod — 이미 SajuFacts에 있던 값인데 안 쓰고
+//    있었다)을 반영해 "그 구간이 어떤 성격인지 + 생활에서 어떻게 나타날
+//    수 있는지"까지 담도록 깊게 만들었다.
+//  - deeperQuestion/paywall 문구를 고정 문구에서 situationCopy(현재상황
+//    응답별 문구)로 바꿨다(§8) — 지금까지는 상황을 골라도 analytics에만
+//    남고 다음 화면이 똑같았다. 이제 상황 선택값이 실제로 다음 질문·
+//    Paywall 제목/항목·CTA를 바꾼다.
+//  - "언제 강해질까요?"류 타이밍 중심 질문을 "그래서 지금 나는 무엇을
+//    해야 하는가" 행동 중심 질문으로 바꿨다(§9). 시기는 paywallItems의
+//    한 줄로만 남긴다.
+//  - career_business의 "재성+식상 > 비겁+관성 = 사업형" 이분법을 3구간
+//    (business/balanced/stable)으로 완화했다 — 차이가 크지 않을 때 억지로
+//    한쪽으로 단정하지 않는다(§6).
+//  - change_opportunity의 compareNote는 depthStrength(생명선 두께 근사치)
+//    기반 활력 해석을 제거하면서 같이 없앴다 — 생명선에 안전하게 쓸 수
+//    있는 대체 근거가 없어 이 축은 손금 비교 자체를 만들지 않는다(§5).
+//  - wealth_timing의 compareNote는 "감정선이 있다/없다"만 보던 걸 곡률
+//    기반으로 바꿨다 — 선이 검출됐다는 사실 자체로 성향을 판정하지 않는다(§3).
 
-import type { SajuFacts } from "@/lib/saju-facts";
+import type { SajuFacts, DaeunFact } from "@/lib/saju-facts";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 
 export type FortuneInterestId = "wealth_timing" | "career_business" | "change_opportunity";
@@ -28,25 +34,52 @@ export interface SituationOption {
   value: string;
 }
 
+/** 현재상황 응답 하나에 대응하는 개인화 카피. deeperQuestion/ctaLabel은
+ * 미니리딩의 "더 보기" 버튼에, paywallTitle/paywallItems는 그 다음 결제창에
+ * 그대로 이어진다 — 상황을 바꿔 고르면 이 네 가지가 실제로 달라진다. */
+export interface SituationCopy {
+  deeperQuestion: string;
+  ctaLabel: string;
+  paywallTitle: string;
+  paywallItems: string[];
+}
+
 export interface FortuneCandidate {
   id: FortuneInterestId;
   label: string;
   /** 왜 이 사람에게 이 후보가 관련 있는지 — 실제 근거 기반, 전문용어 없이 */
   reason: string;
-  /** 무료 17섹션에서 이미 중심적으로 다룬 영역이면 true(단순 완료 표시용, 가짜 진행률 아님) */
+  /** 무료 16섹션에서 이미 중심적으로 다룬 영역이면 true(단순 완료 표시용, 가짜 진행률 아님) */
   alreadyCovered: boolean;
   bornWay: string;
   currentFlow: string;
   nextShift: string;
-  /** 손금 관련 선이 실제로 검출됐을 때만 채워진다 — 없으면 null(억지 비교 없음) */
+  /** 손금에서 안전하게 비교할 수 있는 근거가 실제로 있을 때만 채워진다 —
+   * 없으면 null(억지 비교 없음) */
   compareNote: string | null;
   futureScene: string;
-  deeperQuestion: string;
-  deeperCTA: string;
   situation: { question: string; options: SituationOption[] };
-  paywallTitle: string;
-  paywallItems: string[];
-  paywallCTA: string;
+  situationCopy: Record<string, SituationCopy>;
+}
+
+/** 대운 십성(stemTenGod)이 실제로 어떤 결의 10년인지 — 표준 명리 이론의
+ * 십성 성격을 그대로 옮긴 것으로, 이번 라운드에 새로 지어낸 판정이 아니다.
+ * 지지 십성(branchTenGod)만 있는 경우를 위해 두 값 다 조회해서 쓴다. */
+const DAEUN_FLAVOR: Record<string, string> = {
+  비견: "스스로의 힘으로 밀고 나가는",
+  겁재: "경쟁하거나 나눠 가지는 일이 자주 생기는",
+  식신: "차분하게 만들고 누리는",
+  상관: "표현하고 부딪히는 일이 많아지는",
+  편재: "여러 곳에서 기회가 오갔다 하는",
+  정재: "꾸준하고 안정적으로 쌓이는",
+  편관: "부담이 있지만 그만큼 단련되는",
+  정관: "규칙과 책임 안에서 인정받는",
+  편인: "혼자 깊이 파고들고 싶어지는",
+  정인: "배우고 도움받는 일이 많아지는",
+};
+
+function daeunFlavor(daeun: DaeunFact): string {
+  return DAEUN_FLAVOR[daeun.stemTenGod] ?? DAEUN_FLAVOR[daeun.branchTenGod] ?? "여러 기운이 섞인";
 }
 
 export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLines | null): FortuneCandidate[] {
@@ -63,34 +96,32 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
   } = facts;
 
   // ---------- 재물의 다음 흐름 ----------
-  const wealthHeart = onnxLines?.heartLine.detected ?? null;
+  const wealthHeartCurve = onnxLines?.heartLine.detected ? onnxLines.heartLine.curve : null;
   const wealthTiming: FortuneCandidate = {
     id: "wealth_timing",
     label: "재물의 다음 흐름",
     reason:
       wealthOpportunityDaeunCount > 0
         ? "평생 흐름 중에 재물 기운이 함께 오는 구간이 있어서, 시기까지 이어보면 궁금해질 만해요."
-        : "재물이 원국에 직접 드러나 있진 않지만, 그래서 오히려 시기와 방식이 더 궁금할 수 있어요.",
+        : "재물이 타고난 성향에 직접 드러나 있진 않지만, 그래서 오히려 시기와 방식이 더 궁금할 수 있어요.",
     alreadyCovered: true,
     bornWay:
       wealthStarCount === 0
         ? "재물이 저절로 굴러들어오는 타입은 아니에요. 본업이나 전문성이 돈으로 바뀌는 흐름에 가까운 쪽이에요."
-        : "타고난 원국 자체에 재물을 다루는 힘이 자리 잡고 있는 편이에요.",
+        : "타고난 성향 자체에 재물을 다루는 힘이 자리 잡고 있는 편이에요.",
     currentFlow: currentDaeun
-      ? `지금은 ${currentDaeun.ageRange}세 구간을 지나는 중이에요.`
+      ? `지금은 ${currentDaeun.ageRange}세, ${daeunFlavor(currentDaeun)} 흐름을 지나는 중이에요. 돈이 들어오고 나가는 리듬 자체가 평소와 다르게 느껴질 수 있는 구간이에요.`
       : "현재 구간 데이터는 이번 계산에서 확인되지 않았어요.",
     nextShift: nextDaeun
-      ? `다음 구간(${nextDaeun.ageRange}세부터)으로 넘어가면 돈을 대하는 힘의 균형 자체가 한 번 바뀌어요.`
+      ? `다음 구간(${nextDaeun.ageRange}세부터)은 ${daeunFlavor(nextDaeun)} 쪽으로 결이 바뀌어요 — 지금까지 돈을 대하던 방식 중 하나가 자연스럽게 낡아지고, 새로운 방식이 그 자리를 채우기 시작해요.`
       : "다음 구간 데이터는 이번 계산에서 확인되지 않았어요.",
     compareNote:
-      wealthHeart === null
+      wealthHeartCurve === null
         ? null
-        : wealthHeart
-          ? "손에서도 감정선이 뚜렷하게 보여서, 돈 관련 결정에 감정·관계가 함께 작용하는 흐름이 손에도 나타났어요."
-          : "손에서는 감정선이 뚜렷하게 보이지 않아서, 감정보다 원칙 위주로 판단하는 쪽에 가까울 수 있어요.",
+        : wealthHeartCurve === "완만한 곡선"
+          ? "손에서도 감정선이 완만한 곡선으로 나와서, 돈 관련 결정에서도 관계·감정이 함께 작용하는 흐름이 손에도 보여요."
+          : "손에서도 감정선이 직선에 가까워서, 감정보다 원칙 위주로 판단하는 결이 손에도 보여요.",
     futureScene: "큰돈을 움직이거나 중요한 선택을 해야 할 때, 움직일 때와 지킬 때의 차이를 보는 것이 중요해질 수 있어요.",
-    deeperQuestion: "그렇다면 이 흐름이 실제로 언제 강해지는지, 궁금하지 않아요?",
-    deeperCTA: "내 중요한 시기 이어서 보기",
     situation: {
       question: "지금 재물 상황을 어떻게 느끼고 있어요?",
       options: [
@@ -100,18 +131,39 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
         { label: "그냥 앞으로가 궁금함", value: "curious" },
       ],
     },
-    paywallTitle: "지금 이 재물 흐름을 어떻게 써야 할까요",
-    paywallItems: [
-      "지금 흐름을 실제로 활용하는 방식",
-      "먼저 준비하면 좋을 것과 피해야 할 행동 패턴",
-      "흐름이 달라지는 시기",
-    ],
-    paywallCTA: "내 재물운 행동 가이드 열어보기",
+    situationCopy: {
+      stable: {
+        deeperQuestion: "지금처럼 안정적으로 유지하는 것과 별개로, 이 흐름을 더 키우려면 지금 뭘 해야 할까요?",
+        ctaLabel: "내 재물 흐름 키우는 법 보기",
+        paywallTitle: "지금 안정된 흐름을 키우려면 어떻게 해야 할까요",
+        paywallItems: ["지금 흐름을 키우는 데 실제로 도움 되는 행동", "무리하지 않고 시도해볼 만한 다음 단계", "흐름이 달라지는 시기"],
+      },
+      need_change: {
+        deeperQuestion: "변화가 필요하다고 느끼는 지금, 무엇부터 바꾸고 어떤 기준으로 움직여야 할까요?",
+        ctaLabel: "내 재물 흐름 바꾸는 법 보기",
+        paywallTitle: "지금 필요한 변화를 어떻게 시작해야 할까요",
+        paywallItems: ["지금 상황에 맞는 변화 방향", "먼저 정리하면 좋을 것", "흐름이 달라지는 시기"],
+      },
+      seeking: {
+        deeperQuestion: "새 기회를 찾는 지금, 어떤 기준으로 고르고 무엇을 준비해야 할까요?",
+        ctaLabel: "내 기회 판단 기준 보기",
+        paywallTitle: "지금 찾고 있는 기회를 어떻게 판단해야 할까요",
+        paywallItems: ["기회를 판단하는 기준", "먼저 준비해두면 좋을 것", "흐름이 달라지는 시기"],
+      },
+      curious: {
+        deeperQuestion: "그래서 지금 나는 이 흐름을 어떻게 활용해야 할까요?",
+        ctaLabel: "내 재물운 행동 가이드 열어보기",
+        paywallTitle: "지금 이 재물 흐름을 어떻게 써야 할까요",
+        paywallItems: ["지금 흐름을 실제로 활용하는 방식", "먼저 준비하면 좋을 것과 피해야 할 행동 패턴", "흐름이 달라지는 시기"],
+      },
+    },
   };
 
   // ---------- 직장·사업의 흐름 ----------
+  // 재성+식상(스스로 벌이는 힘) vs 비겁+관성(체계 안에서 크는 힘) 차이가
+  // 뚜렷할 때만 한쪽으로 기울고, 차이가 작으면(-1~1) 단정하지 않고 균형형으로 본다.
   const activeGap = wealthStarCount + outputStarCount - (peerStarCount + officerStarCount);
-  const careerLeaning: "business" | "stable" = activeGap > 0 ? "business" : "stable";
+  const careerLeaning: "business" | "stable" | "balanced" = activeGap >= 2 ? "business" : activeGap <= -2 ? "stable" : "balanced";
   const careerHead = onnxLines?.headLine.detected ? onnxLines.headLine.curve : null;
   const careerBusiness: FortuneCandidate = {
     id: "career_business",
@@ -119,17 +171,21 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
     reason:
       careerLeaning === "business"
         ? "스스로 판을 짜는 쪽에 가까운 신호가 뚜렷해서, 그 힘을 언제 어떻게 쓰면 좋을지 궁금해질 수 있어요."
-        : "정해진 체계 안에서 크는 쪽 신호가 뚜렷해서, 그 안에서 어떻게 움직이면 좋을지 궁금해질 수 있어요.",
+        : careerLeaning === "stable"
+          ? "정해진 체계 안에서 크는 쪽 신호가 뚜렷해서, 그 안에서 어떻게 움직이면 좋을지 궁금해질 수 있어요."
+          : "스스로 벌이는 힘과 체계 안에서 크는 힘이 비슷하게 섞여 있어서, 지금 어느 쪽에 더 무게를 둬야 할지 궁금해질 수 있어요.",
     alreadyCovered: false,
     bornWay:
       careerLeaning === "business"
         ? "성과가 직접 보이는 구조에서 힘을 발휘하는 편이에요. 조직 안에 있더라도 스스로 기획하고 밀어붙이는 역할일 때 결과가 더 잘 따라와요."
-        : `안정적인 틀 안에서 신뢰를 쌓아가는 쪽이 더 잘 맞아요. ${officerStarPillars.length > 0 ? "역할과 책임이 분명한 환경일수록 오히려 힘이 붙어요." : "정해진 규칙과 역할이 있는 환경에서 크게 성장해요."}`,
+        : careerLeaning === "stable"
+          ? `안정적인 틀 안에서 신뢰를 쌓아가는 쪽이 더 잘 맞아요. ${officerStarPillars.length > 0 ? "역할과 책임이 분명한 환경일수록 오히려 힘이 붙어요." : "정해진 규칙과 역할이 있는 환경에서 크게 성장해요."}`
+          : "완전히 혼자 판을 짜는 쪽도, 완전히 체계에 기대는 쪽도 아니에요. 상황에 따라 두 모습이 번갈아 나오는 편이라, 지금 맡은 역할이 어느 쪽에 가까운지에 따라 결과가 달라져요.",
     currentFlow: currentDaeun
-      ? `지금은 ${currentDaeun.ageRange}세 구간을 지나는 중이에요.`
+      ? `지금은 ${currentDaeun.ageRange}세, ${daeunFlavor(currentDaeun)} 흐름을 지나는 중이에요. 일에서 체감하는 압박이나 기회의 종류가 평소와는 다른 결로 다가올 수 있는 구간이에요.`
       : "현재 구간 데이터는 이번 계산에서 확인되지 않았어요.",
     nextShift: nextDaeun
-      ? `다음 구간(${nextDaeun.ageRange}세부터)으로 넘어가면 일을 대하는 힘의 방향이 한 번 바뀌어요.`
+      ? `다음 구간(${nextDaeun.ageRange}세부터)은 ${daeunFlavor(nextDaeun)} 쪽으로 결이 바뀌어요 — 지금 맞다고 느끼는 일하는 방식 중 하나가 다음 구간에서는 오히려 안 맞게 느껴질 수 있어요.`
       : "다음 구간 데이터는 이번 계산에서 확인되지 않았어요.",
     compareNote:
       careerHead === null
@@ -138,8 +194,6 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
           ? "손에서도 두뇌선이 완만한 곡선으로 나와서, 정해진 틀보다 유연하게 판단하는 결이 손에도 보여요."
           : "손에서도 두뇌선이 직선에 가까워서, 계산하고 따지는 결이 손에도 보여요.",
     futureScene: "새로운 제안이나 독립적인 선택을 앞뒀을 때, 밀고 나가는 게 맞는지 기다리는 게 맞는지가 더 중요해질 수 있어요.",
-    deeperQuestion: "그 타이밍을 미리 알 수 있다면 어떨까요?",
-    deeperCTA: "내 직장·사업 흐름 더 깊게 보기",
     situation: {
       question: "지금 일 관련해서 어떤 상황에 가까워요?",
       options: [
@@ -150,26 +204,50 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
         { label: "단순히 앞으로가 궁금함", value: "curious" },
       ],
     },
-    paywallTitle: "지금 이 일의 흐름을 어떻게 써야 할까요",
-    paywallItems: [
-      "지금 상황에 맞춘 행동 전략",
-      "기회를 판단하는 기준",
-      "흐름이 달라지는 시기",
-    ],
-    paywallCTA: "내 일의 흐름 행동 가이드 열어보기",
+    situationCopy: {
+      keep_job: {
+        deeperQuestion: "지금 자리를 지키기로 한 만큼, 그 안에서 어떻게 움직여야 이 흐름을 제대로 쓸 수 있을까요?",
+        ctaLabel: "내 자리에서 쓰는 법 보기",
+        paywallTitle: "지금 자리에서 이 흐름을 어떻게 써야 할까요",
+        paywallItems: ["지금 자리에서 취할 행동 전략", "인정받는 타이밍을 판단하는 기준", "흐름이 달라지는 시기"],
+      },
+      considering_move: {
+        deeperQuestion: "이직을 고민 중인 지금, 무엇을 준비하고 어떤 기준으로 움직여야 할까요?",
+        ctaLabel: "내 이직 판단 기준 보기",
+        paywallTitle: "지금 이직을 어떻게 준비해야 할까요",
+        paywallItems: ["이직 타이밍을 판단하는 기준", "지금부터 준비하면 좋을 것", "흐름이 달라지는 시기"],
+      },
+      considering_independent: {
+        deeperQuestion: "독립을 고민 중인 지금, 어떤 준비가 먼저 필요할까요?",
+        ctaLabel: "내 독립 준비 기준 보기",
+        paywallTitle: "지금 독립·사업을 어떻게 준비해야 할까요",
+        paywallItems: ["먼저 준비해야 할 것", "피해야 할 행동 패턴", "흐름이 달라지는 시기"],
+      },
+      new_offer: {
+        deeperQuestion: "새로운 제안을 받은 지금, 어떤 기준으로 받아들이거나 미뤄야 할까요?",
+        ctaLabel: "내 제안 판단 기준 보기",
+        paywallTitle: "지금 이 제안을 어떻게 판단해야 할까요",
+        paywallItems: ["제안을 받아들일지 판단하는 기준", "지금 상황에 맞춘 행동 전략", "흐름이 달라지는 시기"],
+      },
+      curious: {
+        deeperQuestion: "그래서 지금 나는 이 일의 흐름을 어떻게 써야 할까요?",
+        ctaLabel: "내 일의 흐름 행동 가이드 열어보기",
+        paywallTitle: "지금 이 일의 흐름을 어떻게 써야 할까요",
+        paywallItems: ["지금 상황에 맞춘 행동 전략", "기회를 판단하는 기준", "흐름이 달라지는 시기"],
+      },
+    },
   };
 
   // ---------- 변화·기회의 흐름 ----------
   const daeunShift = Boolean(
     currentDaeun && nextDaeun && (currentDaeun.stemTenGod !== nextDaeun.stemTenGod || currentDaeun.branchTenGod !== nextDaeun.branchTenGod),
   );
-  const changeLife = onnxLines?.lifeLine.detected ? onnxLines.lifeLine.depthStrength : null;
   const changeOpportunity: FortuneCandidate = {
     id: "change_opportunity",
     label: "변화·기회의 흐름",
     reason:
       peakStagePillars.length > 0
-        ? "기회를 감지하는 힘이 원국에 뚜렷해서, 그 타이밍을 미리 아는 게 도움이 될 수 있어요."
+        ? "기회를 감지하는 힘이 타고난 성향에 뚜렷해서, 그 타이밍을 미리 아는 게 도움이 될 수 있어요."
         : "변화가 꾸준히 이어지는 구조라, 지금이 어떤 시점인지 궁금해질 수 있어요.",
     alreadyCovered: false,
     bornWay:
@@ -177,21 +255,17 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
         ? "정점의 기운이 뚜렷한 자리가 있어서, 기회가 왔을 때 몸이 먼저 반응하는 편이에요."
         : "순발력보다는 꾸준함으로 기회를 만들어가는 쪽에 가까워요.",
     currentFlow: currentDaeun
-      ? `지금은 ${currentDaeun.ageRange}세 구간을 지나는 중이에요.`
+      ? `지금은 ${currentDaeun.ageRange}세, ${daeunFlavor(currentDaeun)} 흐름을 지나는 중이에요. 평소라면 그냥 지나쳤을 제안이나 만남이 유독 눈에 걸리는 시기일 수 있어요.`
       : "현재 구간 데이터는 이번 계산에서 확인되지 않았어요.",
     nextShift:
       daeunShift && nextDaeun
-        ? `다음 구간(${nextDaeun.ageRange}세부터)으로 넘어가면 구성 자체가 바뀌어요 — 구간마다 결이 뚜렷하게 갈리는 원국이라는 뜻이에요.`
+        ? `다음 구간(${nextDaeun.ageRange}세부터)은 ${daeunFlavor(nextDaeun)} 쪽으로 결이 바뀌어요 — 구간마다 흐름이 뚜렷하게 갈리는 편이라는 뜻이에요.`
         : "지금 흐름이 비교적 꾸준하게 이어지는 편이에요.",
-    compareNote:
-      changeLife === null
-        ? null
-        : changeLife === "강함"
-          ? "손에서도 생명선이 뚜렷하게 나타나서, 변화 앞에서 몸으로 먼저 움직이는 활력이 손에도 보여요."
-          : "손에서는 생명선이 비교적 옅게 나타나서, 순발력보다 컨디션 관리와 꾸준함이 더 중요할 수 있어요.",
+    // 생명선 두께(depthStrength)로 활력·변화 대응력을 추론하지 않는다(§5).
+    // 생명선에 안전하게 쓸 수 있는 다른 손금 근거가 없어 이 축은 비교를
+    // 만들지 않는다 — 억지로 일치·차이를 만드는 것보다 정직하다.
+    compareNote: null,
     futureScene: "예상치 못한 제안이나 선택의 갈림길에 섰을 때, 그 타이밍이 진짜 기회인지 아닌지를 보는 게 중요해질 수 있어요.",
-    deeperQuestion: "그 변화가 언제 오는지 미리 안다면 어떨까요?",
-    deeperCTA: "내 변화의 흐름 더 깊게 보기",
     situation: {
       question: "지금 변화에 대해 어떻게 느끼고 있어요?",
       options: [
@@ -201,13 +275,32 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
         { label: "그냥 앞으로가 궁금함", value: "curious" },
       ],
     },
-    paywallTitle: "지금 이 변화·기회를 어떻게 써야 할까요",
-    paywallItems: [
-      "기회를 판단하는 기준",
-      "지금 먼저 준비하면 좋을 것",
-      "흐름이 달라지는 시기",
-    ],
-    paywallCTA: "내 변화의 흐름 행동 가이드 열어보기",
+    situationCopy: {
+      waiting: {
+        deeperQuestion: "기회를 기다리는 지금, 무엇을 준비해두면 놓치지 않을까요?",
+        ctaLabel: "내 기회 준비 기준 보기",
+        paywallTitle: "지금 기다리는 기회를 놓치지 않으려면",
+        paywallItems: ["기회를 판단하는 기준", "미리 준비해두면 좋을 것", "흐름이 달라지는 시기"],
+      },
+      sensing_change: {
+        deeperQuestion: "변화가 다가오는 걸 느끼는 지금, 무엇부터 준비해야 할까요?",
+        ctaLabel: "내 변화 준비 기준 보기",
+        paywallTitle: "지금 다가오는 변화를 어떻게 준비해야 할까요",
+        paywallItems: ["지금 먼저 준비하면 좋을 것", "피해야 할 행동 패턴", "흐름이 달라지는 시기"],
+      },
+      considering_timing: {
+        deeperQuestion: "움직일 때인지 고민 중인 지금, 어떤 기준으로 판단해야 할까요?",
+        ctaLabel: "내 타이밍 판단 기준 보기",
+        paywallTitle: "지금이 움직일 때인지 어떻게 판단해야 할까요",
+        paywallItems: ["움직일 타이밍을 판단하는 기준", "먼저 점검해두면 좋을 것", "흐름이 달라지는 시기"],
+      },
+      curious: {
+        deeperQuestion: "그래서 지금 나는 이 변화·기회를 어떻게 써야 할까요?",
+        ctaLabel: "내 변화의 흐름 행동 가이드 열어보기",
+        paywallTitle: "지금 이 변화·기회를 어떻게 써야 할까요",
+        paywallItems: ["기회를 판단하는 기준", "지금 먼저 준비하면 좋을 것", "흐름이 달라지는 시기"],
+      },
+    },
   };
 
   return [wealthTiming, careerBusiness, changeOpportunity];

@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
-import { HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
@@ -22,6 +21,17 @@ const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } },
 };
+
+/** report.snapshot.text(실제 계산 결과 기반 요약)의 첫 문장을 헤드라인으로,
+ * 나머지를 본문으로 나눈다. 일간 하나만 보고 고정된 "OO형 재물운" 라벨을
+ * 실제 분석보다 앞세우지 않기 위해(§2), 그 라벨(MoneyTendency.wealthType)은
+ * report 자체가 없는 진짜 fallback 상황에서만 쓴다 — 있는 텍스트를 다시
+ * 지어내지 않고 나누기만 하므로 새 판단을 추가하지 않는다. */
+function splitLeadSentence(text: string): { headline: string; rest: string } {
+  const match = text.match(/^(.+?[.!?요])\s+([\s\S]+)$/);
+  if (!match) return { headline: text, rest: "" };
+  return { headline: match[1], rest: match[2] };
+}
 
 /** 1차 무료 결과. 결제 제안/잠금 카드/무료 경계 표시는 이 화면에 절대
  * 두지 않는다 — 무료 콘텐츠는 손금+최종 통합 리포트까지 이어지고, 결제
@@ -53,6 +63,7 @@ export function ResultStep({
   const isDeep = resultSource === "deep" && deep !== null;
   const interp = deep?.interpretation;
   const report = freeReport?.report ?? null;
+  const lead = report ? splitLeadSentence(report.snapshot.text) : null;
 
   return (
     <div className="result-bright flex flex-1 flex-col">
@@ -83,15 +94,17 @@ export function ResultStep({
             {tendency.element}(五行) · {tendency.stemName}
           </Badge>
           <h2 className="text-xl leading-snug font-semibold tracking-tight text-(--gold)">
-            {tendency.wealthType}
+            {lead ? lead.headline : tendency.wealthType}
           </h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            {report ? report.snapshot.text : isDeep ? interp!.summary : tendency.summary}
-          </p>
+          {(lead ? lead.rest : isDeep ? interp!.summary : tendency.summary) && (
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              {lead ? lead.rest : isDeep ? interp!.summary : tendency.summary}
+            </p>
+          )}
         </motion.div>
 
         <p className="mt-6 text-[11px] text-muted-foreground">
-          재미로 보는 콘텐츠예요 · 일주 {diagnosis.dayPillar}
+          정답이 아니라 흐름을 보는 콘텐츠예요.
         </p>
       </motion.div>
 
@@ -104,8 +117,8 @@ export function ResultStep({
         {saving ? "저장 중..." : "이미지로 저장하고 공유하기"}
       </Button>
 
-      {/* 1차 무료 결과 — 손금 전에는 핵심 5~7개만 보여준다("조금 맞는 것 같은데,
-       * 손금까지 보면 어떻게 나오지?"를 만드는 게 목적). 17섹션 전체는 손금까지
+      {/* 1차 무료 결과 — 손금 전에는 핵심 5~6개만 보여준다("조금 맞는 것 같은데,
+       * 손금까지 보면 어떻게 나오지?"를 만드는 게 목적). 16섹션 전체는 손금까지
        * 끝난 뒤 palm-page-client.tsx의 최종 통합 리포트에서 보여준다. */}
       <div className="mt-6">
         {report ? (
@@ -115,12 +128,6 @@ export function ResultStep({
             <ParagraphSection step="④" title="돈을 지키는 방식" paragraph={report.keepingStyle} />
             <ParagraphSection step="⑤" title="돈을 놓치는 반복 패턴" paragraph={report.leakPattern} boxed />
             <ParagraphSection step="⑥" title="직장형일까, 사업형일까" paragraph={report.jobOrientation} />
-            <ReportSection step="⑦" title="나와 비교해볼까요">
-              <p className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm">
-                <HelpCircle className="mt-0.5 size-3.5 shrink-0 text-(--gold)" />
-                {report.selfCheckQuestions[0]}
-              </p>
-            </ReportSection>
           </>
         ) : (
           <ReportSection title="나의 강점">
@@ -137,7 +144,7 @@ export function ResultStep({
           손에도 같은 흐름이 있을까요?
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          손금 사진 한 장이면 30초 안에 사주와 교차 비교하고, 나머지 심층 리포트까지 이어서 볼 수 있어요.
+          손금 사진 한 장이면 사주와 교차 비교하고, 나머지 심층 리포트까지 이어서 볼 수 있어요.
         </p>
         <div className="mt-3">
           <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} />

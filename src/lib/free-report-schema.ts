@@ -1,4 +1,4 @@
-// 무료 사주 V2의 17섹션 구조. 기존 Interpretation(유료 업셀용, timing/action
+// 무료 사주 V2의 16섹션 구조. 기존 Interpretation(유료 업셀용, timing/action
 // 등 "정밀 시기" 지향)과는 목적이 달라 별도 스키마로 둔다 — 이쪽은 "이번
 // 생애 전반의 성향/패턴"을 완결된 형태로 설명하는 데 집중한다.
 // 모든 문단은 "결론(생활언어) -> 구체적 행동/패턴 -> 자기확인 질문성 문장"
@@ -46,8 +46,7 @@ export const FreeSajuReportSchema = z.object({
   opportunityStyle: paragraph, // ⑬ 기회를 잡는 방식
   strengths: z.array(evidenceItem).min(3), // ⑭ 강점 3개 이상
   cautions: z.array(evidenceItem).min(3), // ⑮ 조심할 점 3개 이상
-  selfCheckQuestions: z.array(z.string().min(5)).min(2).max(5), // ⑯ 실제 경험 비교 질문
-  /** ⑰ 왜 이런 결과가 나왔는지 — 이 필드 자체가 이미 "펼쳐서 보는 근거"
+  /** ⑯ 왜 이런 결과가 나왔는지 — 이 필드 자체가 이미 "펼쳐서 보는 근거"
    * 성격이라 전문용어를 포함해도 된다(방법론 요약이 목적). UI에서도 항상
    * 접힌 상태로 시작하는 전체 리포트용 보조 섹션으로 다룬다. */
   evidenceExplainer: z.string().min(10),
@@ -81,6 +80,8 @@ const JARGON_IN_TEXT_PATTERNS: RegExp[] = [
   /건록·제왕/,
   /격국/,
   /용신/,
+  /원국/,
+  /검출/,
   /ONNX/i,
   /MediaPipe/i,
 ];

@@ -140,7 +140,7 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
   const snapshot: ReportParagraph = {
     text:
       `${dayStrengthLabel(dayStrength)}에 ${elementTemperamentPhrase(dayElement)} 사람이에요. ` +
-      `재물 신호는 ${wLevel === "없음" ? "원국에 직접 드러나 있진 않고" : `${wLevel} 수준으로 보이고`}${wealthStarPillars.length > 0 ? `(${pillarNamesKo(wealthStarPillars)} 자리)` : ""}, ` +
+      `재물 신호는 ${wLevel === "없음" ? "사주에 직접 드러나 있진 않고" : `${wLevel} 수준으로 보이고`}${wealthStarPillars.length > 0 ? `(${pillarNamesKo(wealthStarPillars)} 자리)` : ""}, ` +
       `${activeCompare === "output" ? "뭔가를 만들어내는 활동이 곧 돈이 되는" : activeCompare === "peer" ? "직접 부딪히고 경쟁하는 자리에서 돈이 붙는" : "타고난 균형 쪽 흐름이 더 크게 작동하는"} 구조예요.`,
     evidence: `일간 ${dayStemKo}(${dayElement}), 격국 ${geukguk}, 재성 ${wealthStarCount}개`,
   };
@@ -163,11 +163,11 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
       wLevel === "없음"
         ? "재물이 저절로 굴러들어오는 구조는 아니고, 본업이나 전문성이 돈으로 바뀌는 흐름에 가까워요."
         : wLevel === "강함"
-          ? "원국 자체에 재물을 다루는 축이 뚜렷하게 자리 잡고 있어요."
+          ? "사주 자체에 재물을 다루는 축이 뚜렷하게 자리 잡고 있어요."
           : "재물이 완전히 낯설지도, 아주 익숙하지도 않은 균형점에 있어요.",
     scene:
       missingElements.length > 0
-        ? `오행 중 ${이가(missingElements.join(", "))} 원국에 아예 없어서, 그 기운이 필요한 상황에서는 외부(사람·환경)에서 채워야 균형이 맞는 편이에요.`
+        ? `오행 중 ${이가(missingElements.join(", "))} 사주에 아예 없어서, 그 기운이 필요한 상황에서는 외부(사람·환경)에서 채워야 균형이 맞는 편이에요.`
         : `오행 다섯 가지가 어느 정도 골고루 있어서, 극단적으로 한쪽에 쏠리는 재물 패턴은 아니에요.`,
     evidence: `재성 ${wealthStarCount}개, 용신 ${yongsin.join(", ") || "특이 없음"}`,
   });
@@ -220,7 +220,7 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
   const leakPattern = compose(seedFor(6), {
     claim:
       hyungsin.length > 0
-        ? "원국에 있는 특정 신호 탓에, 급하게 밀어붙이거나 감정이 앞선 순간에 손해로 이어지는 패턴이 반복될 수 있어요."
+        ? "사주에 있는 특정 신호 탓에, 급하게 밀어붙이거나 감정이 앞선 순간에 손해로 이어지는 패턴이 반복될 수 있어요."
         : "뚜렷한 위험 신호는 없지만, 벌어들이는 힘과 실행하는 힘의 균형이 무너질 때가 돈이 새는 신호예요.",
     scene:
       hyungsin.length > 0
@@ -264,7 +264,7 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
   const teamStrength = compose(seedFor(9), {
     claim:
       officerStarCount === 0
-        ? "조직·규율을 뜻하는 기운이 원국에 없어서, 조직 안에서도 정해진 규칙보다 스스로 만든 기준으로 움직일 때 더 강해요."
+        ? "조직·규율을 뜻하는 기운이 사주에 없어서, 조직 안에서도 정해진 규칙보다 스스로 만든 기준으로 움직일 때 더 강해요."
         : "조직 안에서 역할과 책임이 분명할 때 오히려 힘이 붙는 편이에요.",
     scene:
       officerStarPillars.includes("month")
@@ -331,115 +331,119 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
           : "정점 기운이 뚜렷하지 않아서, 순발력보다는 꾸준함으로 기회를 만드는 편에 가까워요.",
     scene:
       gilsin.length > 0
-        ? "원국에 길한 신호도 있어서, 결정적 순간에 예상치 못한 도움을 받을 때가 있어요."
+        ? "사주에 길한 신호도 있어서, 결정적 순간에 예상치 못한 도움을 받을 때가 있어요."
         : "화려한 귀인의 도움보다는, 스스로 준비해온 것이 기회와 만나는 쪽에 가까워요.",
     evidence: `정점(건록·제왕) 자리 ${pillarNamesKo(peakStagePillars) || "없음"}, 길신 ${gilsin.join(", ") || "없음"}`,
   });
 
-  // ⑭ 강점 3개 이상 (실제 근거 기반 랭킹) — detail은 생활 언어만, evidence에만 원자료
-  const strengthCandidates: { title: string; detail: string; evidence: string; score: number }[] = [
+  // ⑭ 강점 3개 — 실제 신호가 있는 항목만 후보로 넣는다. 이전에는 서로 다른
+  // 단위(재성 개수 vs 길신 개수×2 같은 임의 가중치)를 억지로 비교해 Top3를
+  // 뽑았다 — 카테고리마다 단위가 달라 비교 자체가 의미 없는 산술이었다.
+  // 지금은 "이 항목의 근거가 실제로 있는가(present)"만 보고, 있는 항목을
+  // 고정 우선순위로 나열한다 — 서로 다른 카테고리의 크기를 비교하지 않는다.
+  // 실제 신호가 3개 미만이면(드문 경우) 근거가 약한 사람에게도 거짓으로
+  // 확신 있는 강점을 지어내지 않고, 목록 끝에 둔 정직한 대체 문항으로 채운다.
+  const strengthPool: { title: string; detail: string; evidence: string; present: boolean }[] = [
     {
       title: "재물을 알아보는 감각",
       detail: "돈이 될 만한 걸 남들보다 먼저 알아채는 감각이 있어요.",
       evidence: `재성 ${wealthStarCount}개(${facts.wealthStarTypes.join(", ") || "없음"})`,
-      score: wealthStarCount,
+      present: wealthStarCount > 0,
     },
     {
       title: "직접 밀어붙이는 추진력",
       detail: "남에게 미루지 않고 직접 부딪혀서 해결하는 실행력이 강점이에요.",
       evidence: `비겁 ${peerStarCount}개`,
-      score: peerStarCount,
+      present: peerStarCount > 0,
     },
     {
       title: "만들어내고 표현하는 힘",
       detail: "아이디어를 실제 결과물로 바꾸는 표현력·실행력이 있어요.",
       evidence: `식상 ${outputStarCount}개`,
-      score: outputStarCount,
+      present: outputStarCount > 0,
     },
     {
       title: "귀인의 도움을 받는 힘",
       detail: "결정적인 순간에 사람이나 상황의 도움을 받는 경우가 많아요.",
       evidence: `길신 ${gilsin.join(", ") || "없음"}`,
-      score: gilsin.length * 2,
+      present: gilsin.length > 0,
     },
     {
       title: "안정적으로 신뢰를 쌓는 힘",
       detail: "정해진 틀 안에서 꾸준히 신뢰를 쌓아 결과를 만들어내는 힘이 있어요.",
       evidence: `관성 ${officerStarCount}개`,
-      score: officerStarCount,
+      present: officerStarCount > 0,
     },
     {
       title: "기회를 놓치지 않는 순발력",
       detail: "기회가 왔을 때 반응 속도가 빠른 편이에요.",
       evidence: `정점 자리 ${peakStagePillars.length}곳`,
-      score: peakStagePillars.length * 2,
+      present: peakStagePillars.length > 0,
+    },
+    {
+      title: "상황에 맞춰 균형을 잡는 힘",
+      detail: "하나로 확 튀는 강점보다, 상황에 따라 필요한 쪽으로 무게중심을 옮기는 유연함이 있어요.",
+      evidence: "특정 십성으로 뚜렷하게 쏠리지 않은 균형 구조",
+      present: true,
     },
   ];
-  const strengths = [...strengthCandidates]
-    .sort((a, b) => b.score - a.score)
+  const strengths = strengthPool
+    .filter((c) => c.present)
     .slice(0, 3)
     .map(({ title, detail, evidence }) => ({ title, detail, evidence }));
 
-  // ⑮ 조심할 점 3개 이상 (근거 기반)
-  const cautionCandidates: { title: string; detail: string; evidence: string; score: number }[] = [
+  // ⑮ 조심할 점 3개 — 강점과 같은 원칙. "확실히 조심해야 할 이유가 있는지
+  // (present)"만 보고 고정 우선순위로 나열, 임의 가중치로 비교하지 않는다.
+  const cautionPool: { title: string; detail: string; evidence: string; present: boolean }[] = [
     {
       title: "감정이 앞서는 순간",
       detail: "특정 신호가 있을 때는 감정적으로 판단해 손해로 이어지기 쉬워요. 결정 전에 한 박자 늦추는 게 도움이 돼요.",
-      evidence: hyungsin.length > 0 ? `흉신 ${hyungsin.join(", ")}` : "흉신 없음(재성·비겁 균형 기준)",
-      score: hyungsin.length > 0 ? 3 : 1,
+      evidence: `흉신 ${hyungsin.join(", ")}`,
+      present: hyungsin.length > 0,
     },
     {
       title: "지나친 확신",
       detail: "스스로 옳다고 믿으면 주변 말이 잘 안 들어와요. 큰 결정일수록 의도적으로 반대 의견을 들어보세요.",
       evidence: `일간 ${dayStrengthShort(dayStrength)}`,
-      score: dayStrength === "strong" ? 3 : 1,
+      present: dayStrength === "strong",
     },
     {
       title: "혼자 판단하다 정보 부족",
       detail: "확신 없이 결정했다가 나중에 정보 부족을 느끼는 경우가 있어요. 미리 정보원을 만들어두면 좋아요.",
       evidence: `일간 ${dayStrengthShort(dayStrength)}`,
-      score: dayStrength === "weak" ? 3 : 1,
+      present: dayStrength === "weak",
     },
     {
       title: "불편한 조합이 만드는 스트레스",
       detail: "생각이 복잡해지고 예민해지는 시기에 돈 관련 결정을 미루는 게 나아요.",
-      evidence: gwimunRelations.length > 0 ? gwimunRelations.join(", ") : "귀문 관계 없음",
-      score: gwimunRelations.length > 0 ? 3 : 0,
+      evidence: gwimunRelations.join(", "),
+      present: gwimunRelations.length > 0,
     },
     {
       title: "벌여놓고 마무리를 못 짓는 패턴",
       detail: "새로 벌이는 힘은 있지만, 벌인 만큼 마무리가 따라가지 않으면 힘이 분산돼요.",
       evidence: `식상 ${outputStarCount}개`,
-      score: outputStarCount >= 2 ? 2 : 0,
+      present: outputStarCount >= 2,
     },
     {
       title: "없는 오행이 만드는 공백",
-      detail:
-        missingElements.length > 0
-          ? `타고난 기운 중 ${이가(missingElements.join(", "))} 없어서, 그 기운이 필요한 상황(예: 결단·유연성)에서 유독 힘들어질 수 있어요.`
-          : "오행이 고르게 있어서 이 항목은 크게 걱정할 필요 없어요.",
-      evidence: missingElements.length > 0 ? `없는 오행 ${missingElements.join(", ")}` : "없는 오행 없음",
-      score: missingElements.length > 0 ? 2 : 0,
+      detail: `타고난 기운 중 ${이가(missingElements.join(", "))} 없어서, 그 기운이 필요한 상황(예: 결단·유연성)에서 유독 힘들어질 수 있어요.`,
+      evidence: `없는 오행 ${missingElements.join(", ")}`,
+      present: missingElements.length > 0,
+    },
+    {
+      title: "균형이 오히려 우유부단함으로 보일 수 있음",
+      detail: "한쪽으로 뚜렷하게 쏠리지 않는 만큼, 결정을 미루는 사람으로 비칠 때가 있어요. 기준 하나만 미리 정해두면 도움이 돼요.",
+      evidence: "특정 십성으로 뚜렷하게 쏠리지 않은 균형 구조",
+      present: true,
     },
   ];
-  const cautions = [...cautionCandidates]
-    .sort((a, b) => b.score - a.score)
+  const cautions = cautionPool
+    .filter((c) => c.present)
     .slice(0, 3)
     .map(({ title, detail, evidence }) => ({ title, detail, evidence }));
 
-  // ⑯ 자기 경험 비교 질문
-  const selfCheckQuestions = [
-    `실제로도 ${dayStrength === "strong" ? "한번 정하면 잘 안 바뀐다는 말을 듣는" : "결정하기 전에 여러 번 생각하는"} 편인가요?`,
-    `${activeCompare === "output" ? "뭔가를 벌이는 건 잘하는데 마무리가 약하다는 말을 들어본 적" : "직접 해야 마음이 편하다는 느낌을 받은 적"} 있나요?`,
-    hyungsin.length > 0
-      ? "돌아보면, 급하게 결정했다가 후회한 순간이 몇 번쯤 있었나요?"
-      : "바쁠 때 오히려 돈 관리가 느슨해지는 걸 느낀 적 있나요?",
-    wealthOpportunityDaeunCount >= 3
-      ? "지금까지 살면서 '이번엔 기회다' 싶었던 순간이 한 번 이상 있었나요?"
-      : "큰 기회보다 꾸준함으로 여기까지 왔다고 느끼는 편인가요?",
-  ];
-
-  // ⑰ 왜 이런 결과가 나왔나 — 전체 리포트용 "근거 요약" 보조 섹션. 여기는
+  // ⑯ 왜 이런 결과가 나왔나 — 전체 리포트용 "근거 요약" 보조 섹션. 여기는
   // 전문용어를 써도 된다(이 필드 자체가 펼쳐보는 근거 영역이라서).
   // 시간축 Truth Gate: "앞으로 1~3년" 같은 임의 구간을 말하지 않고, 실제
   // daeunList/currentDaeun에 있는 나이 구간만 그대로 인용한다.
@@ -469,7 +473,6 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
     opportunityStyle,
     strengths,
     cautions,
-    selfCheckQuestions,
     evidenceExplainer,
   };
 }

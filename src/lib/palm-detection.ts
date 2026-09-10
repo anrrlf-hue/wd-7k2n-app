@@ -366,7 +366,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   const warnings: string[] = [];
   const imageQuality: ImageQuality = "good";
   if (majorLines.length === 0) {
-    warnings.push("주요 선이 뚜렷하게 검출되지 않았어요. 손바닥을 펴고 조명이 잘 드는 곳에서 다시 찍어보세요.");
+    warnings.push("주요 선이 뚜렷하게 보이지 않았어요. 손바닥을 펴고 조명이 잘 드는 곳에서 다시 찍어보세요.");
   }
 
   return {

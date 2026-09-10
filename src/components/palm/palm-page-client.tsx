@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Camera, ImagePlus, RotateCcw, HandMetal, HelpCircle, Compass, Check, ArrowRight } from "lucide-react";
+import { Camera, ImagePlus, RotateCcw, HandMetal, Compass, Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepBadge } from "@/components/diagnosis/step-badge";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
 import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
-import { ReportSection, ParagraphSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
+import { ReportSection, ParagraphSection, EvidenceItemCard, EvidenceToggle } from "@/components/diagnosis/report-section";
 import {
   analyzePalmFromCanvas,
   preloadHandLandmarker,
@@ -75,19 +75,9 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
           ))}
         </div>
       </ReportSection>
-      <ReportSection title="나와 비교해볼까요">
-        <div className="space-y-2">
-          {report.selfCheckQuestions.map((q) => (
-            <p key={q} className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm">
-              <HelpCircle className="mt-0.5 size-3.5 shrink-0 text-(--gold)" />
-              {q}
-            </p>
-          ))}
-        </div>
-      </ReportSection>
-      <ReportSection title="왜 이런 결과가 나왔을까">
-        <p className="text-sm text-muted-foreground">{report.evidenceExplainer}</p>
-      </ReportSection>
+      <div className="mt-7 px-2 sm:px-0">
+        <EvidenceToggle evidence={report.evidenceExplainer} />
+      </div>
     </div>
   );
 }
@@ -222,9 +212,9 @@ function MiniReading({
         </div>
       ) : (
         <motion.div initial={{ opacity: 0.5, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          <p className="mt-5 text-sm font-medium">{candidate.deeperQuestion}</p>
+          <p className="mt-5 text-sm font-medium">{candidate.situationCopy[situationAnswer].deeperQuestion}</p>
           <Button size="lg" onClick={onDeeper} className="mt-4 h-13 w-full rounded-full text-base">
-            {candidate.deeperCTA}
+            {candidate.situationCopy[situationAnswer].ctaLabel}
           </Button>
         </motion.div>
       )}
@@ -287,12 +277,12 @@ function ConversionFlow({
           onBack={backToMap}
         />
       )}
-      {selected && opened && (
+      {selected && opened && situationAnswer && (
         <div className="mt-8">
           <PaywallOffer
-            title={selected.paywallTitle}
-            includedItems={selected.paywallItems}
-            ctaText={selected.paywallCTA}
+            title={selected.situationCopy[situationAnswer].paywallTitle}
+            includedItems={selected.situationCopy[situationAnswer].paywallItems}
+            ctaText={selected.situationCopy[situationAnswer].ctaLabel}
           />
           <button
             type="button"
@@ -351,7 +341,6 @@ export function PalmPageClient({
         ...birthInput,
         palmFacts: facts,
         personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
-        mbti: personalityInput?.mbti ?? undefined,
       }),
     });
     const data = await res.json();
@@ -636,7 +625,7 @@ export function PalmPageClient({
       {/* 무료 리포트 Peak와 다음 행동(운세지도) 사이에 고지 문구가 끼면
        * 몰입이 끊긴다(§O) — 필요한 고지는 여기, 진짜 페이지 최하단에만 둔다. */}
       {(stage === "result" || stage === "saju_only") && (
-        <p className="mt-8 text-center text-[11px] text-muted-foreground">사주·손금 해석은 참고용 콘텐츠입니다.</p>
+        <p className="mt-8 text-center text-[11px] text-muted-foreground">이 결과로 중요한 결정을 대신하지 마세요.</p>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-// 무료 사주 V2 17섹션을 실제 LLM(Claude)에 요청할 때 쓰는 프롬프트.
+// 무료 사주 V2 16섹션을 실제 LLM(Claude)에 요청할 때 쓰는 프롬프트.
 // 현재 프로덕션은 ANTHROPIC_API_KEY 미설정으로 mock만 쓰지만, 키가 추가되면
 // 이 프롬프트가 그대로 free-report-engine.ts에서 쓰인다.
 //
@@ -31,7 +31,7 @@ export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 �
 10. 반드시 요청된 JSON 스키마로만 응답하세요.`;
 
 export function buildFreeSajuReportUserPrompt(facts: SajuFacts): string {
-  return `다음은 한 사람의 사주 원국 계산 결과입니다. 이 데이터만 근거로 17섹션 무료 리포트를 만들어주세요.
+  return `다음은 한 사람의 사주 원국 계산 결과입니다. 이 데이터만 근거로 16섹션 무료 리포트를 만들어주세요.
 
 ## 원국 요약 (라이브러리 계산 원문)
 ${facts.compactText}
@@ -62,9 +62,8 @@ ${facts.compactText}
   "peopleAndMoney": {"text": "사람과 돈", "evidence": "..."},
   "decisionStyle": {"text": "의사결정 스타일", "evidence": "..."},
   "opportunityStyle": {"text": "기회를 잡는 방식", "evidence": "..."},
-  "strengths": [{"title": "...", "detail": "전문용어 없는 생활 언어", "evidence": "..."}] (최소 3개),
-  "cautions": [{"title": "...", "detail": "전문용어 없는 생활 언어", "evidence": "..."}] (최소 3개),
-  "selfCheckQuestions": ["..."] (2~5개),
+  "strengths": [{"title": "...", "detail": "전문용어 없는 생활 언어", "evidence": "..."}] (최소 3개, 실제 근거가 있는 것만 — 근거가 약하면 개수를 억지로 채우지 말고 톤을 낮추세요),
+  "cautions": [{"title": "...", "detail": "전문용어 없는 생활 언어", "evidence": "..."}] (최소 3개, 위와 동일 원칙),
   "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명 — 이 필드는 이미 근거 요약이 목적이라 전문용어 포함 가능)"
 }`;
 }
