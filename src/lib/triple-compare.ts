@@ -31,6 +31,7 @@
 import type { SajuFacts } from "@/lib/saju-facts";
 import type { PersonalityCheckFacts } from "@/lib/personality-check";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
+import type { MbtiType } from "@/lib/mbti-facts";
 
 export type CompareKind = "일치" | "차이" | "보완";
 
@@ -48,35 +49,62 @@ function classify(signals: (boolean | null)[]): CompareKind | null {
   return present.length === 2 ? "차이" : "보완";
 }
 
+// MBTI는 사주 계산값을 보정하지 않는다 — 결정/관계 축에 이미 있던 신호
+// 목록에 네 번째 신호로만 추가된다. J/P(판단 vs 인식)는 MBTI 정의 자체가
+// "결정을 얼마나 빨리 닫는지"를 말하므로 결정 방식 축에, F/T(감정 vs
+// 사고)는 "관계·감정을 얼마나 고려하는지"를 말하므로 관계-감정 축에
+// 그대로 대응한다 — 이번에 새로 지어낸 매핑이 아니라 MBTI 자체의 정의다.
+function mbtiDecisionClause(mbti: MbtiType, agrees: boolean): string {
+  const trait = mbti.includes("J") ? "J(판단형)답게 빠르게 결론을 닫는" : "P(인식형)답게 여지를 두고 판단을 미루는";
+  return agrees
+    ? ` MBTI로 봐도 같은 결이에요 — ${trait} 편이라는 응답과 맞아떨어져요.`
+    : ` 다만 MBTI는 다른 결을 보여줘요 — ${trait} 편으로 나왔거든요. 유형 하나로 전부 설명되지는 않는다는 뜻이에요.`;
+}
+
+function mbtiRelationClause(mbti: MbtiType, agrees: boolean): string {
+  const trait = mbti.includes("F") ? "F(감정형)답게 관계·감정을 먼저 고려하는" : "T(사고형)답게 원칙·논리를 먼저 보는";
+  return agrees
+    ? ` MBTI로 봐도 같은 결이에요 — ${trait} 편이라는 응답과 맞아떨어져요.`
+    : ` 다만 MBTI는 다른 결을 보여줘요 — ${trait} 편으로 나왔거든요. 상황에 따라 두 모습이 번갈아 나오는 사람일 수 있어요.`;
+}
+
 function decisionAxis(
   facts: SajuFacts,
   palm: OnnxPalmLines | null,
   check: PersonalityCheckFacts | null,
+  mbti: MbtiType | null,
 ): CompareItem | null {
   const sajuFast = facts.dayStrength === "strong";
   const palmFast = palm?.headLine.detected ? palm.headLine.curve === "직선에 가까움" : null;
   const selfFast = check ? check.levels.speed === "왼쪽" : null;
+  const mbtiFast = mbti ? mbti.includes("J") : null;
 
-  const kind = classify([sajuFast, palmFast, selfFast]);
+  const kind = classify([sajuFast, palmFast, selfFast, mbtiFast]);
   if (!kind) return null;
 
   let text: string;
   if (kind === "일치") {
     text =
       palmFast !== null && selfFast !== null
-        ? "타고난 결정 속도, 손에 보이는 두뇌선, 본인이 답한 결정 속도가 모두 같은 방향을 가리켜요 — 세 군데서 같은 모습이 겹쳐 나온 흔치 않은 경우예요."
+        ? "타고난 결정 속도, 손에 보이는 두뇌선, 본인이 답한 결정 속도가 모두 같은 방향을 가리켜요 — 여러 군데서 같은 모습이 겹쳐 나온 흔치 않은 경우예요."
         : palmFast !== null
           ? "손에 보이는 두뇌선이 타고난 결정 속도와 같은 방향이에요."
-          : "본인이 답한 결정 속도가 타고난 결정 속도와 같은 방향이에요 — 서로 다른 방식으로 같은 결을 보여준 셈이에요.";
+          : selfFast !== null
+            ? "본인이 답한 결정 속도가 타고난 결정 속도와 같은 방향이에요 — 서로 다른 방식으로 같은 결을 보여준 셈이에요."
+            : "타고난 결정 속도가 다른 신호와도 같은 방향이에요.";
   } else if (kind === "차이") {
     text =
       palmFast !== null
         ? "손에 보이는 두뇌선은 타고난 결정 속도와 다른 결을 보여줘요. 타고난 결과 지금 습관이 다를 수 있다는 뜻이에요."
-        : "본인이 답한 결정 속도가 타고난 결정 속도와 달라요. 둘 중 하나가 틀렸다는 뜻은 아니에요 — 결정 속도가 상황(금액 크기·되돌리기 어려움)에 따라 달라지는지 돌아볼 만해요.";
+        : selfFast !== null
+          ? "본인이 답한 결정 속도가 타고난 결정 속도와 달라요. 둘 중 하나가 틀렸다는 뜻은 아니에요 — 결정 속도가 상황(금액 크기·되돌리기 어려움)에 따라 달라지는지 돌아볼 만해요."
+          : "MBTI로 본 결정 방식이 타고난 결정 속도와 달라요. 둘 중 하나가 틀렸다는 뜻은 아니에요.";
   } else {
     text =
-      "타고난 결정 속도와 손에 보이는 두뇌선, 본인이 답한 결정 속도가 정확히 하나로 겹치진 않아요. 두뇌선은 평소 사고방식의 결을, 자기응답은 실제 체감 속도를 보여줘요 — 상황에 따라 둘 다 나오는 사람일 수 있어요.";
+      "타고난 결정 속도와 나머지 신호들이 정확히 하나로 겹치진 않아요. 두뇌선은 평소 사고방식의 결을, 자기응답·MBTI는 실제 체감 속도를 보여줘요 — 상황에 따라 여러 모습이 다 나오는 사람일 수 있어요.";
   }
+
+  if (mbtiFast !== null) text += mbtiDecisionClause(mbti!, mbtiFast === sajuFast);
 
   return { topic: "결정하는 방식", kind, text };
 }
@@ -85,6 +113,7 @@ function relationEmotionAxis(
   facts: SajuFacts,
   palm: OnnxPalmLines | null,
   check: PersonalityCheckFacts | null,
+  mbti: MbtiType | null,
 ): CompareItem | null {
   // 절대 임계값(예: ">=3") 대신 상대 비교로 — "관계/도움을 통해 움직이는
   // 힘"과 "스스로 밀어붙이는 힘" 중 어느 쪽이 이 사람 안에서 구조적으로
@@ -92,39 +121,49 @@ function relationEmotionAxis(
   const sajuRelational = facts.officerStarCount + facts.resourceStarCount > facts.peerStarCount + facts.outputStarCount;
   const palmRelational = palm?.heartLine.detected ? palm.heartLine.curve === "완만한 곡선" : null;
   const selfRelational = check ? check.levels.autonomy === "오른쪽" : null;
+  const mbtiRelational = mbti ? mbti.includes("F") : null;
 
-  const kind = classify([sajuRelational, palmRelational, selfRelational]);
+  const kind = classify([sajuRelational, palmRelational, selfRelational, mbtiRelational]);
   if (!kind) return null;
 
   let text: string;
   if (kind === "일치") {
     text =
       palmRelational !== null && selfRelational !== null
-        ? "타고난 대인관계 구조, 손에 보이는 감정선, 본인이 답한 성향이 같은 방향이에요 — 세 군데서 같은 결이 겹쳐 나왔어요."
+        ? "타고난 대인관계 구조, 손에 보이는 감정선, 본인이 답한 성향이 같은 방향이에요 — 여러 군데서 같은 결이 겹쳐 나왔어요."
         : palmRelational !== null
           ? "손에 보이는 감정선이 타고난 대인관계 구조와 같은 방향이에요."
-          : "본인이 답한 성향이 타고난 대인관계 구조와 같은 방향이에요.";
+          : selfRelational !== null
+            ? "본인이 답한 성향이 타고난 대인관계 구조와 같은 방향이에요."
+            : "타고난 대인관계 구조가 다른 신호와도 같은 방향이에요.";
   } else if (kind === "차이") {
     text =
       palmRelational !== null
         ? "손에 보이는 감정선은 타고난 대인관계 구조와 다른 결을 보여줘요."
-        : "본인이 답한 성향이 타고난 대인관계 구조와 달라요. 돈이 걸린 결정일 때 유독 누군가에게 먼저 물어보는지, 아니면 오히려 더 혼자 판단하게 되는지 돌아볼 만해요.";
+        : selfRelational !== null
+          ? "본인이 답한 성향이 타고난 대인관계 구조와 달라요. 돈이 걸린 결정일 때 유독 누군가에게 먼저 물어보는지, 아니면 오히려 더 혼자 판단하게 되는지 돌아볼 만해요."
+          : "MBTI로 본 성향이 타고난 대인관계 구조와 달라요. 둘 중 하나가 틀렸다는 뜻은 아니에요.";
   } else {
     text =
-      "타고난 대인관계 구조와 손에 보이는 감정선, 본인이 답한 성향이 정확히 겹치진 않아요. 감정선은 관계에서 감정이 작용하는 결을, 자기응답은 실제 의사결정 습관을 보여줘요 — 둘 다 이 사람의 진짜 모습일 수 있어요.";
+      "타고난 대인관계 구조와 나머지 신호들이 정확히 겹치진 않아요. 감정선은 관계에서 감정이 작용하는 결을, 자기응답·MBTI는 실제 의사결정 습관을 보여줘요 — 다 이 사람의 진짜 모습일 수 있어요.";
   }
+
+  if (mbtiRelational !== null) text += mbtiRelationClause(mbti!, mbtiRelational === sajuRelational);
 
   return { topic: "관계에서 감정이 작용하는 정도", kind, text };
 }
 
-/** 사주 × 손금 × 자기응답 통합 비교. 진짜로 비교 가능한 축(결정 방식,
- * 관계·감정)만 넣는다 — 견줄 손금 근거가 없는 축은 애초에 만들지 않는다. */
+/** 사주 × 손금 × 자기응답(6문항) × MBTI 통합 비교. 진짜로 비교 가능한
+ * 축(결정 방식, 관계·감정)만 넣는다 — 견줄 손금 근거가 없는 축은 애초에
+ * 만들지 않는다. MBTI는 사주 계산값을 바꾸지 않고 네 번째 신호로만
+ * 더해진다 — 다르면 다르다고 그대로 보여준다. */
 export function buildTripleCompare(
   facts: SajuFacts,
   palm: OnnxPalmLines | null,
   check: PersonalityCheckFacts | null,
+  mbti: MbtiType | null = null,
 ): CompareItem[] {
-  return [decisionAxis(facts, palm, check), relationEmotionAxis(facts, palm, check)].filter(
+  return [decisionAxis(facts, palm, check, mbti), relationEmotionAxis(facts, palm, check, mbti)].filter(
     (x): x is CompareItem => x !== null,
   );
 }

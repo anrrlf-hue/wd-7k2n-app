@@ -1,6 +1,8 @@
 // /api/saju(실제 화면이 호출하는 통합 엔드포인트)를 10개 대표 입력으로
 // 검증한다: 개인화(서로 다름), 일관성(동일 입력), 근거 연결, 응답 시간,
-// 6문항 성향체크가 무료 리포트를 왜곡하지 않는지.
+// 6문항 성향체크+MBTI가 무료 리포트 자체를 왜곡하지 않는지(둘 다 이
+// 엔드포인트에서는 echo만 되고, 실제 활용은 /api/palm/interpret의
+// triple-compare에서 일어난다).
 
 const BASE = "http://localhost:3000";
 
@@ -25,6 +27,7 @@ const CASES = [
     minute: 30,
     gender: "남",
     personalityAnswers: { speed: 1, plan: 2, risk: 1, autonomy: 2, spendAwareness: 4, savingConsistency: 1 },
+    mbti: "ENTJ",
   },
 ];
 

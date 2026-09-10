@@ -96,6 +96,54 @@ function levelOf(count: number): "없음" | "적음" | "보통" | "강함" {
   return "강함";
 }
 
+// ---------- 12운성·신살 심화(REUSE-FIRST) ----------
+// ssaju는 이미 pillarStages(기둥별 12운성 bong/geo + specialSals)를 계산해
+// 주는데, 이전까지는 peakStagePillars(건록·제왕 자리)로만 걸러 쓰고 나머지는
+// 완전히 버려졌다 — 새 계산 엔진 없이 이미 있는 계산 결과를 더 쓰는 것만으로
+// 실제 서사 깊이를 늘릴 수 있는 지점이다. 의미 매핑은 사주닥터 레포
+// (be-realdeveloper/saju)의 interpretation.md 해석 사전을 그대로 옮긴 것이지
+// 이번에 새로 지어낸 판정이 아니다. 신살은 "양념"이라 실제로 검출된 것만
+// 풀이하고(없으면 억지로 안 만듦), 의미를 모르는 신살은 이름을 대지 않는다.
+const STAGE_ENERGY_PHRASE: Record<string, string> = {
+  장생: "새로운 걸 막 시작할 때 힘이 붙는",
+  목욕: "시행착오를 겪으며 다듬어가는",
+  관대: "본격적으로 성장기에 들어선",
+  건록: "가장 힘 있게 밀어붙이는",
+  제왕: "정점에서 주도권을 쥐는",
+  쇠: "속도를 늦추고 정리하는",
+  병: "잠시 쉬어가며 회복하는",
+  사: "멈춰서 방향을 다시 보는",
+  묘: "안으로 쌓아두고 갈무리하는",
+  절: "완전히 새로 시작하기 직전의",
+  태: "씨앗처럼 가능성만 있는",
+  양: "천천히 준비하며 키워가는",
+};
+
+const SINSAL_MEANING: Record<string, { meaning: string; tone: "길" | "주의" }> = {
+  도화: { meaning: "사람을 끌어당기는 매력", tone: "길" },
+  역마: { meaning: "이동·변화와 잘 맞는 활동성", tone: "길" },
+  화개: { meaning: "몰입하고 파고드는 힘", tone: "길" },
+  천을귀인: { meaning: "위기일 때 나타나는 귀인의 도움", tone: "길" },
+  문창: { meaning: "공부·시험과 잘 맞는 총명함", tone: "길" },
+  양인: { meaning: "강하게 밀어붙이는 기세", tone: "주의" },
+  백호: { meaning: "강렬하고 극단적인 존재감", tone: "주의" },
+  괴강: { meaning: "강렬하고 극단적인 존재감", tone: "주의" },
+};
+
+function findNamedSinsal(
+  pillarStages: SajuFacts["pillarStages"],
+  tone: "길" | "주의",
+): { name: string; meaning: string } | null {
+  for (const s of pillarStages) {
+    for (const raw of s.specialSals) {
+      const base = raw.replace(/살$/, "");
+      const entry = SINSAL_MEANING[base];
+      if (entry && entry.tone === tone) return { name: base, meaning: entry.meaning };
+    }
+  }
+  return null;
+}
+
 // ---------- 본체 ----------
 
 export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
@@ -121,6 +169,7 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
     daeunList,
     wealthOpportunityDaeunCount,
     peakStagePillars,
+    pillarStages,
     yongsin,
     fiveElements,
   } = facts;
@@ -156,6 +205,14 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
           : "어제와 오늘의 태도가 다를 수 있는데, 그게 오히려 자연스러운 유형이에요.",
     evidence: `일간 ${dayStemKo}(${dayElement}) · 신강신약 ${dayStrengthShort(dayStrength)}, 오행 최다 ${dominantElement}`,
   });
+  // 일지(자기·내면 궁위) 12운성 — 겉으로 드러나는 태도와 별개로, 결정적인
+  // 순간에 어떤 에너지 단계가 깔려 있는지를 한 겹 더 보여준다.
+  const dayStage = pillarStages.find((s) => s.pillar === "day")?.geo;
+  const dayStagePhrase = dayStage ? STAGE_ENERGY_PHRASE[dayStage] : null;
+  if (dayStagePhrase) {
+    temperament.text += ` 평소 태도와 별개로 본바탕에는 ${dayStagePhrase} 에너지가 깔려 있어서, 정작 중요한 순간엔 평소와 다른 얼굴이 나올 수 있어요.`;
+    temperament.evidence += `, 일지 12운성 ${dayStage}`;
+  }
 
   // ③ 재물운/돈복의 큰 구조
   const wealthStructure = compose(seedFor(3), {
@@ -217,16 +274,22 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
           };
 
   // ⑥ 돈을 놓치는 반복 패턴
+  const cautionSinsal = findNamedSinsal(pillarStages, "주의");
   const leakPattern = compose(seedFor(6), {
-    claim:
-      hyungsin.length > 0
+    claim: cautionSinsal
+      ? `${이가(cautionSinsal.meaning)} 있는 편이라, 그 기세가 지나치게 튈 때 오히려 손해로 이어지는 패턴이 반복될 수 있어요.`
+      : hyungsin.length > 0
         ? "사주에 있는 특정 신호 탓에, 급하게 밀어붙이거나 감정이 앞선 순간에 손해로 이어지는 패턴이 반복될 수 있어요."
         : "뚜렷한 위험 신호는 없지만, 벌어들이는 힘과 실행하는 힘의 균형이 무너질 때가 돈이 새는 신호예요.",
     scene:
-      hyungsin.length > 0
+      hyungsin.length > 0 || cautionSinsal
         ? "큰 결정 앞에서는 하루만 미루고 다시 보는 습관을 들이면 이 패턴이 확실히 줄어들어요."
         : "평소보다 결정을 빨리 내리고 있다면, 그게 바로 신호일 수 있어요.",
-    evidence: hyungsin.length > 0 ? `흉신 ${hyungsin.join(", ")}` : `재성 ${wealthStarCount}개·비겁 ${peerStarCount}개 균형`,
+    evidence: cautionSinsal
+      ? `신살 ${cautionSinsal.name}`
+      : hyungsin.length > 0
+        ? `흉신 ${hyungsin.join(", ")}`
+        : `재성 ${wealthStarCount}개·비겁 ${peerStarCount}개 균형`,
   });
 
   // ⑦ 큰돈/기회와 관계된 성향
@@ -322,6 +385,7 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
         };
 
   // ⑬ 기회를 잡는 방식
+  const luckySinsal = findNamedSinsal(pillarStages, "길");
   const opportunityStyle = compose(seedFor(13), {
     claim:
       peakStagePillars.length >= 2
@@ -329,11 +393,12 @@ export function buildFreeSajuReport(facts: SajuFacts): FreeSajuReport {
         : peakStagePillars.length === 1
           ? "정점의 기운이 한 자리에 뚜렷해서, 특정 영역에서만큼은 기회를 놓치지 않는 유형이에요."
           : "정점 기운이 뚜렷하지 않아서, 순발력보다는 꾸준함으로 기회를 만드는 편에 가까워요.",
-    scene:
-      gilsin.length > 0
+    scene: luckySinsal
+      ? `사주에 ${이가(luckySinsal.meaning)} 있어서, 그게 기회를 여는 실제 통로가 될 수 있어요.`
+      : gilsin.length > 0
         ? "사주에 길한 신호도 있어서, 결정적 순간에 예상치 못한 도움을 받을 때가 있어요."
         : "화려한 귀인의 도움보다는, 스스로 준비해온 것이 기회와 만나는 쪽에 가까워요.",
-    evidence: `정점(건록·제왕) 자리 ${pillarNamesKo(peakStagePillars) || "없음"}, 길신 ${gilsin.join(", ") || "없음"}`,
+    evidence: `정점(건록·제왕) 자리 ${pillarNamesKo(peakStagePillars) || "없음"}, 길신 ${gilsin.join(", ") || "없음"}${luckySinsal ? `, 신살 ${luckySinsal.name}` : ""}`,
   });
 
   // ⑭ 강점 3개 — 실제 신호가 있는 항목만 후보로 넣는다. 이전에는 서로 다른

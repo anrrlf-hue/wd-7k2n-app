@@ -31,6 +31,9 @@ export function PalmEntryCard({
         .join(","),
     );
   }
+  if (personalityInput?.mbti) {
+    params.set("mbti", personalityInput.mbti);
+  }
 
   return (
     <Link

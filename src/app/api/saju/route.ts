@@ -4,6 +4,7 @@ import { diagnoseSaju, type FullSajuDiagnosis } from "@/lib/saju";
 import { computeSajuFacts } from "@/lib/saju-facts";
 import { getInterpretation } from "@/lib/interpretation-engine";
 import { getFreeSajuReport } from "@/lib/free-report-engine";
+import { MBTI_TYPES } from "@/lib/mbti-facts";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
 // 요청 1회로 (1) 얕은 사주팔자+money-tendency(fallback/게이지 근거로 항상 유지)
@@ -20,6 +21,7 @@ const bodySchema = z.object({
   gender: z.enum(["남", "여"]),
   /** 성향 스텝은 완전히 선택 사항 — 안 보내면 undefined */
   personalityAnswers: z.record(z.string(), z.number().min(1).max(5)).optional(),
+  mbti: z.enum(MBTI_TYPES).optional(),
 });
 
 export async function POST(request: Request) {
@@ -88,6 +90,7 @@ export async function POST(request: Request) {
     birthInput: parsed.data,
     personalityInput: {
       personalityAnswers: parsed.data.personalityAnswers ?? null,
+      mbti: parsed.data.mbti ?? null,
     },
   };
   return NextResponse.json(payload);

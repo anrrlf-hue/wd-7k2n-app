@@ -1,5 +1,6 @@
 import { PalmPageClient } from "@/components/palm/palm-page-client";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
+import { MBTI_TYPES, type MbtiType } from "@/lib/mbti-facts";
 
 function parseBirthInput(sp: Record<string, string | string[] | undefined>): BirthInput | null {
   const get = (key: string) => {
@@ -45,8 +46,12 @@ function parsePersonalityInput(sp: Record<string, string | string[] | undefined>
       )
     : null;
 
+  const mbtiRaw = get("mbti");
+  const mbti: MbtiType | null = mbtiRaw && (MBTI_TYPES as readonly string[]).includes(mbtiRaw) ? (mbtiRaw as MbtiType) : null;
+
   return {
     personalityAnswers: personalityAnswers && Object.keys(personalityAnswers).length > 0 ? personalityAnswers : null,
+    mbti,
   };
 }
 

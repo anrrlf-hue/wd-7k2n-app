@@ -2,6 +2,7 @@ import { calculateSaju, calculateSajuSimple } from "@fullstackfamily/manseryeok"
 import { getMoneyTendency, type MoneyTendency } from "./money-tendency";
 import type { Interpretation } from "./interpretation-schema";
 import type { FreeSajuReport } from "./free-report-schema";
+import type { MbtiType } from "./mbti-facts";
 
 export interface BirthInput {
   year: number;
@@ -13,12 +14,13 @@ export interface BirthInput {
   gender: "남" | "여";
 }
 
-/** 무료 사주 단계에서 함께 받은 자기보고 성향정보(6문항). 손금 페이지로
- * 넘어갈 때도 다시 써서 "사주+손금+성향" 통합 비교를 만든다. MBTI는 실제
- * 어떤 판정에도 쓰이지 않아 제거했다(§10 — 쓰지 않는 데이터를 고객에게
- * 묻지 않는다). */
+/** 무료 사주 단계에서 함께 받은 자기보고 성향정보(6문항 + MBTI). 손금
+ * 페이지로 넘어갈 때도 다시 써서 "사주+손금+성향" 통합 비교를 만든다.
+ * MBTI는 triple-compare.ts에서 결정 방식(J/P)·관계-감정(F/T) 축의 네 번째
+ * 신호로만 쓰인다 — 사주 계산값을 바꾸지 않는다. */
 export interface PersonalityInputEcho {
   personalityAnswers: Record<string, number> | null;
+  mbti: MbtiType | null;
 }
 
 export interface SajuDiagnosis {

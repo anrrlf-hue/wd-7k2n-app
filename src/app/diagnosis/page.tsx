@@ -8,11 +8,12 @@ import { PersonalityStep } from "@/components/diagnosis/personality-step";
 import { LoadingStep } from "@/components/diagnosis/loading-step";
 import { ResultStep } from "@/components/diagnosis/result-step";
 import type { FullSajuDiagnosis } from "@/lib/saju";
+import type { MbtiType } from "@/lib/mbti-facts";
 
-// 확정된 최종 퍼널: 생년월일+성별 -> 출생시간 -> 6문항 성향체크 -> 1차 무료 결과
-// -> (손금은 별도 라우트 /diagnosis/palm에서 최종 통합 리포트까지 이어짐).
-// MBTI 입력은 제거했다 — 어떤 비교·판정에도 실제로 쓰이지 않는 데이터를
-// 고객에게 묻지 않는다(§10).
+// 확정된 최종 퍼널: 생년월일+성별 -> 출생시간 -> MBTI+6문항 성향체크 -> 1차
+// 무료 결과 -> (손금은 별도 라우트 /diagnosis/palm에서 최종 통합 리포트까지
+// 이어짐). MBTI는 triple-compare.ts의 결정 방식/관계-감정 축 네 번째
+// 신호로 실제로 쓰인다 — 사주 계산값을 바꾸는 용도가 아니다.
 // 손금 이후 다시 여기로 돌아와 질문을 더 받는 단계(money-check/summary)는
 // 없다 — 결제 뒤/후반에 추가 질문을 만들지 않는다는 원칙에 따라 완전히 제거했다.
 type Step = "date" | "time" | "personality" | "loading" | "result";
@@ -26,6 +27,7 @@ export default function DiagnosisPage() {
   const [knowsTime, setKnowsTime] = useState(false);
   const [birthTime, setBirthTime] = useState("");
   const [personalityAnswers, setPersonalityAnswers] = useState<Record<string, number>>({});
+  const [mbti, setMbti] = useState<MbtiType | "모름">("모름");
   const [diagnosis, setDiagnosis] = useState<FullSajuDiagnosis | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +59,7 @@ export default function DiagnosisPage() {
           minute,
           gender,
           personalityAnswers: hasPersonality ? personalityAnswers : undefined,
+          mbti: mbti !== "모름" ? mbti : undefined,
         }),
         signal: controller.signal,
       });
@@ -108,9 +111,12 @@ export default function DiagnosisPage() {
         <PersonalityStep
           personalityAnswers={personalityAnswers}
           onPersonalityChange={(id, value) => setPersonalityAnswers((prev) => ({ ...prev, [id]: value }))}
+          mbti={mbti}
+          onMbtiChange={setMbti}
           onNext={handleFetchDiagnosis}
           onSkip={() => {
             setPersonalityAnswers({});
+            setMbti("모름");
             handleFetchDiagnosis();
           }}
           onBack={() => setStep("time")}

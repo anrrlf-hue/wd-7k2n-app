@@ -4,6 +4,7 @@ import { computeSajuFacts, type SajuFacts } from "@/lib/saju-facts";
 import { getFreeSajuReport } from "@/lib/free-report-engine";
 import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
 import { scorePersonalityCheck } from "@/lib/personality-check";
+import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { buildFortuneCandidates } from "@/lib/fortune-candidates";
 import { buildTripleCompare } from "@/lib/triple-compare";
 
@@ -73,6 +74,7 @@ const bodySchema = z.object({
   /** 없으면(null/undefined) "손금 없이 계속 보기" 요청으로 처리한다. */
   palmFacts: palmFactsSchema.nullable().optional(),
   personalityAnswers: z.record(z.string(), z.number().min(1).max(5)).optional(),
+  mbti: z.enum(MBTI_TYPES).optional(),
 });
 
 export async function POST(request: Request) {
@@ -104,11 +106,12 @@ export async function POST(request: Request) {
     const deepFacts: SajuFacts = computeSajuFacts(parsed.data);
 
     const personalityCheck = parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null;
+    const mbti = parsed.data.mbti ?? null;
 
     const onnxLines = palmFacts?.onnxLines ?? null;
     const freeReportResult = await getFreeSajuReport(deepFacts, { timeoutMs: 9000 });
     const fortuneCandidates = buildFortuneCandidates(deepFacts, onnxLines);
-    const tripleCompare = buildTripleCompare(deepFacts, onnxLines, personalityCheck);
+    const tripleCompare = buildTripleCompare(deepFacts, onnxLines, personalityCheck, mbti);
 
     return NextResponse.json({
       usable: true,

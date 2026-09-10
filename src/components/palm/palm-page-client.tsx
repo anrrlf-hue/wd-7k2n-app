@@ -341,6 +341,7 @@ export function PalmPageClient({
         ...birthInput,
         palmFacts: facts,
         personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
+        mbti: personalityInput?.mbti ?? undefined,
       }),
     });
     const data = await res.json();

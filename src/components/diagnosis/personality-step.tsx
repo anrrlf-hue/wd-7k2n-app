@@ -4,6 +4,7 @@ import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepBadge } from "@/components/diagnosis/step-badge";
 import { PERSONALITY_CHECK_ITEMS } from "@/lib/personality-check";
+import { MBTI_TYPES, type MbtiType } from "@/lib/mbti-facts";
 
 const LIKERT = [1, 2, 3, 4, 5];
 
@@ -11,17 +12,26 @@ const LIKERT = [1, 2, 3, 4, 5];
  * 원칙으로, 성향정보도 결과 맨 아래 곁다리가 아니라 입력 단계 중 하나로
  * 다룬다. 완전히 건너뛸 수 있어 이탈 위험을 늘리지 않는다.
  * "정밀 심리검사"가 아니라 "간단 성향 체크"라고만 표기한다(6문항).
- * MBTI 입력은 제거했다 — 실제 어떤 비교·판정에도 쓰이지 않는 데이터를
- * 고객에게 묻지 않는다(§10). */
+ * MBTI는 triple-compare.ts에서 실제로 쓰인다(결정 방식/관계-감정 축의
+ * 네 번째 신호) — 사주를 맞추는 보정용이 아니다.
+ *
+ * 가독성: 양쪽 라벨/선택 숫자/보조 버튼이 11~12px로 너무 작다는 지적에
+ * 따라 이 화면 전체를 14~16px 기준으로 올렸다. 라벨은 더 이상 한 줄
+ * 강제가 아니라 각자 줄바꿈 가능하게 해서(폭이 좁은 320px에서도) 글자를
+ * 키워도 깨지지 않게 했다. */
 export function PersonalityStep({
   personalityAnswers,
   onPersonalityChange,
+  mbti,
+  onMbtiChange,
   onNext,
   onSkip,
   onBack,
 }: {
   personalityAnswers: Record<string, number>;
   onPersonalityChange: (id: string, value: number) => void;
+  mbti: MbtiType | "모름";
+  onMbtiChange: (v: MbtiType | "모름") => void;
   onNext: () => void;
   onSkip: () => void;
   onBack: () => void;
@@ -36,27 +46,27 @@ export function PersonalityStep({
         조금 더 나답게
         <br />볼까요?
       </h2>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
         간단 성향 체크 6문항이에요. 사주를 맞추는 용도가 아니라, 사주와 자기 생각이 얼마나 비슷한지 비교하는 용도예요. 건너뛰어도 결과에는 영향 없어요.
       </p>
 
       <div className="mt-6 space-y-4">
         {PERSONALITY_CHECK_ITEMS.map((item) => (
           <div key={item.id} className="rounded-xl border border-border p-3.5">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>{item.leftLabel}</span>
-              <span>{item.rightLabel}</span>
+            <div className="flex items-start justify-between gap-3 text-sm text-foreground/80">
+              <span className="flex-1">{item.leftLabel}</span>
+              <span className="flex-1 text-right">{item.rightLabel}</span>
             </div>
-            <div className="mt-2 flex gap-1.5">
+            <div className="mt-3 flex gap-1.5">
               {LIKERT.map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => onPersonalityChange(item.id, v)}
-                  className={`flex-1 rounded-lg border py-2 text-xs transition-colors ${
+                  className={`flex-1 rounded-lg border py-3 text-base transition-colors ${
                     personalityAnswers[item.id] === v
                       ? "border-(--gold) bg-(--gold-soft) text-(--gold)"
-                      : "border-border text-muted-foreground"
+                      : "border-border text-foreground/80"
                   }`}
                 >
                   {v}
@@ -65,6 +75,22 @@ export function PersonalityStep({
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-6">
+        <p className="text-[15px] font-medium">MBTI를 알고 있다면 선택해주세요</p>
+        <select
+          value={mbti}
+          onChange={(e) => onMbtiChange(e.target.value as MbtiType | "모름")}
+          className="mystic-card mt-2 w-full rounded-xl border border-border p-3.5 text-[15px]"
+        >
+          <option value="모름">모름 / 건너뛰기</option>
+          {MBTI_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="mt-auto flex flex-col gap-2 pt-10">
@@ -85,7 +111,7 @@ export function PersonalityStep({
                 : "다음"}
           </Button>
         </div>
-        <button type="button" onClick={onSkip} className="text-center text-xs text-muted-foreground">
+        <button type="button" onClick={onSkip} className="text-center text-sm text-muted-foreground">
           이건 건너뛰고 바로 결과 볼게요
         </button>
       </div>
