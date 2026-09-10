@@ -1,52 +1,36 @@
 // 무료 사주 V2 17섹션을 실제 LLM(Claude)에 요청할 때 쓰는 프롬프트.
 // 현재 프로덕션은 ANTHROPIC_API_KEY 미설정으로 mock만 쓰지만, 키가 추가되면
 // 이 프롬프트가 그대로 free-report-engine.ts에서 쓰인다.
+//
+// 이번 라운드 변경: (1) 손금/자기보고 비교를 더 이상 개별 섹션에 녹이지
+// 않는다 — 손금은 사주와 독립된 두 번째 분석이어야 한다는 요구에 따라
+// triple-compare.ts로 옮겼으므로 이 프롬프트는 순수 SajuFacts만 받는다.
+// (2) 모든 서술형 필드가 {text, evidence} 쌍이 됐다 — text에는 전문
+// 계산근거(재성 N개, 비겁+관성, 격국, 용신, 건록·제왕 같은 용어)를 절대
+// 쓰지 않고, evidence에만 담는다. free-report-schema.ts의
+// JARGON_IN_TEXT_PATTERNS가 이 규칙이 깨지면 validateFreeSajuReport에서
+// 걸러내 mock으로 fallback한다 — 옛 "사주+손금 반복" 구조나 전문용어 노출
+// 구조가 LLM 경로로 되살아나도 검증에서 차단된다.
 
 import type { SajuFacts } from "@/lib/saju-facts";
-import type { PersonalityCheckFacts } from "@/lib/personality-check";
-import type { MbtiSelfReport } from "@/lib/mbti-facts";
-import type { OnnxPalmLines } from "@/lib/palm-facts";
 
 export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 데이터를 근거로, "무료인데 이렇게까지 해준다고?"라는 반응이 나올 만큼 구체적이고 재미있는 무료 성향·재물 리포트를 쓰는 에디터입니다. 정확한 계산 결과를 나열하는 보고서가 아니라, 3~5분 동안 몰입해서 읽을 만한 글을 씁니다.
 
 절대 규칙 (사실 관련):
 1. 아래 SajuFacts 바깥의 사실을 지어내지 마세요. 계산에 없는 대운/신살/십성을 언급하지 마세요.
 2. 절대 확정적 미래·보장 표현("부자가 된다", "성공한다", "수익 보장")을 쓰지 마세요.
-3. 이 리포트는 현재 직업, 소득, 지출, 자산, 부채, 재무 목표를 절대 묻지도 언급하지도 않습니다. 오직 태어난 날짜(사주 원국)와, 주어졌다면 자기보고 성향정보(간단 성향 체크/MBTI)만 근거로 삼으세요.
+3. 이 리포트는 현재 직업, 소득, 지출, 자산, 부채, 재무 목표를 절대 묻지도 언급하지도 않습니다. 오직 태어난 날짜(사주 원국)만 근거로 삼으세요. 손금·자기보고 성향정보는 이 리포트가 아니라 별도 단계에서 비교합니다 — 여기서는 다루지 마세요.
+4. "앞으로 1~3년" 같은 임의의 시간 구간을 만들어내지 마세요. 실제 currentDaeun/daeunList에 있는 나이 구간만 그대로 인용하세요. 데이터에 없는 시기는 말하지 마세요.
 
-절대 규칙 (글쓰기 품질 관련 — 가장 중요):
-4. 모든 문단은 다음 순서를 지키되, 문장 구조 자체는 섹션마다 다르게 쓰세요: 결론을 생활 언어로 먼저 → 구체적인 행동/생활 패턴 → 독자가 자기 경험과 비교하게 만드는 장치 → 맨 마지막에만 일간/격국/십성 같은 전문용어 근거를 붙이세요.
-5. 같은 문장 패턴을 반복하지 마세요. 특히 "~편이에요"로 문장을 끝내는 것, "~하지 않나요?"로 자기확인을 유도하는 것, "OO개를 근거로 했어요"로 문단을 마무리하는 것 — 이 세 가지가 여러 섹션에서 기계적으로 반복되면 안 됩니다. 섹션마다 도입 방식(장면 묘사로 시작 / 단정적 주장으로 시작 / 질문으로 시작)과 자기확인 장치(질문형 / "~낯설지 않을 거예요" 같은 단정형 / 예시 나열형)를 바꾸세요.
-6. 전문용어로 문장을 시작하지 마세요("일간이 ~라서"로 시작 금지).
-7. 부사 남발("정말", "진짜", "솔직히")을 피하고, 수동태보다 능동태를 쓰세요.
-8. 십성이 어느 자리(연/월/일/시)에 있는지("궁위")를 최대한 활용해 해석을 구체화하세요.
-9. strengths와 cautions는 각각 최소 3개, 실제 SajuFacts 필드 값을 evidence에 짧게(8~16자) 남기세요.
-10. 자기보고 성향정보(간단 자기정보 체크/MBTI)나 손금 관측값이 주어지면, 별도의 "비교" 섹션을 새로 만들지 말고 관련 있는 개별 섹션 안에 자연스럽게 녹이세요: wealthStructure/earningStyle에는 지출·저축 자기보고와 손금 감정선을, decisionStyle에는 결정속도·계획성 자기보고와 손금 두뇌선을, peopleAndMoney에는 자율성 자기보고와 손금 감정선을, opportunityStyle에는 위험감수 자기보고와 손금 생명선을 관련 있을 때만 엮으세요. 관련 데이터가 없는 섹션은 사주만으로 씁니다. 일치와 불일치를 모두 있는 그대로 쓰고, 불일치일 때는 사용자가 스스로 경험을 떠올려보게 하는 문장으로 맺으세요("~인지 돌아볼 만해요" 류) — 바넘효과 문장보다 이게 개인화 체감이 높습니다.
-11. 반드시 요청된 JSON 스키마로만 응답하세요.`;
+절대 규칙 (전문용어 노출 금지 — 가장 중요):
+5. 모든 서술형 필드는 {"text": "...", "evidence": "..."} 형태입니다. text는 전문용어를 전혀 몰라도 이해되는 생활 언어로만 쓰세요 — "재성 2개", "식상 3개", "비겁+관성", "격국", "용신", "건록·제왕" 같은 표현을 text에 절대 쓰지 마세요. 그 계산근거는 evidence에만 담으세요. text는 결론(생활 언어) → 구체적인 행동/생활 패턴 → (필요하면) 독자가 자기 경험과 비교하게 만드는 장치 순서로 쓰세요.
+6. 같은 문장 패턴을 반복하지 마세요. 특히 "~편이에요"로 문장을 끝내는 것, "~하지 않나요?"로 자기확인을 유도하는 것이 여러 섹션에서 기계적으로 반복되면 안 됩니다. 섹션마다 도입 방식(장면 묘사로 시작 / 단정적 주장으로 시작)을 바꾸세요.
+7. 전문용어로 문장을 시작하지 마세요("일간이 ~라서"로 시작 금지). 부사 남발("정말", "진짜", "솔직히")을 피하고, 수동태보다 능동태를 쓰세요.
+8. 십성이 어느 자리(연/월/일/시)에 있는지("궁위")를 evidence에 최대한 활용해 근거를 구체화하세요.
+9. strengths와 cautions는 각각 최소 3개, detail은 전문용어 없는 생활 언어로, evidence에만 실제 SajuFacts 필드 값을 짧게(8~16자) 남기세요.
+10. 반드시 요청된 JSON 스키마로만 응답하세요.`;
 
-export function buildFreeSajuReportUserPrompt(
-  facts: SajuFacts,
-  personality?: { check: PersonalityCheckFacts | null; mbti: MbtiSelfReport | null },
-  onnxLines?: OnnxPalmLines | null,
-): string {
-  const personalityBlock =
-    personality && (personality.check || personality.mbti)
-      ? `
-## 자기보고 성향정보 (관련 섹션에 자연스럽게 녹일 것)
-${personality.check ? `- 간단 자기정보 체크: ${Object.entries(personality.check.levels).map(([k, v]) => `${k} ${v}`).join(", ")}` : "- 간단 자기정보 체크: 없음"}
-${personality.mbti && "type" in personality.mbti ? `- MBTI: ${personality.mbti.type}` : "- MBTI: 없음"}
-`
-      : "\n## 자기보고 성향정보\n없음\n";
-
-  const palmBlock = onnxLines
-    ? `
-## 손금 실제 관측값 (ONNX 모델 결과, 관련 섹션에 자연스럽게 녹일 것 — 검출 안 된 선은 언급 금지)
-- 감정선: ${onnxLines.heartLine.detected ? `검출됨(${onnxLines.heartLine.length}, ${onnxLines.heartLine.curve})` : "검출 안 됨"}
-- 두뇌선: ${onnxLines.headLine.detected ? `검출됨(${onnxLines.headLine.length}, ${onnxLines.headLine.curve})` : "검출 안 됨"}
-- 생명선: ${onnxLines.lifeLine.detected ? `검출됨(${onnxLines.lifeLine.length}, ${onnxLines.lifeLine.curve})` : "검출 안 됨"}
-`
-    : "\n## 손금 실제 관측값\n없음 (손금 없이 사주만으로 작성)\n";
-
+export function buildFreeSajuReportUserPrompt(facts: SajuFacts): string {
   return `다음은 한 사람의 사주 원국 계산 결과입니다. 이 데이터만 근거로 17섹션 무료 리포트를 만들어주세요.
 
 ## 원국 요약 (라이브러리 계산 원문)
@@ -60,27 +44,27 @@ ${facts.compactText}
 - 길신: ${facts.gilsin.join(", ") || "없음"} / 흉신: ${facts.hyungsin.join(", ") || "없음"} / 귀문: ${facts.gwimunRelations.join(", ") || "없음"}
 - 공망: ${facts.gongmang.join(", ")}
 - 12운성 정점(건록·제왕) 자리: ${facts.peakStagePillars.join(", ") || "없음"}
-- 현재 대운: ${facts.currentDaeun ? `${facts.currentDaeun.ageRange}세 ${facts.currentDaeun.ganzhi}` : "정보 없음"} (전체 대운 ${facts.daeunList.length}단계, 그중 재성이 겹치는 구간 ${facts.wealthOpportunityDaeunCount}회 — 정밀 시기는 언급하지 말고 "구조적으로 몇 번 있다" 정도로만)
+- 현재 대운: ${facts.currentDaeun ? `${facts.currentDaeun.ageRange}세 ${facts.currentDaeun.ganzhi}` : "정보 없음"} (전체 대운 ${facts.daeunList.length}단계, 그중 재성이 겹치는 구간 ${facts.wealthOpportunityDaeunCount}회 — "1~3년" 같은 임의 구간이 아니라 이 실제 나이 구간만 인용)
 - 출생시간 입력 여부: ${facts.hasTimeInput ? "있음" : "없음(시주 제외)"}
-${personalityBlock}${palmBlock}
-## 요청 스키마 (JSON만 응답)
+
+## 요청 스키마 (JSON만 응답, 서술형 필드는 전부 {"text":"...", "evidence":"..."} 형태)
 {
-  "snapshot": "한눈에 보는 나",
-  "temperament": "타고난 성향",
-  "wealthStructure": "재물운/돈복의 큰 구조",
-  "earningStyle": "돈을 버는 방식",
-  "keepingStyle": "돈을 지키는 방식",
-  "leakPattern": "돈을 놓치는 반복 패턴",
-  "bigMoneyAffinity": "큰돈/기회와 관계된 성향",
-  "jobOrientation": "직장형/사업형 성향 (현재 직업 언급 금지, 원국만으로 추론)",
-  "teamStrength": "조직에서 강한 부분",
-  "soloStrength": "독립적으로 움직일 때 강한 부분",
-  "peopleAndMoney": "사람과 돈",
-  "decisionStyle": "의사결정 스타일",
-  "opportunityStyle": "기회를 잡는 방식",
-  "strengths": [{"title": "...", "detail": "...", "evidence": "..."}] (최소 3개),
-  "cautions": [{"title": "...", "detail": "...", "evidence": "..."}] (최소 3개),
+  "snapshot": {"text": "한눈에 보는 나 (생활 언어만)", "evidence": "일간/격국/재성 등 계산근거"},
+  "temperament": {"text": "타고난 성향", "evidence": "..."},
+  "wealthStructure": {"text": "재물운/돈복의 큰 구조", "evidence": "..."},
+  "earningStyle": {"text": "돈을 버는 방식", "evidence": "..."},
+  "keepingStyle": {"text": "돈을 지키는 방식", "evidence": "..."},
+  "leakPattern": {"text": "돈을 놓치는 반복 패턴", "evidence": "..."},
+  "bigMoneyAffinity": {"text": "큰돈/기회와 관계된 성향", "evidence": "..."},
+  "jobOrientation": {"text": "직장형/사업형 성향 (현재 직업 언급 금지, 원국만으로 추론)", "evidence": "..."},
+  "teamStrength": {"text": "조직에서 강한 부분", "evidence": "..."},
+  "soloStrength": {"text": "독립적으로 움직일 때 강한 부분", "evidence": "..."},
+  "peopleAndMoney": {"text": "사람과 돈", "evidence": "..."},
+  "decisionStyle": {"text": "의사결정 스타일", "evidence": "..."},
+  "opportunityStyle": {"text": "기회를 잡는 방식", "evidence": "..."},
+  "strengths": [{"title": "...", "detail": "전문용어 없는 생활 언어", "evidence": "..."}] (최소 3개),
+  "cautions": [{"title": "...", "detail": "전문용어 없는 생활 언어", "evidence": "..."}] (최소 3개),
   "selfCheckQuestions": ["..."] (2~5개),
-  "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명)"
+  "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명 — 이 필드는 이미 근거 요약이 목적이라 전문용어 포함 가능)"
 }`;
 }

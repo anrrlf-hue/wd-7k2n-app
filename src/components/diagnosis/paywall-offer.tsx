@@ -47,7 +47,6 @@ export function PaywallOffer({
 
       <div className="relative mt-5 flex items-baseline gap-1.5">
         <span className="text-2xl font-bold text-(--gold)">{RECOMMENDED_PRICE.label}</span>
-        <span className="text-xs text-muted-foreground">· 한 번 결제로 평생 보기</span>
       </div>
 
       <Button
@@ -64,7 +63,7 @@ export function PaywallOffer({
           animate={{ opacity: 1, height: "auto" }}
           className="relative mt-2 text-center text-xs text-(--gold)"
         >
-          결제 연결은 준비 중이에요. 오픈하면 가장 먼저 알려드릴게요.
+          결제 연결은 아직 준비 중이에요.
         </motion.p>
       )}
     </motion.div>

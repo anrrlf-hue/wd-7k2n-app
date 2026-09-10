@@ -8,15 +8,16 @@ import { Button } from "@/components/ui/button";
 import { StepBadge } from "@/components/diagnosis/step-badge";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
 import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
-import { ReportSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
+import { ReportSection, ParagraphSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
 import {
   analyzePalmFromCanvas,
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
-import { isPalmFactsUsable, describePalmFailureReasons, onnxDetectedLineCount, type PalmFacts } from "@/lib/palm-facts";
+import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
 import { buildRealObservationText, buildTraditionalReadingText } from "@/lib/palm-observation-text";
 import type { FreeSajuReport } from "@/lib/free-report-schema";
-import type { FortuneCandidate } from "@/lib/fortune-candidates";
+import type { FortuneCandidate, SituationOption } from "@/lib/fortune-candidates";
+import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import { track } from "@/lib/analytics";
 
@@ -44,49 +45,22 @@ async function fileToCanvas(file: File, maxDim = 1280): Promise<HTMLCanvasElemen
 }
 
 /** 최종 통합 리포트(finalReport)를 렌더링한다. 손금이 있을 때(withPalm)와
- * 없을 때(saju-only) 양쪽에서 재사용한다 — 데이터가 있으면 관련 섹션에
- * 자연스럽게 녹아 있고(free-report-mock.ts에서 이미 처리됨), 없으면
- * 사주만으로도 완결된 리포트다. 별도의 "이 분석의 한계" 섹션은 만들지
- * 않는다 — 필요한 고지는 화면 맨 아래에 한 줄로만 둔다. */
+ * 없을 때(saju-only) 양쪽에서 재사용한다. NO_DUPLICATION: 1차 무료 결과
+ * (result-step.tsx)에서 이미 보여준 타고난 성향/돈 버는 방식/돈 지키는
+ * 방식/돈을 놓치는 반복 패턴/직장·사업형은 여기서 다시 보여주지 않는다 —
+ * "아까 본 얘기 또 하네"를 만들지 않기 위해 아직 안 보여준 나머지 섹션만
+ * 싣는다. 별도의 "이 분석의 한계" 섹션은 만들지 않는다 — 필요한 고지는
+ * 화면 맨 아래에 한 줄로만 둔다. */
 function FinalReportSections({ report }: { report: FreeSajuReport }) {
   return (
     <div className="mt-3">
-      <ReportSection title="타고난 성향">
-        <p>{report.temperament}</p>
-      </ReportSection>
-      <ReportSection title="재물운·돈복의 큰 구조">
-        <p>{report.wealthStructure}</p>
-      </ReportSection>
-      <ReportSection title="돈을 버는 방식">
-        <p>{report.earningStyle}</p>
-      </ReportSection>
-      <ReportSection title="돈을 지키는 방식">
-        <p>{report.keepingStyle}</p>
-      </ReportSection>
-      <ReportSection title="돈을 놓치는 반복 패턴">
-        <p className="rounded-xl bg-accent p-3.5 text-accent-foreground">{report.leakPattern}</p>
-      </ReportSection>
-      <ReportSection title="큰돈·기회와 관계된 성향">
-        <p>{report.bigMoneyAffinity}</p>
-      </ReportSection>
-      <ReportSection title="직장형일까, 사업형일까">
-        <p>{report.jobOrientation}</p>
-      </ReportSection>
-      <ReportSection title="조직에서 강한 부분">
-        <p>{report.teamStrength}</p>
-      </ReportSection>
-      <ReportSection title="독립적으로 움직일 때 강한 부분">
-        <p>{report.soloStrength}</p>
-      </ReportSection>
-      <ReportSection title="사람과 돈">
-        <p>{report.peopleAndMoney}</p>
-      </ReportSection>
-      <ReportSection title="의사결정 스타일">
-        <p>{report.decisionStyle}</p>
-      </ReportSection>
-      <ReportSection title="기회를 잡는 방식">
-        <p>{report.opportunityStyle}</p>
-      </ReportSection>
+      <ParagraphSection title="재물운·돈복의 큰 구조" paragraph={report.wealthStructure} />
+      <ParagraphSection title="큰돈·기회와 관계된 성향" paragraph={report.bigMoneyAffinity} />
+      <ParagraphSection title="조직에서 강한 부분" paragraph={report.teamStrength} />
+      <ParagraphSection title="독립적으로 움직일 때 강한 부분" paragraph={report.soloStrength} />
+      <ParagraphSection title="사람과 돈" paragraph={report.peopleAndMoney} />
+      <ParagraphSection title="의사결정 스타일" paragraph={report.decisionStyle} />
+      <ParagraphSection title="기회를 잡는 방식" paragraph={report.opportunityStyle} />
       <ReportSection title="나의 강점 3가지">
         <div className="space-y-2.5">
           {report.strengths.map((s, i) => (
@@ -115,6 +89,32 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
         <p className="text-sm text-muted-foreground">{report.evidenceExplainer}</p>
       </ReportSection>
     </div>
+  );
+}
+
+const COMPARE_KIND_LABEL: Record<CompareItem["kind"], string> = { 일치: "일치", 차이: "차이", 보완: "보완" };
+
+/** 손금 자체 해석이 끝난 뒤 딱 한 번 나오는 사주×손금×자기응답 통합 비교.
+ * 데이터가 있는 축만 서버(triple-compare.ts)에서 내려오므로, 여기서는
+ * 있는 그대로 나열만 한다 — 일치로 억지로 맞추지 않는다. */
+function TripleCompareSection({ items }: { items: CompareItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <ReportSection step="③" title="사주 · 손금 · 자기응답 비교">
+      <div className="space-y-2.5">
+        {items.map((item) => (
+          <div key={item.topic} className="rounded-xl border border-border p-3.5">
+            <p className="flex items-center gap-1.5 text-sm font-semibold">
+              <span className="rounded-full bg-(--gold-soft) px-2 py-0.5 text-[11px] text-(--gold)">
+                {COMPARE_KIND_LABEL[item.kind]}
+              </span>
+              {item.topic}
+            </p>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.text}</p>
+          </div>
+        ))}
+      </div>
+    </ReportSection>
   );
 }
 
@@ -164,16 +164,22 @@ function FortuneMap({
   );
 }
 
-/** 선택한 운의 실제 무료 미니리딩. 여기서 새 개인화 해석 + 현실적인 미래
- * 장면 + 질문 하나를 준다(§I) — "결제하면 볼 수 있습니다" 같은 빈 문장은
- * 미니리딩으로 치지 않는다. 두 번째 자발적 CTA를 누르기 전까지 가격은
+/** 선택한 운의 실제 무료 미니리딩. 타고난 방식/현재 대운 흐름/다음 흐름
+ * 변화/손금과의 비교(있으면)/생활 속 미래 장면까지 실제 정보량을 늘린
+ * 무료 리딩을 먼저 다 보여준 다음(§H), 결제 유도 전에 재무 정보를 묻지
+ * 않는 현재상황 1문항을 받는다(§I). 그 응답을 고른 뒤에야 "그래서 나는
+ * 무엇을 해야 하나?" 질문과 두 번째 자발적 CTA가 나온다 — 그 전까지 가격은
  * 절대 렌더링하지 않는다(컴포넌트 자체를 mount하지 않음, §L). */
 function MiniReading({
   candidate,
+  situationAnswer,
+  onSituationSelect,
   onDeeper,
   onBack,
 }: {
   candidate: FortuneCandidate;
+  situationAnswer: string | null;
+  onSituationSelect: (option: SituationOption) => void;
   onDeeper: () => void;
   onBack: () => void;
 }) {
@@ -188,16 +194,42 @@ function MiniReading({
         <Compass className="size-4 text-(--gold)" />
         {candidate.label}
       </p>
-      <p className="mt-3 text-sm leading-relaxed">{candidate.miniReading}</p>
+      <p className="mt-3 text-sm leading-relaxed">{candidate.bornWay}</p>
+      <p className="mt-2 text-sm leading-relaxed">{candidate.currentFlow}</p>
+      <p className="mt-2 text-sm leading-relaxed">{candidate.nextShift}</p>
+      {candidate.compareNote && (
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{candidate.compareNote}</p>
+      )}
       <p className="mt-3 rounded-xl bg-accent p-3.5 text-sm leading-relaxed text-accent-foreground">
         {candidate.futureScene}
       </p>
-      <p className="mt-3 text-sm font-medium">{candidate.deeperQuestion}</p>
 
-      <Button size="lg" onClick={onDeeper} className="mt-5 h-13 w-full rounded-full text-base">
-        {candidate.deeperCTA}
-      </Button>
-      <button type="button" onClick={onBack} className="mt-3 w-full text-center text-xs text-muted-foreground">
+      {!situationAnswer ? (
+        <div className="mt-5">
+          <p className="text-sm font-medium">{candidate.situation.question}</p>
+          <div className="mt-3 flex flex-col gap-2">
+            {candidate.situation.options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onSituationSelect(opt)}
+                className="mystic-card p-3 text-left text-sm transition-colors hover:border-(--gold-soft)"
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <motion.div initial={{ opacity: 0.5, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+          <p className="mt-5 text-sm font-medium">{candidate.deeperQuestion}</p>
+          <Button size="lg" onClick={onDeeper} className="mt-4 h-13 w-full rounded-full text-base">
+            {candidate.deeperCTA}
+          </Button>
+        </motion.div>
+      )}
+
+      <button type="button" onClick={onBack} className="mt-4 w-full text-center text-xs text-muted-foreground">
         다른 운 선택하기
       </button>
     </motion.div>
@@ -215,26 +247,45 @@ function ConversionFlow({
   onReset: () => void;
 }) {
   const [selected, setSelected] = useState<FortuneCandidate | null>(null);
+  const [situationAnswer, setSituationAnswer] = useState<string | null>(null);
   const [opened, setOpened] = useState(false);
 
   function selectCandidate(c: FortuneCandidate) {
     setSelected(c);
+    setSituationAnswer(null);
     setOpened(false);
     track("fortune_interest_selected", { interest: c.id });
     track("mini_reading_viewed", { interest: c.id });
   }
 
+  function backToMap() {
+    setSelected(null);
+    setSituationAnswer(null);
+    setOpened(false);
+  }
+
+  function selectSituation(option: SituationOption) {
+    setSituationAnswer(option.value);
+    track("mini_reading_viewed", { interest: selected?.id, situation: option.value });
+  }
+
   function openPaywall() {
     setOpened(true);
-    track("deeper_cta_clicked", { interest: selected?.id });
-    track("paywall_viewed", { interest: selected?.id });
+    track("deeper_cta_clicked", { interest: selected?.id, situation: situationAnswer });
+    track("paywall_viewed", { interest: selected?.id, situation: situationAnswer });
   }
 
   return (
     <>
       {!selected && <FortuneMap candidates={candidates} onSelect={selectCandidate} />}
       {selected && !opened && (
-        <MiniReading candidate={selected} onDeeper={openPaywall} onBack={() => setSelected(null)} />
+        <MiniReading
+          candidate={selected}
+          situationAnswer={situationAnswer}
+          onSituationSelect={selectSituation}
+          onDeeper={openPaywall}
+          onBack={backToMap}
+        />
       )}
       {selected && opened && (
         <div className="mt-8">
@@ -276,6 +327,7 @@ export function PalmPageClient({
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
   const [fortuneCandidates, setFortuneCandidates] = useState<FortuneCandidate[]>([]);
+  const [tripleCompare, setTripleCompare] = useState<CompareItem[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retakeAttempts, setRetakeAttempts] = useState(0);
 
@@ -314,6 +366,7 @@ export function PalmPageClient({
 
     setFinalReport(data.freeReport?.report ?? null);
     setFortuneCandidates(data.fortuneCandidates ?? []);
+    setTripleCompare(data.tripleCompare ?? []);
     track("free_report_completed", { palmSkipped: Boolean(data.palmSkipped) });
     track("fortune_map_viewed");
     setStage(data.palmSkipped ? "saju_only" : "result");
@@ -367,6 +420,7 @@ export function PalmPageClient({
     setPalmFacts(null);
     setFinalReport(null);
     setFortuneCandidates([]);
+    setTripleCompare([]);
     setErrorMsg(null);
     setRetakeAttempts(0);
   }
@@ -545,25 +599,22 @@ export function PalmPageClient({
                   {palmFacts.handSide === "left" ? "왼손" : palmFacts.handSide === "right" ? "오른손" : "손"} ·{" "}
                   {HAND_SHAPE_KO[palmFacts.handShape]}
                 </p>
-                <p className="mt-0.5 text-xs text-(--gold)">
-                  이미지 품질 양호 · 주요 선 {onnxDetectedLineCount(palmFacts)}/3개 검출
-                </p>
               </div>
             </div>
           </motion.div>
 
-          {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소. "실제 관측값"과
-           * "손금 전통 해석"을 먼저 실제 ONNX 결과로 보여준 다음(Sobel은 여기
-           * 화면에 노출하지 않는다), 최종 통합 리포트로 바로 이어간다 —
-           * 별도의 "손금×사주 공통점/차이점/한계" 섹션 없이, 관련 있는
-           * 리포트 섹션 안에 이미 손금 신호가 녹아 있다. */}
+          {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소이자, 사주와
+           * 독립된 두 번째 분석이다(§3): 실제 손 관측 -> 손금 자체 해석 ->
+           * (그 다음에야) 사주와의 비교. "사주 문단 + 손에도 같은 모습이
+           * 보여요" 식으로 섞지 않는다. */}
           <div className="mt-5">
             <ReportSection step="①" title="실제 이미지에서 관측된 것">
               <p>{buildRealObservationText(palmFacts)}</p>
             </ReportSection>
-            <ReportSection step="②" title="손금 전통 해석 (참고용)">
+            <ReportSection step="②" title="손금이 보여주는 것">
               <p className="text-sm text-muted-foreground">{buildTraditionalReadingText(palmFacts)}</p>
             </ReportSection>
+            <TripleCompareSection items={tripleCompare} />
           </div>
 
           <FinalReportSections report={finalReport} />
@@ -576,6 +627,7 @@ export function PalmPageClient({
           <div className="mystic-card p-4 text-sm text-muted-foreground">
             이번 결과는 사주와 입력한 정보를 중심으로 봤어요.
           </div>
+          <TripleCompareSection items={tripleCompare} />
           <FinalReportSections report={finalReport} />
           <ConversionFlow candidates={fortuneCandidates} onReset={reset} />
         </div>

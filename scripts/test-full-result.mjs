@@ -55,17 +55,17 @@ async function main() {
     console.log(`dayPillar=${dayPillar} resultSource=${resultSource} deepSource=${deep?.source ?? "-"} freeReportSource=${freeReport?.source ?? "-"}`);
     if (freeReport) {
       const rep = freeReport.report;
-      console.log(`snapshot: ${rep.snapshot}`);
-      console.log(`temperament: ${rep.temperament}`);
-      console.log(`wealthStructure: ${rep.wealthStructure}`);
-      console.log(`bigMoneyAffinity: ${rep.bigMoneyAffinity}`);
-      console.log(`teamStrength: ${rep.teamStrength}`);
-      console.log(`soloStrength: ${rep.soloStrength}`);
-      console.log(`opportunityStyle: ${rep.opportunityStyle}`);
+      console.log(`snapshot: ${rep.snapshot.text}`);
+      console.log(`temperament: ${rep.temperament.text}`);
+      console.log(`wealthStructure: ${rep.wealthStructure.text}`);
+      console.log(`bigMoneyAffinity: ${rep.bigMoneyAffinity.text}`);
+      console.log(`teamStrength: ${rep.teamStrength.text}`);
+      console.log(`soloStrength: ${rep.soloStrength.text}`);
+      console.log(`opportunityStyle: ${rep.opportunityStyle.text}`);
       console.log(`strengths: ${rep.strengths.map((s) => s.title).join(", ")}`);
       console.log(`cautions: ${rep.cautions.map((c) => c.title).join(", ")}`);
-      console.log(`decisionStyle: ${rep.decisionStyle}`);
-      console.log(`peopleAndMoney: ${rep.peopleAndMoney}`);
+      console.log(`decisionStyle: ${rep.decisionStyle.text}`);
+      console.log(`peopleAndMoney: ${rep.peopleAndMoney.text}`);
     } else {
       console.log("freeReport: 없음(실패)");
     }
@@ -80,16 +80,45 @@ async function main() {
   const sameFree = JSON.stringify(a.json.freeReport) === JSON.stringify(d.json.freeReport);
   console.log(`1과 1-repeat(동일 입력) freeReport 일관성: ${sameFree ? "일치" : "불일치"}`);
 
-  // personalityComparison은 별도 필드가 아니라 wealthStructure/decisionStyle/
-  // peopleAndMoney/opportunityStyle 안에 "사주에서는...본인은/도..." 문장으로
-  // 직접 녹아 있다(진짜 통합 리포트로 리팩터링하면서 별도 필드를 없앴다).
+  // 이번 라운드부터 /api/saju의 무료 리포트는 사주 사실만 본다(§3: 손금·
+  // 자기응답 비교는 /api/palm/interpret의 triple-compare로 이동) — 그래서
+  // personalityAnswers를 보내도 1과 1-with-personality의 freeReport는
+  // 동일해야 정상이다(사주 계산 입력 자체가 같으므로).
   const withP = results.find((r) => r.label === "1-with-personality");
-  const wovenTopics = ["wealthStructure", "decisionStyle", "peopleAndMoney", "opportunityStyle"];
-  const hasPersonalityText = wovenTopics.some((k) => (withP?.json?.freeReport?.report?.[k] ?? "").includes("사주에서는"));
-  console.log(`1-with-personality: 자기보고 비교 문장이 관련 섹션에 녹아 있는가 = ${hasPersonalityText}`);
-  const diffFromNoPersonality =
-    JSON.stringify(withP?.json?.freeReport?.report) !== JSON.stringify(a?.json?.freeReport?.report);
-  console.log(`1-with-personality가 기본 1과 다른 결과인가 = ${diffFromNoPersonality}`);
+  const sameAsBase = JSON.stringify(withP?.json?.freeReport) === JSON.stringify(a?.json?.freeReport);
+  console.log(`1-with-personality의 freeReport가 기본 1과 동일한가(성향이 무료 리포트를 더 이상 왜곡하지 않는지) = ${sameAsBase}`);
+
+  // JARGON_IN_TEXT_PATTERNS와 동일한 검사를 mock 출력 10개 전체에 직접
+  // 돌려서, LLM 검증 경로를 안 타는 mock도 실제로 전문용어가 안 새는지
+  // 확인한다(free-report-schema.ts와 동일 패턴을 수동으로 재현).
+  const JARGON_PATTERNS = [
+    /재성\s*\d/, /식상\s*\d/, /관성\s*\d/, /비겁\s*\d/, /인성\s*\d/,
+    /비겁\+관성/, /재성\+식상/, /건록·제왕/, /격국/, /용신/, /ONNX/i, /MediaPipe/i,
+  ];
+  const PARAGRAPH_KEYS = [
+    "snapshot", "temperament", "wealthStructure", "earningStyle", "keepingStyle", "leakPattern",
+    "bigMoneyAffinity", "jobOrientation", "teamStrength", "soloStrength", "peopleAndMoney",
+    "decisionStyle", "opportunityStyle",
+  ];
+  let jargonLeaks = 0;
+  for (const r of results) {
+    const rep = r.json?.freeReport?.report;
+    if (!rep) continue;
+    const texts = [
+      ...PARAGRAPH_KEYS.map((k) => rep[k]?.text ?? ""),
+      ...(rep.strengths ?? []).map((s) => s.detail),
+      ...(rep.cautions ?? []).map((c) => c.detail),
+    ];
+    for (const t of texts) {
+      for (const re of JARGON_PATTERNS) {
+        if (re.test(t)) {
+          jargonLeaks++;
+          console.log(`  [jargon leak] case=${r.label} pattern=${re.source} text="${t}"`);
+        }
+      }
+    }
+  }
+  console.log(`전문용어 노출 검사(text 필드, mock 10개): ${jargonLeaks === 0 ? "PASS (누출 없음)" : `FAIL (${jargonLeaks}건 누출)`}`);
 
   const latencies = results.filter((r) => r.status === 200).map((r) => r.ms);
   console.log(`응답 시간: min=${Math.min(...latencies)}ms max=${Math.max(...latencies)}ms avg=${Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)}ms`);

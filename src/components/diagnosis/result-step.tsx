@@ -3,14 +3,11 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
-import { TrendingUp, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
-import { PowerGauge } from "@/components/diagnosis/power-gauge";
-import { JobSpectrum } from "@/components/diagnosis/job-spectrum";
-import { FlowLine } from "@/components/diagnosis/flow-line";
-import { ReportSection } from "@/components/diagnosis/report-section";
+import { ReportSection, ParagraphSection } from "@/components/diagnosis/report-section";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 
@@ -89,44 +86,8 @@ export function ResultStep({
             {tendency.wealthType}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            {report ? report.snapshot : isDeep ? interp!.summary : tendency.summary}
+            {report ? report.snapshot.text : isDeep ? interp!.summary : tendency.summary}
           </p>
-
-          {isDeep && deep!.evidencePreview.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {deep!.evidencePreview.map((ev) => (
-                <span
-                  key={ev}
-                  className="rounded-full bg-(--gold-soft) px-2.5 py-1 text-[10px] leading-none text-(--gold)"
-                >
-                  {ev}
-                </span>
-              ))}
-            </div>
-          )}
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="mt-5 grid grid-cols-3 gap-2">
-          <PowerGauge title="버는 힘" label={tendency.earningPower.label} level={tendency.earningPower.level} />
-          <PowerGauge title="지키는 힘" label={tendency.keepingPower.label} level={tendency.keepingPower.level} />
-          <PowerGauge title="기회 잡는 힘" label={tendency.opportunityPower.label} level={tendency.opportunityPower.level} />
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="mt-5 rounded-xl border border-border p-3.5">
-          <p className="text-xs font-medium text-muted-foreground">직장형일까, 사업형일까</p>
-          <div className="mt-2">
-            <JobSpectrum jobType={tendency.jobType} />
-          </div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="mt-5 rounded-xl border border-border p-3.5">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <TrendingUp className="size-3.5 text-(--gold)" />
-            나의 재물 흐름 (등급 기준)
-          </p>
-          <div className="mt-2">
-            <FlowLine curve={tendency.flowCurve} />
-          </div>
         </motion.div>
 
         <p className="mt-6 text-[11px] text-muted-foreground">
@@ -149,21 +110,11 @@ export function ResultStep({
       <div className="mt-6">
         {report ? (
           <>
-            <ReportSection step="②" title="타고난 성향">
-              <p>{report.temperament}</p>
-            </ReportSection>
-            <ReportSection step="③" title="돈을 버는 방식">
-              <p>{report.earningStyle}</p>
-            </ReportSection>
-            <ReportSection step="④" title="돈을 지키는 방식">
-              <p>{report.keepingStyle}</p>
-            </ReportSection>
-            <ReportSection step="⑤" title="돈을 놓치는 반복 패턴">
-              <p className="rounded-xl bg-accent p-3.5 text-accent-foreground">{report.leakPattern}</p>
-            </ReportSection>
-            <ReportSection step="⑥" title="직장형일까, 사업형일까">
-              <p>{report.jobOrientation}</p>
-            </ReportSection>
+            <ParagraphSection step="②" title="타고난 성향" paragraph={report.temperament} />
+            <ParagraphSection step="③" title="돈을 버는 방식" paragraph={report.earningStyle} />
+            <ParagraphSection step="④" title="돈을 지키는 방식" paragraph={report.keepingStyle} />
+            <ParagraphSection step="⑤" title="돈을 놓치는 반복 패턴" paragraph={report.leakPattern} boxed />
+            <ParagraphSection step="⑥" title="직장형일까, 사업형일까" paragraph={report.jobOrientation} />
             <ReportSection step="⑦" title="나와 비교해볼까요">
               <p className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm">
                 <HelpCircle className="mt-0.5 size-3.5 shrink-0 text-(--gold)" />

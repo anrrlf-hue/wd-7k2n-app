@@ -6,6 +6,7 @@ import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
 import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { buildFortuneCandidates } from "@/lib/fortune-candidates";
+import { buildTripleCompare } from "@/lib/triple-compare";
 
 // 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe/ONNX로
 // 이미 분석해 만든 PalmFacts(구조화 JSON)만 받는다. palmFacts가 없으면
@@ -110,12 +111,9 @@ export async function POST(request: Request) {
     };
 
     const onnxLines = palmFacts?.onnxLines ?? null;
-    const freeReportResult = await getFreeSajuReport(deepFacts, {
-      timeoutMs: 9000,
-      personality,
-      onnxLines,
-    });
-    const fortuneCandidates = buildFortuneCandidates(deepFacts, personality, onnxLines);
+    const freeReportResult = await getFreeSajuReport(deepFacts, { timeoutMs: 9000 });
+    const fortuneCandidates = buildFortuneCandidates(deepFacts, onnxLines);
+    const tripleCompare = buildTripleCompare(deepFacts, onnxLines, personality.check);
 
     return NextResponse.json({
       usable: true,
@@ -123,6 +121,7 @@ export async function POST(request: Request) {
       palmFacts,
       freeReport: { source: freeReportResult.source, report: freeReportResult.report },
       fortuneCandidates,
+      tripleCompare,
     });
   } catch (err) {
     return NextResponse.json(
