@@ -156,6 +156,27 @@ const OUTPUT_STARS = new Set(["식신", "상관"]);
 const OFFICER_STARS = new Set(["편관", "정관"]);
 const RESOURCE_STARS = new Set(["편인", "정인"]);
 
+/** 십성 10종 → 5그룹(비겁/식상/재성/관성/인성) 분류. real-world-personalization.ts와
+ * triple-compare.ts가 대운/원국 신호를 같은 기준으로 묶을 때 공유해서 쓴다
+ * (파일마다 다시 정의하면 분류 기준이 갈라질 수 있어 여기 한 곳에만 둔다). */
+export type TenGodGroup = "비겁" | "식상" | "재성" | "관성" | "인성";
+export const TEN_GOD_GROUP: Record<string, TenGodGroup> = {
+  비견: "비겁", 겁재: "비겁",
+  식신: "식상", 상관: "식상",
+  편재: "재성", 정재: "재성",
+  편관: "관성", 정관: "관성",
+  편인: "인성", 정인: "인성",
+};
+/** 각 그룹이 "구조화(계획적)" 축과 "관계(타인 영향)" 축 중 어디에 더
+ * 가까운지 — real-world-personalization.ts의 GROUP_SIGNAL과 짝을 이룬다. */
+export const TEN_GOD_GROUP_AXIS: Record<TenGodGroup, "structured" | "relational"> = {
+  비겁: "relational",
+  식상: "structured",
+  재성: "structured",
+  관성: "structured",
+  인성: "relational",
+};
+
 function pillarsWithTenGod(pillars: PillarFact[], stars: Set<string>): PillarFact["pillar"][] {
   return pillars.filter((p) => stars.has(p.stemTenGod) || stars.has(p.branchTenGod)).map((p) => p.pillar);
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { computeSajuFacts, type SajuFacts } from "@/lib/saju-facts";
+import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { getFreeSajuReport } from "@/lib/free-report-engine";
 import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
 import { scorePersonalityCheck } from "@/lib/personality-check";
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const deepFacts: SajuFacts = computeSajuFacts(parsed.data);
+    const deepFacts: SajuFacts = enrichSajuFacts(computeSajuFacts(parsed.data), parsed.data);
 
     const personalityCheck = parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null;
     const mbti = parsed.data.mbti ?? null;
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
     const freeReportResult = await getFreeSajuReport(deepFacts, {
       timeoutMs: 9000,
       personality: { mbti, check: personalityCheck },
+      palm: onnxLines,
     });
     const fortuneCandidates = buildFortuneCandidates(deepFacts, onnxLines);
     const tripleCompare = buildTripleCompare(deepFacts, onnxLines, personalityCheck);

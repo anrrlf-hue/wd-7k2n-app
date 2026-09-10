@@ -18,10 +18,85 @@
 // 쓴다. 둘이 다르면 오류로 취급하지 않고 "상황에 따라 다르게 나타나는
 // 두 얼굴"로 그대로 보여준다 — 사주 계산값도, 6문항 응답도 고치지 않는다.
 
-import type { SajuFacts } from "@/lib/saju-facts";
+import type { SajuFacts, DaeunAnalysis, TenGodGroup } from "@/lib/saju-facts";
+import { TEN_GOD_GROUP } from "@/lib/saju-facts";
 import type { ReportParagraph } from "@/lib/free-report-schema";
 import type { PersonalityInput } from "@/lib/personality-check";
 import type { MbtiType } from "@/lib/mbti-facts";
+import type { OnnxPalmLines } from "@/lib/palm-facts";
+import { buildTripleCompare } from "@/lib/triple-compare";
+
+// 이번 라운드: 원국+대운(daeunAnalysis)+MBTI/6문항+손금을 "지금 이 시기엔
+// 이렇게 나타난다"는 하나의 문단으로 묶는다. 손금은 별도 해석을 새로
+// 만들지 않고, 이미 있는 triple-compare.ts의 일치/차이/보완 판정을 그대로
+// 인용한다 — "손금은 사주와 독립된 두 번째 분석"이라는 기존 원칙을
+// 유지하면서, 그 판정 결과를 이 문단 안에서 시기와 엮어 보여주기만 한다.
+// 새 점수/판정식은 만들지 않았다: 대운 십성 → 오행 그룹 매핑은 앱 전체가
+// 이미 쓰는 비겁/식상/재성/관성/인성 분류 그대로이고, "구조화/관계" 두 축도
+// 위에서 이미 계산된 structured/relational 값을 그대로 재사용한다.
+
+/** 대운 십성이 어떤 축(구조화/관계)과 실제로 맞닿는지 + 그 축에서
+ * structured·relational이 각각 true/false일 때 이 시기가 어떻게 느껴지는지.
+ * 지어낸 점수가 아니라 위에서 이미 derive된 두 boolean을 문장으로만 옮긴다. */
+const GROUP_SIGNAL: Record<TenGodGroup, { label: string; axis: "structured" | "relational"; whenTrue: string; whenFalse: string }> = {
+  비겁: {
+    label: "스스로 밀어붙이고 경쟁하는 힘(비겁)",
+    axis: "relational",
+    whenTrue: "다만 평소엔 주변 의견을 살피는 편인데, 이 시기엔 그보다 스스로 밀어붙이고 싶어지는 순간이 늘 수 있어요.",
+    whenFalse: "원래도 스스로 판단하는 편이라, 이 시기엔 그 색이 한층 더 짙어질 수 있어요.",
+  },
+  식상: {
+    label: "표현하고 새로 만들어내는 힘(식상)",
+    axis: "structured",
+    whenTrue: "미리 계획하고 준비해온 것을 실제로 밀고 나가는 실행력으로 이어지기 좋은 시기예요.",
+    whenFalse: "즉흥적으로 떠오른 아이디어를 바로 행동으로 옮기는 순발력이 특히 잘 먹히는 시기예요.",
+  },
+  재성: {
+    label: "돈과 기회를 직접 다루는 힘(재성)",
+    axis: "structured",
+    whenTrue: "미리 준비해둔 만큼 이 시기의 기회를 실제로 붙잡을 가능성이 커요.",
+    whenFalse: "예상 밖에서 오는 기회에 빠르게 올라타는 쪽이 이 시기엔 오히려 잘 맞을 수 있어요.",
+  },
+  관성: {
+    label: "책임과 규율, 조직의 압박(관성)",
+    axis: "structured",
+    whenTrue: "원래 구조와 계획을 선호하는 편이라, 이 시기의 책임과 규율이 오히려 편안하게 느껴질 수 있어요.",
+    whenFalse: "원래 열어두고 움직이는 편이라, 이 시기의 규율과 책임이 평소보다 답답하게 느껴질 수 있어요.",
+  },
+  인성: {
+    label: "배우고 도움받는 힘(인성)",
+    axis: "relational",
+    whenTrue: "주변 도움을 잘 받는 편이라, 이 시기엔 그 도움이 유독 크게 느껴지고 실제로도 힘이 될 수 있어요.",
+    whenFalse: "스스로 판단하는 편이라, 이 시기엔 누군가의 도움을 받는 게 오히려 낯설게 느껴질 수 있어요.",
+  },
+};
+
+function dominantGroup(d: DaeunAnalysis): TenGodGroup | null {
+  return TEN_GOD_GROUP[d.tenGods.stem] ?? TEN_GOD_GROUP[d.tenGods.branch] ?? null;
+}
+
+function relationsClause(d: DaeunAnalysis): string {
+  if (d.relations.length === 0) {
+    return "타고난 사주와 크게 부딪히거나 합쳐지는 자리는 없어서, 비교적 무난하게 흘러가는 시기예요.";
+  }
+  return `타고난 사주와는 ${d.relations.map((r) => r.detail).join(", ")}이 걸려 있어서, 평소와 다르게 움직이는 시기예요.`;
+}
+
+/** 이 시기(대운)와 손금이 같은 방향을 보여주는지, 다른 면을 보여주는지 —
+ * 새로 판정하지 않고 triple-compare.ts의 기존 일치/차이/보완 결과를 그대로
+ * 인용한다. palm이 없거나 해당 축 비교가 없으면 null. */
+function palmAlignmentClause(
+  facts: SajuFacts,
+  palm: OnnxPalmLines | null,
+  check: PersonalityInput["check"],
+  axis: "structured" | "relational",
+): string | null {
+  if (!palm) return null;
+  const compareItems = buildTripleCompare(facts, palm, check);
+  const topic = axis === "structured" ? "결정하는 방식" : "관계에서 감정이 작용하는 정도";
+  const item = compareItems.find((c) => c.topic === topic);
+  return item ? `손금까지 보면: ${item.text}` : null;
+}
 
 function ei(mbti: MbtiType): string {
   return mbti[0] === "E"
@@ -106,6 +181,7 @@ function strengthFlip(structured: boolean, relational: boolean): string {
 export function buildRealWorldPersonalization(
   facts: SajuFacts,
   personality: PersonalityInput,
+  palm: OnnxPalmLines | null = null,
 ): ReportParagraph | null {
   const { mbti, check } = personality;
   if (!mbti && !check) return null;
@@ -154,6 +230,36 @@ export function buildRealWorldPersonalization(
   sentences.push(realLifeScene(structured, relational, "money"));
   sentences.push(realLifeScene(structured, relational, "work"));
   sentences.push(strengthFlip(structured, relational));
+
+  // 지금 이 시기(현재 대운)엔 이 성향이 구체적으로 어떻게 나타나는지 —
+  // 원국+대운(oh-my-saju)+성향+손금을 한 문단 안에서 실제로 엮는 지점.
+  // daeunAnalysis가 없으면(호출 실패/시간 미상) 조용히 생략한다.
+  const currentPeriod = facts.daeunAnalysis?.find((d) => d.isCurrent) ?? null;
+  if (currentPeriod) {
+    const group = dominantGroup(currentPeriod);
+    if (group) {
+      const signal = GROUP_SIGNAL[group];
+      const axisValue = signal.axis === "structured" ? structured : relational;
+      sentences.push(
+        `지금(${currentPeriod.age}세부터, ${currentPeriod.ganzhi} 대운)은 ${signal.label}이 강해지는 시기예요. ` +
+          relationsClause(currentPeriod) +
+          ` ${axisValue ? signal.whenTrue : signal.whenFalse}`,
+      );
+      const palmClause = palmAlignmentClause(facts, palm, check, signal.axis);
+      if (palmClause) sentences.push(palmClause);
+      evidenceParts.push(`현재 대운 ${currentPeriod.ganzhi}(${currentPeriod.tenGods.stem})`);
+    }
+
+    const nextPeriod = facts.daeunAnalysis?.find((d) => d.isNext) ?? null;
+    if (nextPeriod) {
+      const nextGroup = dominantGroup(nextPeriod);
+      if (nextGroup && nextGroup !== group) {
+        sentences.push(
+          `다음 대운(${nextPeriod.age}세부터, ${nextPeriod.ganzhi})으로 넘어가면 ${GROUP_SIGNAL[nextGroup].label} 쪽으로 무게가 옮겨가요 — 지금과는 결이 다른 시기가 온다는 뜻이에요.`,
+        );
+      }
+    }
+  }
 
   return {
     text: sentences.join(" "),

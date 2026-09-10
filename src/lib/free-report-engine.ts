@@ -1,14 +1,16 @@
 // interpretation-engine.ts와 동일한 패턴(facts -> prompt -> Claude 또는 mock
 // -> 검증). 무료 사주 V2 17섹션 전용. 이 함수도 절대 throw하지 않는다.
 //
-// onnxLines(손금)는 여전히 안 받는다 — 손금은 사주와 독립된 두 번째
-// 분석이어야 한다는 요구에 따라 손금 비교는 triple-compare.ts에서만
-// 다룬다. personality(MBTI+6문항)는 이번 라운드에 다시 받는다 — 단
-// 손금처럼 "일치/차이 비교"에 섞는 게 아니라, realWorldPersonalization
-// 한 문단으로만 반영한다(free-report-mock.ts 참고).
+// onnxLines(손금)는 선택값으로만 받는다 — 손금 자체 해석(일치/차이 비교)은
+// 여전히 triple-compare.ts에서만 다룬다. 여기서는 그 palm을
+// realWorldPersonalization(free-report-mock.ts)에 그대로 통과시켜서, "지금
+// 이 시기엔 이렇게 나타난다" 문단이 손금 스캔 이후엔 triple-compare의 기존
+// 판정을 인용할 수 있게만 한다 — 새 손금 해석을 여기서 만들지 않는다.
+// personality(MBTI+6문항)는 realWorldPersonalization 한 문단으로만 반영한다.
 
 import type { SajuFacts } from "@/lib/saju-facts";
 import type { PersonalityInput } from "@/lib/personality-check";
+import type { OnnxPalmLines } from "@/lib/palm-facts";
 import { FREE_SAJU_REPORT_SYSTEM_PROMPT, buildFreeSajuReportUserPrompt } from "@/lib/free-report-prompt";
 import { validateFreeSajuReport, type FreeSajuReport } from "@/lib/free-report-schema";
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
@@ -59,7 +61,7 @@ async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: n
 
 export async function getFreeSajuReport(
   facts: SajuFacts,
-  options?: { timeoutMs?: number; personality?: PersonalityInput },
+  options?: { timeoutMs?: number; personality?: PersonalityInput; palm?: OnnxPalmLines | null },
 ): Promise<FreeSajuReportResult> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const userPrompt = buildFreeSajuReportUserPrompt(facts, options?.personality);
@@ -85,7 +87,7 @@ export async function getFreeSajuReport(
 
   return {
     source: "mock",
-    report: buildFreeSajuReport(facts, options?.personality),
+    report: buildFreeSajuReport(facts, options?.personality, options?.palm),
     fallbackReason,
   };
 }

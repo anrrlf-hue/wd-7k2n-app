@@ -20,16 +20,25 @@
 // 손금·자기보고 신호를 조용히 섞어 넣었다 — "손금은 사주와 독립된 두
 // 번째 분석이어야 한다"는 요구에 따라, 그 비교는 여기서 빼고
 // triple-compare.ts의 별도 통합 비교 섹션으로 옮겼다. 이 파일의 13개 주제
-// 문단은 순수 사주 근거로만 구성된다.
+// 문단은 지금도 순수 사주 근거로만 구성된다 — 이 원칙은 안 바뀌었다.
 //
-// MBTI+6문항 재도입(이번 라운드): triple-compare에 boolean 투표로 넣는
-// 방식은 금지됐다 — 대신 realWorldPersonalization이라는 별도 문단 하나로
+// MBTI+6문항 재도입: triple-compare에 boolean 투표로 넣는 방식은
+// 금지됐다 — 대신 realWorldPersonalization이라는 별도 문단 하나로
 // "사주에서 계산된 구조가 현실에서 어떻게 나타나는지"를 설명한다(성향체크를
 // 안 했으면 null). 실제 구성은 real-world-personalization.ts에 있다.
+//
+// 대운+손금 결합(이번 라운드): realWorldPersonalization이 이제 daeunAnalysis
+// (현재 대운)까지 엮어 "지금 이 시기엔 이렇게 나타난다"를 말하고, palm이
+// 있으면(손금 스캔 이후) triple-compare.ts의 기존 일치/차이 판정을 그
+// 문단 안에서 그대로 인용한다 — 새 손금 해석을 만드는 게 아니라 이미 있는
+// "독립된 두 번째 분석"의 결론을 시기와 엮어 보여주는 것뿐이라, 위 원칙과
+// 충돌하지 않는다. palm은 손금 스캔 전(=/api/saju)엔 null이라 이 문단도
+// 자연스럽게 손금 없이 나간다.
 
 import type { SajuFacts, PillarFact } from "@/lib/saju-facts";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { PersonalityInput } from "@/lib/personality-check";
+import type { OnnxPalmLines } from "@/lib/palm-facts";
 import { dayStrengthLabel, dayStrengthShort, elementTemperamentPhrase, dayStemImagery } from "@/lib/saju-labels";
 import { buildRealWorldPersonalization } from "@/lib/real-world-personalization";
 
@@ -153,7 +162,11 @@ function findNamedSinsal(
 
 // ---------- 본체 ----------
 
-export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityInput): FreeSajuReport {
+export function buildFreeSajuReport(
+  facts: SajuFacts,
+  personality?: PersonalityInput,
+  palm?: OnnxPalmLines | null,
+): FreeSajuReport {
   const {
     dayStemKo,
     dayElement,
@@ -535,7 +548,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
 
   // ⑰ MBTI+6문항이 있을 때만 채워지는 "현실 발현" 개인화 문단.
   const realWorldPersonalization = personality
-    ? buildRealWorldPersonalization(facts, personality)
+    ? buildRealWorldPersonalization(facts, personality, palm ?? null)
     : null;
 
   return {

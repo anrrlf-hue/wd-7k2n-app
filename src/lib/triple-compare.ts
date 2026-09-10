@@ -30,8 +30,16 @@
 // "돈을 대하는 방식" 축은 손금에 이와 견줄 만한 실제 근거가 없어서
 // 완전히 뺐다 — 억지로 비교 항목을 만들지 않는다(그 내용은 무료
 // 리포트의 재물 구조/버는 방식 섹션에서 이미 충분히 다룬다).
+//
+// 대운 시기 결합(이번 라운드): 이 비교는 원래 시간과 무관한(원국 자체
+// 성향) 비교였는데, 지금 대운(daeunAnalysis, oh-my-saju timing 기반)의
+// 지배 십성 그룹이 이 축(structured/relational)과 같으면 "지금 이 시기엔
+// 이 비교가 더 도드라진다"는 한 문장을 덧붙인다. 일치/차이/보완 판정
+// 로직 자체는 그대로다 — 새 판정을 추가한 게 아니라 이미 나온 결론에
+// 시기 맥락만 더하는 것.
 
 import type { SajuFacts } from "@/lib/saju-facts";
+import { TEN_GOD_GROUP, TEN_GOD_GROUP_AXIS } from "@/lib/saju-facts";
 import type { PersonalityCheckFacts } from "@/lib/personality-check";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 
@@ -41,6 +49,23 @@ export interface CompareItem {
   topic: string;
   kind: CompareKind;
   text: string;
+}
+
+// 이번 라운드: 이 비교가 "지금 이 대운 시기"와 실제로 맞물리는지도 같은
+// 문장 안에 덧붙인다. 새 비교 로직이 아니라, 이미 계산된 kind/text 뒤에
+// daeunAnalysis(현재 대운의 지배 십성 그룹)가 이 축과 같은 축이면 시기를
+// 언급하는 한 문장만 더하는 것뿐 — 일치/차이/보완 판정 자체는 안 바뀐다.
+function currentPeriodClause(facts: SajuFacts, axis: "structured" | "relational"): string | null {
+  const current = facts.daeunAnalysis?.find((d) => d.isCurrent) ?? null;
+  if (!current) return null;
+  const group = TEN_GOD_GROUP[current.tenGods.stem] ?? TEN_GOD_GROUP[current.tenGods.branch];
+  if (!group || TEN_GOD_GROUP_AXIS[group] !== axis) return null;
+  return `지금(${current.age}세부터, ${current.ganzhi} 대운)은 이 축이 타고난 사주에서 유독 강하게 작동하는 시기라, 이 비교가 평소보다 더 도드라져 보일 수 있어요.`;
+}
+
+function withPeriodContext(item: Omit<CompareItem, "text"> & { text: string }, facts: SajuFacts, axis: "structured" | "relational"): CompareItem {
+  const clause = currentPeriodClause(facts, axis);
+  return clause ? { ...item, text: `${item.text} ${clause}` } : item;
 }
 
 function classify(signals: (boolean | null)[]): CompareKind | null {
@@ -81,7 +106,7 @@ function decisionAxis(
       "타고난 결정 속도와 손에 보이는 두뇌선, 본인이 답한 결정 속도가 정확히 하나로 겹치진 않아요. 두뇌선은 평소 사고방식의 결을, 자기응답은 실제 체감 속도를 보여줘요 — 상황에 따라 둘 다 나오는 사람일 수 있어요.";
   }
 
-  return { topic: "결정하는 방식", kind, text };
+  return withPeriodContext({ topic: "결정하는 방식", kind, text }, facts, "structured");
 }
 
 function relationEmotionAxis(
@@ -117,7 +142,7 @@ function relationEmotionAxis(
       "타고난 대인관계 구조와 손에 보이는 감정선, 본인이 답한 성향이 정확히 겹치진 않아요. 감정선은 관계에서 감정이 작용하는 결을, 자기응답은 실제 의사결정 습관을 보여줘요 — 둘 다 이 사람의 진짜 모습일 수 있어요.";
   }
 
-  return { topic: "관계에서 감정이 작용하는 정도", kind, text };
+  return withPeriodContext({ topic: "관계에서 감정이 작용하는 정도", kind, text }, facts, "relational");
 }
 
 /** 사주 × 손금 × 자기응답(6문항) 통합 비교. 진짜로 비교 가능한 축(결정
