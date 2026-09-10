@@ -493,13 +493,5 @@ export function buildFreeSajuReport(
     cautions,
     selfCheckQuestions,
     evidenceExplainer,
-    // 결제 직전 Bridge 문구용 3단 분류. 새 신호를 만들지 않고, 이미 위에서
-    // leakPattern/jobOrientation을 가를 때 쓴 실제 신호를 그대로 재사용한다.
-    bridgeProfile:
-      hyungsin.length > 0
-        ? "leak"
-        : wealthStarCount + outputStarCount > peerStarCount + officerStarCount
-          ? "business"
-          : "stable",
   };
 }

@@ -31,10 +31,6 @@ export const FreeSajuReportSchema = z.object({
   cautions: z.array(evidenceItem).min(3), // ⑮ 조심할 점 3개 이상
   selfCheckQuestions: z.array(z.string().min(5)).min(2).max(5), // ⑯ 실제 경험 비교 질문
   evidenceExplainer: z.string().min(10), // ⑰ 왜 이런 결과가 나왔는지
-  /** 결제 직전 Bridge 화면의 문구를 개인화하는 데만 쓰는 3단 분류 — 이미
-   * 계산된 실제 신호(재성+식상 vs 비겁+관성 우세, 흉신 존재)를 재사용할
-   * 뿐 새로 지어내는 값이 아니다. */
-  bridgeProfile: z.enum(["business", "stable", "leak"]),
 });
 
 export type FreeSajuReport = z.infer<typeof FreeSajuReportSchema>;

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Camera, ImagePlus, RotateCcw, HandMetal, HelpCircle } from "lucide-react";
+import { Camera, ImagePlus, RotateCcw, HandMetal, HelpCircle, Compass, Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepBadge } from "@/components/diagnosis/step-badge";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
@@ -16,7 +16,9 @@ import {
 import { isPalmFactsUsable, describePalmFailureReasons, onnxDetectedLineCount, type PalmFacts } from "@/lib/palm-facts";
 import { buildRealObservationText, buildTraditionalReadingText } from "@/lib/palm-observation-text";
 import type { FreeSajuReport } from "@/lib/free-report-schema";
+import type { FortuneCandidate } from "@/lib/fortune-candidates";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
+import { track } from "@/lib/analytics";
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
 
@@ -116,76 +118,144 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
   );
 }
 
-const BRIDGE_LINES: Record<FreeSajuReport["bridgeProfile"], { headline: string; body: string }> = {
-  business: {
-    headline: "기회를 잡는 힘이 강한 편으로 나왔어요.",
-    body: "중요한 건 언제 움직이느냐예요.",
-  },
-  stable: {
-    headline: "무리해서 움직이기보다 좋은 흐름을 놓치지 않는 편이 잘 맞아요.",
-    body: "그 흐름이 언제인지 아는 게 중요해요.",
-  },
-  leak: {
-    headline: "버는 힘만큼 지키는 타이밍이 중요한 구조로 나왔어요.",
-    body: "언제 조심해야 하는지가 관건이에요.",
-  },
-};
-
-/** 결제 직전 Bridge(§21-22) — 가격은 여기서 절대 안 보여준다. 사용자가
- * 개인화된 문구를 읽고 스스로 CTA를 눌러야만 그 아래 가격이 있는
- * PaywallOffer가 열린다. 모든 사람에게 같은 문구를 쓰지 않는다 —
- * bridgeProfile(사업형/안정형/leak형)에 따라 헤드라인이 달라진다. */
-function Bridge({ profile, onOpen }: { profile: FreeSajuReport["bridgeProfile"]; onOpen: () => void }) {
-  const lines = BRIDGE_LINES[profile];
+/** "내 운세 지도" — 무료 리포트가 끝난 뒤 판매카드 대신 먼저 보여준다.
+ * 관련도 순으로 정렬된 실제 근거 기반 후보 목록(이미 서버에서 정렬돼 온다).
+ * 이미 무료에서 다룬 영역(재물)에는 단순 체크 표시만 붙이고, 가짜 진행률
+ * (70% 완성 같은)은 쓰지 않는다. */
+function FortuneMap({
+  candidates,
+  onSelect,
+}: {
+  candidates: FortuneCandidate[];
+  onSelect: (c: FortuneCandidate) => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0.5, y: 8 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.4 }}
-      className="mt-8 rounded-2xl border border-(--gold-soft) p-5 text-center"
+      className="mt-8"
     >
-      <p className="text-sm text-muted-foreground">지금까지는 당신이 어떤 돈의 구조를 가진 사람인지 봤어요.</p>
-      <p className="mt-3 text-base leading-snug font-semibold">{lines.headline}</p>
-      <p className="mt-1.5 text-sm text-muted-foreground">{lines.body}</p>
-      <p className="mt-3 text-sm">그렇다면, 이 흐름이 언제 강해지는지도 궁금하지 않아요?</p>
-      <Button size="lg" onClick={onOpen} className="mt-5 h-13 w-full rounded-full text-base">
-        내 재물운의 시기 보기
-      </Button>
+      <p className="flex items-center gap-1.5 text-sm font-medium">
+        <Compass className="size-4 text-(--gold)" />내 운세 지도
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">지금 가장 궁금한 흐름 하나를 골라보세요.</p>
+      <div className="mt-3 flex flex-col gap-2.5">
+        {candidates.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onSelect(c)}
+            className="mystic-card flex items-start gap-3 p-4 text-left transition-colors hover:border-(--gold-soft)"
+          >
+            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-(--gold-soft) text-(--gold)">
+              {c.alreadyCovered ? <Check className="size-3.5" /> : <Compass className="size-3.5" />}
+            </span>
+            <span className="flex-1">
+              <span className="block text-sm font-semibold">{c.label}</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">{c.reason}</span>
+            </span>
+            <ArrowRight className="mt-1 size-4 shrink-0 text-(--gold)" />
+          </button>
+        ))}
+      </div>
     </motion.div>
   );
 }
 
-/** 모든 무료 콘텐츠가 끝난 뒤 딱 한 번 나오는 마지막 선택 영역.
- * Bridge를 먼저 보여주고, 사용자가 직접 눌러야만 가격이 있는 결제창을 연다
- * (§21 — 결제창을 무료 결과 직후 자동으로 보여주지 않는다). */
-function FinalChoice({ report, onReset }: { report: FreeSajuReport; onReset: () => void }) {
+/** 선택한 운의 실제 무료 미니리딩. 여기서 새 개인화 해석 + 현실적인 미래
+ * 장면 + 질문 하나를 준다(§I) — "결제하면 볼 수 있습니다" 같은 빈 문장은
+ * 미니리딩으로 치지 않는다. 두 번째 자발적 CTA를 누르기 전까지 가격은
+ * 절대 렌더링하지 않는다(컴포넌트 자체를 mount하지 않음, §L). */
+function MiniReading({
+  candidate,
+  onDeeper,
+  onBack,
+}: {
+  candidate: FortuneCandidate;
+  onDeeper: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0.5, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="mt-8"
+    >
+      <p className="flex items-center gap-1.5 text-sm font-medium">
+        <Compass className="size-4 text-(--gold)" />
+        {candidate.label}
+      </p>
+      <p className="mt-3 text-sm leading-relaxed">{candidate.miniReading}</p>
+      <p className="mt-3 rounded-xl bg-accent p-3.5 text-sm leading-relaxed text-accent-foreground">
+        {candidate.futureScene}
+      </p>
+      <p className="mt-3 text-sm font-medium">{candidate.deeperQuestion}</p>
+
+      <Button size="lg" onClick={onDeeper} className="mt-5 h-13 w-full rounded-full text-base">
+        {candidate.deeperCTA}
+      </Button>
+      <button type="button" onClick={onBack} className="mt-3 w-full text-center text-xs text-muted-foreground">
+        다른 운 선택하기
+      </button>
+    </motion.div>
+  );
+}
+
+/** 모든 무료 콘텐츠가 끝난 뒤 나오는 전환 흐름. 운세지도 -> 관심운 선택
+ * -> 미니리딩 -> "더 보기" 클릭 -> 그제서야 개인화된 결제창. 결제창은
+ * 선택한 운과 같은 대화를 이어간다(§M) — 모든 사람에게 같은 제목이 아니다. */
+function ConversionFlow({
+  candidates,
+  onReset,
+}: {
+  candidates: FortuneCandidate[];
+  onReset: () => void;
+}) {
+  const [selected, setSelected] = useState<FortuneCandidate | null>(null);
   const [opened, setOpened] = useState(false);
+
+  function selectCandidate(c: FortuneCandidate) {
+    setSelected(c);
+    setOpened(false);
+    track("fortune_interest_selected", { interest: c.id });
+    track("mini_reading_viewed", { interest: c.id });
+  }
+
+  function openPaywall() {
+    setOpened(true);
+    track("deeper_cta_clicked", { interest: selected?.id });
+    track("paywall_viewed", { interest: selected?.id });
+  }
 
   return (
     <>
-      <p className="mt-8 text-center text-[11px] text-muted-foreground">
-        사주·손금 해석은 참고용 콘텐츠입니다.
-      </p>
-      {!opened ? (
-        <Bridge profile={report.bridgeProfile} onOpen={() => setOpened(true)} />
-      ) : (
-        <div className="mt-5">
+      {!selected && <FortuneMap candidates={candidates} onSelect={selectCandidate} />}
+      {selected && !opened && (
+        <MiniReading candidate={selected} onDeeper={openPaywall} onBack={() => setSelected(null)} />
+      )}
+      {selected && opened && (
+        <div className="mt-8">
           <PaywallOffer
-            title="내 재물 흐름은 언제 강해지고, 언제 조심해야 할까요"
-            includedItems={[
-              "앞으로 1~3년 재물 흐름이 강해지는 시기",
-              "조심해야 할 시기와 이유",
-              "지금 시기에 필요한 구체적 행동",
-            ]}
-            ctaText="내 재물운의 시기 열어보기"
+            title={selected.paywallTitle}
+            includedItems={selected.paywallItems}
+            ctaText={selected.paywallCTA}
           />
+          <button
+            type="button"
+            onClick={() => setOpened(false)}
+            className="mt-3 w-full text-center text-xs text-muted-foreground"
+          >
+            다른 운 선택하기
+          </button>
         </div>
       )}
       <button
         type="button"
         onClick={onReset}
-        className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground"
+        className="mt-6 flex w-full items-center justify-center gap-1.5 text-center text-xs text-muted-foreground"
       >
         <RotateCcw className="size-3.5" />
         다른 사진으로 다시 보기
@@ -205,6 +275,7 @@ export function PalmPageClient({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
+  const [fortuneCandidates, setFortuneCandidates] = useState<FortuneCandidate[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retakeAttempts, setRetakeAttempts] = useState(0);
 
@@ -242,6 +313,9 @@ export function PalmPageClient({
     }
 
     setFinalReport(data.freeReport?.report ?? null);
+    setFortuneCandidates(data.fortuneCandidates ?? []);
+    track("free_report_completed", { palmSkipped: Boolean(data.palmSkipped) });
+    track("fortune_map_viewed");
     setStage(data.palmSkipped ? "saju_only" : "result");
   }
 
@@ -292,6 +366,7 @@ export function PalmPageClient({
     setStage("upload");
     setPalmFacts(null);
     setFinalReport(null);
+    setFortuneCandidates([]);
     setErrorMsg(null);
     setRetakeAttempts(0);
   }
@@ -492,18 +567,24 @@ export function PalmPageClient({
           </div>
 
           <FinalReportSections report={finalReport} />
-          <FinalChoice report={finalReport} onReset={reset} />
+          <ConversionFlow candidates={fortuneCandidates} onReset={reset} />
         </div>
       )}
 
       {stage === "saju_only" && finalReport && (
         <div className="mt-6 flex flex-1 flex-col">
           <div className="mystic-card p-4 text-sm text-muted-foreground">
-            이번엔 손금 없이 사주만으로 리포트를 만들었어요. 나중에 손금 사진을 추가하면 더 정확해질 수 있어요.
+            이번 결과는 사주와 입력한 정보를 중심으로 봤어요.
           </div>
           <FinalReportSections report={finalReport} />
-          <FinalChoice report={finalReport} onReset={reset} />
+          <ConversionFlow candidates={fortuneCandidates} onReset={reset} />
         </div>
+      )}
+
+      {/* 무료 리포트 Peak와 다음 행동(운세지도) 사이에 고지 문구가 끼면
+       * 몰입이 끊긴다(§O) — 필요한 고지는 여기, 진짜 페이지 최하단에만 둔다. */}
+      {(stage === "result" || stage === "saju_only") && (
+        <p className="mt-8 text-center text-[11px] text-muted-foreground">사주·손금 해석은 참고용 콘텐츠입니다.</p>
       )}
     </div>
   );
