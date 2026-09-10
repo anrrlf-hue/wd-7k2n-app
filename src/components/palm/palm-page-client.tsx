@@ -307,7 +307,7 @@ export function PalmPageClient({
                   {HAND_SHAPE_KO[palmFacts.handShape]}
                 </p>
                 <p className="mt-0.5 text-xs text-(--gold)">
-                  분석 신뢰도 {(palmFacts.confidence * 100).toFixed(0)}%
+                  이미지 품질 양호 · 주요 선 {palmFacts.majorLines.length}개 검출
                 </p>
               </div>
             </div>
@@ -344,34 +344,32 @@ export function PalmPageClient({
             <ReportSection step="④" title="사주와 다르게 나타나는 부분">
               <p>{crossResult.interpretation.differences}</p>
             </ReportSection>
-            <ReportSection step="⑤" title="돈을 대하는 방식·의사결정 스타일">
-              <p>{crossResult.interpretation.moneyConnection}</p>
-            </ReportSection>
             {crossResult.interpretation.personalityNote && (
-              <ReportSection step="⑥" title="자기보고 성향과 비교하면">
+              <ReportSection step="⑤" title="자기보고 성향과 비교하면">
                 <p>{crossResult.interpretation.personalityNote}</p>
               </ReportSection>
             )}
-            <ReportSection step={crossResult.interpretation.personalityNote ? "⑦" : "⑥"} title="종합하면">
+            <ReportSection step={crossResult.interpretation.personalityNote ? "⑥" : "⑤"} title="종합하면">
               <p className="rounded-xl bg-accent p-3.5 text-accent-foreground">
                 서로 다른 데이터({crossResult.interpretation.personalityNote ? "사주·손금·자기보고" : "사주·손금"})가 이 한 사람을 각자의 방식으로 가리키고 있어요. {crossResult.interpretation.selfComparisonQuestion}
               </p>
             </ReportSection>
-            <ReportSection step={crossResult.interpretation.personalityNote ? "⑧" : "⑦"} title="이 분석의 한계">
+            <ReportSection step={crossResult.interpretation.personalityNote ? "⑦" : "⑥"} title="이 분석의 한계">
               <p className="text-xs text-muted-foreground">{crossResult.interpretation.uncertaintyNote}</p>
             </ReportSection>
           </div>
 
-          {/* 최종 무료 통합 리포트 — 17섹션 전체는 손금까지 끝난 뒤 여기서 이어진다. */}
+          {/* "돈을 대하는 방식"은 손금×사주 교차 해석(crossResult.moneyConnection)과
+           * 사주 심층 재물 구조(finalReport.wealthStructure)가 원래 같은 주제인데도
+           * 서로 다른 페이지 구간(위쪽 교차분석 / 아래쪽 "심층 리포트")에 따로
+           * 떨어져 있었다 — 세 데이터를 이어붙이지 않고 한 주제로 엮으라는
+           * 요구에 따라 하나의 섹션으로 합친다. */}
           {finalReport && (
             <div className="mt-8">
-              <p className="flex items-center gap-1.5 text-sm font-medium">
-                <HandMetal className="size-4 text-(--gold)" />
-                여기부터는 사주 심층 리포트 전체예요
-              </p>
               <div className="mt-3">
-                <ReportSection title="재물운·돈복의 큰 구조">
-                  <p>{finalReport.wealthStructure}</p>
+                <ReportSection title="돈을 대하는 방식·재물운의 큰 구조">
+                  <p>{crossResult.interpretation.moneyConnection}</p>
+                  <p className="mt-2">{finalReport.wealthStructure}</p>
                 </ReportSection>
                 <ReportSection title="큰돈·기회와 관계된 성향">
                   <p>{finalReport.bigMoneyAffinity}</p>
@@ -424,25 +422,10 @@ export function PalmPageClient({
 
           <FreeBoundaryMarker />
 
-          <div className="mt-5 flex flex-col gap-3">
-            <LockedCard
-              title="사주 + 손금 심화 교차 리포트"
-              cta="심화 교차 리포트 열어보기"
-            />
-          </div>
-
-          {/* 현실 재무검증은 유료가 아니라 무료 별도 단계다 — 포함 목록에 넣지 않는다. */}
-          <PaywallOffer
-            includedItems={[
-              "사주+손금 심화 교차 비교(대운 흐름까지 반영)",
-              "앞으로 1~3년 재물 흐름 정확한 시기",
-              "지금 시기에 필요한 구체적 행동",
-              "전체 계산 근거 원문",
-            ]}
-            ctaText="사주+손금 심화 교차 리포트 열기"
-          />
-
-          <div className="mt-auto flex flex-col gap-3 pt-8">
+          {/* FREE-FIRST: 무료 통합 리포트의 다음 행동(현실 재무검증)이
+           * 유료 심화 리포트 안내보다 먼저 나와야 한다 — 유료 콘텐츠는
+           * 이 아래에 부차적, 비차단적 경로로 남겨둔다. */}
+          <div className="flex flex-col gap-3 pt-6">
             <p className="text-center text-xs text-muted-foreground">
               재미로 본 돈 성향과 실제 내 돈생활도 같은지 확인해볼까요?
             </p>
@@ -454,6 +437,24 @@ export function PalmPageClient({
               다른 사진으로 다시 보기
             </Button>
           </div>
+
+          <div className="mt-8 flex flex-col gap-3">
+            <LockedCard
+              title="사주 + 손금 심화 교차 리포트"
+              cta="심화 교차 리포트 열어보기"
+            />
+          </div>
+
+          {/* 현실 재무검증은 유료가 아니라 무료 별도 단계다(위 버튼) — 포함 목록에 넣지 않는다. */}
+          <PaywallOffer
+            includedItems={[
+              "사주+손금 심화 교차 비교(대운 흐름까지 반영)",
+              "앞으로 1~3년 재물 흐름 정확한 시기",
+              "지금 시기에 필요한 구체적 행동",
+              "전체 계산 근거 원문",
+            ]}
+            ctaText="사주+손금 심화 교차 리포트 열기"
+          />
         </div>
       )}
     </div>

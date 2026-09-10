@@ -198,7 +198,23 @@ export function ResultStep({
 
       <FreeBoundaryMarker />
 
-      <div className="mt-5">
+      {/* FREE-FIRST: 무료 흐름의 다음 행동(현실 재무검증)이 유료 안내보다
+       * 먼저 나와야 한다. 유료 "정확한 시기" 콘텐츠는 이 아래에 부차적,
+       * 비차단적 경로로 남겨둔다 — 무료 경로를 막지 않는다. */}
+      <div className="pt-6">
+        <p className="mb-3 text-center text-xs text-muted-foreground">
+          재밌게 보셨다면, 이제 진짜 내 상황도 1분만 체크해볼까요?
+        </p>
+        <Button
+          size="lg"
+          onClick={onNext}
+          className="h-13 w-full rounded-full text-base"
+        >
+          현실 돈 고민도 체크해보기
+        </Button>
+      </div>
+
+      <div className="mt-8">
         <p className="flex items-center gap-1.5 text-sm font-medium">
           <Eye className="size-4 text-(--gold)" />
           정확한 시기가 궁금하다면
@@ -221,7 +237,7 @@ export function ResultStep({
         </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 mb-4">
         <p className="flex items-center gap-1.5 text-sm font-medium">
           <ScrollText className="size-4 text-(--gold)" />
           더 깊은 재물 리포트
@@ -234,7 +250,7 @@ export function ResultStep({
           <LockedCard title="사주+손금 심화 교차 리포트" cta="심화 교차 리포트 보기" />
         </div>
 
-        {/* 현실 재무검증은 유료가 아니라 무료 별도 단계다(아래 onNext 버튼) —
+        {/* 현실 재무검증은 유료가 아니라 무료 별도 단계다(위 onNext 버튼) —
          * 여기 포함 목록에 다시 넣지 않는다. */}
         <PaywallOffer
           includedItems={[
@@ -246,19 +262,6 @@ export function ResultStep({
           ]}
           ctaText="내 사주에서 돈이 크게 움직이는 시기 보기"
         />
-      </div>
-
-      <div className="mt-auto pt-8">
-        <p className="mb-3 text-center text-xs text-muted-foreground">
-          재밌게 보셨다면, 이제 진짜 내 상황도 1분만 체크해볼까요?
-        </p>
-        <Button
-          size="lg"
-          onClick={onNext}
-          className="h-13 w-full rounded-full text-base"
-        >
-          현실 돈 고민도 체크해보기
-        </Button>
       </div>
     </div>
   );

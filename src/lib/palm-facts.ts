@@ -45,8 +45,6 @@ export interface LineFeature {
  * 측정치)은 절대 지어내지 않고 null로 둔다. */
 export interface OnnxLineDetail {
   detected: boolean;
-  /** 0~1, 마스크 픽셀 커버리지 기반 — Sobel의 confidence와는 다른 산출식 */
-  confidence: number;
   length: LineLength | null;
   curve: LineDirection | null;
   /** 마스크 픽셀 수(굵기·뚜렷함) 기반 근사치. 실제 "깊이"를 측정한 값이
@@ -69,7 +67,6 @@ export interface OnnxPalmLines {
   fateLine: { presence: "unknown"; note: string };
   mounts: "unknown";
   marks: "unknown";
-  modelConfidence: number;
 }
 
 export interface PalmFacts {
@@ -82,7 +79,9 @@ export interface PalmFacts {
   lineFeatures: LineFeature[];
   /** 실제 ONNX 모델 추론 결과. 모델 로드/추론이 실패하면 null. */
   onnxLines: OnnxPalmLines | null;
-  /** 전체 파이프라인 신뢰도 0~1 (손 검출 신뢰도 x 이미지 품질 보정) */
+  /** 0~1, MediaPipe 손 검출 확률과 Sobel 엣지 밀도를 섞은 내부 임계값용
+   * 수치일 뿐 검증된 정확도가 아니다 — isPalmFactsUsable()의 재촬영 판단에만
+   * 쓰고, 사용자에게 "신뢰도/정확도 %"로 노출하지 않는다. */
   confidence: number;
   /** 사용자에게 보여줄 경고/재촬영 사유 */
   warnings: string[];

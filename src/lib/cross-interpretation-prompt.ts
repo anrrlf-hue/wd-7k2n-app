@@ -48,7 +48,7 @@ ${sajuSummaryText}
 - 손 모양: ${palm.handShape}
 - 검출된 주요 선: ${palm.majorLines.length > 0 ? palm.majorLines.join(", ") : "없음"}
 - 선별 특징: ${lineDesc}
-- 분석 신뢰도: ${(palm.confidence * 100).toFixed(0)}%
+- 이미지 품질: ${palm.imageQuality === "good" ? "양호(손 전체가 프레임 안에 있고 밝기 충분)" : palm.imageQuality}
 ${personalityBlock}
 ## 요청 스키마 (JSON만 응답)
 {

@@ -17,7 +17,6 @@ import { MBTI_TYPES } from "@/lib/mbti-facts";
 
 const onnxLineDetailSchema = z.object({
   detected: z.boolean(),
-  confidence: z.number().min(0).max(1),
   length: z.enum(["짧음", "보통", "김"]).nullable(),
   curve: z.enum(["완만한 곡선", "직선에 가까움"]).nullable(),
   depthStrength: z.enum(["약함", "보통", "강함"]).nullable(),
@@ -34,7 +33,6 @@ const onnxPalmLinesSchema = z.object({
   fateLine: z.object({ presence: z.literal("unknown"), note: z.string() }),
   mounts: z.literal("unknown"),
   marks: z.literal("unknown"),
-  modelConfidence: z.number(),
 });
 
 const palmFactsSchema = z.object({

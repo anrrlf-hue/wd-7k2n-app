@@ -17,7 +17,7 @@ export function buildRealObservationText(facts: PalmFacts): string {
     const d: OnnxLineDetail = facts.onnxLines![key];
     const label = LINE_LABEL[key];
     if (!d.detected) return `${label}: 이번 사진에서는 모델이 뚜렷하게 검출하지 못했어요`;
-    return `${label}: 실제로 검출됨(신뢰도 약 ${Math.round(d.confidence * 100)}%, ${d.length}, ${d.curve})`;
+    return `${label}: 검출됨(${d.length}, ${d.curve})`;
   });
   return parts.join(" · ");
 }

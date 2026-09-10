@@ -169,20 +169,31 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     .filter(([, count]) => count === 0)
     .map(([el]) => el);
 
-  const keyRelations: string[] = [
-    ...result.stemRelations.map((r) => r.desc),
-    ...Object.values(result.branchRelations.방합),
-    ...Object.values(result.branchRelations.삼합),
-    ...Object.values(result.branchRelations.반합),
-    ...Object.values(result.branchRelations.육합),
-    ...Object.values(result.branchRelations.충),
-    ...Object.values(result.branchRelations.형),
-    ...Object.values(result.branchRelations.파),
-    ...Object.values(result.branchRelations.해),
-    ...Object.values(result.branchRelations.원진),
-  ].filter((v): v is string => Boolean(v));
+  // ssaju는 PillarKey(year/month/day/hour) 4개짜리 Record에 관계를 저장하는데,
+  // 지지관계 하나는 두 기둥 사이의 관계라 관여하는 두 키 모두에 같은 문자열을
+  // 넣는다 — 즉 Object.values()로 펼치면 관계 하나가 항상 2번 찍힌다
+  // (humanize-writing 스킬로 실제 생성 문장을 검토하다 "辰巳 귀문, 辰巳 귀문"처럼
+  // 같은 문구가 그대로 중복 출력되는 걸 발견하고 역추적함). new Set()으로 dedupe.
+  const keyRelations: string[] = Array.from(
+    new Set(
+      [
+        ...result.stemRelations.map((r) => r.desc),
+        ...Object.values(result.branchRelations.방합),
+        ...Object.values(result.branchRelations.삼합),
+        ...Object.values(result.branchRelations.반합),
+        ...Object.values(result.branchRelations.육합),
+        ...Object.values(result.branchRelations.충),
+        ...Object.values(result.branchRelations.형),
+        ...Object.values(result.branchRelations.파),
+        ...Object.values(result.branchRelations.해),
+        ...Object.values(result.branchRelations.원진),
+      ].filter((v): v is string => Boolean(v)),
+    ),
+  );
 
-  const gwimunRelations = Object.values(result.branchRelations.귀문).filter((v): v is string => Boolean(v));
+  const gwimunRelations = Array.from(
+    new Set(Object.values(result.branchRelations.귀문).filter((v): v is string => Boolean(v))),
+  );
 
   const pillarStages: PillarStageFact[] = (["year", "month", "day", "hour"] as const)
     .filter((key) => key !== "hour" || input.hour !== null)

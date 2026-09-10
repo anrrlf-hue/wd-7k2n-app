@@ -140,23 +140,71 @@ function extractLineFeatures(imageData: ImageData, landmarksPx: { x: number; y: 
   });
 }
 
-/** MediaPipe 손 랜드마크로 잡은 손바닥 영역을 여유(padding)를 두고 잘라낸다.
- * palm-line-reader 모델은 "손금이 프레임을 채운 근접 크롭"으로 학습돼서,
- * 원본 전체 사진을 그대로 넣는 것보다 이렇게 잘라 넣어야 학습 조건에 가깝다. */
-function cropToCanvas(source: HTMLCanvasElement, box: Rect, padding = 0.18): HTMLCanvasElement {
-  const padX = box.width * padding;
-  const padY = box.height * padding;
-  const x = Math.max(0, box.x - padX);
-  const y = Math.max(0, box.y - padY);
-  const w = Math.min(source.width - x, box.width + padX * 2);
-  const h = Math.min(source.height - y, box.height + padY * 2);
+/** palm-line-reader의 실제 학습 전처리(pipeline/hand_preprocess.py의
+ * crop_and_rotate_hand)를 그대로 재현한다. 이전 버전(cropToCanvas, axis-aligned
+ * bbox + 비례 padding)은 이 모델이 학습 때 실제로 본 프레임과 달라서
+ * heart_line/head_line이 거의 검출되지 않았다 — upstream을 직접 읽어 확인한
+ * 원인은 "손가락이 항상 위를 향하도록 회전"시킨 뒤 크롭한다는 점이었다
+ * (우리는 원본 방향 그대로 axis-aligned crop만 하고 있었음).
+ *
+ * upstream 순서: wrist(0)→middle-MCP(9) 벡터가 수직 위를 향하도록 전체
+ * 이미지를 회전 → 회전된 21개 랜드마크의 bbox + 고정 100px 마진으로 크롭 →
+ * MediaPipe handedness가 "Left"가 아니면 좌우반전(학습 시 형태 변이를 줄이기
+ * 위한 것으로, 실제 손잡이 판정이 아니라고 upstream 주석이 명시함).
+ * 마진 100px은 upstream 스크립트의 고정값을 그대로 쓴 것 — 우리가 임의로
+ * 추측한 padding 비율이 아니다. */
+function cropAndRotatePalm(
+  source: HTMLCanvasElement,
+  landmarksPx: { x: number; y: number }[],
+  isLeftHanded: boolean,
+  margin = 100,
+): HTMLCanvasElement {
+  const wrist = landmarksPx[0];
+  const middleMcp = landmarksPx[9];
+  const v = { x: middleMcp.x - wrist.x, y: middleMcp.y - wrist.y };
+  // wrist->middle-MCP 벡터를 수직 위(0,-r)로 돌리는 회전각.
+  const angle = Math.atan2(-v.x, -v.y);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
 
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(w));
-  canvas.height = Math.max(1, Math.round(h));
-  const ctx = canvas.getContext("2d");
-  ctx?.drawImage(source, x, y, w, h, 0, 0, canvas.width, canvas.height);
-  return canvas;
+  const cx = landmarksPx.reduce((sum, p) => sum + p.x, 0) / landmarksPx.length;
+  const cy = landmarksPx.reduce((sum, p) => sum + p.y, 0) / landmarksPx.length;
+
+  const rotatedRelative = landmarksPx.map((p) => {
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    return { x: dx * cos - dy * sin, y: dx * sin + dy * cos };
+  });
+  const xs = rotatedRelative.map((p) => p.x);
+  const ys = rotatedRelative.map((p) => p.y);
+  const minX = Math.min(...xs) - margin;
+  const minY = Math.min(...ys) - margin;
+  const maxX = Math.max(...xs) + margin;
+  const maxY = Math.max(...ys) + margin;
+  const outW = Math.max(1, Math.round(maxX - minX));
+  const outH = Math.max(1, Math.round(maxY - minY));
+
+  const rotatedCanvas = document.createElement("canvas");
+  rotatedCanvas.width = outW;
+  rotatedCanvas.height = outH;
+  const rctx = rotatedCanvas.getContext("2d");
+  if (!rctx) return rotatedCanvas;
+  rctx.translate(-minX, -minY);
+  rctx.rotate(angle);
+  rctx.translate(-cx, -cy);
+  rctx.drawImage(source, 0, 0);
+
+  if (isLeftHanded) return rotatedCanvas;
+
+  const flipped = document.createElement("canvas");
+  flipped.width = outW;
+  flipped.height = outH;
+  const fctx = flipped.getContext("2d");
+  if (!fctx) return rotatedCanvas;
+  fctx.translate(outW, 0);
+  fctx.scale(-1, 1);
+  fctx.drawImage(rotatedCanvas, 0, 0);
+  return flipped;
 }
 
 const ONNX_CLASS_TO_LINE_NAME: Record<OnnxLineClass, LineName> = {
@@ -167,12 +215,14 @@ const ONNX_CLASS_TO_LINE_NAME: Record<OnnxLineClass, LineName> = {
 
 /** ONNX 추론이 실제로 반환한 픽셀 통계(lineLength/avgThickness/curveScore)를
  * 사람이 읽는 라벨로 분류한다. 라벨 경계값은 우리가 정한 근사 기준이지만,
- * 그 재료(픽셀 수·주성분 투영 범위)는 전부 실제 모델 출력에서 나온다. */
+ * 그 재료(픽셀 수·주성분 투영 범위)는 전부 실제 모델 출력에서 나온다.
+ * 이전에는 여기서 Math.min(1, obs.coverage * 40)을 "confidence"로 반환했는데,
+ * 40이라는 배율에 근거가 없어 검증된 정확도처럼 보이는 가짜 수치였다 —
+ * 제거하고 detected(참/거짓)와 실제 관측 라벨만 반환한다. */
 function mapOnnxObservation(obs: OnnxLineObservation): OnnxLineDetail {
   if (!obs.detected) {
     return {
       detected: false,
-      confidence: Math.min(1, obs.coverage * 40),
       length: null,
       curve: null,
       depthStrength: null,
@@ -187,7 +237,6 @@ function mapOnnxObservation(obs: OnnxLineObservation): OnnxLineDetail {
   const norm = (p: { x: number; y: number } | null) => (p ? { x: p.x / 512, y: p.y / 512 } : null);
   return {
     detected: true,
-    confidence: Math.min(1, obs.coverage * 40),
     length,
     curve,
     depthStrength,
@@ -284,10 +333,10 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   const handShape = classifyHandShape(landmarksPx);
   const lineFeatures = extractLineFeatures(imageData, landmarksPx);
 
-  // 실제 ONNX 모델 추론 — MediaPipe로 잡은 손바닥 영역만 크롭해서 넣는다.
+  // 실제 ONNX 모델 추론 — upstream 학습 전처리와 동일하게 손가락이 위로
+  // 향하도록 회전 + 고정 마진 크롭 + 좌우손 통일(미러링)한 뒤 넣는다.
   // 실패해도(모델 로드 실패, 추론 오류) null만 반환하고 Sobel 결과로 계속 진행한다.
-  const box = palmBoundingBox(landmarksPx);
-  const palmCrop = cropToCanvas(canvas, box);
+  const palmCrop = cropAndRotatePalm(canvas, landmarksPx, handSide === "left");
   const onnxRaw = await runPalmLineOnnx(palmCrop);
   const onnxLines: PalmFacts["onnxLines"] = onnxRaw
     ? {
@@ -298,9 +347,6 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
         fateLine: { presence: "unknown", note: "이 모델은 재물선(fate line)을 분할하지 않아 확인할 수 없어요." },
         mounts: "unknown",
         marks: "unknown",
-        modelConfidence:
-          onnxRaw.observations.filter((o) => o.detected).reduce((sum, o) => sum + Math.min(1, o.coverage * 40), 0) /
-          Math.max(1, onnxRaw.observations.filter((o) => o.detected).length),
       }
     : null;
 
