@@ -52,9 +52,11 @@ export async function POST(request: Request) {
   let deep: FullSajuDiagnosis["deep"] = null;
   let resultSource: FullSajuDiagnosis["resultSource"] = "fallback";
   let freeReport: FullSajuDiagnosis["freeReport"] = null;
+  let daeunAnalysis: FullSajuDiagnosis["daeunAnalysis"] = null;
 
   try {
     const facts = enrichSajuFacts(computeSajuFacts(parsed.data), parsed.data);
+    daeunAnalysis = facts.daeunAnalysis;
     const personality = {
       mbti: parsed.data.mbti ?? null,
       check: parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null,
@@ -98,6 +100,7 @@ export async function POST(request: Request) {
       personalityAnswers: parsed.data.personalityAnswers ?? null,
       mbti: parsed.data.mbti ?? null,
     },
+    daeunAnalysis,
   };
   return NextResponse.json(payload);
 }

@@ -3,6 +3,7 @@ import { getMoneyTendency, type MoneyTendency } from "./money-tendency";
 import type { Interpretation } from "./interpretation-schema";
 import type { FreeSajuReport } from "./free-report-schema";
 import type { MbtiType } from "./mbti-facts";
+import type { DaeunAnalysis } from "./saju-facts";
 
 export interface BirthInput {
   year: number;
@@ -55,6 +56,8 @@ export interface FullSajuDiagnosis extends SajuDiagnosis {
   birthInput: BirthInput;
   /** 성향정보 입력을 손금 페이지까지 이어가기 위한 echo. 입력 안 했으면 둘 다 null. */
   personalityInput: PersonalityInputEcho;
+  /** oh-my-saju timing 기반 대운 8~10구간 + 원국과의 합충형파해. 호출 실패/시간 미상이면 null. */
+  daeunAnalysis: DaeunAnalysis[] | null;
 }
 
 export function diagnoseSaju(input: BirthInput): SajuDiagnosis {

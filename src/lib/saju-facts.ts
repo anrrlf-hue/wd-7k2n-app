@@ -92,6 +92,30 @@ export interface SajuFacts {
   daeunList: DaeunFact[];
   /** LLM 프롬프트에 그대로 삽입할 수 있는 사람이 읽기 좋은 원국 요약 */
   compactText: string;
+  /** oh-my-saju timing으로 받은 대운 8~10구간 전체 + 원국과의 합충형파해.
+   * ssaju 자체 계산이 아니라 oh-my-saju 호출 결과라 null일 수 있다(호출 실패/시간 미상). */
+  daeunAnalysis: DaeunAnalysis[] | null;
+}
+
+export interface DaeunRelation {
+  withPillar: PillarFact["pillar"];
+  type: "충" | "육합" | "반합" | "형" | "파" | "해" | "자형" | "천간합";
+  detail: string;
+}
+
+export interface DaeunAnalysis {
+  age: number;
+  /** 한자 간지 2글자, 예: "甲申" */
+  ganzhi: string;
+  stemHanja: string;
+  branchHanja: string;
+  tenGods: { stem: string; branch: string };
+  /** 근사 시작일(3일=1년 환산), 예: "2017-08-10" */
+  approximateStartDate: string | null;
+  /** 이 대운 간지가 원국 4기둥과 맺는 합/충/형/파/해 (없으면 빈 배열) */
+  relations: DaeunRelation[];
+  isCurrent: boolean;
+  isNext: boolean;
 }
 
 function toPillarFact(result: SajuResult, key: PillarFact["pillar"]): PillarFact {
@@ -245,5 +269,6 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     nextDaeun,
     daeunList,
     compactText: result.toCompact(),
+    daeunAnalysis: null,
   };
 }

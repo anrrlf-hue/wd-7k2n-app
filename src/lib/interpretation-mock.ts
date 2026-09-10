@@ -9,6 +9,13 @@ import type { SajuFacts } from "@/lib/saju-facts";
 import type { Interpretation } from "@/lib/interpretation-schema";
 import { dayStrengthLabel, dayStrengthShort } from "@/lib/saju-labels";
 
+// oh-my-saju timing으로 받은 대운과 원국 사이의 합충형파해(로컬 계산, 이견
+// 없는 고정 클래식 표) — 실제로 걸리는 게 있을 때만 문장을 만든다.
+function daeunRelationSentence(relations: { detail: string }[]): string | null {
+  if (relations.length === 0) return null;
+  return `이 대운은 원국과 ${relations.map((r) => r.detail).join(", ")}이 걸려 있어요.`;
+}
+
 function wealthLevel(count: number): "없음" | "보통" | "강함" {
   if (count === 0) return "없음";
   if (count <= 2) return "보통";
@@ -28,6 +35,7 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
     hyungsin,
     currentDaeun,
     nextDaeun,
+    daeunAnalysis,
   } = facts;
 
   const wLevel = wealthLevel(wealthStarCount);
@@ -73,10 +81,17 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
       ? `격국이 ${geukguk}예요. 정해진 틀 안에서 일하기보다, 성과가 곧바로 보이는 구조(사업/프리랜서/성과제)에서 재물운이 더 크게 열리는 편이에요.`
       : `격국이 ${geukguk}예요. 안정적인 체계 안에서 신뢰를 쌓아가는 직장형 구조에서 재물이 더 안정적으로 늘어나는 편이에요.`;
 
+  const currentAnalysis = daeunAnalysis?.find((d) => d.isCurrent) ?? null;
+  const nextAnalysis = daeunAnalysis?.find((d) => d.isNext) ?? null;
+  const currentRelationSentence = currentAnalysis ? daeunRelationSentence(currentAnalysis.relations) : null;
+  const nextRelationSentence = nextAnalysis ? daeunRelationSentence(nextAnalysis.relations) : null;
+
   const timing = currentDaeun
     ? `지금은 ${currentDaeun.ageRange}세, ${currentDaeun.ganzhi}(${currentDaeun.stemTenGod}/${currentDaeun.branchTenGod}) 대운이에요. ` +
+      (currentRelationSentence ? `${currentRelationSentence} ` : "") +
       (nextDaeun
-        ? `다음 대운(${nextDaeun.ageRange}세, ${nextDaeun.ganzhi})으로 넘어가면 십성 구성이 ${nextDaeun.stemTenGod}/${nextDaeun.branchTenGod}로 바뀌면서 돈을 대하는 방식 자체가 한 번 전환될 시기예요.`
+        ? `다음 대운(${nextDaeun.ageRange}세, ${nextDaeun.ganzhi})으로 넘어가면 십성 구성이 ${nextDaeun.stemTenGod}/${nextDaeun.branchTenGod}로 바뀌면서 돈을 대하는 방식 자체가 한 번 전환될 시기예요.` +
+          (nextRelationSentence ? ` ${nextRelationSentence}` : "")
         : "이 대운이 지금 재물 흐름의 기본 배경이 되고 있어요.")
     : "대운 정보가 계산되지 않았어요.";
 
@@ -98,6 +113,9 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
     `오행 최다 ${dominantElement}`,
     `재성 ${wealthStarCount}개 · 비겁 ${peerStarCount}개 · 식상 ${outputStarCount}개`,
     currentDaeun ? `현재 대운 ${currentDaeun.ganzhi}(${currentDaeun.stemTenGod})` : "대운 정보 없음",
+    ...(currentAnalysis && currentAnalysis.relations.length > 0
+      ? [`현재 대운 합충형파해: ${currentAnalysis.relations.map((r) => r.detail).join(", ")}`]
+      : []),
   ];
 
   return {
