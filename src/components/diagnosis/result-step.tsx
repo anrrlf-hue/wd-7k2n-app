@@ -3,14 +3,10 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
-import { Eye, ScrollText, TrendingUp, HelpCircle, Sparkles } from "lucide-react";
+import { TrendingUp, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LockedCard } from "@/components/diagnosis/locked-card";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
-import { FreeBoundaryMarker } from "@/components/diagnosis/free-boundary-marker";
-import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
-import { TeaserRow } from "@/components/diagnosis/teaser-row";
 import { PowerGauge } from "@/components/diagnosis/power-gauge";
 import { JobSpectrum } from "@/components/diagnosis/job-spectrum";
 import { FlowLine } from "@/components/diagnosis/flow-line";
@@ -30,12 +26,14 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } },
 };
 
+/** 1차 무료 결과. 결제 제안/잠금 카드/무료 경계 표시는 이 화면에 절대
+ * 두지 않는다 — 무료 콘텐츠는 손금+최종 통합 리포트까지 이어지고, 결제
+ * 선택은 그 모든 무료 콘텐츠가 끝난 뒤 손금 결과 화면에서 딱 한 번만
+ * 나온다. 이 화면의 유일한 다음 행동은 손금으로 넘어가는 것이다. */
 export function ResultStep({
   diagnosis,
-  onNext,
 }: {
   diagnosis: FullSajuDiagnosis;
-  onNext: () => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
@@ -180,13 +178,12 @@ export function ResultStep({
         )}
       </div>
 
-      {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소 — 반드시 결제 안내보다 위.
-       * 여기서 "조금 맞는 것 같은데, 손금까지 보면?" 궁금증을 만들고, 나머지
-       * 심층 섹션(⑧~⑰)은 손금까지 끝난 뒤 통합 리포트에서 이어서 보여준다. */}
+      {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소이자 이 화면의 유일한
+       * 다음 행동이다. 나머지 심층 섹션과 결제 선택은 손금까지 끝난 뒤
+       * 최종 통합 리포트 화면에서 딱 한 번만 나온다. */}
       <div className="mt-8">
         <p className="flex items-center gap-1.5 text-sm font-medium">
-          <Sparkles className="size-4 text-(--gold)" />
-          여기까지 사주에서 본 성향, 손에도 같은 흐름이 있을까요?
+          손에도 같은 흐름이 있을까요?
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           손금 사진 한 장이면 30초 안에 사주와 교차 비교하고, 나머지 심층 리포트까지 이어서 볼 수 있어요.
@@ -194,74 +191,6 @@ export function ResultStep({
         <div className="mt-3">
           <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} />
         </div>
-      </div>
-
-      <FreeBoundaryMarker />
-
-      {/* FREE-FIRST: 무료 흐름의 다음 행동(현실 재무검증)이 유료 안내보다
-       * 먼저 나와야 한다. 유료 "정확한 시기" 콘텐츠는 이 아래에 부차적,
-       * 비차단적 경로로 남겨둔다 — 무료 경로를 막지 않는다. */}
-      <div className="pt-6">
-        <p className="mb-3 text-center text-xs text-muted-foreground">
-          재밌게 보셨다면, 이제 진짜 내 상황도 1분만 체크해볼까요?
-        </p>
-        <Button
-          size="lg"
-          onClick={onNext}
-          className="h-13 w-full rounded-full text-base"
-        >
-          현실 돈 고민도 체크해보기
-        </Button>
-      </div>
-
-      <div className="mt-8">
-        <p className="flex items-center gap-1.5 text-sm font-medium">
-          <Eye className="size-4 text-(--gold)" />
-          정확한 시기가 궁금하다면
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          지금까지는 &ldquo;어떤 사람인지&rdquo;를 봤다면, 여기부터는 &ldquo;언제&rdquo;에 대한 이야기예요.
-        </p>
-        <div className="mt-3 flex flex-col gap-3">
-          {isDeep ? (
-            <>
-              <TeaserRow label="앞으로의 흐름이 바뀌는 시기" text={interp!.timing} />
-              <TeaserRow label="지금 시기에 필요한 행동" text={interp!.action} />
-            </>
-          ) : (
-            <>
-              <TeaserRow label="앞으로의 흐름 힌트" text={tendency.flowHint} />
-              <TeaserRow label="나에게 맞는 행동 힌트" text={tendency.actionHint} />
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-8 mb-4">
-        <p className="flex items-center gap-1.5 text-sm font-medium">
-          <ScrollText className="size-4 text-(--gold)" />
-          더 깊은 재물 리포트
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          대운 전체 흐름과 손금 심화 비교까지 반영한 상세 리포트로 이어져요.
-        </p>
-        <div className="mt-3 flex flex-col gap-3">
-          <LockedCard title="앞으로 3년, 정확한 시기별 흐름" cta="정확한 시기 보기" />
-          <LockedCard title="사주+손금 심화 교차 리포트" cta="심화 교차 리포트 보기" />
-        </div>
-
-        {/* 현실 재무검증은 유료가 아니라 무료 별도 단계다(위 onNext 버튼) —
-         * 여기 포함 목록에 다시 넣지 않는다. */}
-        <PaywallOffer
-          includedItems={[
-            "앞으로 3년 정확한 시기별 흐름",
-            "대운 전체 흐름 그래프",
-            "사주+손금 심화 교차 비교",
-            "지금 시기에 필요한 구체적 행동",
-            "전체 계산 근거 원문",
-          ]}
-          ctaText="내 사주에서 돈이 크게 움직이는 시기 보기"
-        />
       </div>
     </div>
   );

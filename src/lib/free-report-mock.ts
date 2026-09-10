@@ -12,8 +12,22 @@ import type { SajuFacts, PillarFact } from "@/lib/saju-facts";
 import type { FreeSajuReport } from "@/lib/free-report-schema";
 import type { PersonalityCheckFacts } from "@/lib/personality-check";
 import type { MbtiSelfReport } from "@/lib/mbti-facts";
+import type { OnnxPalmLines } from "@/lib/palm-facts";
 import { dayStrengthLabel, dayStrengthShort, elementTemperamentPhrase } from "@/lib/saju-labels";
-import { buildPersonalityComparisonText } from "@/lib/personality-reconcile";
+import {
+  compareRiskOpportunity,
+  compareMoneyHabit,
+  compareDecisionSpeed,
+  compareAutonomy,
+  mbtiMentionLine,
+} from "@/lib/personality-reconcile";
+
+/** 손금이 있고, 해당 선이 실제로 검출됐을 때만 관련 있는 한 줄을 반환한다.
+ * 검출 안 된 선은 절대 언급하지 않는다("관련 데이터가 없으면 사주만 사용"). */
+function palmClause(onnxLines: OnnxPalmLines | null | undefined, line: "heartLine" | "headLine" | "lifeLine", text: string): string | null {
+  if (!onnxLines?.[line]?.detected) return null;
+  return text;
+}
 
 // ---------- 문장 구조 다양화 유틸 ----------
 
@@ -97,7 +111,9 @@ function levelOf(count: number): "없음" | "적음" | "보통" | "강함" {
 export function buildFreeSajuReport(
   facts: SajuFacts,
   personality?: { check: PersonalityCheckFacts | null; mbti: MbtiSelfReport | null },
+  onnxLines?: OnnxPalmLines | null,
 ): FreeSajuReport {
+  const check = personality?.check ?? null;
   const {
     dayStemKo,
     dayElement,
@@ -161,8 +177,9 @@ export function buildFreeSajuReport(
     evidence: `일간 ${dayStemKo}(${dayElement}) · 신강신약 ${dayStrengthShort(dayStrength)}, 오행 최다 ${dominantElement}`,
   });
 
-  // ③ 재물운/돈복의 큰 구조
-  const wealthStructure = compose(seedFor(3), {
+  // ③ 재물운/돈복의 큰 구조 — 관련 자기보고(소비·저축 습관)와 손금(감정선)이
+  // 있으면 사주 근거와 한 문단으로 엮는다. 없으면 사주만으로 완결된다.
+  const wealthStructureBase = compose(seedFor(3), {
     claim:
       wLevel === "없음"
         ? "재물이 저절로 굴러들어오는 구조는 아니고, 본업이나 전문성이 돈으로 바뀌는 흐름에 가까워요."
@@ -175,6 +192,14 @@ export function buildFreeSajuReport(
         : `오행 다섯 가지가 어느 정도 골고루 있어서, 극단적으로 한쪽에 쏠리는 재물 패턴은 아니에요.`,
     evidence: `재성 ${wealthStarCount}개, 용신 ${yongsin.join(", ") || "특이 없음"}`,
   });
+  const wealthPalm = palmClause(
+    onnxLines,
+    "heartLine",
+    `감정선이 뚜렷하게 보이는 편이라, 돈 관련 결정에서도 사람과의 관계·감정이 함께 작용하는 경우가 많을 수 있어요.`,
+  );
+  const wealthStructure = [wealthStructureBase, wealthPalm, check ? compareMoneyHabit(wealthStarCount, check, seedFor(40)) : null]
+    .filter(Boolean)
+    .join(" ");
 
   // ④ 돈을 버는 방식
   const earningStyle =
@@ -182,14 +207,14 @@ export function buildFreeSajuReport(
       ? `아이디어를 내거나 뭔가를 만들어서 그게 돈으로 바뀌는 방식이 잘 맞는 사람이에요. ` +
         `특히 ${pillarNamesKo(outputStarPillars)} 자리에 그 힘이 있어서, ${outputStarPillars.includes("month") ? "실제 사회생활·업무에서" : outputStarPillars.includes("day") ? "본인 성향 자체에서" : "삶의 배경이 되는 부분에서"} 이 활동력이 두드러져요. ` +
         `벌여놓은 일을 하나 골라 마무리 짓는 주에 돈이 따라오는 편일 가능성이 커요. ` +
-        `이 해석은 식상(식신+상관) ${outputStarCount}개, 그 위치(${pillarNamesKo(outputStarPillars) || "없음"})를 ${evidenceTail(seedFor(20))}`
+        `식상(식신+상관) ${outputStarCount}개, 그 위치(${pillarNamesKo(outputStarPillars) || "없음"})를 ${evidenceTail(seedFor(20))}`
       : activeCompare === "peer"
         ? `직접 경쟁하거나 스스로 실행해야 돈이 붙는 방식이에요. 남이 대신 해주는 일보다, 본인이 직접 판단하고 부딪히는 일에서 결과가 더 좋은 편이에요. ` +
           selfCheck(seedFor(4)) +
-          ` 이 해석은 비겁(비견+겁재) ${peerStarCount}개를 ${evidenceTail(seedFor(21))}`
+          ` 비겁(비견+겁재) ${peerStarCount}개를 ${evidenceTail(seedFor(21))}`
         : `식상과 비겁이 뚜렷하게 우세하지 않아서, 벌어들이는 힘은 재성·용신 쪽에서 더 크게 작동하는 편이에요. ` +
           `정해진 활동력보다는 상황과 타이밍에 맞춰 버는 방식이 유연하게 바뀌는 편일 수 있어요. ` +
-          `이 해석은 식상 ${outputStarCount}개·비겁 ${peerStarCount}개, 용신(${yongsin.join(", ") || "특이 없음"})을 ${evidenceTail(seedFor(22))}`;
+          `식상 ${outputStarCount}개·비겁 ${peerStarCount}개, 용신(${yongsin.join(", ") || "특이 없음"})을 ${evidenceTail(seedFor(22))}`;
 
   // ⑤ 돈을 지키는 방식
   const keepingStyle =
@@ -236,10 +261,10 @@ export function buildFreeSajuReport(
     wealthStarCount + outputStarCount > peerStarCount + officerStarCount
       ? `정해진 틀보다 성과가 직접 보이는 구조(사업/프리랜서/성과 기반)에서 진짜 힘을 발휘하는 편이에요. 매인 조직 안에 있더라도, 스스로 결과를 만들어내는 역할을 맡을 때 만족도가 훨씬 높아져요. ` +
         `지시받은 일보다 스스로 기획한 일이 더 잘 풀린다고 느낀 적 많지 않나요? ` +
-        `이 해석은 재성+식상(${wealthStarCount + outputStarCount}개)이 비겁+관성(${peerStarCount + officerStarCount}개)보다 우세한 원국 구조를 ${evidenceTail(seedFor(26))}`
+        `재성+식상(${wealthStarCount + outputStarCount}개)이 비겁+관성(${peerStarCount + officerStarCount}개)보다 우세한 원국 구조를 ${evidenceTail(seedFor(26))}`
       : `안정적인 체계 안에서 신뢰를 쌓아가는 방식에서 재물이 더 안정적으로 늘어나는 편이에요. 완전히 혼자 판을 짜기보다, 명확한 규칙과 역할이 있는 환경에서 오히려 더 크게 성장해요. ` +
         `자유롭게 알아서 하라고 하면 오히려 막막할 때가 있지 않나요? ` +
-        `이 해석은 비겁+관성(${peerStarCount + officerStarCount}개)이 재성+식상(${wealthStarCount + outputStarCount}개)보다 우세한 원국 구조를 ${evidenceTail(seedFor(27))}`;
+        `비겁+관성(${peerStarCount + officerStarCount}개)이 재성+식상(${wealthStarCount + outputStarCount}개)보다 우세한 원국 구조를 ${evidenceTail(seedFor(27))}`;
 
   // ⑨ 조직에서 강한 부분
   const teamStrength = compose(seedFor(9), {
@@ -269,8 +294,8 @@ export function buildFreeSajuReport(
     evidence: `비겁 ${peerStarCount}개 + 식상 ${outputStarCount}개`,
   });
 
-  // ⑪ 사람과 돈
-  const peopleAndMoney =
+  // ⑪ 사람과 돈 — 감정선(있으면) + 자율성 자기보고(있으면)를 엮는다.
+  const peopleAndMoneyBase =
     socialCompare === "officer"
       ? `조직이나 규칙, 정해진 관계 안에서 돈이 도는 걸 편하게 느끼는 편이에요. 이런 구조가 있는 자리에서 돈 관련 결정도 더 안정적으로 내려요. ` +
         `믿을 만한 시스템이나 계약이 있어야 마음이 놓이지 않나요? ` +
@@ -281,17 +306,36 @@ export function buildFreeSajuReport(
           `인성(편인+정인) ${resourceStarCount}개를 ${evidenceTail(seedFor(29))}`
         : `사람에게 크게 기대지도, 완전히 혼자 판단하지도 않는 균형 잡힌 편이에요. 상황에 따라 조언을 참고하되 최종 결정은 스스로 내리는 쪽에 가까워요. ` +
           `관성 ${officerStarCount}개·인성 ${resourceStarCount}개의 균형을 ${evidenceTail(seedFor(30))}`;
+  const peoplePalm = palmClause(
+    onnxLines,
+    "heartLine",
+    "감정선이 뚜렷하게 보이는 편이라, 돈이 걸린 관계에서도 감정적 신호에 먼저 반응하는 쪽에 가까울 수 있어요.",
+  );
+  const peopleAndMoney = [peopleAndMoneyBase, peoplePalm, check ? compareAutonomy(socialCompare, check, seedFor(41)) : null]
+    .filter(Boolean)
+    .join(" ");
 
-  // ⑫ 의사결정 스타일
-  const decisionStyle =
+  // ⑫ 의사결정 스타일 — 두뇌선(있으면) + 결정속도 자기보고(있으면)를 사주
+  // 근거와 한 문단으로 엮는다.
+  const decisionStyleBase =
     dayStrength === "strong"
       ? `직관적으로 빠르게 결정하고 밀어붙이는 편이에요. 속도는 강점이지만, 중요한 결정일수록 하루 정도 시간을 두고 다시 보면 실수가 확 줄어요. ` +
         `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)})을 ${evidenceTail(seedFor(31))}`
       : `신중하게 정보를 모으고 나서 결정하는 편이에요. 다만 너무 오래 재다가 타이밍을 놓치는 경우도 있어서, 결정 기한을 스스로 정해두는 게 도움이 돼요. ` +
         `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)})을 ${evidenceTail(seedFor(32))}`;
+  const decisionPalm = palmClause(
+    onnxLines,
+    "headLine",
+    onnxLines?.headLine.curve === "완만한 곡선"
+      ? "두뇌선도 완만한 곡선으로 나와서, 이성적 계산보다 직관과 분위기를 함께 살피는 결이 손에도 보여요."
+      : "두뇌선이 직선에 가깝게 나와서, 실제로도 이유와 계산을 먼저 따지는 결이 손에도 보여요.",
+  );
+  const decisionStyle = [decisionStyleBase, decisionPalm, check ? compareDecisionSpeed(dayStrength, check, seedFor(42)) : null]
+    .filter(Boolean)
+    .join(" ");
 
-  // ⑬ 기회를 잡는 방식
-  const opportunityStyle = compose(seedFor(13), {
+  // ⑬ 기회를 잡는 방식 — 생명선(있으면) + 위험/기회 감수 자기보고(있으면)를 엮는다.
+  const opportunityStyleBase = compose(seedFor(13), {
     claim:
       peakStagePillars.length >= 2
         ? "12운성 기준으로 힘이 정점에 오른 자리가 여러 곳이라, 기회를 감지하는 순간 몸이 먼저 반응하는 편이에요."
@@ -304,6 +348,16 @@ export function buildFreeSajuReport(
         : "화려한 귀인의 도움보다는, 스스로 준비해온 것이 기회와 만나는 쪽에 가까워요.",
     evidence: `정점(건록·제왕) 자리 ${pillarNamesKo(peakStagePillars) || "없음"}, 길신 ${gilsin.join(", ") || "없음"}`,
   });
+  const opportunityPalm = palmClause(
+    onnxLines,
+    "lifeLine",
+    onnxLines?.lifeLine.depthStrength === "강함"
+      ? "생명선도 뚜렷하게 나타나서, 기회다 싶을 때 몸으로 먼저 부딪혀보는 활력이 손에도 보여요."
+      : "생명선은 비교적 옅게 나타나서, 순발력보다 컨디션 관리와 꾸준함 쪽에 더 무게가 실릴 수 있어요.",
+  );
+  const opportunityStyle = [opportunityStyleBase, opportunityPalm, check ? compareRiskOpportunity(dayStrength, check, seedFor(43)) : null]
+    .filter(Boolean)
+    .join(" ");
 
   // ⑭ 강점 3개 이상 (실제 근거 기반 랭킹)
   const strengthCandidates: { title: string; detail: string; evidence: string; score: number }[] = [
@@ -414,15 +468,12 @@ export function buildFreeSajuReport(
       ? `이번 생애 대운은 총 ${daeunList.length}단계로 흘러가고, 지금은 그중 ${currentDaeun ? `${currentDaeun.ageRange}세 ${currentDaeun.ganzhi}` : "특정 시점"} 구간이에요. 정확한 시기별 흐름은 유료 리포트에서 더 자세히 볼 수 있어요.`
       : "대운 정보는 이번 계산에서 확인되지 않았어요.";
 
+  const mbtiNote = personality ? mbtiMentionLine(personality.mbti) : null;
   const evidenceExplainer =
     `이 결과는 태어난 날의 하늘 기운(일간) ${dayStemKo}(${dayElement})이 ${dayStrengthShort(dayStrength)}이라는 점, 원국 여덟 글자에서 돈(재성)·경쟁(비겁)·활동(식상)·조직(관성)·정보(인성)를 뜻하는 글자가 몇 개씩 있는지, 격국(${geukguk})과 용신(${yongsin.join(", ") || "특이 없음"}), 그리고 12운성으로 그 힘이 어느 시기에 정점을 찍는지를 함께 봐서 나왔어요. ` +
     `${daeunFlowNote} ` +
-    `오행 분포는 ${Object.entries(fiveElements).map(([k, v]) => `${k} ${v}개`).join(", ")}였고, 그중 ${이가(dominantElement)} 가장 강했어요${missingElements.length > 0 ? `, 반대로 ${은는(missingElements.join(", "))} 아예 없었고요` : ""}.`;
-
-  // 성향정보(간단 성향 체크/MBTI) 비교 — 있을 때만
-  const personalityComparison = personality
-    ? buildPersonalityComparisonText(facts, personality.check, personality.mbti)
-    : null;
+    `오행 분포는 ${Object.entries(fiveElements).map(([k, v]) => `${k} ${v}개`).join(", ")}였고, 그중 ${이가(dominantElement)} 가장 강했어요${missingElements.length > 0 ? `, 반대로 ${은는(missingElements.join(", "))} 아예 없었고요` : ""}.` +
+    (mbtiNote ? ` ${mbtiNote}` : "");
 
   return {
     snapshot,
@@ -442,6 +493,5 @@ export function buildFreeSajuReport(
     cautions,
     selfCheckQuestions,
     evidenceExplainer,
-    personalityComparison,
   };
 }

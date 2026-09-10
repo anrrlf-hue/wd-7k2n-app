@@ -8,7 +8,7 @@ import { RECOMMENDED_PRICE } from "@/lib/pricing";
 
 const TRUST_SIGNALS = [
   { icon: BadgeCheck, label: "실제 명식 계산 근거 사용" },
-  { icon: ShieldCheck, label: "손금은 신뢰도까지 함께 표시" },
+  { icon: ShieldCheck, label: "손금은 실제 이미지 분석(ONNX) 결과 사용" },
   { icon: Lock, label: "금융상품 판매·권유 없음" },
   { icon: ImageDown, label: "결과 이미지 저장 가능" },
 ];

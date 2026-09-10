@@ -4,6 +4,7 @@
 import type { SajuFacts } from "@/lib/saju-facts";
 import type { PersonalityCheckFacts } from "@/lib/personality-check";
 import type { MbtiSelfReport } from "@/lib/mbti-facts";
+import type { OnnxPalmLines } from "@/lib/palm-facts";
 import { FREE_SAJU_REPORT_SYSTEM_PROMPT, buildFreeSajuReportUserPrompt } from "@/lib/free-report-prompt";
 import { validateFreeSajuReport, type FreeSajuReport } from "@/lib/free-report-schema";
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
@@ -59,10 +60,10 @@ async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: n
 
 export async function getFreeSajuReport(
   facts: SajuFacts,
-  options?: { timeoutMs?: number; personality?: PersonalityInput },
+  options?: { timeoutMs?: number; personality?: PersonalityInput; onnxLines?: OnnxPalmLines | null },
 ): Promise<FreeSajuReportResult> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const userPrompt = buildFreeSajuReportUserPrompt(facts, options?.personality);
+  const userPrompt = buildFreeSajuReportUserPrompt(facts, options?.personality, options?.onnxLines);
 
   let raw: unknown = null;
   let fallbackReason: string | undefined;
@@ -85,7 +86,7 @@ export async function getFreeSajuReport(
 
   return {
     source: "mock",
-    report: buildFreeSajuReport(facts, options?.personality),
+    report: buildFreeSajuReport(facts, options?.personality, options?.onnxLines),
     fallbackReason,
   };
 }

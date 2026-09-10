@@ -5,6 +5,7 @@
 import type { SajuFacts } from "@/lib/saju-facts";
 import type { PersonalityCheckFacts } from "@/lib/personality-check";
 import type { MbtiSelfReport } from "@/lib/mbti-facts";
+import type { OnnxPalmLines } from "@/lib/palm-facts";
 
 export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 데이터를 근거로, "무료인데 이렇게까지 해준다고?"라는 반응이 나올 만큼 구체적이고 재미있는 무료 성향·재물 리포트를 쓰는 에디터입니다. 정확한 계산 결과를 나열하는 보고서가 아니라, 3~5분 동안 몰입해서 읽을 만한 글을 씁니다.
 
@@ -20,21 +21,31 @@ export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 �
 7. 부사 남발("정말", "진짜", "솔직히")을 피하고, 수동태보다 능동태를 쓰세요.
 8. 십성이 어느 자리(연/월/일/시)에 있는지("궁위")를 최대한 활용해 해석을 구체화하세요.
 9. strengths와 cautions는 각각 최소 3개, 실제 SajuFacts 필드 값을 evidence에 짧게(8~16자) 남기세요.
-10. personalityComparison은 간단 성향 체크/MBTI 자기보고가 주어졌을 때만 채우고, 없으면 null로 두세요. 사주 결과를 성향정보에 맞춰 억지로 고치지 말고, 일치하면 일치한다고 다르면 다르다고 쓰세요.
+10. 자기보고 성향정보(간단 자기정보 체크/MBTI)나 손금 관측값이 주어지면, 별도의 "비교" 섹션을 새로 만들지 말고 관련 있는 개별 섹션 안에 자연스럽게 녹이세요: wealthStructure/earningStyle에는 지출·저축 자기보고와 손금 감정선을, decisionStyle에는 결정속도·계획성 자기보고와 손금 두뇌선을, peopleAndMoney에는 자율성 자기보고와 손금 감정선을, opportunityStyle에는 위험감수 자기보고와 손금 생명선을 관련 있을 때만 엮으세요. 관련 데이터가 없는 섹션은 사주만으로 씁니다. 일치와 불일치를 모두 있는 그대로 쓰고, 불일치일 때는 사용자가 스스로 경험을 떠올려보게 하는 문장으로 맺으세요("~인지 돌아볼 만해요" 류) — 바넘효과 문장보다 이게 개인화 체감이 높습니다.
 11. 반드시 요청된 JSON 스키마로만 응답하세요.`;
 
 export function buildFreeSajuReportUserPrompt(
   facts: SajuFacts,
   personality?: { check: PersonalityCheckFacts | null; mbti: MbtiSelfReport | null },
+  onnxLines?: OnnxPalmLines | null,
 ): string {
   const personalityBlock =
     personality && (personality.check || personality.mbti)
       ? `
-## 자기보고 성향정보 (주어진 경우에만 personalityComparison에 반영)
-${personality.check ? `- 간단 성향 체크: ${Object.entries(personality.check.levels).map(([k, v]) => `${k} ${v}`).join(", ")}` : "- 간단 성향 체크: 없음"}
+## 자기보고 성향정보 (관련 섹션에 자연스럽게 녹일 것)
+${personality.check ? `- 간단 자기정보 체크: ${Object.entries(personality.check.levels).map(([k, v]) => `${k} ${v}`).join(", ")}` : "- 간단 자기정보 체크: 없음"}
 ${personality.mbti && "type" in personality.mbti ? `- MBTI: ${personality.mbti.type}` : "- MBTI: 없음"}
 `
-      : "\n## 자기보고 성향정보\n없음 (personalityComparison은 null로 응답)\n";
+      : "\n## 자기보고 성향정보\n없음\n";
+
+  const palmBlock = onnxLines
+    ? `
+## 손금 실제 관측값 (ONNX 모델 결과, 관련 섹션에 자연스럽게 녹일 것 — 검출 안 된 선은 언급 금지)
+- 감정선: ${onnxLines.heartLine.detected ? `검출됨(${onnxLines.heartLine.length}, ${onnxLines.heartLine.curve})` : "검출 안 됨"}
+- 두뇌선: ${onnxLines.headLine.detected ? `검출됨(${onnxLines.headLine.length}, ${onnxLines.headLine.curve})` : "검출 안 됨"}
+- 생명선: ${onnxLines.lifeLine.detected ? `검출됨(${onnxLines.lifeLine.length}, ${onnxLines.lifeLine.curve})` : "검출 안 됨"}
+`
+    : "\n## 손금 실제 관측값\n없음 (손금 없이 사주만으로 작성)\n";
 
   return `다음은 한 사람의 사주 원국 계산 결과입니다. 이 데이터만 근거로 17섹션 무료 리포트를 만들어주세요.
 
@@ -51,7 +62,7 @@ ${facts.compactText}
 - 12운성 정점(건록·제왕) 자리: ${facts.peakStagePillars.join(", ") || "없음"}
 - 현재 대운: ${facts.currentDaeun ? `${facts.currentDaeun.ageRange}세 ${facts.currentDaeun.ganzhi}` : "정보 없음"} (전체 대운 ${facts.daeunList.length}단계, 그중 재성이 겹치는 구간 ${facts.wealthOpportunityDaeunCount}회 — 정밀 시기는 언급하지 말고 "구조적으로 몇 번 있다" 정도로만)
 - 출생시간 입력 여부: ${facts.hasTimeInput ? "있음" : "없음(시주 제외)"}
-${personalityBlock}
+${personalityBlock}${palmBlock}
 ## 요청 스키마 (JSON만 응답)
 {
   "snapshot": "한눈에 보는 나",
@@ -70,7 +81,6 @@ ${personalityBlock}
   "strengths": [{"title": "...", "detail": "...", "evidence": "..."}] (최소 3개),
   "cautions": [{"title": "...", "detail": "...", "evidence": "..."}] (최소 3개),
   "selfCheckQuestions": ["..."] (2~5개),
-  "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명)",
-  "personalityComparison": "간단 성향 체크/MBTI가 있을 때만 채우는 비교 문단, 없으면 null"
+  "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명)"
 }`;
 }

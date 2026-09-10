@@ -87,10 +87,50 @@ export interface PalmFacts {
   warnings: string[];
 }
 
-/** 해석 단계로 넘어가도 되는지 판단하는 기준. 실패 시 재촬영을 요청한다. */
+/** 실제 ONNX가 검출한 선 개수(0~3). majorLines(Sobel+ONNX 합집합)는 성공
+ * 판정에 쓰지 않는다 — Sobel 혼자 "검출됐다"고 우겨도 손금 리포트를
+ * 만들어서는 안 되기 때문이다(그럴듯해 보이는 가짜 결과 방지). */
+export function onnxDetectedLineCount(facts: PalmFacts): number {
+  if (!facts.onnxLines) return 0;
+  const { heartLine, headLine, lifeLine } = facts.onnxLines;
+  return [heartLine, headLine, lifeLine].filter((l) => l.detected).length;
+}
+
+/** 해석 단계로 넘어가도 되는지 판단하는 기준. 성공 판정은 오직 실제 ONNX
+ * 결과로만 한다 — imageQuality 통과 + 모델이 실제로 실행됐고(modelExecuted)
+ * + 3개 선 중 최소 2개를 실제로 검출했을 때만 usable이다. Sobel 휴리스틱
+ * (lineFeatures/confidence)은 여기서 절대 성공 기준에 넣지 않는다: Sobel은
+ * 촬영 품질 보조/디버그 신호일 뿐, ONNX가 못 본 선을 있다고 우겨서 손금
+ * 리포트가 만들어지게 해서는 안 된다. 실패 시 재촬영을 요청한다. */
 export function isPalmFactsUsable(facts: PalmFacts): boolean {
   if (facts.imageQuality !== "good") return false;
-  if (facts.confidence < 0.35) return false;
-  if (facts.majorLines.length === 0) return false;
+  if (!facts.onnxLines || !facts.onnxLines.modelExecuted) return false;
+  if (onnxDetectedLineCount(facts) < 2) return false;
   return true;
+}
+
+/** 재촬영 화면에 보여줄, 실패 원인별 짧은 안내. attempt(1부터)가 올라갈수록
+ * 더 구체적인 촬영 팁으로 escalate한다(연속 실패 UX). */
+export function describePalmFailureReasons(facts: PalmFacts, attempt: number): string[] {
+  const reasons: string[] = [];
+  if (facts.imageQuality === "no_hand_detected") {
+    reasons.push("사진에서 손을 찾지 못했어요.");
+  } else if (facts.imageQuality === "too_dark") {
+    reasons.push("사진이 너무 어두워서 선이 잘 안 보여요.");
+  } else if (facts.imageQuality === "hand_cropped") {
+    reasons.push("손 일부가 사진 밖으로 잘렸어요.");
+  } else if (!facts.onnxLines || !facts.onnxLines.modelExecuted) {
+    reasons.push("손금선 분석 모델이 이번 사진을 처리하지 못했어요.");
+  } else {
+    const n = onnxDetectedLineCount(facts);
+    reasons.push(`손금선이 ${n}개만 뚜렷하게 읽혀서 결과를 만들기엔 부족해요.`);
+  }
+
+  if (attempt >= 2) {
+    reasons.push(
+      "손바닥을 완전히 펴고, 화면 안에 손바닥 전체(손가락 끝~손목)가 다 들어오게 촬영해보세요.",
+      "그림자 없이 정면에서 밝은 빛이 손바닥에 고르게 비치는 곳을 찾아보세요.",
+    );
+  }
+  return reasons;
 }

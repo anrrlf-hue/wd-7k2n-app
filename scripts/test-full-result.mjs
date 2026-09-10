@@ -24,7 +24,7 @@ const CASES = [
     hour: 14,
     minute: 30,
     gender: "남",
-    personalityAnswers: { speed: 1, plan: 2, risk: 1, autonomy: 2, relationMoney: 4, opportunity: 1 },
+    personalityAnswers: { speed: 1, plan: 2, risk: 1, autonomy: 2, spendAwareness: 4, savingConsistency: 1 },
     mbti: "ENTJ",
   },
 ];
@@ -64,7 +64,8 @@ async function main() {
       console.log(`opportunityStyle: ${rep.opportunityStyle}`);
       console.log(`strengths: ${rep.strengths.map((s) => s.title).join(", ")}`);
       console.log(`cautions: ${rep.cautions.map((c) => c.title).join(", ")}`);
-      console.log(`personalityComparison: ${rep.personalityComparison ?? "(없음)"}`);
+      console.log(`decisionStyle: ${rep.decisionStyle}`);
+      console.log(`peopleAndMoney: ${rep.peopleAndMoney}`);
     } else {
       console.log("freeReport: 없음(실패)");
     }
@@ -79,9 +80,13 @@ async function main() {
   const sameFree = JSON.stringify(a.json.freeReport) === JSON.stringify(d.json.freeReport);
   console.log(`1과 1-repeat(동일 입력) freeReport 일관성: ${sameFree ? "일치" : "불일치"}`);
 
+  // personalityComparison은 별도 필드가 아니라 wealthStructure/decisionStyle/
+  // peopleAndMoney/opportunityStyle 안에 "사주에서는...본인은/도..." 문장으로
+  // 직접 녹아 있다(진짜 통합 리포트로 리팩터링하면서 별도 필드를 없앴다).
   const withP = results.find((r) => r.label === "1-with-personality");
-  const hasPersonalityText = !!withP?.json?.freeReport?.report?.personalityComparison;
-  console.log(`1-with-personality: personalityComparison 채워짐 = ${hasPersonalityText}`);
+  const wovenTopics = ["wealthStructure", "decisionStyle", "peopleAndMoney", "opportunityStyle"];
+  const hasPersonalityText = wovenTopics.some((k) => (withP?.json?.freeReport?.report?.[k] ?? "").includes("사주에서는"));
+  console.log(`1-with-personality: 자기보고 비교 문장이 관련 섹션에 녹아 있는가 = ${hasPersonalityText}`);
   const diffFromNoPersonality =
     JSON.stringify(withP?.json?.freeReport?.report) !== JSON.stringify(a?.json?.freeReport?.report);
   console.log(`1-with-personality가 기본 1과 다른 결과인가 = ${diffFromNoPersonality}`);

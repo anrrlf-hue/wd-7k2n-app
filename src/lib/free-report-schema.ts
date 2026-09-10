@@ -31,9 +31,6 @@ export const FreeSajuReportSchema = z.object({
   cautions: z.array(evidenceItem).min(3), // ⑮ 조심할 점 3개 이상
   selfCheckQuestions: z.array(z.string().min(5)).min(2).max(5), // ⑯ 실제 경험 비교 질문
   evidenceExplainer: z.string().min(10), // ⑰ 왜 이런 결과가 나왔는지
-  /** MBTI/간단 성향 체크 자기보고가 있을 때만 채워지는 비교 문단. 없으면 null.
-   * 사주 결과를 성향정보에 맞춰 되돌려 고치지 않고, 일치/불일치를 있는 그대로 말한다. */
-  personalityComparison: z.string().min(10).nullable(),
 });
 
 export type FreeSajuReport = z.infer<typeof FreeSajuReportSchema>;
@@ -79,7 +76,6 @@ export function validateFreeSajuReport(raw: unknown): ValidationResult & { data?
     ...d.strengths.map((s) => s.detail),
     ...d.cautions.map((c) => c.detail),
     d.evidenceExplainer,
-    d.personalityComparison ?? "",
   ].join("\n");
 
   const violations = BANNED_PATTERNS.filter((re) => re.test(fullText)).map((re) => `banned phrase: ${re.source}`);

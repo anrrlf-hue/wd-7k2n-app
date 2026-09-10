@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { diagnoseSaju } from "@/lib/saju";
 import { computeSajuFacts, type SajuFacts } from "@/lib/saju-facts";
-import { getInterpretation } from "@/lib/interpretation-engine";
 import { getFreeSajuReport } from "@/lib/free-report-engine";
-import { getCrossInterpretation } from "@/lib/cross-interpretation-engine";
 import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
 import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 
-// 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe로 이미
-// 분석해 만든 PalmFacts(구조화 JSON)만 받는다. 여기서는 (1) 생년월일로
-// 사주를 다시 계산해 "사주 요약"을 만들고 (2) PalmFacts와 함께 교차 해석을
-// 생성한다. PalmFacts가 재촬영이 필요한 상태면 해석을 만들지 않고 그 이유를
-// 그대로 돌려준다("억지 해석 금지").
+// 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe/ONNX로
+// 이미 분석해 만든 PalmFacts(구조화 JSON)만 받는다. palmFacts가 없으면
+// "손금 없이 계속 보기"(반복 실패 후 또는 처음부터 건너뛴 경우) 요청으로
+// 보고 사주만으로 최종 통합 리포트를 만든다 — 실패한 손금을 성공한 것처럼
+// 꾸며서 보여주는 fallback은 절대 하지 않는다. palmFacts가 있는데 실제 ONNX
+// 기준으로 쓸 수 없는 상태면(isPalmFactsUsable) 해석을 만들지 않고 재촬영
+// 사유를 그대로 돌려준다.
+//
+// 최종 통합 리포트(getFreeSajuReport)가 이 라우트의 유일한 리포트 생성
+// 경로다 — 이전에는 별도의 cross-interpretation 파이프라인이 "손금×사주
+// 공통점/차이점" 섹션을 따로 만들어 finalReport 앞에 붙였는데, 이는 결국
+// 사주/손금/자기보고를 세 덩어리로 이어붙이는 구조였다. 이번에는 그 비교
+// 로직을 free-report-mock.ts의 관련 주제별 섹션(재물 구조/의사결정/사람과
+// 돈/기회) 안으로 옮겨서, 진짜 하나의 리포트로 만든다.
 
 const onnxLineDetailSchema = z.object({
   detected: z.boolean(),
@@ -63,7 +69,8 @@ const bodySchema = z.object({
   hour: z.number().int().min(0).max(23).nullable(),
   minute: z.number().int().min(0).max(59).nullable(),
   gender: z.enum(["남", "여"]),
-  palmFacts: palmFactsSchema,
+  /** 없으면(null/undefined) "손금 없이 계속 보기" 요청으로 처리한다. */
+  palmFacts: palmFactsSchema.nullable().optional(),
   personalityAnswers: z.record(z.string(), z.number().min(1).max(5)).optional(),
   mbti: z.enum(MBTI_TYPES).optional(),
 });
@@ -79,61 +86,43 @@ export async function POST(request: Request) {
     );
   }
 
-  const palmFacts = parsed.data.palmFacts as PalmFacts;
+  const palmFacts = (parsed.data.palmFacts ?? null) as PalmFacts | null;
+  const palmSkipped = palmFacts === null;
 
-  if (!isPalmFactsUsable(palmFacts)) {
+  if (palmFacts && !isPalmFactsUsable(palmFacts)) {
     return NextResponse.json({
       usable: false,
+      palmSkipped: false,
       warnings:
         palmFacts.warnings.length > 0
           ? palmFacts.warnings
-          : ["분석 신뢰도가 낮아요. 손바닥이 잘 보이도록 다시 촬영해주세요."],
+          : ["손금선이 충분히 읽히지 않았어요. 손바닥 전체가 보이게 밝은 곳에서 다시 촬영해주세요."],
     });
   }
 
   try {
-    const shallow = diagnoseSaju(parsed.data);
-    const { tendency } = shallow;
-
-    let sajuSummaryText = `${tendency.wealthType}. ${tendency.summary} 버는 힘: ${tendency.earningPower.label}. 지키는 힘: ${tendency.keepingPower.label}. ${tendency.jobType.label}.`;
-    let deepFacts: SajuFacts | null = null;
-
-    try {
-      deepFacts = computeSajuFacts(parsed.data);
-      const deep = await getInterpretation(deepFacts, { timeoutMs: 7000 });
-      sajuSummaryText = `${deep.interpretation.summary} ${deep.interpretation.money_style} ${deep.interpretation.earning_style}`;
-    } catch {
-      // 딥 사주 해석 실패 시 얕은 tendency 기반 요약을 그대로 쓴다.
-    }
+    const deepFacts: SajuFacts = computeSajuFacts(parsed.data);
 
     const personality = {
-      facts: deepFacts,
       check: parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null,
       mbti: parsed.data.mbti ? { type: parsed.data.mbti } : null,
     };
 
-    const [result, freeReportResult] = await Promise.all([
-      getCrossInterpretation(sajuSummaryText, tendency, palmFacts, { timeoutMs: 9000, personality }),
-      // 손금까지 끝난 뒤에만 보여주는 최종 통합 리포트(17섹션 전체)도 여기서
-      // 함께 계산한다 — 손금 페이지가 별도 라우트라 사주 결과 화면의 계산을
-      // 재사용할 수 없어서, deepFacts가 있으면 같은 파이프라인으로 다시 만든다.
-      deepFacts
-        ? getFreeSajuReport(deepFacts, { timeoutMs: 9000, personality: { check: personality.check, mbti: personality.mbti } }).catch(
-            () => null,
-          )
-        : Promise.resolve(null),
-    ]);
+    const freeReportResult = await getFreeSajuReport(deepFacts, {
+      timeoutMs: 9000,
+      personality,
+      onnxLines: palmFacts?.onnxLines ?? null,
+    });
 
     return NextResponse.json({
       usable: true,
-      source: result.source,
+      palmSkipped,
       palmFacts,
-      interpretation: result.interpretation,
-      freeReport: freeReportResult ? { source: freeReportResult.source, report: freeReportResult.report } : null,
+      freeReport: { source: freeReportResult.source, report: freeReportResult.report },
     });
   } catch (err) {
     return NextResponse.json(
-      { error: "교차 해석 중 문제가 발생했습니다.", detail: err instanceof Error ? err.message : String(err) },
+      { error: "리포트 생성 중 문제가 발생했습니다.", detail: err instanceof Error ? err.message : String(err) },
       { status: 500 },
     );
   }
