@@ -2,21 +2,20 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Lock, ShieldCheck, ImageDown, BadgeCheck } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RECOMMENDED_PRICE } from "@/lib/pricing";
 
-const TRUST_SIGNALS = [
-  { icon: BadgeCheck, label: "실제 명식 계산 근거 사용" },
-  { icon: ShieldCheck, label: "손금은 실제 이미지 분석(ONNX) 결과 사용" },
-  { icon: Lock, label: "금융상품 판매·권유 없음" },
-  { icon: ImageDown, label: "결과 이미지 저장 가능" },
-];
-
+/** 첫 유료 결제창은 극도로 단순화한다 — 개인화 제목 -> 이 결제로 알게 될
+ * 3~4가지 -> 가격 -> CTA, 그게 전부다. 이전에 있던 Trust Signal Grid(기술
+ * 근거·금융상품 미판매·이미지 저장 안내)는 전부 제거했다 — 사용자가 이
+ * 화면에서 계속 생각해야 하는 건 자기 재물운뿐이어야 한다. */
 export function PaywallOffer({
+  title,
   includedItems,
   ctaText,
 }: {
+  title: string;
   includedItems: string[];
   ctaText: string;
 }) {
@@ -36,8 +35,8 @@ export function PaywallOffer({
         style={{ background: "var(--gold)" }}
       />
 
-      <p className="relative text-xs font-medium text-(--gold)">전체 리포트에 포함돼요</p>
-      <ul className="relative mt-2.5 space-y-1.5 text-sm">
+      <p className="relative text-sm leading-snug font-semibold">{title}</p>
+      <ul className="relative mt-3 space-y-1.5 text-sm">
         {includedItems.map((item) => (
           <li key={item} className="flex items-start gap-2">
             <Check className="mt-0.5 size-3.5 shrink-0 text-(--gold)" />
@@ -68,15 +67,6 @@ export function PaywallOffer({
           결제 연결은 준비 중이에요. 오픈하면 가장 먼저 알려드릴게요.
         </motion.p>
       )}
-
-      <div className="relative mt-4 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-border pt-4 text-[11px] text-muted-foreground">
-        {TRUST_SIGNALS.map(({ icon: Icon, label }) => (
-          <span key={label} className="flex items-center gap-1">
-            <Icon className="size-3 text-(--gold)" />
-            {label}
-          </span>
-        ))}
-      </div>
     </motion.div>
   );
 }

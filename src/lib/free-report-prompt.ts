@@ -81,6 +81,7 @@ ${personalityBlock}${palmBlock}
   "strengths": [{"title": "...", "detail": "...", "evidence": "..."}] (최소 3개),
   "cautions": [{"title": "...", "detail": "...", "evidence": "..."}] (최소 3개),
   "selfCheckQuestions": ["..."] (2~5개),
-  "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명)"
+  "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명)",
+  "bridgeProfile": "\"business\"(재성+식상이 비겁+관성보다 우세) | \"stable\"(그 반대) | \"leak\"(흉신이 있음) 중 하나 — 결제 직전 Bridge 화면 문구를 개인화하는 데만 쓰는 분류, 위 필드들과 같은 근거로 판단"
 }`;
 }

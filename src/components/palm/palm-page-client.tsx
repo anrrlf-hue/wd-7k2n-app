@@ -116,24 +116,72 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
   );
 }
 
-/** 모든 무료 콘텐츠가 끝난 뒤 딱 한 번 나오는 마지막 선택 영역. */
-function FinalChoice({ onReset }: { onReset: () => void }) {
+const BRIDGE_LINES: Record<FreeSajuReport["bridgeProfile"], { headline: string; body: string }> = {
+  business: {
+    headline: "기회를 잡는 힘이 강한 편으로 나왔어요.",
+    body: "중요한 건 언제 움직이느냐예요.",
+  },
+  stable: {
+    headline: "무리해서 움직이기보다 좋은 흐름을 놓치지 않는 편이 잘 맞아요.",
+    body: "그 흐름이 언제인지 아는 게 중요해요.",
+  },
+  leak: {
+    headline: "버는 힘만큼 지키는 타이밍이 중요한 구조로 나왔어요.",
+    body: "언제 조심해야 하는지가 관건이에요.",
+  },
+};
+
+/** 결제 직전 Bridge(§21-22) — 가격은 여기서 절대 안 보여준다. 사용자가
+ * 개인화된 문구를 읽고 스스로 CTA를 눌러야만 그 아래 가격이 있는
+ * PaywallOffer가 열린다. 모든 사람에게 같은 문구를 쓰지 않는다 —
+ * bridgeProfile(사업형/안정형/leak형)에 따라 헤드라인이 달라진다. */
+function Bridge({ profile, onOpen }: { profile: FreeSajuReport["bridgeProfile"]; onOpen: () => void }) {
+  const lines = BRIDGE_LINES[profile];
+  return (
+    <motion.div
+      initial={{ opacity: 0.5, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.4 }}
+      className="mt-8 rounded-2xl border border-(--gold-soft) p-5 text-center"
+    >
+      <p className="text-sm text-muted-foreground">지금까지는 당신이 어떤 돈의 구조를 가진 사람인지 봤어요.</p>
+      <p className="mt-3 text-base leading-snug font-semibold">{lines.headline}</p>
+      <p className="mt-1.5 text-sm text-muted-foreground">{lines.body}</p>
+      <p className="mt-3 text-sm">그렇다면, 이 흐름이 언제 강해지는지도 궁금하지 않아요?</p>
+      <Button size="lg" onClick={onOpen} className="mt-5 h-13 w-full rounded-full text-base">
+        내 재물운의 시기 보기
+      </Button>
+    </motion.div>
+  );
+}
+
+/** 모든 무료 콘텐츠가 끝난 뒤 딱 한 번 나오는 마지막 선택 영역.
+ * Bridge를 먼저 보여주고, 사용자가 직접 눌러야만 가격이 있는 결제창을 연다
+ * (§21 — 결제창을 무료 결과 직후 자동으로 보여주지 않는다). */
+function FinalChoice({ report, onReset }: { report: FreeSajuReport; onReset: () => void }) {
+  const [opened, setOpened] = useState(false);
+
   return (
     <>
       <p className="mt-8 text-center text-[11px] text-muted-foreground">
         사주·손금 해석은 참고용 콘텐츠입니다.
       </p>
-      <div className="mt-5">
-        <PaywallOffer
-          includedItems={[
-            "사주+손금 심화 교차 비교(대운 흐름까지 반영)",
-            "앞으로 1~3년 재물 흐름 정확한 시기",
-            "지금 시기에 필요한 구체적 행동",
-            "전체 계산 근거 원문",
-          ]}
-          ctaText="더 깊은 시기 분석까지 보고 싶다면"
-        />
-      </div>
+      {!opened ? (
+        <Bridge profile={report.bridgeProfile} onOpen={() => setOpened(true)} />
+      ) : (
+        <div className="mt-5">
+          <PaywallOffer
+            title="내 재물 흐름은 언제 강해지고, 언제 조심해야 할까요"
+            includedItems={[
+              "앞으로 1~3년 재물 흐름이 강해지는 시기",
+              "조심해야 할 시기와 이유",
+              "지금 시기에 필요한 구체적 행동",
+            ]}
+            ctaText="내 재물운의 시기 열어보기"
+          />
+        </div>
+      )}
       <button
         type="button"
         onClick={onReset}
@@ -444,7 +492,7 @@ export function PalmPageClient({
           </div>
 
           <FinalReportSections report={finalReport} />
-          <FinalChoice onReset={reset} />
+          <FinalChoice report={finalReport} onReset={reset} />
         </div>
       )}
 
@@ -454,7 +502,7 @@ export function PalmPageClient({
             이번엔 손금 없이 사주만으로 리포트를 만들었어요. 나중에 손금 사진을 추가하면 더 정확해질 수 있어요.
           </div>
           <FinalReportSections report={finalReport} />
-          <FinalChoice onReset={reset} />
+          <FinalChoice report={finalReport} onReset={reset} />
         </div>
       )}
     </div>
