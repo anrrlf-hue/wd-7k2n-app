@@ -25,6 +25,8 @@ import type { PersonalityInput } from "@/lib/personality-check";
 import type { MbtiType } from "@/lib/mbti-facts";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 import { buildTripleCompare } from "@/lib/triple-compare";
+import { daeunFlavor, deriveDaeunShift } from "@/lib/fortune-candidates";
+import { dayStemImagery, dayStrengthLabel } from "@/lib/saju-labels";
 
 // 이번 라운드: 원국+대운(daeunAnalysis)+MBTI/6문항+손금을 "지금 이 시기엔
 // 이렇게 나타난다"는 하나의 문단으로 묶는다. 손금은 별도 해석을 새로
@@ -40,35 +42,45 @@ import { buildTripleCompare } from "@/lib/triple-compare";
  * 지어낸 점수가 아니라 위에서 이미 derive된 두 boolean을 문장으로만 옮긴다. */
 const GROUP_SIGNAL: Record<TenGodGroup, { label: string; axis: "structured" | "relational"; whenTrue: string; whenFalse: string }> = {
   비겁: {
-    label: "스스로 밀어붙이고 경쟁하는 힘(비겁)",
+    label: "스스로 밀어붙이고 경쟁하는 힘",
     axis: "relational",
     whenTrue: "다만 평소엔 주변 의견을 살피는 편인데, 이 시기엔 그보다 스스로 밀어붙이고 싶어지는 순간이 늘 수 있어요.",
     whenFalse: "원래도 스스로 판단하는 편이라, 이 시기엔 그 색이 한층 더 짙어질 수 있어요.",
   },
   식상: {
-    label: "표현하고 새로 만들어내는 힘(식상)",
+    label: "표현하고 새로 만들어내는 힘",
     axis: "structured",
     whenTrue: "미리 계획하고 준비해온 것을 실제로 밀고 나가는 실행력으로 이어지기 좋은 시기예요.",
     whenFalse: "즉흥적으로 떠오른 아이디어를 바로 행동으로 옮기는 순발력이 특히 잘 먹히는 시기예요.",
   },
   재성: {
-    label: "돈과 기회를 직접 다루는 힘(재성)",
+    label: "돈과 기회를 직접 다루는 힘",
     axis: "structured",
     whenTrue: "미리 준비해둔 만큼 이 시기의 기회를 실제로 붙잡을 가능성이 커요.",
     whenFalse: "예상 밖에서 오는 기회에 빠르게 올라타는 쪽이 이 시기엔 오히려 잘 맞을 수 있어요.",
   },
   관성: {
-    label: "책임과 규율, 조직의 압박(관성)",
+    label: "책임과 규율, 조직의 압박",
     axis: "structured",
     whenTrue: "원래 구조와 계획을 선호하는 편이라, 이 시기의 책임과 규율이 오히려 편안하게 느껴질 수 있어요.",
     whenFalse: "원래 열어두고 움직이는 편이라, 이 시기의 규율과 책임이 평소보다 답답하게 느껴질 수 있어요.",
   },
   인성: {
-    label: "배우고 도움받는 힘(인성)",
+    label: "배우고 도움받는 힘",
     axis: "relational",
     whenTrue: "주변 도움을 잘 받는 편이라, 이 시기엔 그 도움이 유독 크게 느껴지고 실제로도 힘이 될 수 있어요.",
     whenFalse: "스스로 판단하는 편이라, 이 시기엔 누군가의 도움을 받는 게 오히려 낯설게 느껴질 수 있어요.",
   },
+};
+
+/** "지금 무엇을 해야 하는가"에 직접 답하는 행동형 문장 1개씩 — GROUP_SIGNAL과
+ * 같은 그룹 분류를 쓰되, 서술이 아니라 행동을 말한다(무료 결과 nextMove용). */
+const GROUP_ACTION_HINT: Record<TenGodGroup, string> = {
+  비겁: "지금은 남 눈치 보지 말고 하고 싶은 걸 직접 밀어붙이세요. 경쟁을 피하기보다 정면으로 붙는 쪽이 유리해요.",
+  식상: "머릿속에 있던 아이디어를 지금 실제로 꺼내 보이세요. 완성도보다 일단 보여주는 게 이 시기의 힘이에요.",
+  재성: "지금 들어오는 제안이나 기회를 미루지 말고 바로 검토하세요. 망설이는 동안 다른 사람이 먼저 잡아요.",
+  관성: "지금은 확실한 자리와 역할을 만드는 데 집중하세요. 승진, 계약, 인정받는 자리를 먼저 챙기면 나머지가 따라와요.",
+  인성: "지금은 혼자 다 하려 하지 말고 배우거나 도와줄 사람을 곁에 두세요. 그 관계가 이 시기의 실제 자산이 돼요.",
 };
 
 function dominantGroup(d: DaeunAnalysis): TenGodGroup | null {
@@ -226,7 +238,6 @@ function derivePersonalityAxes(
 export function buildRealWorldPersonalization(
   facts: SajuFacts,
   personality: PersonalityInput,
-  palm: OnnxPalmLines | null = null,
 ): ReportParagraph | null {
   const { mbti, check } = personality;
   if (!mbti && !check) return null;
@@ -271,27 +282,9 @@ export function buildRealWorldPersonalization(
   sentences.push(realLifeScene(structured, relational, "work"));
   sentences.push(strengthFlip(structured, relational));
 
-  // 지금 이 시기(현재 대운)엔 이 성향이 구체적으로 어떻게 나타나는지 —
-  // 원국+대운(oh-my-saju)+성향+손금을 한 문단 안에서 실제로 엮는 지점.
-  // daeunAnalysis가 없으면(호출 실패/시간 미상) 조용히 생략한다.
-  const currentPeriod = facts.daeunAnalysis?.find((d) => d.isCurrent) ?? null;
-  if (currentPeriod) {
-    const narrative = composePeriodNarrative(currentPeriod, structured, relational, facts, palm, check);
-    if (narrative) {
-      sentences.push(`지금(${currentPeriod.age}세부터, ${currentPeriod.ganzhi} 대운)은 ${narrative.text}`);
-      evidenceParts.push(`현재 대운 ${currentPeriod.ganzhi}(${currentPeriod.tenGods.stem})`);
-    }
-
-    const nextPeriod = facts.daeunAnalysis?.find((d) => d.isNext) ?? null;
-    if (nextPeriod) {
-      const nextGroup = dominantGroup(nextPeriod);
-      if (nextGroup && (!narrative || nextGroup !== narrative.group)) {
-        sentences.push(
-          `다음 대운(${nextPeriod.age}세부터, ${nextPeriod.ganzhi})으로 넘어가면 ${GROUP_SIGNAL[nextGroup].label} 쪽으로 무게가 옮겨가요 — 지금과는 결이 다른 시기가 온다는 뜻이에요.`,
-        );
-      }
-    }
-  }
+  // 대운(지금/다음 시기) 이야기는 nextMove/timingShift 두 필드가 전담한다 —
+  // 여기서 같은 사실을 또 말하면 "세 군데서 반복 설명"이 되므로, 이 문단은
+  // MBTI/6문항 자체의 특성·장면에만 집중한다.
 
   return {
     text: sentences.join(" "),
@@ -310,13 +303,11 @@ export interface LifetimePeriodStory {
 }
 
 /** 대운 10구간 전체를 MBTI+6문항+손금과 결합한 생애 전체 통합 서사.
- * 무료 결과(realWorldPersonalization)는 현재+다음만 보여주고, 이건 그
- * 뒤에 이어지는 심층 해석용 — 하지만 계산 로직은 완전히 같은 함수
- * (composePeriodNarrative/derivePersonalityAxes)를 재사용한다. 두 함수가
- * 같은 시기를 다르게 설명하면 "따로 설명" 문제가 재발하므로, 이 함수는
- * buildRealWorldPersonalization의 현재/다음 문장과 항상 같은 결론을 낸다.
- * personality가 전혀 없으면 개인화가 안 되므로 null(사주+대운만으로는
- * "통합 서사"라고 부르지 않는다). */
+ * 무료 결과의 nextMove/timingShift는 현재+다음 대운만 행동/시기 관점으로
+ * 짧게 다루고, 이건 그 뒤에 이어지는 심층 해석용 원자료 — composePeriodNarrative/
+ * derivePersonalityAxes를 그대로 재사용해 같은 시기를 다르게 설명하는 일이
+ * 없게 한다. personality가 전혀 없으면 개인화가 안 되므로 null(사주+대운만
+ * 으로는 "통합 서사"라고 부르지 않는다). */
 export function buildLifetimeStory(
   facts: SajuFacts,
   personality: PersonalityInput,
@@ -343,4 +334,112 @@ export function buildLifetimeStory(
     });
   }
   return stories;
+}
+
+/** "지금 무엇을 해야 하는가"에 답하는 행동형 문단. facts.currentDaeun(ssaju,
+ * 태어난 시간이 있으면 항상 존재)만으로 동작하고, oh-my-saju의
+ * daeunAnalysis가 없어도(호출 실패 등) 폴백 없이 정상 작동한다 — "지금 뭘
+ * 해야 하는가"는 대운 십성 하나만으로도 답할 수 있는 사실이라, 굳이
+ * daeunAnalysis에 의존하게 만들지 않았다. personality가 있으면 구조화 축을
+ * 한 문장 더 얹는다. */
+export function buildNextMove(facts: SajuFacts, personality: PersonalityInput | null = null): ReportParagraph {
+  const { currentDaeun } = facts;
+  if (!currentDaeun) {
+    return {
+      text: "태어난 시간 정보가 없어서 지금 대운까지는 짚어드리기 어려워요. 다만 지금 하고 있는 일에서 성과가 눈에 보이는 쪽으로 움직이는 게 유리한 흐름이에요.",
+      evidence: "대운 정보 없음(출생시간 미상)",
+    };
+  }
+
+  const group = TEN_GOD_GROUP[currentDaeun.stemTenGod] ?? TEN_GOD_GROUP[currentDaeun.branchTenGod] ?? null;
+  const sentences = [`지금은 ${currentDaeun.ageRange}세, ${daeunFlavor(currentDaeun)} 시기예요.`];
+
+  if (group) {
+    sentences.push(GROUP_ACTION_HINT[group]);
+    if (personality && (personality.mbti || personality.check)) {
+      const { structured } = derivePersonalityAxes(facts, personality);
+      sentences.push(
+        structured
+          ? "계획을 세워두는 편이니, 이번엔 그 계획을 실제 행동으로 옮길 날짜까지 정해두고 밀어붙여보세요."
+          : "즉흥적으로 움직이는 편이니, 이번엔 마음먹은 그 순간 바로 첫걸음 하나만이라도 떼보세요.",
+      );
+    }
+  }
+
+  return {
+    text: sentences.join(" "),
+    evidence: `현재 대운 ${currentDaeun.ganzhi}(${currentDaeun.stemTenGod})`,
+  };
+}
+
+/** "앞으로 언제 큰 변화가 오는가"에 답하는 문단. facts.nextDaeun(ssaju)만
+ * 인용하고, 그 시기가 정말 결이 바뀌는 전환점인지는 fortune-candidates.ts의
+ * deriveDaeunShift를 그대로 재사용해 판정한다(새 기준 없음). */
+export function buildTimingShift(facts: SajuFacts): ReportParagraph {
+  const { nextDaeun } = facts;
+  if (!nextDaeun) {
+    return {
+      text: "다음 대운은 아직 계산되지 않았어요. 지금 흐름이 당분간 그대로 이어진다고 보시면 돼요.",
+      evidence: "다음 대운 정보 없음",
+    };
+  }
+
+  const shifts = deriveDaeunShift(facts);
+  const text = shifts
+    ? `${nextDaeun.ageRange}세, ${daeunFlavor(nextDaeun)} 시기로 넘어가면서 결이 한 번 크게 바뀌어요. 지금 익숙해진 방식 중 하나가 그때부턴 슬슬 안 맞기 시작할 수 있어요.`
+    : `${nextDaeun.ageRange}세로 넘어가도 ${daeunFlavor(nextDaeun)} 흐름은 계속 이어져요. 큰 전환보다는 지금 방식을 더 깊게 파고드는 게 맞는 시기예요.`;
+
+  return { text, evidence: `다음 대운 ${nextDaeun.ganzhi}(${nextDaeun.stemTenGod})` };
+}
+
+/** 손금 완료 직후에 보여줄 종합판정 — 지금까지 모인 원국+대운+성향+손금을
+ * 하나의 결정적인 문단으로 묶는다. 절대 null을 반환하지 않는다(무료
+ * 경험의 클라이맥스라 항상 떠야 한다). personality/palm/daeunAnalysis 중
+ * 없는 게 있으면 해당 문장만 조용히 생략한다. */
+export function buildComprehensiveVerdict(
+  facts: SajuFacts,
+  personality: PersonalityInput | null,
+  palm: OnnxPalmLines | null = null,
+): ReportParagraph {
+  const sentences: string[] = [];
+  const evidenceParts: string[] = [`일간 ${facts.dayStemKo}(${facts.dayElement})`, `격국 ${facts.geukguk}`];
+
+  const imagery = dayStemImagery(facts.dayStemKo);
+  sentences.push(`당신은 ${imagery.image}처럼 ${imagery.core} 사람이에요. ${dayStrengthLabel(facts.dayStrength)}이고, ${facts.geukguk}의 결을 타고났어요.`);
+
+  sentences.push(
+    facts.wealthOpportunityDaeunCount > 0
+      ? "평생 흐름을 보면 재물이 크게 움직이는 시기가 여러 번 와요 — 돈과 인연이 없는 사주는 아니에요."
+      : "재물이 저절로 붙는 사주는 아니지만, 그만큼 본업과 전문성을 무기로 벌어들이는 힘이 커요.",
+  );
+
+  const currentPeriod = facts.daeunAnalysis?.find((d) => d.isCurrent) ?? null;
+  let group: TenGodGroup | null = null;
+  if (currentPeriod) {
+    group = dominantGroup(currentPeriod);
+    if (group) {
+      sentences.push(`지금은 ${GROUP_SIGNAL[group].label}이 강해지는 시기고, ${relationsClause(currentPeriod)}`);
+      evidenceParts.push(`현재 대운 ${currentPeriod.ganzhi}(${currentPeriod.tenGods.stem})`);
+    }
+  } else if (facts.currentDaeun) {
+    sentences.push(`지금은 ${facts.currentDaeun.ageRange}세, ${daeunFlavor(facts.currentDaeun)} 시기예요.`);
+  }
+
+  if (personality && (personality.mbti || personality.check) && group) {
+    const { structured, relational } = derivePersonalityAxes(facts, personality);
+    const axisValue = GROUP_SIGNAL[group].axis === "structured" ? structured : relational;
+    sentences.push(axisValue ? GROUP_SIGNAL[group].whenTrue : GROUP_SIGNAL[group].whenFalse);
+  }
+
+  if (palm && group) {
+    const palmClause = palmAlignmentClause(facts, palm, personality?.check ?? null, GROUP_SIGNAL[group].axis);
+    if (palmClause) sentences.push(palmClause);
+  }
+
+  sentences.push("지금 이 흐름을 어떻게 쓰느냐에 따라 앞으로 몇 년의 결이 갈릴 수 있어요.");
+
+  return {
+    text: sentences.join(" "),
+    evidence: evidenceParts.join(", "),
+  };
 }

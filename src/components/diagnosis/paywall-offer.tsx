@@ -35,7 +35,8 @@ export function PaywallOffer({
         style={{ background: "var(--gold)" }}
       />
 
-      <p className="relative text-sm leading-snug font-semibold">{title}</p>
+      <p className="relative text-xs text-muted-foreground">지금 물은 질문, 여기서 이어집니다</p>
+      <p className="relative mt-1 text-sm leading-snug font-semibold">{title}</p>
       <ul className="relative mt-3 space-y-1.5 text-sm">
         {includedItems.map((item) => (
           <li key={item} className="flex items-start gap-2">

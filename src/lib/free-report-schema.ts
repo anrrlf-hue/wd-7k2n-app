@@ -53,6 +53,10 @@ export const FreeSajuReportSchema = z.object({
   /** ⑰ MBTI/6문항이 있을 때만 채워지는 "현실에서 어떻게 나타나는지" 개인화
    * 문단 — 없으면 null(성향체크를 건너뛴 사람에게 억지로 만들지 않음). */
   realWorldPersonalization: paragraph.nullable(),
+  /** ⑱ "지금 무엇을 해야 하는가" — 현재 대운 기반, 항상 채워짐(null 없음). */
+  nextMove: paragraph,
+  /** ⑲ "앞으로 언제 큰 변화가 오는가" — 다음 대운 기반, 항상 채워짐. */
+  timingShift: paragraph,
 });
 
 export type FreeSajuReport = z.infer<typeof FreeSajuReportSchema>;
@@ -84,6 +88,7 @@ const JARGON_IN_TEXT_PATTERNS: RegExp[] = [
   /격국/,
   /용신/,
   /원국/,
+  /\((비겁|식상|재성|관성|인성)\)/,
   /검출/,
   /ONNX/i,
   /MediaPipe/i,
@@ -115,6 +120,8 @@ export function validateFreeSajuReport(raw: unknown): ValidationResult & { data?
     d.peopleAndMoney,
     d.decisionStyle,
     d.opportunityStyle,
+    d.nextMove,
+    d.timingShift,
     ...(d.realWorldPersonalization ? [d.realWorldPersonalization] : []),
   ].map((p) => p.text);
 

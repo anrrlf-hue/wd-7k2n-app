@@ -27,20 +27,20 @@
 // "사주에서 계산된 구조가 현실에서 어떻게 나타나는지"를 설명한다(성향체크를
 // 안 했으면 null). 실제 구성은 real-world-personalization.ts에 있다.
 //
-// 대운+손금 결합(이번 라운드): realWorldPersonalization이 이제 daeunAnalysis
-// (현재 대운)까지 엮어 "지금 이 시기엔 이렇게 나타난다"를 말하고, palm이
-// 있으면(손금 스캔 이후) triple-compare.ts의 기존 일치/차이 판정을 그
-// 문단 안에서 그대로 인용한다 — 새 손금 해석을 만드는 게 아니라 이미 있는
-// "독립된 두 번째 분석"의 결론을 시기와 엮어 보여주는 것뿐이라, 위 원칙과
-// 충돌하지 않는다. palm은 손금 스캔 전(=/api/saju)엔 null이라 이 문단도
-// 자연스럽게 손금 없이 나간다.
+// 대운 필드 2개 신규(이번 라운드): nextMove("지금 무엇을 해야 하는가")와
+// timingShift("앞으로 언제 큰 변화가 오는가")는 항상 채워지는(null 없는)
+// daeun 기반 문단이다. realWorldPersonalization은 이제 MBTI/6문항 자체의
+// 특성·장면 서술에만 집중하고(대운 이야기는 두 필드가 전담), 손금까지
+// 엮은 "종합판정"은 이 파일이 아니라 손금 스캔 이후에만 호출 가능한
+// real-world-personalization.ts의 buildComprehensiveVerdict가 api/palm/
+// interpret/route.ts에서 직접 만든다 — palm은 무료 사주 단계(/api/saju)엔
+// 존재하지 않으므로 이 파일/이 함수는 palm을 아예 받지 않는다.
 
 import type { SajuFacts, PillarFact } from "@/lib/saju-facts";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { PersonalityInput } from "@/lib/personality-check";
-import type { OnnxPalmLines } from "@/lib/palm-facts";
 import { dayStrengthLabel, dayStrengthShort, elementTemperamentPhrase, dayStemImagery } from "@/lib/saju-labels";
-import { buildRealWorldPersonalization } from "@/lib/real-world-personalization";
+import { buildRealWorldPersonalization, buildNextMove, buildTimingShift } from "@/lib/real-world-personalization";
 
 // ---------- 문장 구조 다양화 유틸 ----------
 
@@ -162,11 +162,7 @@ function findNamedSinsal(
 
 // ---------- 본체 ----------
 
-export function buildFreeSajuReport(
-  facts: SajuFacts,
-  personality?: PersonalityInput,
-  palm?: OnnxPalmLines | null,
-): FreeSajuReport {
+export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityInput): FreeSajuReport {
   const {
     dayStemKo,
     dayElement,
@@ -548,8 +544,11 @@ export function buildFreeSajuReport(
 
   // ⑰ MBTI+6문항이 있을 때만 채워지는 "현실 발현" 개인화 문단.
   const realWorldPersonalization = personality
-    ? buildRealWorldPersonalization(facts, personality, palm ?? null)
+    ? buildRealWorldPersonalization(facts, personality)
     : null;
+
+  const nextMove = buildNextMove(facts, personality ?? null);
+  const timingShift = buildTimingShift(facts);
 
   return {
     snapshot,
@@ -569,5 +568,7 @@ export function buildFreeSajuReport(
     cautions,
     evidenceExplainer,
     realWorldPersonalization,
+    nextMove,
+    timingShift,
   };
 }

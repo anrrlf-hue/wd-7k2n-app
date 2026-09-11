@@ -29,8 +29,9 @@ export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 �
 7. 전문용어로 문장을 시작하지 마세요("일간이 ~라서"로 시작 금지). 부사 남발("정말", "진짜", "솔직히")을 피하고, 수동태보다 능동태를 쓰세요.
 8. 십성이 어느 자리(연/월/일/시)에 있는지("궁위")를 evidence에 최대한 활용해 근거를 구체화하세요.
 9. strengths와 cautions는 각각 최소 3개, detail은 전문용어 없는 생활 언어로, evidence에만 실제 SajuFacts 필드 값을 짧게(8~16자) 남기세요.
-10. realWorldPersonalization: MBTI/6문항 데이터가 함께 주어졌을 때만 채우세요(없으면 null). 이 필드는 "사주 계산을 MBTI로 다시 맞추는" 자리가 아니라 "이미 위에서 설명한 사주 구조가 현실에서 어떻게 나타나는지"를 MBTI 4축(E/I=에너지 방향, S/N=정보를 받아들이는 방식, T/F=판단 기준, J/P=구조화 선호)으로 구체화하는 자리입니다. 6문항 직접 응답(특히 speed/plan/autonomy)이 있으면 그 응답을 1차 근거로 쓰고, MBTI는 6문항이 다루지 않는 축(E/I, S/N)을 채우거나 겹치는 축에서 "다른 얼굴"을 설명하는 보조 시선으로만 쓰세요. MBTI와 6문항이 다르면 오류로 처리하지 말고 "상황에 따라 다르게 나타난다"로 풀어쓰세요. "J라서 빠르게 결정한다", "F라서 감정적이다" 같은 단순 이분법 문장은 금지합니다 — 반드시 구체적 생활 장면(돈/일/관계 중 최소 2개)으로 풀어쓰세요.
-11. 반드시 요청된 JSON 스키마로만 응답하세요.`;
+10. realWorldPersonalization: MBTI/6문항 데이터가 함께 주어졌을 때만 채우세요(없으면 null). 이 필드는 "사주 계산을 MBTI로 다시 맞추는" 자리가 아니라 "이미 위에서 설명한 사주 구조가 현실에서 어떻게 나타나는지"를 MBTI 4축(E/I=에너지 방향, S/N=정보를 받아들이는 방식, T/F=판단 기준, J/P=구조화 선호)으로 구체화하는 자리입니다. 6문항 직접 응답(특히 speed/plan/autonomy)이 있으면 그 응답을 1차 근거로 쓰고, MBTI는 6문항이 다루지 않는 축(E/I, S/N)을 채우거나 겹치는 축에서 "다른 얼굴"을 설명하는 보조 시선으로만 쓰세요. MBTI와 6문항이 다르면 오류로 처리하지 말고 "상황에 따라 다르게 나타난다"로 풀어쓰세요. "J라서 빠르게 결정한다", "F라서 감정적이다" 같은 단순 이분법 문장은 금지합니다 — 반드시 구체적 생활 장면(돈/일/관계 중 최소 2개)으로 풀어쓰세요. 대운(현재/다음) 이야기는 이 필드가 아니라 nextMove/timingShift가 전담하니 여기서 다시 다루지 마세요.
+11. nextMove("지금 무엇을 해야 하는가")와 timingShift("앞으로 언제 큰 변화가 오는가")는 반드시 currentDaeun/nextDaeun에 있는 실제 나이 구간·간지만 인용하세요. "1~3년" 같은 임의의 구간을 지어내지 마세요. currentDaeun/nextDaeun이 없으면(시간 미상) 대운 없이도 말할 수 있는 사실(오행/십성 구조)로만 채우세요.
+12. 반드시 요청된 JSON 스키마로만 응답하세요.`;
 
 export function buildFreeSajuReportUserPrompt(facts: SajuFacts, personality?: PersonalityInput): string {
   const personalitySection = personality?.mbti || personality?.check
@@ -75,6 +76,8 @@ ${facts.compactText}
   "strengths": [{"title": "...", "detail": "전문용어 없는 생활 언어", "evidence": "..."}] (최소 3개, 실제 근거가 있는 것만 — 근거가 약하면 개수를 억지로 채우지 말고 톤을 낮추세요),
   "cautions": [{"title": "...", "detail": "전문용어 없는 생활 언어", "evidence": "..."}] (최소 3개, 위와 동일 원칙),
   "evidenceExplainer": "왜 이런 결과가 나왔나 (일간/오행/십성/격국/대운 근거를 마지막에 쉽게 설명 — 이 필드는 이미 근거 요약이 목적이라 전문용어 포함 가능)",
-  "realWorldPersonalization": ${personality?.mbti || personality?.check ? '{"text": "위 성향체크 섹션 참고해서 규칙 10번대로 작성", "evidence": "MBTI/6문항 중 실제로 쓴 축"}' : "null // 성향체크 입력이 없으므로 반드시 null"}
+  "realWorldPersonalization": ${personality?.mbti || personality?.check ? '{"text": "위 성향체크 섹션 참고해서 규칙 10번대로 작성", "evidence": "MBTI/6문항 중 실제로 쓴 축"}' : "null // 성향체크 입력이 없으므로 반드시 null"},
+  "nextMove": {"text": "지금 무엇을 해야 하는가 — currentDaeun 근거로만, 행동형 문장", "evidence": "현재 대운 간지/십성"},
+  "timingShift": {"text": "앞으로 언제 큰 변화가 오는가 — nextDaeun.ageRange만 인용", "evidence": "다음 대운 간지/십성"}
 }`;
 }

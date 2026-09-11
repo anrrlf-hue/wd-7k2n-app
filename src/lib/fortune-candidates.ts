@@ -64,8 +64,10 @@ export interface FortuneCandidate {
 
 /** 대운 십성(stemTenGod)이 실제로 어떤 결의 10년인지 — 표준 명리 이론의
  * 십성 성격을 그대로 옮긴 것으로, 이번 라운드에 새로 지어낸 판정이 아니다.
- * 지지 십성(branchTenGod)만 있는 경우를 위해 두 값 다 조회해서 쓴다. */
-const DAEUN_FLAVOR: Record<string, string> = {
+ * 지지 십성(branchTenGod)만 있는 경우를 위해 두 값 다 조회해서 쓴다.
+ * real-world-personalization.ts의 buildNextMove/buildTimingShift도 이
+ * 테이블을 그대로 재사용한다 — 대운 결을 두 군데서 다르게 말하지 않기 위해. */
+export const DAEUN_FLAVOR: Record<string, string> = {
   비견: "스스로의 힘으로 밀고 나가는",
   겁재: "경쟁하거나 나눠 가지는 일이 자주 생기는",
   식신: "차분하게 만들고 누리는",
@@ -78,16 +80,30 @@ const DAEUN_FLAVOR: Record<string, string> = {
   정인: "배우고 도움받는 일이 많아지는",
 };
 
-function daeunFlavor(daeun: DaeunFact): string {
+export function daeunFlavor(daeun: DaeunFact): string {
   return DAEUN_FLAVOR[daeun.stemTenGod] ?? DAEUN_FLAVOR[daeun.branchTenGod] ?? "여러 기운이 섞인";
+}
+
+/** 재성+식상(스스로 벌이는 힘) vs 비겁+관성(체계 안에서 크는 힘) 상대비교.
+ * buildFortuneCandidates 내부에 있던 로직을 그대로 뽑아 export만 한
+ * 것 — 판정 자체는 바뀌지 않는다(selectPrimaryCandidate가 재사용). */
+export function deriveCareerLeaning(facts: SajuFacts): "business" | "stable" | "balanced" {
+  const activeGap = facts.wealthStarCount + facts.outputStarCount - (facts.peerStarCount + facts.officerStarCount);
+  return activeGap >= 2 ? "business" : activeGap <= -2 ? "stable" : "balanced";
+}
+
+/** 현재→다음 대운 사이에 십성이 실제로 바뀌는지. buildFortuneCandidates
+ * 내부에 있던 로직을 그대로 뽑아 export만 한 것. */
+export function deriveDaeunShift(facts: SajuFacts): boolean {
+  const { currentDaeun, nextDaeun } = facts;
+  return Boolean(
+    currentDaeun && nextDaeun && (currentDaeun.stemTenGod !== nextDaeun.stemTenGod || currentDaeun.branchTenGod !== nextDaeun.branchTenGod),
+  );
 }
 
 export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLines | null): FortuneCandidate[] {
   const {
     wealthStarCount,
-    outputStarCount,
-    peerStarCount,
-    officerStarCount,
     officerStarPillars,
     wealthOpportunityDaeunCount,
     peakStagePillars,
@@ -134,36 +150,34 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
     situationCopy: {
       stable: {
         deeperQuestion: "지금처럼 안정적으로 유지하는 것과 별개로, 이 흐름을 더 키우려면 지금 뭘 해야 할까요?",
-        ctaLabel: "내 재물 흐름 키우는 법 보기",
-        paywallTitle: "지금 안정된 흐름을 키우려면 어떻게 해야 할까요",
+        ctaLabel: "지금 흐름, 어떻게 키울지 보기",
+        paywallTitle: "그래서 지금 이 흐름을 어떻게 더 키워야 할까요",
         paywallItems: ["지금 흐름을 키우는 데 실제로 도움 되는 행동", "무리하지 않고 시도해볼 만한 다음 단계", "흐름이 달라지는 시기"],
       },
       need_change: {
         deeperQuestion: "변화가 필요하다고 느끼는 지금, 무엇부터 바꾸고 어떤 기준으로 움직여야 할까요?",
-        ctaLabel: "내 재물 흐름 바꾸는 법 보기",
-        paywallTitle: "지금 필요한 변화를 어떻게 시작해야 할까요",
+        ctaLabel: "뭐부터 바꿔야 할지 보기",
+        paywallTitle: "그래서 저는 지금 뭐부터 바꿔야 할까요",
         paywallItems: ["지금 상황에 맞는 변화 방향", "먼저 정리하면 좋을 것", "흐름이 달라지는 시기"],
       },
       seeking: {
         deeperQuestion: "새 기회를 찾는 지금, 어떤 기준으로 고르고 무엇을 준비해야 할까요?",
-        ctaLabel: "내 기회 판단 기준 보기",
-        paywallTitle: "지금 찾고 있는 기회를 어떻게 판단해야 할까요",
+        ctaLabel: "이 기회, 잡아도 될지 보기",
+        paywallTitle: "지금 이 기회를 어떤 기준으로 판단해야 할까요",
         paywallItems: ["기회를 판단하는 기준", "먼저 준비해두면 좋을 것", "흐름이 달라지는 시기"],
       },
       curious: {
         deeperQuestion: "그래서 지금 나는 이 흐름을 어떻게 활용해야 할까요?",
-        ctaLabel: "내 재물운 행동 가이드 열어보기",
-        paywallTitle: "지금 이 재물 흐름을 어떻게 써야 할까요",
+        ctaLabel: "내가 지금 뭘 해야 할지 보기",
+        paywallTitle: "그래서 지금 저는 뭘 해야 할까요",
         paywallItems: ["지금 흐름을 실제로 활용하는 방식", "먼저 준비하면 좋을 것과 피해야 할 행동 패턴", "흐름이 달라지는 시기"],
       },
     },
   };
 
   // ---------- 직장·사업의 흐름 ----------
-  // 재성+식상(스스로 벌이는 힘) vs 비겁+관성(체계 안에서 크는 힘) 차이가
-  // 뚜렷할 때만 한쪽으로 기울고, 차이가 작으면(-1~1) 단정하지 않고 균형형으로 본다.
-  const activeGap = wealthStarCount + outputStarCount - (peerStarCount + officerStarCount);
-  const careerLeaning: "business" | "stable" | "balanced" = activeGap >= 2 ? "business" : activeGap <= -2 ? "stable" : "balanced";
+  // 차이가 작으면(-1~1) 단정하지 않고 균형형으로 본다.
+  const careerLeaning = deriveCareerLeaning(facts);
   const careerHead = onnxLines?.headLine.detected ? onnxLines.headLine.curve : null;
   const careerBusiness: FortuneCandidate = {
     id: "career_business",
@@ -207,41 +221,39 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
     situationCopy: {
       keep_job: {
         deeperQuestion: "지금 자리를 지키기로 한 만큼, 그 안에서 어떻게 움직여야 이 흐름을 제대로 쓸 수 있을까요?",
-        ctaLabel: "내 자리에서 쓰는 법 보기",
-        paywallTitle: "지금 자리에서 이 흐름을 어떻게 써야 할까요",
+        ctaLabel: "이 자리에서 뭘 노려야 할지 보기",
+        paywallTitle: "지금 이 자리에서 저는 뭘 노려야 할까요",
         paywallItems: ["지금 자리에서 취할 행동 전략", "인정받는 타이밍을 판단하는 기준", "흐름이 달라지는 시기"],
       },
       considering_move: {
         deeperQuestion: "이직을 고민 중인 지금, 무엇을 준비하고 어떤 기준으로 움직여야 할까요?",
-        ctaLabel: "내 이직 판단 기준 보기",
-        paywallTitle: "지금 이직을 어떻게 준비해야 할까요",
+        ctaLabel: "이직, 지금이 맞는 타이밍인지 보기",
+        paywallTitle: "이직, 지금 움직이는 게 맞을까요",
         paywallItems: ["이직 타이밍을 판단하는 기준", "지금부터 준비하면 좋을 것", "흐름이 달라지는 시기"],
       },
       considering_independent: {
         deeperQuestion: "독립을 고민 중인 지금, 어떤 준비가 먼저 필요할까요?",
-        ctaLabel: "내 독립 준비 기준 보기",
-        paywallTitle: "지금 독립·사업을 어떻게 준비해야 할까요",
+        ctaLabel: "독립, 뭐부터 준비할지 보기",
+        paywallTitle: "독립하려면 뭐부터 준비해야 할까요",
         paywallItems: ["먼저 준비해야 할 것", "피해야 할 행동 패턴", "흐름이 달라지는 시기"],
       },
       new_offer: {
         deeperQuestion: "새로운 제안을 받은 지금, 어떤 기준으로 받아들이거나 미뤄야 할까요?",
-        ctaLabel: "내 제안 판단 기준 보기",
-        paywallTitle: "지금 이 제안을 어떻게 판단해야 할까요",
+        ctaLabel: "이 제안, 받아도 될지 보기",
+        paywallTitle: "이 제안, 저는 받는 게 맞을까요",
         paywallItems: ["제안을 받아들일지 판단하는 기준", "지금 상황에 맞춘 행동 전략", "흐름이 달라지는 시기"],
       },
       curious: {
         deeperQuestion: "그래서 지금 나는 이 일의 흐름을 어떻게 써야 할까요?",
-        ctaLabel: "내 일의 흐름 행동 가이드 열어보기",
-        paywallTitle: "지금 이 일의 흐름을 어떻게 써야 할까요",
+        ctaLabel: "내가 지금 뭘 해야 할지 보기",
+        paywallTitle: "그래서 지금 저는 일을 어떻게 풀어가야 할까요",
         paywallItems: ["지금 상황에 맞춘 행동 전략", "기회를 판단하는 기준", "흐름이 달라지는 시기"],
       },
     },
   };
 
   // ---------- 변화·기회의 흐름 ----------
-  const daeunShift = Boolean(
-    currentDaeun && nextDaeun && (currentDaeun.stemTenGod !== nextDaeun.stemTenGod || currentDaeun.branchTenGod !== nextDaeun.branchTenGod),
-  );
+  const daeunShift = deriveDaeunShift(facts);
   const changeOpportunity: FortuneCandidate = {
     id: "change_opportunity",
     label: "변화·기회의 흐름",
@@ -278,30 +290,45 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
     situationCopy: {
       waiting: {
         deeperQuestion: "기회를 기다리는 지금, 무엇을 준비해두면 놓치지 않을까요?",
-        ctaLabel: "내 기회 준비 기준 보기",
-        paywallTitle: "지금 기다리는 기회를 놓치지 않으려면",
+        ctaLabel: "이 기회, 놓치지 않으려면 보기",
+        paywallTitle: "이 기회, 놓치지 않으려면 뭘 준비해야 할까요",
         paywallItems: ["기회를 판단하는 기준", "미리 준비해두면 좋을 것", "흐름이 달라지는 시기"],
       },
       sensing_change: {
         deeperQuestion: "변화가 다가오는 걸 느끼는 지금, 무엇부터 준비해야 할까요?",
-        ctaLabel: "내 변화 준비 기준 보기",
-        paywallTitle: "지금 다가오는 변화를 어떻게 준비해야 할까요",
+        ctaLabel: "이 변화, 놓치지 않으려면 보기",
+        paywallTitle: "다가오는 이 변화, 저는 뭐부터 준비해야 할까요",
         paywallItems: ["지금 먼저 준비하면 좋을 것", "피해야 할 행동 패턴", "흐름이 달라지는 시기"],
       },
       considering_timing: {
         deeperQuestion: "움직일 때인지 고민 중인 지금, 어떤 기준으로 판단해야 할까요?",
-        ctaLabel: "내 타이밍 판단 기준 보기",
-        paywallTitle: "지금이 움직일 때인지 어떻게 판단해야 할까요",
+        ctaLabel: "지금이 그 타이밍인지 보기",
+        paywallTitle: "지금이 정말 움직일 때가 맞을까요",
         paywallItems: ["움직일 타이밍을 판단하는 기준", "먼저 점검해두면 좋을 것", "흐름이 달라지는 시기"],
       },
       curious: {
         deeperQuestion: "그래서 지금 나는 이 변화·기회를 어떻게 써야 할까요?",
-        ctaLabel: "내 변화의 흐름 행동 가이드 열어보기",
-        paywallTitle: "지금 이 변화·기회를 어떻게 써야 할까요",
+        ctaLabel: "내가 지금 뭘 해야 할지 보기",
+        paywallTitle: "그래서 지금 저는 이 변화를 어떻게 써야 할까요",
         paywallItems: ["기회를 판단하는 기준", "지금 먼저 준비하면 좋을 것", "흐름이 달라지는 시기"],
       },
     },
   };
 
   return [wealthTiming, careerBusiness, changeOpportunity];
+}
+
+/** 3개 후보 중 "지금 가장 중요한 흐름" 1개를 고른다. 새 가중치를 만들지
+ * 않고, 각 후보를 만들 때 이미 쓰던 신호(재물 대운 존재/직장·사업 기울기/
+ * 대운 전환 또는 정점 자리)를 그대로 재사용해 첫 번째로 걸리는 걸 고른다.
+ * 셋 다 안 걸리면 wealthTiming을 기본값으로 — "재물"이 이 서비스의
+ * 핵심 질문이라 기본 우선순위로 둔다. 사용자는 이후 화면에서 다른 후보로
+ * 언제든 바꿔 볼 수 있다(추천은 순서만 바꿀 뿐 선택지를 줄이지 않는다). */
+export function selectPrimaryCandidate(facts: SajuFacts, candidates: FortuneCandidate[]): FortuneCandidate {
+  const strongSignal: Record<FortuneInterestId, boolean> = {
+    wealth_timing: facts.wealthOpportunityDaeunCount > 0,
+    career_business: deriveCareerLeaning(facts) !== "balanced",
+    change_opportunity: deriveDaeunShift(facts) || facts.peakStagePillars.length > 0,
+  };
+  return candidates.find((c) => strongSignal[c.id]) ?? candidates[0];
 }

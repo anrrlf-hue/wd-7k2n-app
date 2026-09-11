@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
-import { ReportSection, ParagraphSection } from "@/components/diagnosis/report-section";
+import { ReportSection, ParagraphSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 
@@ -117,19 +117,33 @@ export function ResultStep({
         {saving ? "저장 중..." : "이미지로 저장하고 공유하기"}
       </Button>
 
-      {/* 1차 무료 결과 — 손금 전에는 핵심 5~6개만 보여준다("조금 맞는 것 같은데,
-       * 손금까지 보면 어떻게 나오지?"를 만드는 게 목적). 16섹션 전체는 손금까지
-       * 끝난 뒤 palm-page-client.tsx의 최종 통합 리포트에서 보여준다. */}
+      {/* 1차 무료 결과 — 사용자가 실제로 궁금해하는 7가지 질문 순서로
+       * 배치한다: 크게 벌 수 있는 타입인가 -> 왜 모이거나 안 모이는가 ->
+       * 어떻게 벌 때 유리한가 -> 직장형/사업형 -> 지금 뭘 해야 하는가 ->
+       * 어떤 선택이 기회를 놓치게 하는가 -> 언제 변화가 오는가. 나머지
+       * 섹션(팀워크/기회를 잡는 방식 등)은 손금까지 끝난 뒤
+       * palm-page-client.tsx의 최종 통합 리포트에서 보여준다. */}
       <div className="mt-6">
         {report ? (
           <>
             <ParagraphSection step="②" title="타고난 성향" paragraph={report.temperament} />
-            <ParagraphSection step="③" title="돈을 버는 방식" paragraph={report.earningStyle} />
-            <ParagraphSection step="④" title="돈을 지키는 방식" paragraph={report.keepingStyle} />
-            <ParagraphSection step="⑤" title="돈을 놓치는 반복 패턴" paragraph={report.leakPattern} boxed />
-            <ParagraphSection step="⑥" title="직장형일까, 사업형일까" paragraph={report.jobOrientation} />
+            <ParagraphSection step="③" title="돈을 크게 벌 수 있는 타입인가" paragraph={report.bigMoneyAffinity} />
+            <ParagraphSection step="④" title="왜 돈이 잘 모이거나 안 모이는가" paragraph={report.wealthStructure} />
+            <ParagraphSection step="⑤" title="돈을 지키는 방식" paragraph={report.keepingStyle} />
+            <ParagraphSection step="⑥" title="돈을 놓치는 반복 패턴" paragraph={report.leakPattern} boxed />
+            <ParagraphSection step="⑦" title="어떤 방식으로 벌 때 유리한가" paragraph={report.earningStyle} />
+            <ParagraphSection step="⑧" title="직장형일까, 사업형일까" paragraph={report.jobOrientation} />
+            <ParagraphSection step="⑨" title="지금 무엇을 해야 하는가" paragraph={report.nextMove} />
+            <ReportSection step="⑩" title="어떤 선택이 돈과 기회를 놓치게 하는가">
+              <div className="space-y-2.5">
+                {report.cautions.map((c, i) => (
+                  <EvidenceItemCard key={c.title} index={i + 1} title={c.title} detail={c.detail} evidence={c.evidence} />
+                ))}
+              </div>
+            </ReportSection>
+            <ParagraphSection step="⑪" title="앞으로 언제 큰 변화가 오는가" paragraph={report.timingShift} />
             {report.realWorldPersonalization && (
-              <ParagraphSection step="⑦" title="현실에서는 이렇게 나타나요" paragraph={report.realWorldPersonalization} />
+              <ParagraphSection step="⑫" title="현실에서는 이렇게 나타나요" paragraph={report.realWorldPersonalization} />
             )}
           </>
         ) : (

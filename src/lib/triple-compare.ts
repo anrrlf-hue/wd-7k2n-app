@@ -60,7 +60,7 @@ function currentPeriodClause(facts: SajuFacts, axis: "structured" | "relational"
   if (!current) return null;
   const group = TEN_GOD_GROUP[current.tenGods.stem] ?? TEN_GOD_GROUP[current.tenGods.branch];
   if (!group || TEN_GOD_GROUP_AXIS[group] !== axis) return null;
-  return `지금(${current.age}세부터, ${current.ganzhi} 대운)은 이 축이 타고난 사주에서 유독 강하게 작동하는 시기라, 이 비교가 평소보다 더 도드라져 보일 수 있어요.`;
+  return `지금(${current.age}세부터, ${current.ganzhi} 대운)엔 이 모습이 유독 뚜렷하게 나타나는 시기예요.`;
 }
 
 function withPeriodContext(item: Omit<CompareItem, "text"> & { text: string }, facts: SajuFacts, axis: "structured" | "relational"): CompareItem {

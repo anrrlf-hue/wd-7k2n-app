@@ -45,10 +45,10 @@ export function PalmEntryCard({
       </span>
       <div className="flex-1">
         <p className="text-sm leading-snug font-medium">
-          사주에서 보인 돈 성향, 손에도 같은 흐름이 있을까?
+          사주에서 짚은 이 재물의 결, 손에도 같은 흐름이 있을까?
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          손금 사진 한 장으로 사주 재물운과 교차 분석해봐요.
+          손금 사진 한 장이면 종합판정까지 이어서 볼 수 있어요.
         </p>
       </div>
       <ArrowRight className="size-4 shrink-0 text-(--gold)" />

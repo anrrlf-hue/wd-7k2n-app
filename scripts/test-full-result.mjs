@@ -67,6 +67,8 @@ async function main() {
       console.log(`cautions: ${rep.cautions.map((c) => c.title).join(", ")}`);
       console.log(`decisionStyle: ${rep.decisionStyle.text}`);
       console.log(`peopleAndMoney: ${rep.peopleAndMoney.text}`);
+      console.log(`nextMove: ${rep.nextMove.text}`);
+      console.log(`timingShift: ${rep.timingShift.text}`);
     } else {
       console.log("freeReport: 없음(실패)");
     }
@@ -81,15 +83,17 @@ async function main() {
   const sameFree = JSON.stringify(a.json.freeReport) === JSON.stringify(d.json.freeReport);
   console.log(`1과 1-repeat(동일 입력) freeReport 일관성: ${sameFree ? "일치" : "불일치"}`);
 
-  // 이번 라운드: MBTI+6문항이 realWorldPersonalization 한 문단에만 반영된다
-  // (§6/§8) — 사주 계산 자체(snapshot 등 나머지 16섹션)는 그대로 동일해야
-  // 하고, realWorldPersonalization만 성향 유무에 따라 달라져야 한다.
+  // MBTI+6문항은 realWorldPersonalization과 nextMove(§9 "지금 무엇을 해야
+  // 하는가" — 이번 라운드부터 성향에 따른 행동 문장 한 줄을 얹는다)에만
+  // 반영된다. 사주 계산 자체(snapshot 등 순수 사실 섹션)는 그대로 동일해야
+  // 한다.
   const withP = results.find((r) => r.label === "1-with-personality");
   const repA = a?.json?.freeReport?.report;
   const repP = withP?.json?.freeReport?.report;
-  const coreKeys = Object.keys(repA ?? {}).filter((k) => k !== "realWorldPersonalization");
+  const coreKeys = Object.keys(repA ?? {}).filter((k) => k !== "realWorldPersonalization" && k !== "nextMove");
   const coreSame = coreKeys.every((k) => JSON.stringify(repA?.[k]) === JSON.stringify(repP?.[k]));
-  console.log(`1-with-personality의 나머지 16섹션(사주 계산)이 기본 1과 동일한가 = ${coreSame} (PASS여야 함)`);
+  console.log(`1-with-personality의 순수 사실 섹션이 기본 1과 동일한가 = ${coreSame} (PASS여야 함)`);
+  console.log(`1-with-personality의 nextMove가 기본 1과 다른가(성향 반영 확인) = ${JSON.stringify(repA?.nextMove) !== JSON.stringify(repP?.nextMove)} (PASS여야 함)`);
   console.log(`기본 1의 realWorldPersonalization = ${JSON.stringify(repA?.realWorldPersonalization)}`);
   console.log(`1-with-personality의 realWorldPersonalization이 실제로 채워졌는가 = ${repP?.realWorldPersonalization !== null} (PASS여야 함)`);
 
@@ -103,7 +107,7 @@ async function main() {
   const PARAGRAPH_KEYS = [
     "snapshot", "temperament", "wealthStructure", "earningStyle", "keepingStyle", "leakPattern",
     "bigMoneyAffinity", "jobOrientation", "teamStrength", "soloStrength", "peopleAndMoney",
-    "decisionStyle", "opportunityStyle",
+    "decisionStyle", "opportunityStyle", "nextMove", "timingShift",
   ];
   let jargonLeaks = 0;
   for (const r of results) {

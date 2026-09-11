@@ -6,9 +6,9 @@ import { getFreeSajuReport } from "@/lib/free-report-engine";
 import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
 import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
-import { buildFortuneCandidates } from "@/lib/fortune-candidates";
+import { buildFortuneCandidates, selectPrimaryCandidate } from "@/lib/fortune-candidates";
 import { buildTripleCompare } from "@/lib/triple-compare";
-import { buildLifetimeStory } from "@/lib/real-world-personalization";
+import { buildLifetimeStory, buildComprehensiveVerdict } from "@/lib/real-world-personalization";
 
 // 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe/ONNX로
 // 이미 분석해 만든 PalmFacts(구조화 JSON)만 받는다. palmFacts가 없으면
@@ -111,14 +111,18 @@ export async function POST(request: Request) {
     const mbti = parsed.data.mbti ?? null;
 
     const onnxLines = palmFacts?.onnxLines ?? null;
+    const personality = { mbti, check: personalityCheck };
     const freeReportResult = await getFreeSajuReport(deepFacts, {
       timeoutMs: 9000,
-      personality: { mbti, check: personalityCheck },
-      palm: onnxLines,
+      personality,
     });
     const fortuneCandidates = buildFortuneCandidates(deepFacts, onnxLines);
     const tripleCompare = buildTripleCompare(deepFacts, onnxLines, personalityCheck);
-    const lifetimeStory = buildLifetimeStory(deepFacts, { mbti, check: personalityCheck }, onnxLines);
+    const lifetimeStory = buildLifetimeStory(deepFacts, personality, onnxLines);
+    // 종합판정(무료 경험의 클라이맥스)과 추천 흐름 1개 — 새 계산 없이
+    // 이미 만들어둔 신호만 재조합한다.
+    const verdict = buildComprehensiveVerdict(deepFacts, personality, onnxLines);
+    const primaryCandidateId = selectPrimaryCandidate(deepFacts, fortuneCandidates).id;
 
     return NextResponse.json({
       usable: true,
@@ -128,6 +132,8 @@ export async function POST(request: Request) {
       fortuneCandidates,
       tripleCompare,
       lifetimeStory,
+      verdict,
+      primaryCandidateId,
     });
   } catch (err) {
     return NextResponse.json(
