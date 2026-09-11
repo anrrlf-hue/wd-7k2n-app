@@ -4,6 +4,7 @@ import type { Interpretation } from "./interpretation-schema";
 import type { FreeSajuReport } from "./free-report-schema";
 import type { MbtiType } from "./mbti-facts";
 import type { DaeunAnalysis } from "./saju-facts";
+import type { LifetimePeriodStory } from "./real-world-personalization";
 
 export interface BirthInput {
   year: number;
@@ -58,6 +59,9 @@ export interface FullSajuDiagnosis extends SajuDiagnosis {
   personalityInput: PersonalityInputEcho;
   /** oh-my-saju timing 기반 대운 8~10구간 + 원국과의 합충형파해. 호출 실패/시간 미상이면 null. */
   daeunAnalysis: DaeunAnalysis[] | null;
+  /** 대운 10구간 전체 x MBTI/6문항 x (있으면) 손금 통합 서사. 무료 화면은
+   * 현재/다음만 보여주고, 이건 심층 해석용 원자료 — 성향 입력이 없으면 null. */
+  lifetimeStory: LifetimePeriodStory[] | null;
 }
 
 export function diagnoseSaju(input: BirthInput): SajuDiagnosis {

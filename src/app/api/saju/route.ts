@@ -7,6 +7,7 @@ import { getInterpretation } from "@/lib/interpretation-engine";
 import { getFreeSajuReport } from "@/lib/free-report-engine";
 import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
+import { buildLifetimeStory } from "@/lib/real-world-personalization";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
 // 요청 1회로 (1) 얕은 사주팔자+money-tendency(fallback/게이지 근거로 항상 유지)
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
   let resultSource: FullSajuDiagnosis["resultSource"] = "fallback";
   let freeReport: FullSajuDiagnosis["freeReport"] = null;
   let daeunAnalysis: FullSajuDiagnosis["daeunAnalysis"] = null;
+  let lifetimeStory: FullSajuDiagnosis["lifetimeStory"] = null;
 
   try {
     const facts = enrichSajuFacts(computeSajuFacts(parsed.data), parsed.data);
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
       mbti: parsed.data.mbti ?? null,
       check: parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null,
     };
+    lifetimeStory = buildLifetimeStory(facts, personality, null);
 
     const [interpretationResult, freeReportResult] = await Promise.all([
       getInterpretation(facts, { timeoutMs: 9000 }).catch((err) => {
@@ -101,6 +104,7 @@ export async function POST(request: Request) {
       mbti: parsed.data.mbti ?? null,
     },
     daeunAnalysis,
+    lifetimeStory,
   };
   return NextResponse.json(payload);
 }

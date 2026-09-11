@@ -98,6 +98,30 @@ function palmAlignmentClause(
   return item ? `손금까지 보면: ${item.text}` : null;
 }
 
+/** 대운 한 구간 = 사주 신호(대운 십성 그룹) + 원국과의 합충형파해 + 성향
+ * fit + (있으면) 손금 정렬까지 한 몸으로 묶은 문단 본문. 현재/다음
+ * 대운(buildRealWorldPersonalization)과 생애 10구간(buildLifetimeStory)이
+ * 이 조합 로직을 그대로 공유한다 — 같은 사람·같은 시기인데 두 함수가
+ * 다른 이야기를 하면 안 되므로. group이 없으면(십성 매핑 실패, 이론상
+ * 없음) null. */
+function composePeriodNarrative(
+  d: DaeunAnalysis,
+  structured: boolean,
+  relational: boolean,
+  facts: SajuFacts,
+  palm: OnnxPalmLines | null,
+  check: PersonalityInput["check"],
+): { text: string; group: TenGodGroup } | null {
+  const group = dominantGroup(d);
+  if (!group) return null;
+  const signal = GROUP_SIGNAL[group];
+  const axisValue = signal.axis === "structured" ? structured : relational;
+  const parts = [`${signal.label}이 강해지는 시기예요.`, relationsClause(d), axisValue ? signal.whenTrue : signal.whenFalse];
+  const palmClause = palmAlignmentClause(facts, palm, check, signal.axis);
+  if (palmClause) parts.push(palmClause);
+  return { text: parts.join(" "), group };
+}
+
 function ei(mbti: MbtiType): string {
   return mbti[0] === "E"
     ? "사람들과 부딪히고 이야기하면서 에너지를 얻는 편"
@@ -178,6 +202,27 @@ function strengthFlip(structured: boolean, relational: boolean): string {
   return "다만 혼자 판단하고 즉흥적으로 움직이다 보면, 중요한 순간에 필요한 정보를 놓칠 수 있어요.";
 }
 
+/** structured(계획적)/relational(관계영향) 두 축을 한 번만 derive해서
+ * buildRealWorldPersonalization과 buildLifetimeStory가 똑같이 재사용한다 —
+ * 같은 사람인데 두 곳에서 다르게 계산되면 안 되므로 로직을 한 곳에 둔다. */
+function derivePersonalityAxes(
+  facts: SajuFacts,
+  personality: PersonalityInput,
+): { structured: boolean; relational: boolean } {
+  const { mbti, check } = personality;
+  const structuredText = structureFromCheck(check) ?? (mbti ? structureFromMbti(mbti) : null);
+  const relationText = relationFromCheck(check) ?? (mbti ? relationFromMbti(mbti) : null);
+
+  const structured = structuredText
+    ? (structureFromCheck(check) !== null ? check!.levels.plan === "왼쪽" : mbti![3] === "J")
+    : facts.dayStrength === "strong";
+  const relational = relationText
+    ? (relationFromCheck(check) !== null ? check!.levels.autonomy === "오른쪽" : mbti![2] === "F")
+    : facts.officerStarCount + facts.resourceStarCount > facts.peerStarCount + facts.outputStarCount;
+
+  return { structured, relational };
+}
+
 export function buildRealWorldPersonalization(
   facts: SajuFacts,
   personality: PersonalityInput,
@@ -220,12 +265,7 @@ export function buildRealWorldPersonalization(
 
   // 두 축(구조화/관계) 조합으로 재물·일·관계 장면을 각각 다르게 만든다 —
   // "사주 본문"에 실제로 personalization이 반영되는 지점.
-  const structured = structuredText
-    ? (structureFromCheck(check) !== null ? check!.levels.plan === "왼쪽" : mbti![3] === "J")
-    : facts.dayStrength === "strong";
-  const relational = relationText
-    ? (relationFromCheck(check) !== null ? check!.levels.autonomy === "오른쪽" : mbti![2] === "F")
-    : facts.officerStarCount + facts.resourceStarCount > facts.peerStarCount + facts.outputStarCount;
+  const { structured, relational } = derivePersonalityAxes(facts, personality);
 
   sentences.push(realLifeScene(structured, relational, "money"));
   sentences.push(realLifeScene(structured, relational, "work"));
@@ -236,24 +276,16 @@ export function buildRealWorldPersonalization(
   // daeunAnalysis가 없으면(호출 실패/시간 미상) 조용히 생략한다.
   const currentPeriod = facts.daeunAnalysis?.find((d) => d.isCurrent) ?? null;
   if (currentPeriod) {
-    const group = dominantGroup(currentPeriod);
-    if (group) {
-      const signal = GROUP_SIGNAL[group];
-      const axisValue = signal.axis === "structured" ? structured : relational;
-      sentences.push(
-        `지금(${currentPeriod.age}세부터, ${currentPeriod.ganzhi} 대운)은 ${signal.label}이 강해지는 시기예요. ` +
-          relationsClause(currentPeriod) +
-          ` ${axisValue ? signal.whenTrue : signal.whenFalse}`,
-      );
-      const palmClause = palmAlignmentClause(facts, palm, check, signal.axis);
-      if (palmClause) sentences.push(palmClause);
+    const narrative = composePeriodNarrative(currentPeriod, structured, relational, facts, palm, check);
+    if (narrative) {
+      sentences.push(`지금(${currentPeriod.age}세부터, ${currentPeriod.ganzhi} 대운)은 ${narrative.text}`);
       evidenceParts.push(`현재 대운 ${currentPeriod.ganzhi}(${currentPeriod.tenGods.stem})`);
     }
 
     const nextPeriod = facts.daeunAnalysis?.find((d) => d.isNext) ?? null;
     if (nextPeriod) {
       const nextGroup = dominantGroup(nextPeriod);
-      if (nextGroup && nextGroup !== group) {
+      if (nextGroup && (!narrative || nextGroup !== narrative.group)) {
         sentences.push(
           `다음 대운(${nextPeriod.age}세부터, ${nextPeriod.ganzhi})으로 넘어가면 ${GROUP_SIGNAL[nextGroup].label} 쪽으로 무게가 옮겨가요 — 지금과는 결이 다른 시기가 온다는 뜻이에요.`,
         );
@@ -265,4 +297,50 @@ export function buildRealWorldPersonalization(
     text: sentences.join(" "),
     evidence: evidenceParts.length > 0 ? evidenceParts.join(", ") : "성향체크 없음",
   };
+}
+
+export interface LifetimePeriodStory {
+  age: number;
+  ageRange: string;
+  ganzhi: string;
+  tenGodGroup: TenGodGroup;
+  text: string;
+  isCurrent: boolean;
+  isNext: boolean;
+}
+
+/** 대운 10구간 전체를 MBTI+6문항+손금과 결합한 생애 전체 통합 서사.
+ * 무료 결과(realWorldPersonalization)는 현재+다음만 보여주고, 이건 그
+ * 뒤에 이어지는 심층 해석용 — 하지만 계산 로직은 완전히 같은 함수
+ * (composePeriodNarrative/derivePersonalityAxes)를 재사용한다. 두 함수가
+ * 같은 시기를 다르게 설명하면 "따로 설명" 문제가 재발하므로, 이 함수는
+ * buildRealWorldPersonalization의 현재/다음 문장과 항상 같은 결론을 낸다.
+ * personality가 전혀 없으면 개인화가 안 되므로 null(사주+대운만으로는
+ * "통합 서사"라고 부르지 않는다). */
+export function buildLifetimeStory(
+  facts: SajuFacts,
+  personality: PersonalityInput,
+  palm: OnnxPalmLines | null = null,
+): LifetimePeriodStory[] | null {
+  const { mbti, check } = personality;
+  if (!mbti && !check) return null;
+  if (!facts.daeunAnalysis || facts.daeunAnalysis.length === 0) return null;
+
+  const { structured, relational } = derivePersonalityAxes(facts, personality);
+
+  const stories: LifetimePeriodStory[] = [];
+  for (const d of facts.daeunAnalysis) {
+    const narrative = composePeriodNarrative(d, structured, relational, facts, palm, check);
+    if (!narrative) continue;
+    stories.push({
+      age: d.age,
+      ageRange: `${d.age}세~${d.age + 9}세`,
+      ganzhi: d.ganzhi,
+      tenGodGroup: narrative.group,
+      text: narrative.text,
+      isCurrent: d.isCurrent,
+      isNext: d.isNext,
+    });
+  }
+  return stories;
 }

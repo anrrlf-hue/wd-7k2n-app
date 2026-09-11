@@ -8,6 +8,7 @@ import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { buildFortuneCandidates } from "@/lib/fortune-candidates";
 import { buildTripleCompare } from "@/lib/triple-compare";
+import { buildLifetimeStory } from "@/lib/real-world-personalization";
 
 // 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe/ONNX로
 // 이미 분석해 만든 PalmFacts(구조화 JSON)만 받는다. palmFacts가 없으면
@@ -117,6 +118,7 @@ export async function POST(request: Request) {
     });
     const fortuneCandidates = buildFortuneCandidates(deepFacts, onnxLines);
     const tripleCompare = buildTripleCompare(deepFacts, onnxLines, personalityCheck);
+    const lifetimeStory = buildLifetimeStory(deepFacts, { mbti, check: personalityCheck }, onnxLines);
 
     return NextResponse.json({
       usable: true,
@@ -125,6 +127,7 @@ export async function POST(request: Request) {
       freeReport: { source: freeReportResult.source, report: freeReportResult.report },
       fortuneCandidates,
       tripleCompare,
+      lifetimeStory,
     });
   } catch (err) {
     return NextResponse.json(
