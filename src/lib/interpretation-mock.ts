@@ -13,7 +13,7 @@ import { dayStrengthLabel, dayStrengthShort } from "@/lib/saju-labels";
 // 없는 고정 클래식 표) — 실제로 걸리는 게 있을 때만 문장을 만든다.
 function daeunRelationSentence(relations: { detail: string }[]): string | null {
   if (relations.length === 0) return null;
-  return `이 대운은 원국과 ${relations.map((r) => r.detail).join(", ")}이 걸려 있어요.`;
+  return `이 대운은 타고난 사주와 ${relations.map((r) => r.detail).join(", ")}이 걸려 있습니다.`;
 }
 
 function wealthLevel(count: number): "없음" | "보통" | "강함" {
@@ -46,40 +46,40 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
     outputStarCount === peerStarCount ? "tie" : outputStarCount > peerStarCount ? "output" : "peer";
 
   const summary =
-    `일간 ${dayStemKo}(${dayElement}) 기준으로 ${dayStrengthLabel(dayStrength)}이고, 격국은 ${geukguk}예요. ` +
-    `원국에서 가장 강한 오행은 ${dominantElement}이고, 재성(재물을 뜻하는 십성)은 ${wLevel} 수준(${wealthStarCount}개)이에요. ` +
-    `혹시 실제로도 ${activeCompare === "peer" ? "묵묵히 반복해서 자리를 잡는" : "일단 벌여놓고 결과로 증명하는"} 편이라는 말을 주변에서 듣나요?`;
+    `이 사주는 ${dayStrengthLabel(dayStrength)}이고, ${geukguk}을 타고났습니다. ` +
+    `가장 강한 기운은 ${dominantElement}이고, 재물은 ${wLevel === "없음" ? "직접 드러나 있지는 않습니다" : wLevel === "보통" ? "적당히 자리 잡고 있습니다" : "뚜렷하게 자리 잡고 있습니다"}. ` +
+    `원래 ${activeCompare === "peer" ? "묵묵히 반복해서 자리를 잡는" : "일단 벌여놓고 결과로 증명하는"} 쪽에 가깝습니다.`;
 
   const money_style =
     wLevel === "없음"
-      ? "원국에 재성이 뚜렷하게 보이지 않아요. 돈을 직접 좇기보다, 본업/전문성에서 나온 결과물이 자연스럽게 돈으로 바뀌는 흐름에 가까워요."
+      ? "이 사주는 재물이 저절로 들어오는 구조가 아닙니다. 돈을 직접 좇기보다, 본업이나 전문성에서 나온 결과물이 자연스럽게 돈으로 바뀌는 흐름에 가깝습니다."
       : wLevel === "보통"
-        ? `재성이 ${wealthStarCount}개로 적당히 있어요. 돈이 완전히 낯설지도, 너무 익숙하지도 않은 균형점에서 관계를 맺는 편이에요.`
-        : `재성이 ${wealthStarCount}개로 원국에 뚜렷하게 자리하고 있어요. 돈의 흐름을 감지하고 다루는 감각 자체가 원국의 핵심 축 중 하나예요.`;
+        ? "이 사주는 돈이 완전히 낯설지도, 너무 익숙하지도 않은 균형점에서 관계를 맺습니다."
+        : "이 사주는 돈의 흐름을 감지하고 다루는 감각이 핵심 축 중 하나입니다.";
 
   const earning_style =
     activeCompare === "output"
-      ? `식상(활동력을 뜻하는 십성)이 ${outputStarCount}개로 비겁(${peerStarCount}개)보다 많아요. 뭔가를 만들어내거나 표현하는 활동이 곧 돈으로 이어지는 구조예요.`
+      ? "뭔가를 만들어내거나 표현하는 활동이 곧 돈으로 이어지는 구조입니다. 직장에 오래 묶여 있기보다 성과가 바로 돈으로 연결되는 일이 더 맞습니다."
       : activeCompare === "peer"
-        ? `비겁(직접 경쟁하고 실행하는 힘)이 ${peerStarCount}개로 식상(${outputStarCount}개)보다 우세해요. 남과 비교되는 자리, 직접 부딪히는 자리에서 오히려 돈 버는 힘이 커지는 편이에요.`
-        : `식상과 비겁이 각각 ${outputStarCount}개로 원국에 뚜렷하게 드러나 있지 않아요. 벌어들이는 힘이 이 두 축보다는 재성·용신 쪽에서 더 크게 작동하는 구조에 가까워요.`;
+        ? "남과 비교되는 자리, 직접 부딪히는 자리에서 오히려 돈 버는 힘이 커집니다."
+        : "벌어들이는 힘이 활동이나 경쟁보다는 재물 자체를 다루는 쪽에서 더 크게 작동합니다.";
 
   const keeping_style =
     dayStrength === "strong"
-      ? "일간이 강한 편이라 자기 기준이 뚜렷하고, 쉽게 흔들리지 않아요. 다만 그 확신이 지나치면 남의 조언을 안 듣고 밀어붙이다 지키는 힘을 스스로 깎아먹기도 해요."
+      ? "자기 기준이 뚜렷해 쉽게 흔들리지 않습니다. 다만 그 확신이 지나치면 남의 조언을 듣지 않고 밀어붙이다 지키는 힘을 스스로 깎아먹기 쉽습니다."
       : dayStrength === "weak"
-        ? "일간이 약한 편이라 주변 상황에 영향을 잘 받아요. 혼자 판단하기보다 믿을 만한 기준(사람이든 시스템이든)을 곁에 두는 게 지키는 힘으로 직결돼요."
-        : "일간이 중화에 가까워요. 한쪽으로 치우치기보다, 상황에 따라 유연하게 지키는 방식을 바꾸는 편이에요.";
+        ? "주변 상황에 영향을 잘 받는 사주입니다. 혼자 판단하기보다 믿을 만한 사람이나 체계를 곁에 두는 것이 지키는 힘으로 이어집니다."
+        : "한쪽으로 치우치기보다 상황에 따라 지키는 방식을 유연하게 바꾸는 사주입니다.";
 
   const risk_pattern =
     hyungsin.length > 0
-      ? `원국에 ${hyungsin.join(", ")} 같은 흉신이 보여요. 급하게 밀어붙이거나 감정적으로 판단하는 순간에 손해로 이어지는 패턴을 조심할 필요가 있어요.`
-      : `뚜렷한 흉신은 안 보이지만, 재성 ${wealthStarCount}개·비겁 ${peerStarCount}개의 균형이 무너질 때(재성이 갑자기 몰리거나 비겁이 재성을 압도할 때)가 위험 신호예요.`;
+      ? "급하게 밀어붙이거나 감정적으로 판단하는 순간에 손해로 이어지기 쉬운 사주입니다. 큰 결정 전에는 한 박자 늦추는 것이 낫습니다."
+      : "특별히 걸리는 것은 없지만, 벌어들이는 힘과 지키는 힘의 균형이 한쪽으로 쏠릴 때가 위험 신호입니다.";
 
   const career_business =
     geukguk.includes("재") || geukguk.includes("식상")
-      ? `격국이 ${geukguk}예요. 정해진 틀 안에서 일하기보다, 성과가 곧바로 보이는 구조(사업/프리랜서/성과제)에서 재물운이 더 크게 열리는 편이에요.`
-      : `격국이 ${geukguk}예요. 안정적인 체계 안에서 신뢰를 쌓아가는 직장형 구조에서 재물이 더 안정적으로 늘어나는 편이에요.`;
+      ? "정해진 틀 안에 오래 있기보다, 성과가 곧바로 보이는 사업이나 성과제 쪽에서 재물이 더 크게 열립니다."
+      : "안정적인 체계 안에서 신뢰를 쌓아가는 직장형 구조에서 재물이 더 안정적으로 늘어납니다.";
 
   const currentAnalysis = daeunAnalysis?.find((d) => d.isCurrent) ?? null;
   const nextAnalysis = daeunAnalysis?.find((d) => d.isNext) ?? null;
@@ -87,22 +87,22 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
   const nextRelationSentence = nextAnalysis ? daeunRelationSentence(nextAnalysis.relations) : null;
 
   const timing = currentDaeun
-    ? `지금은 ${currentDaeun.ageRange}세, ${currentDaeun.ganzhi}(${currentDaeun.stemTenGod}/${currentDaeun.branchTenGod}) 대운이에요. ` +
+    ? `${currentDaeun.ageRange}세부터 이어지는 지금 대운(${currentDaeun.ganzhi})에서는 ` +
       (currentRelationSentence ? `${currentRelationSentence} ` : "") +
       (nextDaeun
-        ? `다음 대운(${nextDaeun.ageRange}세, ${nextDaeun.ganzhi})으로 넘어가면 십성 구성이 ${nextDaeun.stemTenGod}/${nextDaeun.branchTenGod}로 바뀌면서 돈을 대하는 방식 자체가 한 번 전환될 시기예요.` +
+        ? `다음 대운(${nextDaeun.ageRange}세부터, ${nextDaeun.ganzhi})으로 넘어가면 돈을 대하는 방식이 한 번 전환됩니다.` +
           (nextRelationSentence ? ` ${nextRelationSentence}` : "")
-        : "이 대운이 지금 재물 흐름의 기본 배경이 되고 있어요.")
-    : "대운 정보가 계산되지 않았어요.";
+        : "이 대운이 지금 재물 흐름의 기본 배경이 되고 있습니다.")
+    : "출생시간이 없어 대운은 계산되지 않았습니다.";
 
   const action =
     wLevel === "없음"
-      ? "돈을 직접 좇기보다, 지금 하고 있는 일의 전문성부터 한 단계 더 좁고 깊게 파보는 게 재물로 이어지는 더 빠른 길이에요."
+      ? "돈을 직접 좇기보다, 지금 하는 일의 전문성을 한 단계 더 좁고 깊게 파고드는 것이 재물로 이어지는 더 빠른 길입니다."
       : activeCompare === "output"
-        ? "지금 벌여놓은 것 중 하나를 골라 '완결'짓는 데 이번 주 시간을 써보세요. 새로 벌이는 것보다 마무리가 지금 필요한 행동이에요."
+        ? "지금 벌여놓은 것 중 하나를 골라 이번 주 안에 마무리 짓는 것이 순서입니다. 새로 벌이는 것보다 완결이 먼저입니다."
         : activeCompare === "peer"
-          ? "혼자 판단하지 말고, 이번 결정 하나만큼은 믿을 만한 사람에게 먼저 물어보고 진행해보세요."
-          : "새로운 걸 벌이기 전에, 지금 가진 재성(용신 방향)을 어디에 쓸지부터 한 줄로 정리해보세요.";
+          ? "혼자 판단하지 말고, 이번 결정 하나만큼은 믿을 만한 사람에게 먼저 물어보고 진행하는 것이 낫습니다."
+          : "새로운 것을 벌이기 전에, 지금 가진 자원을 어디에 쓸지부터 한 줄로 정리하는 것이 순서입니다.";
 
   // 화면에 그대로 칩으로 노출되므로 짧고 읽기 좋은 형태로 쓴다.
   // (JSON.stringify나 영문 enum을 그대로 넣지 않는다 — 실제 스크린샷 검수에서

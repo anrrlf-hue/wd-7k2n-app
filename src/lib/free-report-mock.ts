@@ -89,12 +89,12 @@ function compose(seed: number, parts: { claim: string; scene: string; evidence: 
 }
 
 const SELF_CHECK_POOL = [
-  "문득 스스로도 이런 편이라고 느낀 적 있지 않나요?",
-  "주변에서도 비슷한 얘기, 한 번쯤 들어봤을 거예요.",
-  "최근에 있었던 일 하나를 떠올려보면 바로 확인될 거예요.",
-  "실제로도 이렇게 움직이는 편인가요?",
-  "이 모습, 스스로도 이미 알고 있었을 수 있어요.",
-  "가까운 사람이라면 고개를 끄덕일 대목이에요.",
+  "스스로도 이미 느끼고 있었을 부분입니다.",
+  "주변에서도 비슷한 이야기를 한 번쯤 들었을 것입니다.",
+  "최근 있었던 일 하나를 떠올려보면 바로 확인됩니다.",
+  "실제로 이렇게 움직이는 경우가 많습니다.",
+  "본인은 이미 알고 있었을 수 있습니다.",
+  "가까운 사람이라면 고개를 끄덕일 대목입니다.",
 ];
 function selfCheck(seed: number): string {
   return SELF_CHECK_POOL[seed % SELF_CHECK_POOL.length];
@@ -208,21 +208,21 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const imagery = dayStemImagery(dayStemKo);
   const snapshot: ReportParagraph = {
     text:
-      `${imagery.image}처럼 ${imagery.core} 사람이에요. ${dayStrengthLabel(dayStrength)}이라 ${dayStrength === "strong" ? "그 결이 겉으로도 뚜렷하게 드러나는 편이에요" : dayStrength === "weak" ? "그 결이 상황에 따라 완만하게 조절되는 편이에요" : "그 결이 상황 따라 유연하게 나타나는 편이에요"}. ` +
-      `재물 신호는 ${wLevel === "없음" ? "사주에 직접 드러나 있진 않고" : `${wLevel} 수준으로 보이고`}${wealthStarPillars.length > 0 ? `(${pillarNamesKo(wealthStarPillars)} 자리)` : ""}, ` +
-      `${activeCompare === "output" ? "뭔가를 만들어내는 활동이 곧 돈이 되는" : activeCompare === "peer" ? "직접 부딪히고 경쟁하는 자리에서 돈이 붙는" : "타고난 균형 쪽 흐름이 더 크게 작동하는"} 구조예요.`,
+      `이 사주는 ${imagery.image}처럼 ${imagery.core} 사람의 사주입니다. ${dayStrengthLabel(dayStrength)}이라 ${dayStrength === "strong" ? "그 결이 겉으로도 뚜렷하게 드러납니다" : dayStrength === "weak" ? "그 결이 상황에 따라 완만하게 조절됩니다" : "그 결이 상황 따라 유연하게 나타납니다"}. ` +
+      `재물은 ${wLevel === "없음" ? "사주에 직접 드러나 있지는 않고" : `${wLevel} 수준으로 보이고`}${wealthStarPillars.length > 0 ? `(${pillarNamesKo(wealthStarPillars)} 자리)` : ""}, ` +
+      `${activeCompare === "output" ? "뭔가를 만들어내는 활동이 곧 돈이 되는" : activeCompare === "peer" ? "직접 부딪히고 경쟁하는 자리에서 돈이 붙는" : "타고난 균형 쪽 흐름이 더 크게 작동하는"} 구조입니다.`,
     evidence: `일간 ${dayStemKo}(${dayElement}), 격국 ${geukguk}, 재성 ${wealthStarCount}개`,
   };
 
   // ② 타고난 성향
   const temperament = compose(seedFor(2), {
-    claim: `${elementTemperamentPhrase(dayElement)}인데, ${dayStrength === "strong" ? "한번 정한 방향은 잘 안 바뀌는 편이에요" : dayStrength === "weak" ? "주변 분위기나 상황에 맞춰 스스로를 조정하는 편이에요" : "상황 따라 유연하게 태도를 바꾸는 편이에요"}.`,
+    claim: `원래 ${elementTemperamentPhrase(dayElement)}인데, ${dayStrength === "strong" ? "한번 정한 방향은 잘 바꾸지 않습니다" : dayStrength === "weak" ? "주변 분위기나 상황에 맞춰 스스로를 조정합니다" : "상황에 따라 태도를 유연하게 바꿉니다"}.`,
     scene:
       dayStrength === "strong"
-        ? "회의에서 방향이 흔들릴 때 오히려 중심을 잡는 쪽에 서게 되는 경우가 많아요."
+        ? "회의에서 방향이 흔들릴 때 오히려 중심을 잡는 쪽에 서는 경우가 많습니다."
         : dayStrength === "weak"
-          ? "혼자 결정하기보다 분위기를 먼저 살피고 나서 움직이는 편이에요."
-          : "어제와 오늘의 태도가 다를 수 있는데, 그게 오히려 자연스러운 유형이에요.",
+          ? "혼자 결정하기보다 분위기를 먼저 살피고 나서 움직입니다."
+          : "어제와 오늘의 태도가 다를 수 있는데, 그게 오히려 자연스러운 사주입니다.",
     evidence: `일간 ${dayStemKo}(${dayElement}) · 신강신약 ${dayStrengthShort(dayStrength)}, 오행 최다 ${dominantElement}`,
   });
   // 일지(자기·내면 궁위) 12운성 — 겉으로 드러나는 태도와 별개로, 결정적인
@@ -230,7 +230,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const dayStage = pillarStages.find((s) => s.pillar === "day")?.geo;
   const dayStagePhrase = dayStage ? STAGE_ENERGY_PHRASE[dayStage] : null;
   if (dayStagePhrase) {
-    temperament.text += ` 평소 태도와 별개로 본바탕에는 ${dayStagePhrase} 에너지가 깔려 있어서, 정작 중요한 순간엔 평소와 다른 얼굴이 나올 수 있어요.`;
+    temperament.text += ` 평소 태도와 별개로 본바탕에는 ${dayStagePhrase} 기운이 깔려 있어, 정작 중요한 순간에는 평소와 다른 얼굴이 나올 수 있습니다.`;
     temperament.evidence += `, 일지 12운성 ${dayStage}`;
   }
 
@@ -238,14 +238,14 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const wealthStructure = compose(seedFor(3), {
     claim:
       wLevel === "없음"
-        ? "재물이 저절로 굴러들어오는 구조는 아니고, 본업이나 전문성이 돈으로 바뀌는 흐름에 가까워요."
+        ? "재물이 저절로 굴러들어오는 구조는 아니고, 본업이나 전문성이 돈으로 바뀌는 흐름에 가깝습니다."
         : wLevel === "강함"
-          ? "사주 자체에 재물을 다루는 축이 뚜렷하게 자리 잡고 있어요."
-          : "재물이 완전히 낯설지도, 아주 익숙하지도 않은 균형점에 있어요.",
+          ? "사주 자체에 재물을 다루는 축이 뚜렷하게 자리 잡고 있습니다."
+          : "재물은 들어오는 것보다 지키는 쪽에서 차이가 나는 균형점에 있습니다.",
     scene:
       missingElements.length > 0
-        ? `오행 중 ${이가(missingElements.join(", "))} 사주에 아예 없어서, 그 기운이 필요한 상황에서는 외부(사람·환경)에서 채워야 균형이 맞는 편이에요.`
-        : `오행 다섯 가지가 어느 정도 골고루 있어서, 극단적으로 한쪽에 쏠리는 재물 패턴은 아니에요.`,
+        ? `타고난 기운 중 ${이가(missingElements.join(", "))} 아예 없어, 그 기운이 필요한 상황에서는 사람이나 환경에서 채워야 균형이 맞습니다.`
+        : `오행 다섯 가지가 어느 정도 골고루 있어, 극단적으로 한쪽에 쏠리는 재물 패턴은 아닙니다.`,
     evidence: `재성 ${wealthStarCount}개, 용신 ${yongsin.join(", ") || "특이 없음"}`,
   });
 
@@ -254,22 +254,22 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     activeCompare === "output"
       ? {
           text:
-            `아이디어를 내거나 뭔가를 만들어서 그게 돈으로 바뀌는 방식이 잘 맞는 사람이에요. ` +
-            `특히 ${pillarNamesKo(outputStarPillars)} 자리에 그 힘이 있어서, ${outputStarPillars.includes("month") ? "실제 사회생활·업무에서" : outputStarPillars.includes("day") ? "본인 성향 자체에서" : "삶의 배경이 되는 부분에서"} 이 활동력이 두드러져요. ` +
-            `벌여놓은 일을 하나 골라 마무리 짓는 주에 돈이 따라오는 편일 가능성이 커요.`,
+            `아이디어를 내거나 뭔가를 만들어서 그게 돈으로 바뀌는 방식이 맞습니다. ` +
+            `특히 ${pillarNamesKo(outputStarPillars)} 자리에 그 힘이 있어, ${outputStarPillars.includes("month") ? "실제 사회생활과 업무에서" : outputStarPillars.includes("day") ? "본인 성향 자체에서" : "삶의 배경이 되는 부분에서"} 이 활동력이 두드러집니다. ` +
+            `직장에 오래 묶여 있기보다, 벌인 일을 마무리 짓는 순간 돈이 따라오는 구조입니다.`,
           evidence: `식상(식신+상관) ${outputStarCount}개, 위치: ${pillarNamesKo(outputStarPillars) || "없음"}`,
         }
       : activeCompare === "peer"
         ? {
             text:
-              `직접 경쟁하거나 스스로 실행해야 돈이 붙는 방식이에요. 남이 대신 해주는 일보다, 본인이 직접 판단하고 부딪히는 일에서 결과가 더 좋은 편이에요. ` +
+              `직접 경쟁하거나 스스로 실행해야 돈이 붙는 방식입니다. 남이 대신 해주는 일보다, 본인이 직접 판단하고 부딪히는 일에서 결과가 더 좋습니다. ` +
               selfCheck(seedFor(4)),
             evidence: `비겁(비견+겁재) ${peerStarCount}개`,
           }
         : {
             text:
-              `식상과 비겁이 뚜렷하게 우세하지 않아서, 벌어들이는 힘은 타고난 균형 쪽에서 더 크게 작동하는 편이에요. ` +
-              `정해진 활동력보다는 상황과 타이밍에 맞춰 버는 방식이 유연하게 바뀌는 편일 수 있어요.`,
+              `식상과 비겁이 뚜렷하게 우세하지 않아, 벌어들이는 힘은 타고난 균형 쪽에서 더 크게 작동합니다. ` +
+              `정해진 활동력보다는 상황과 타이밍에 맞춰 버는 방식이 유연하게 바뀝니다.`,
             evidence: `식상 ${outputStarCount}개·비겁 ${peerStarCount}개, 용신(${yongsin.join(", ") || "특이 없음"})`,
           };
 
@@ -278,18 +278,17 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     dayStrength === "strong"
       ? {
           text:
-            `자기 기준이 뚜렷해서 웬만해선 안 흔들려요. 다만 그 확신이 지나치면 주변 조언을 안 듣고 밀어붙이다 지키는 힘 자체를 스스로 깎아먹기도 해요. ` +
-            `결정하기 전에 딱 한 번만 다른 사람 의견을 들어보는 걸 시도해보면 좋아요. 이미 마음을 정한 뒤에는 의견을 구해도 잘 안 듣게 되니, 결정하기 전이 핵심이에요.`,
+            `자기 기준이 뚜렷해 웬만해서는 흔들리지 않습니다. 다만 그 확신이 지나치면 주변 조언을 듣지 않고 밀어붙이다 지키는 힘을 스스로 깎아먹기 쉽습니다. ` +
+            `결정하기 전에 딱 한 번만 다른 사람 의견을 들어보는 것이 순서입니다. 이미 마음을 정한 뒤에는 의견을 구해도 잘 듣지 않게 되니, 결정하기 전이 핵심입니다.`,
           evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)}), 격국 ${geukguk}`,
         }
       : dayStrength === "weak"
         ? {
-            text:
-              `혼자 판단하기보다 믿을 만한 기준(사람이든 시스템이든)을 곁에 둘 때 돈이 더 잘 지켜져요. 자동이체·정기저축처럼 스스로 안 흔들려도 되는 장치를 만들어두는 게 실질적으로 도움이 돼요.`,
+            text: `혼자 판단하기보다 믿을 만한 사람이나 체계를 곁에 둘 때 돈이 더 잘 지켜집니다. 자동이체나 정기저축처럼 스스로 흔들리지 않아도 되는 장치를 만들어두는 것이 실질적인 도움이 됩니다.`,
             evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)})`,
           }
         : {
-            text: `한쪽으로 치우치기보다 상황에 맞게 지키는 방식을 바꾸는 편이에요. 다만 기준이 유연한 만큼, 명확한 규칙 하나 정도는 고정해두는 게 흔들림을 줄여줘요.`,
+            text: `한쪽으로 치우치기보다 상황에 맞게 지키는 방식을 바꿉니다. 다만 기준이 유연한 만큼, 명확한 규칙 하나는 고정해두는 것이 흔들림을 줄여줍니다.`,
             evidence: `일간 ${dayStemKo}(중화)`,
           };
 
@@ -297,14 +296,14 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const cautionSinsal = findNamedSinsal(pillarStages, "주의");
   const leakPattern = compose(seedFor(6), {
     claim: cautionSinsal
-      ? `${이가(cautionSinsal.meaning)} 있는 편이라, 그 기세가 지나치게 튈 때 오히려 손해로 이어지는 패턴이 반복될 수 있어요.`
+      ? `${이가(cautionSinsal.meaning)} 있어, 그 기세가 지나치게 튈 때 오히려 손해로 이어지는 패턴이 반복될 수 있습니다.`
       : hyungsin.length > 0
-        ? "사주에 있는 특정 신호 탓에, 급하게 밀어붙이거나 감정이 앞선 순간에 손해로 이어지는 패턴이 반복될 수 있어요."
-        : "뚜렷한 위험 신호는 없지만, 벌어들이는 힘과 실행하는 힘의 균형이 무너질 때가 돈이 새는 신호예요.",
+        ? "사주에 있는 특정 기운 탓에, 급하게 밀어붙이거나 감정이 앞선 순간에 손해로 이어지는 패턴이 반복되기 쉽습니다."
+        : "뚜렷한 위험 신호는 없지만, 벌어들이는 힘과 실행하는 힘의 균형이 무너질 때가 돈이 새는 신호입니다.",
     scene:
       hyungsin.length > 0 || cautionSinsal
-        ? "큰 결정 앞에서는 하루만 미루고 다시 보는 습관을 들이면 이 패턴이 확실히 줄어들어요."
-        : "평소보다 결정을 빨리 내리고 있다면, 그게 바로 신호일 수 있어요.",
+        ? "큰 결정 앞에서는 하루만 미루고 다시 보는 습관을 들이면 이 패턴이 확실히 줄어듭니다."
+        : "평소보다 결정을 빨리 내리고 있다면, 그것이 신호일 수 있습니다.",
     evidence: cautionSinsal
       ? `신살 ${cautionSinsal.name}`
       : hyungsin.length > 0
@@ -316,14 +315,14 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const bigMoneyAffinity = compose(seedFor(7), {
     claim:
       wealthOpportunityDaeunCount === 0
-        ? "인생 전체 흐름 중 재물이 뚜렷하게 겹치는 구간은 없지만, 그렇다고 큰돈과 무관하다는 뜻은 아니에요. 다른 축(활동력·실행력)으로 돈을 만드는 유형이에요."
+        ? "인생 전체 흐름 중 재물이 뚜렷하게 겹치는 구간은 없지만, 큰돈과 무관하다는 뜻은 아닙니다. 활동력과 실행력이라는 다른 축으로 돈을 만드는 사주입니다."
         : wealthOpportunityDaeunCount <= 2
-          ? "평생 흐름 중 재물 기운이 함께 오는 구간이 있어요. 그 시기가 아니어도 꾸준히 관리하는 게 기본기가 돼요."
-          : "평생 흐름 중 재물 기운이 함께 오는 구간이 여러 번 있어서, 인생 전체로 보면 기회 자체는 여러 번 찾아오는 유형이에요.",
+          ? "평생 흐름 중 재물 기운이 함께 오는 구간이 있습니다. 그 시기가 아니어도 꾸준히 관리하는 것이 기본기가 됩니다."
+          : "평생 흐름 중 재물 기운이 함께 오는 구간이 여러 번 있어, 인생 전체로 보면 기회 자체는 여러 번 찾아옵니다.",
     scene:
       peakStagePillars.length > 0 && wealthStarPillars.some((p) => peakStagePillars.includes(p))
-        ? "특히 재물이 놓인 자리가 기운이 정점에 달하는 자리와 겹쳐서, 기회가 왔을 때 힘 있게 받아낼 수 있는 조건이에요."
-        : "다만 기회가 왔을 때 그걸 잡을 준비(정보력, 실행력)가 함께 있어야 실제로 이어져요.",
+        ? "특히 재물이 놓인 자리가 기운이 정점에 달하는 자리와 겹쳐, 기회가 왔을 때 힘 있게 받아낼 수 있는 조건입니다."
+        : "다만 기회가 왔을 때 그것을 잡을 준비, 즉 정보력과 실행력이 함께 있어야 실제로 이어집니다.",
     evidence: `대운 중 재성 겹침 ${wealthOpportunityDaeunCount}회, 정점 12운성 자리 ${pillarNamesKo(peakStagePillars) || "없음"}`,
   });
 
@@ -332,14 +331,14 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     wealthStarCount + outputStarCount > peerStarCount + officerStarCount
       ? {
           text:
-            `정해진 틀보다 성과가 직접 보이는 구조(사업/프리랜서/성과 기반)에서 진짜 힘을 발휘하는 편이에요. 매인 조직 안에 있더라도, 스스로 결과를 만들어내는 역할을 맡을 때 만족도가 훨씬 높아져요. ` +
-            `지시받은 일보다 스스로 기획한 일이 더 잘 풀린다고 느낀 적 많지 않나요?`,
+            `직장에 오래 묶여 있기보다, 성과가 바로 돈으로 연결되는 사업이나 프리랜서 쪽 일이 더 맞습니다. 조직 안에 있더라도, 스스로 결과를 만들어내는 역할을 맡을 때 만족도가 훨씬 높습니다. ` +
+            `지시받은 일보다 스스로 기획한 일이 더 잘 풀리는 사주입니다.`,
           evidence: `재성+식상 ${wealthStarCount + outputStarCount}개 vs 비겁+관성 ${peerStarCount + officerStarCount}개`,
         }
       : {
           text:
-            `안정적인 체계 안에서 신뢰를 쌓아가는 방식에서 재물이 더 안정적으로 늘어나는 편이에요. 완전히 혼자 판을 짜기보다, 명확한 규칙과 역할이 있는 환경에서 오히려 더 크게 성장해요. ` +
-            `자유롭게 알아서 하라고 하면 오히려 막막할 때가 있지 않나요?`,
+            `안정적인 체계 안에서 신뢰를 쌓아가는 쪽에서 재물이 더 안정적으로 늘어납니다. 혼자 판을 짜기보다, 명확한 규칙과 역할이 있는 환경에서 오히려 더 크게 성장합니다. ` +
+            `자유롭게 알아서 하라고 하면 오히려 막막해지는 사주입니다.`,
           evidence: `비겁+관성 ${peerStarCount + officerStarCount}개 vs 재성+식상 ${wealthStarCount + outputStarCount}개`,
         };
 
@@ -347,14 +346,14 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const teamStrength = compose(seedFor(9), {
     claim:
       officerStarCount === 0
-        ? "조직·규율을 뜻하는 기운이 사주에 없어서, 조직 안에서도 정해진 규칙보다 스스로 만든 기준으로 움직일 때 더 강해요."
-        : "조직 안에서 역할과 책임이 분명할 때 오히려 힘이 붙는 편이에요.",
+        ? "조직과 규율을 뜻하는 기운이 사주에 없어, 조직 안에서도 정해진 규칙보다 스스로 만든 기준으로 움직일 때 더 강합니다."
+        : "조직 안에서 역할과 책임이 분명할 때 오히려 힘이 붙습니다.",
     scene:
       officerStarPillars.includes("month")
-        ? "특히 실제 업무 환경에 그 힘이 있어서, 회사·조직 생활에서 이 성향이 더 뚜렷하게 드러나요."
+        ? "특히 실제 업무 환경에 그 힘이 있어, 회사와 조직 생활에서 이 성향이 더 뚜렷하게 드러납니다."
         : officerStarCount > 0
-          ? "책임을 맡았을 때 회피하지 않고 끝까지 챙기는 쪽에 가까워요."
-          : "규칙이 너무 촘촘한 곳보다는, 결과로 평가받는 구조가 더 잘 맞아요.",
+          ? "책임을 맡았을 때 회피하지 않고 끝까지 챙기는 쪽에 가깝습니다."
+          : "규칙이 너무 촘촘한 곳보다는 결과로 평가받는 구조가 더 맞습니다.",
     evidence: `관성(편관+정관) ${officerStarCount}개, 위치 ${pillarNamesKo(officerStarPillars) || "없음"}`,
   });
 
@@ -362,12 +361,12 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const soloStrength = compose(seedFor(10), {
     claim:
       peerStarCount + outputStarCount >= 3
-        ? "실행력과 활동력이 함께 강해서, 혼자 판단하고 혼자 실행하는 상황에서 오히려 능력치가 올라가는 유형이에요."
-        : "혼자 움직일 때 아주 도드라지는 유형은 아니지만, 필요할 때는 스스로 책임지고 마무리하는 힘이 있어요.",
+        ? "실행력과 활동력이 함께 강해, 혼자 판단하고 혼자 실행하는 상황에서 오히려 힘이 붙는 사주입니다."
+        : "혼자 움직일 때 아주 도드라지는 사주는 아니지만, 필요할 때는 스스로 책임지고 마무리하는 힘이 있습니다.",
     scene:
       peerStarCount + outputStarCount >= 3
-        ? "누가 시키지 않아도 스스로 일을 벌이고, 끝까지 밀어붙이는 모습을 자주 보였을 거예요."
-        : "여럿이 헤매는 상황에서 조용히 자기 몫부터 정리하는 쪽에 가까워요.",
+        ? "누가 시키지 않아도 스스로 일을 벌이고, 끝까지 밀어붙이는 모습을 자주 보였을 것입니다."
+        : "여럿이 헤매는 상황에서 조용히 자기 몫부터 정리하는 쪽에 가깝습니다.",
     evidence: `비겁 ${peerStarCount}개 + 식상 ${outputStarCount}개`,
   });
 
@@ -376,19 +375,19 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     socialCompare === "officer"
       ? {
           text:
-            `조직이나 규칙, 정해진 관계 안에서 돈이 도는 걸 편하게 느끼는 편이에요. 이런 구조가 있는 자리에서 돈 관련 결정도 더 안정적으로 내려요. ` +
-            `믿을 만한 시스템이나 계약이 있어야 마음이 놓이지 않나요?`,
+            `조직이나 규칙, 정해진 관계 안에서 돈이 도는 것을 편하게 느낍니다. 이런 구조가 있는 자리에서 돈 관련 결정도 더 안정적으로 내립니다. ` +
+            `믿을 만한 시스템이나 계약이 있어야 마음이 놓이는 사주입니다.`,
           evidence: `관성(편관+정관) ${officerStarCount}개`,
         }
       : socialCompare === "resource"
         ? {
             text:
-              `정보나 조언을 얻은 뒤에 돈 관련 결정을 내리는 편이에요. 믿을 만한 사람의 말 한마디가 실제 선택에 큰 영향을 줘요. ` +
-              `중요한 결정 전에 꼭 누군가에게 물어보고 나서 움직이지 않나요?`,
+              `정보나 조언을 얻은 뒤에 돈 관련 결정을 내립니다. 믿을 만한 사람의 말 한마디가 실제 선택에 큰 영향을 줍니다. ` +
+              `중요한 결정 전에 누군가에게 먼저 물어보고 움직이는 사주입니다.`,
             evidence: `인성(편인+정인) ${resourceStarCount}개`,
           }
         : {
-            text: `사람에게 크게 기대지도, 완전히 혼자 판단하지도 않는 균형 잡힌 편이에요. 상황에 따라 조언을 참고하되 최종 결정은 스스로 내리는 쪽에 가까워요.`,
+            text: `사람에게 크게 기대지도, 완전히 혼자 판단하지도 않는 균형 잡힌 사주입니다. 상황에 따라 조언을 참고하되 최종 결정은 스스로 내리는 쪽에 가깝습니다.`,
             evidence: `관성 ${officerStarCount}개·인성 ${resourceStarCount}개의 균형`,
           };
 
@@ -396,11 +395,11 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const decisionStyle: ReportParagraph =
     dayStrength === "strong"
       ? {
-          text: `직관적으로 빠르게 결정하고 밀어붙이는 편이에요. 속도는 강점이지만, 중요한 결정일수록 하루 정도 시간을 두고 다시 보면 실수가 확 줄어요.`,
+          text: `직관적으로 빠르게 결정하고 밀어붙입니다. 속도는 강점이지만, 중요한 결정일수록 하루 정도 시간을 두고 다시 보면 실수가 확 줄어듭니다.`,
           evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)})`,
         }
       : {
-          text: `신중하게 정보를 모으고 나서 결정하는 편이에요. 다만 너무 오래 재다가 타이밍을 놓치는 경우도 있어서, 결정 기한을 스스로 정해두는 게 도움이 돼요.`,
+          text: `신중하게 정보를 모으고 나서 결정합니다. 다만 너무 오래 재다가 타이밍을 놓치는 경우가 있어, 결정 기한을 스스로 정해두는 것이 도움이 됩니다.`,
           evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)})`,
         };
 
@@ -409,15 +408,15 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const opportunityStyle = compose(seedFor(13), {
     claim:
       peakStagePillars.length >= 2
-        ? "힘이 정점에 오른 자리가 여러 곳이라, 기회를 감지하는 순간 몸이 먼저 반응하는 편이에요."
+        ? "힘이 정점에 오른 자리가 여러 곳이라, 기회를 감지하는 순간 몸이 먼저 반응합니다."
         : peakStagePillars.length === 1
-          ? "정점의 기운이 한 자리에 뚜렷해서, 특정 영역에서만큼은 기회를 놓치지 않는 유형이에요."
-          : "정점 기운이 뚜렷하지 않아서, 순발력보다는 꾸준함으로 기회를 만드는 편에 가까워요.",
+          ? "정점의 기운이 한 자리에 뚜렷해, 특정 영역에서만큼은 기회를 놓치지 않습니다."
+          : "정점 기운이 뚜렷하지 않아, 순발력보다는 꾸준함으로 기회를 만드는 쪽에 가깝습니다.",
     scene: luckySinsal
-      ? `사주에 ${이가(luckySinsal.meaning)} 있어서, 그게 기회를 여는 실제 통로가 될 수 있어요.`
+      ? `사주에 ${이가(luckySinsal.meaning)} 있어, 그것이 기회를 여는 실제 통로가 될 수 있습니다.`
       : gilsin.length > 0
-        ? "사주에 길한 신호도 있어서, 결정적 순간에 예상치 못한 도움을 받을 때가 있어요."
-        : "화려한 귀인의 도움보다는, 스스로 준비해온 것이 기회와 만나는 쪽에 가까워요.",
+        ? "사주에 길한 기운도 있어, 결정적 순간에 예상치 못한 도움을 받을 때가 있습니다."
+        : "화려한 귀인의 도움보다는 스스로 준비해온 것이 기회와 만나는 쪽에 가깝습니다.",
     evidence: `정점(건록·제왕) 자리 ${pillarNamesKo(peakStagePillars) || "없음"}, 길신 ${gilsin.join(", ") || "없음"}${luckySinsal ? `, 신살 ${luckySinsal.name}` : ""}`,
   });
 
@@ -431,43 +430,43 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const strengthPool: { title: string; detail: string; evidence: string; present: boolean }[] = [
     {
       title: "재물을 알아보는 감각",
-      detail: "돈이 될 만한 걸 남들보다 먼저 알아채는 감각이 있어요.",
+      detail: "돈이 될 만한 것을 남들보다 먼저 알아채는 감각이 있습니다.",
       evidence: `재성 ${wealthStarCount}개(${facts.wealthStarTypes.join(", ") || "없음"})`,
       present: wealthStarCount > 0,
     },
     {
       title: "직접 밀어붙이는 추진력",
-      detail: "남에게 미루지 않고 직접 부딪혀서 해결하는 실행력이 강점이에요.",
+      detail: "남에게 미루지 않고 직접 부딪혀서 해결하는 실행력이 강점입니다.",
       evidence: `비겁 ${peerStarCount}개`,
       present: peerStarCount > 0,
     },
     {
       title: "만들어내고 표현하는 힘",
-      detail: "아이디어를 실제 결과물로 바꾸는 표현력·실행력이 있어요.",
+      detail: "아이디어를 실제 결과물로 바꾸는 표현력과 실행력이 있습니다.",
       evidence: `식상 ${outputStarCount}개`,
       present: outputStarCount > 0,
     },
     {
       title: "귀인의 도움을 받는 힘",
-      detail: "결정적인 순간에 사람이나 상황의 도움을 받는 경우가 많아요.",
+      detail: "결정적인 순간에 사람이나 상황의 도움을 받는 경우가 많습니다.",
       evidence: `길신 ${gilsin.join(", ") || "없음"}`,
       present: gilsin.length > 0,
     },
     {
       title: "안정적으로 신뢰를 쌓는 힘",
-      detail: "정해진 틀 안에서 꾸준히 신뢰를 쌓아 결과를 만들어내는 힘이 있어요.",
+      detail: "정해진 틀 안에서 꾸준히 신뢰를 쌓아 결과를 만들어내는 힘이 있습니다.",
       evidence: `관성 ${officerStarCount}개`,
       present: officerStarCount > 0,
     },
     {
       title: "기회를 놓치지 않는 순발력",
-      detail: "기회가 왔을 때 반응 속도가 빠른 편이에요.",
+      detail: "기회가 왔을 때 반응 속도가 빠릅니다.",
       evidence: `정점 자리 ${peakStagePillars.length}곳`,
       present: peakStagePillars.length > 0,
     },
     {
       title: "상황에 맞춰 균형을 잡는 힘",
-      detail: "하나로 확 튀는 강점보다, 상황에 따라 필요한 쪽으로 무게중심을 옮기는 유연함이 있어요.",
+      detail: "하나로 확 튀는 강점보다, 상황에 따라 필요한 쪽으로 무게중심을 옮기는 유연함이 있습니다.",
       evidence: "특정 십성으로 뚜렷하게 쏠리지 않은 균형 구조",
       present: true,
     },
@@ -482,43 +481,43 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const cautionPool: { title: string; detail: string; evidence: string; present: boolean }[] = [
     {
       title: "감정이 앞서는 순간",
-      detail: "특정 신호가 있을 때는 감정적으로 판단해 손해로 이어지기 쉬워요. 결정 전에 한 박자 늦추는 게 도움이 돼요.",
+      detail: "특정 기운이 작용할 때는 감정적으로 판단해 손해로 이어지기 쉽습니다. 결정 전에 한 박자 늦추는 것이 도움이 됩니다.",
       evidence: `흉신 ${hyungsin.join(", ")}`,
       present: hyungsin.length > 0,
     },
     {
       title: "지나친 확신",
-      detail: "스스로 옳다고 믿으면 주변 말이 잘 안 들어와요. 큰 결정일수록 의도적으로 반대 의견을 들어보세요.",
+      detail: "스스로 옳다고 믿으면 주변 말이 잘 들리지 않습니다. 큰 결정일수록 의도적으로 반대 의견을 들어보는 것이 낫습니다.",
       evidence: `일간 ${dayStrengthShort(dayStrength)}`,
       present: dayStrength === "strong",
     },
     {
       title: "혼자 판단하다 정보 부족",
-      detail: "확신 없이 결정했다가 나중에 정보 부족을 느끼는 경우가 있어요. 미리 정보원을 만들어두면 좋아요.",
+      detail: "확신 없이 결정했다가 나중에 정보 부족을 느끼는 경우가 있습니다. 미리 정보원을 만들어두는 것이 좋습니다.",
       evidence: `일간 ${dayStrengthShort(dayStrength)}`,
       present: dayStrength === "weak",
     },
     {
       title: "불편한 조합이 만드는 스트레스",
-      detail: "생각이 복잡해지고 예민해지는 시기에 돈 관련 결정을 미루는 게 나아요.",
+      detail: "생각이 복잡해지고 예민해지는 시기에는 돈 관련 결정을 미루는 것이 낫습니다.",
       evidence: gwimunRelations.join(", "),
       present: gwimunRelations.length > 0,
     },
     {
       title: "벌여놓고 마무리를 못 짓는 패턴",
-      detail: "새로 벌이는 힘은 있지만, 벌인 만큼 마무리가 따라가지 않으면 힘이 분산돼요.",
+      detail: "새로 벌이는 힘은 있지만, 벌인 만큼 마무리가 따라가지 않으면 힘이 분산됩니다.",
       evidence: `식상 ${outputStarCount}개`,
       present: outputStarCount >= 2,
     },
     {
       title: "없는 오행이 만드는 공백",
-      detail: `타고난 기운 중 ${이가(missingElements.join(", "))} 없어서, 그 기운이 필요한 상황(예: 결단·유연성)에서 유독 힘들어질 수 있어요.`,
+      detail: `타고난 기운 중 ${이가(missingElements.join(", "))} 없어, 그 기운이 필요한 상황(결단이나 유연성이 필요한 순간)에서 유독 힘들어질 수 있습니다.`,
       evidence: `없는 오행 ${missingElements.join(", ")}`,
       present: missingElements.length > 0,
     },
     {
       title: "균형이 오히려 우유부단함으로 보일 수 있음",
-      detail: "한쪽으로 뚜렷하게 쏠리지 않는 만큼, 결정을 미루는 사람으로 비칠 때가 있어요. 기준 하나만 미리 정해두면 도움이 돼요.",
+      detail: "한쪽으로 뚜렷하게 쏠리지 않는 만큼, 결정을 미루는 사람으로 비칠 때가 있습니다. 기준 하나만 미리 정해두면 도움이 됩니다.",
       evidence: "특정 십성으로 뚜렷하게 쏠리지 않은 균형 구조",
       present: true,
     },
@@ -534,13 +533,13 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   // daeunList/currentDaeun에 있는 나이 구간만 그대로 인용한다.
   const daeunFlowNote =
     daeunList.length > 0
-      ? `이번 생애 대운은 총 ${daeunList.length}단계로 흘러가고, 지금은 그중 ${currentDaeun ? `${currentDaeun.ageRange}세 ${currentDaeun.ganzhi}` : "특정 시점"} 구간이에요.`
-      : "대운 정보는 이번 계산에서 확인되지 않았어요.";
+      ? `평생 대운은 총 ${daeunList.length}단계로 흘러가며, 지금은 그중 ${currentDaeun ? `${currentDaeun.ageRange}세부터 시작된 ${currentDaeun.ganzhi}` : "특정"} 구간입니다.`
+      : "대운 정보는 이번 계산에서 확인되지 않았습니다.";
 
   const evidenceExplainer =
-    `이 결과는 태어난 날의 하늘 기운(일간) ${dayStemKo}(${dayElement})이 ${dayStrengthShort(dayStrength)}이라는 점, 원국 여덟 글자에서 돈(재성)·경쟁(비겁)·활동(식상)·조직(관성)·정보(인성)를 뜻하는 글자가 몇 개씩 있는지, 격국(${geukguk})과 용신(${yongsin.join(", ") || "특이 없음"}), 그리고 12운성으로 그 힘이 어느 시기에 정점을 찍는지를 함께 봐서 나왔어요. ` +
+    `이 결과는 태어난 날의 하늘 기운(일간) ${dayStemKo}(${dayElement})이 ${dayStrengthShort(dayStrength)}이라는 점, 원국 여덟 글자에서 돈(재성)·경쟁(비겁)·활동(식상)·조직(관성)·정보(인성)를 뜻하는 글자가 몇 개씩 있는지, 격국(${geukguk})과 용신(${yongsin.join(", ") || "특이 없음"}), 그리고 12운성으로 그 힘이 어느 시기에 정점을 찍는지를 함께 보고 판단했습니다. ` +
     `${daeunFlowNote} ` +
-    `오행 분포는 ${Object.entries(fiveElements).map(([k, v]) => `${k} ${v}개`).join(", ")}였고, 그중 ${이가(dominantElement)} 가장 강했어요${missingElements.length > 0 ? `, 반대로 ${은는(missingElements.join(", "))} 아예 없었고요` : ""}.`;
+    `오행 분포는 ${Object.entries(fiveElements).map(([k, v]) => `${k} ${v}개`).join(", ")}이며, 그중 ${이가(dominantElement)} 가장 강했습니다${missingElements.length > 0 ? `, 반대로 ${은는(missingElements.join(", "))} 아예 없었습니다` : ""}.`;
 
   // ⑰ MBTI+6문항이 있을 때만 채워지는 "현실 발현" 개인화 문단.
   const realWorldPersonalization = personality

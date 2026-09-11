@@ -44,43 +44,43 @@ const GROUP_SIGNAL: Record<TenGodGroup, { label: string; axis: "structured" | "r
   비겁: {
     label: "스스로 밀어붙이고 경쟁하는 힘",
     axis: "relational",
-    whenTrue: "다만 평소엔 주변 의견을 살피는 편인데, 이 시기엔 그보다 스스로 밀어붙이고 싶어지는 순간이 늘 수 있어요.",
-    whenFalse: "원래도 스스로 판단하는 편이라, 이 시기엔 그 색이 한층 더 짙어질 수 있어요.",
+    whenTrue: "평소에는 주변 의견을 먼저 살피지만, 이 시기에는 스스로 밀어붙이려는 마음이 더 강해집니다.",
+    whenFalse: "원래도 스스로 판단하고 움직이는 편인데, 이 시기에는 그 색이 한층 짙어집니다.",
   },
   식상: {
     label: "표현하고 새로 만들어내는 힘",
     axis: "structured",
-    whenTrue: "미리 계획하고 준비해온 것을 실제로 밀고 나가는 실행력으로 이어지기 좋은 시기예요.",
-    whenFalse: "즉흥적으로 떠오른 아이디어를 바로 행동으로 옮기는 순발력이 특히 잘 먹히는 시기예요.",
+    whenTrue: "미리 계획하고 준비해온 것을 실제로 밀고 나가면 결과로 이어지는 시기입니다.",
+    whenFalse: "즉흥적으로 떠오른 생각을 바로 행동으로 옮기는 쪽이 오히려 잘 먹히는 시기입니다.",
   },
   재성: {
     label: "돈과 기회를 직접 다루는 힘",
     axis: "structured",
-    whenTrue: "미리 준비해둔 만큼 이 시기의 기회를 실제로 붙잡을 가능성이 커요.",
-    whenFalse: "예상 밖에서 오는 기회에 빠르게 올라타는 쪽이 이 시기엔 오히려 잘 맞을 수 있어요.",
+    whenTrue: "미리 준비해둔 만큼 이 시기의 기회를 실제로 붙잡습니다.",
+    whenFalse: "예상 밖에서 오는 기회에 빠르게 올라타는 쪽이 이 시기에는 더 맞습니다.",
   },
   관성: {
-    label: "책임과 규율, 조직의 압박",
+    label: "책임과 규율, 조직의 힘",
     axis: "structured",
-    whenTrue: "원래 구조와 계획을 선호하는 편이라, 이 시기의 책임과 규율이 오히려 편안하게 느껴질 수 있어요.",
-    whenFalse: "원래 열어두고 움직이는 편이라, 이 시기의 규율과 책임이 평소보다 답답하게 느껴질 수 있어요.",
+    whenTrue: "원래 구조와 계획을 선호하는 사람이라, 이 시기의 책임과 규율이 오히려 편하게 느껴집니다.",
+    whenFalse: "원래 열어두고 움직이는 사람이라, 이 시기의 규율과 책임이 평소보다 답답하게 느껴질 수 있습니다.",
   },
   인성: {
     label: "배우고 도움받는 힘",
     axis: "relational",
-    whenTrue: "주변 도움을 잘 받는 편이라, 이 시기엔 그 도움이 유독 크게 느껴지고 실제로도 힘이 될 수 있어요.",
-    whenFalse: "스스로 판단하는 편이라, 이 시기엔 누군가의 도움을 받는 게 오히려 낯설게 느껴질 수 있어요.",
+    whenTrue: "주변 도움을 잘 받는 사람이라, 이 시기에는 그 도움이 유독 크게 작용합니다.",
+    whenFalse: "스스로 판단하는 사람이라, 이 시기에 누군가의 도움을 받는 게 오히려 낯설 수 있습니다.",
   },
 };
 
 /** "지금 무엇을 해야 하는가"에 직접 답하는 행동형 문장 1개씩 — GROUP_SIGNAL과
  * 같은 그룹 분류를 쓰되, 서술이 아니라 행동을 말한다(무료 결과 nextMove용). */
 const GROUP_ACTION_HINT: Record<TenGodGroup, string> = {
-  비겁: "지금은 남 눈치 보지 말고 하고 싶은 걸 직접 밀어붙이세요. 경쟁을 피하기보다 정면으로 붙는 쪽이 유리해요.",
-  식상: "머릿속에 있던 아이디어를 지금 실제로 꺼내 보이세요. 완성도보다 일단 보여주는 게 이 시기의 힘이에요.",
-  재성: "지금 들어오는 제안이나 기회를 미루지 말고 바로 검토하세요. 망설이는 동안 다른 사람이 먼저 잡아요.",
-  관성: "지금은 확실한 자리와 역할을 만드는 데 집중하세요. 승진, 계약, 인정받는 자리를 먼저 챙기면 나머지가 따라와요.",
-  인성: "지금은 혼자 다 하려 하지 말고 배우거나 도와줄 사람을 곁에 두세요. 그 관계가 이 시기의 실제 자산이 돼요.",
+  비겁: "지금은 남 눈치보다 하고 싶은 것을 직접 밀어붙이는 쪽이 유리합니다. 경쟁을 피하기보다 정면으로 부딪히는 게 순서입니다.",
+  식상: "머릿속에만 있던 것을 지금 실제로 꺼내 보이는 게 순서입니다. 완성도보다 일단 보여주는 쪽이 이 시기의 힘이 됩니다.",
+  재성: "지금 들어오는 제안이나 기회는 미루지 말고 바로 검토해야 합니다. 망설이는 사이 다른 사람이 먼저 잡습니다.",
+  관성: "지금은 확실한 자리와 역할을 만드는 데 집중해야 합니다. 승진이나 계약처럼 인정받는 자리를 먼저 챙기면 나머지는 따라옵니다.",
+  인성: "지금은 혼자 다 하려 하지 말고 배우거나 도와줄 사람을 곁에 두는 게 순서입니다. 그 관계가 이 시기의 실제 자산이 됩니다.",
 };
 
 function dominantGroup(d: DaeunAnalysis): TenGodGroup | null {
@@ -89,14 +89,16 @@ function dominantGroup(d: DaeunAnalysis): TenGodGroup | null {
 
 function relationsClause(d: DaeunAnalysis): string {
   if (d.relations.length === 0) {
-    return "타고난 사주와 크게 부딪히거나 합쳐지는 자리는 없어서, 비교적 무난하게 흘러가는 시기예요.";
+    return "원국과 크게 부딪히거나 합쳐지는 자리는 없어, 비교적 무난하게 흘러가는 시기입니다.";
   }
-  return `타고난 사주와는 ${d.relations.map((r) => r.detail).join(", ")}이 걸려 있어서, 평소와 다르게 움직이는 시기예요.`;
+  return `원국과는 ${d.relations.map((r) => r.detail).join(", ")}이 걸려 있어, 평소와 다르게 움직이는 시기입니다.`;
 }
 
 /** 이 시기(대운)와 손금이 같은 방향을 보여주는지, 다른 면을 보여주는지 —
  * 새로 판정하지 않고 triple-compare.ts의 기존 일치/차이/보완 결과를 그대로
- * 인용한다. palm이 없거나 해당 축 비교가 없으면 null. */
+ * 가져온다. "손금까지 보면" 같은 도구 라벨 없이, 이미 앞에서 짚은 이야기에
+ * 자연스럽게 이어지는 한 문장으로만 얹는다. palm이 없거나 해당 축 비교가
+ * 없으면 null. */
 function palmAlignmentClause(
   facts: SajuFacts,
   palm: OnnxPalmLines | null,
@@ -107,7 +109,7 @@ function palmAlignmentClause(
   const compareItems = buildTripleCompare(facts, palm, check);
   const topic = axis === "structured" ? "결정하는 방식" : "관계에서 감정이 작용하는 정도";
   const item = compareItems.find((c) => c.topic === topic);
-  return item ? `손금까지 보면: ${item.text}` : null;
+  return item ? item.text : null;
 }
 
 /** 대운 한 구간 = 사주 신호(대운 십성 그룹) + 원국과의 합충형파해 + 성향
@@ -128,7 +130,7 @@ function composePeriodNarrative(
   if (!group) return null;
   const signal = GROUP_SIGNAL[group];
   const axisValue = signal.axis === "structured" ? structured : relational;
-  const parts = [`${signal.label}이 강해지는 시기예요.`, relationsClause(d), axisValue ? signal.whenTrue : signal.whenFalse];
+  const parts = [`${signal.label}이 강해지는 시기입니다.`, relationsClause(d), axisValue ? signal.whenTrue : signal.whenFalse];
   const palmClause = palmAlignmentClause(facts, palm, check, signal.axis);
   if (palmClause) parts.push(palmClause);
   return { text: parts.join(" "), group };
@@ -136,14 +138,14 @@ function composePeriodNarrative(
 
 function ei(mbti: MbtiType): string {
   return mbti[0] === "E"
-    ? "사람들과 부딪히고 이야기하면서 에너지를 얻는 편"
-    : "혼자 정리할 시간이 있어야 에너지가 차는 편";
+    ? "사람들과 부딪히고 이야기하면서 에너지를 얻는 사람"
+    : "혼자 정리할 시간이 있어야 에너지가 차는 사람";
 }
 
 function sn(mbti: MbtiType): string {
   return mbti[1] === "S"
-    ? "지금 눈앞의 사실과 경험을 먼저 보고 판단하는 편"
-    : "가능성과 패턴을 먼저 읽고 판단하는 편";
+    ? "눈앞의 사실과 경험을 먼저 보고 판단하는 사람"
+    : "가능성과 패턴을 먼저 읽고 판단하는 사람";
 }
 
 /** plan/speed 6문항 응답 → "구조화 선호" 서술. 6문항이 없으면 null(MBTI로 대체). */
@@ -151,26 +153,26 @@ function structureFromCheck(check: PersonalityInput["check"]): string | null {
   if (!check) return null;
   const planned = check.levels.plan === "왼쪽";
   const fast = check.levels.speed === "왼쪽";
-  if (planned && fast) return "미리 계획을 세우고 빠르게 결정을 닫는 편";
-  if (planned && !fast) return "계획은 세워두되 결정 자체는 충분히 생각하고 내리는 편";
-  if (!planned && fast) return "즉흥적으로 움직이면서도 결정만큼은 빠르게 내리는 편";
-  return "즉흥적으로 움직이면서 결정도 천천히, 여지를 두고 내리는 편";
+  if (planned && fast) return "미리 계획을 세우고 빠르게 결정을 닫는 사람";
+  if (planned && !fast) return "계획은 세워두되 결정은 충분히 생각하고 내리는 사람";
+  if (!planned && fast) return "즉흥적으로 움직이면서도 결정만큼은 빠르게 내리는 사람";
+  return "즉흥적으로 움직이면서 결정도 천천히 여지를 두는 사람";
 }
 
 function structureFromMbti(mbti: MbtiType): string {
-  return mbti[3] === "J" ? "미리 구조를 짜고 계획대로 움직이는 편" : "열어두고 상황에 맞춰 움직이는 편";
+  return mbti[3] === "J" ? "미리 구조를 짜고 계획대로 움직이는 사람" : "열어두고 상황에 맞춰 움직이는 사람";
 }
 
 /** autonomy 6문항 응답 → "관계 영향" 서술. 6문항이 없으면 null(MBTI로 대체). */
 function relationFromCheck(check: PersonalityInput["check"]): string | null {
   if (!check) return null;
   return check.levels.autonomy === "오른쪽"
-    ? "결정을 내릴 때 주변 사람 의견에 실제로 영향받는 편"
-    : "결정을 내릴 때 주변 의견보다 스스로 판단을 우선하는 편";
+    ? "결정을 내릴 때 주변 의견에 실제로 영향받는 사람"
+    : "결정을 내릴 때 주변 의견보다 스스로 판단을 우선하는 사람";
 }
 
 function relationFromMbti(mbti: MbtiType): string {
-  return mbti[2] === "F" ? "관계와 그 결정이 미칠 영향을 먼저 헤아리는 편" : "원칙과 논리를 먼저 따지는 편";
+  return mbti[2] === "F" ? "관계와 그 결정이 미칠 영향을 먼저 헤아리는 사람" : "원칙과 논리를 먼저 따지는 사람";
 }
 
 /** 사주 영역(재물/일/관계)마다 이 성향이 다르게 나타나는 실제 장면.
@@ -180,25 +182,25 @@ function realLifeScene(structured: boolean, relational: boolean, domain: "money"
   const scenes: Record<"money" | "work" | "relationship", [string, string, string, string]> = {
     money: [
       // structured & relational
-      "돈 쓰는 계획도 미리 짜두고, 그 계획도 가족이나 파트너와 맞춰서 조정하는 편이에요.",
+      "돈 쓰는 계획을 미리 세우고, 그 계획도 가족이나 파트너와 맞춰서 조정합니다.",
       // structured & !relational
-      "예산을 스스로 짜두고 누가 뭐라 해도 그 기준대로 밀고 나가는 편이에요.",
+      "예산을 스스로 정해두고, 누가 뭐라 해도 그 기준대로 밀고 나갑니다.",
       // !structured & relational
-      "정해둔 예산보다, 그때그때 주변 상황과 사람에 맞춰 지출이 왔다 갔다 하는 편이에요.",
+      "정해둔 예산보다 그때그때 주변 상황과 사람에 맞춰 지출이 오갑니다.",
       // !structured & !relational
-      "예산을 미리 짜두기보다, 필요할 때 스스로 판단해서 바로 쓰는 편이에요.",
+      "예산을 미리 짜두기보다 필요할 때 스스로 판단해서 씁니다.",
     ],
     work: [
-      "일정을 촘촘히 짜두고, 팀과 계속 맞춰가며 진행하는 방식이 잘 맞아요.",
-      "혼자 계획을 세우고 그 계획대로 끝까지 밀어붙이는 방식이 잘 맞아요.",
-      "정해진 절차보다, 그때그때 팀 분위기에 맞춰 유연하게 움직이는 방식이 잘 맞아요.",
-      "정해진 틀 없이, 혼자 판단해서 즉흥적으로 처리하는 방식이 잘 맞아요.",
+      "일정을 촘촘히 짜두고 팀과 계속 맞춰가며 진행하는 방식이 맞습니다.",
+      "혼자 계획을 세우고 그 계획대로 끝까지 밀어붙이는 방식이 맞습니다.",
+      "정해진 절차보다 그때그때 분위기에 맞춰 유연하게 움직이는 방식이 맞습니다.",
+      "정해진 틀 없이 혼자 판단해서 즉흥적으로 처리하는 방식이 맞습니다.",
     ],
     relationship: [
-      "관계에서도 미리 약속을 정해두고, 그 약속을 상대와 함께 지켜나가는 편이에요.",
-      "관계에서 자기 기준이 뚜렷해서, 상대가 흔들어도 잘 안 흔들리는 편이에요.",
-      "정해진 게 없어도, 상대 상황에 맞춰 유연하게 관계를 맞춰가는 편이에요.",
-      "관계에서도 자기 리듬대로 움직이고, 상대에게 크게 맞추지 않는 편이에요.",
+      "관계에서도 미리 약속을 정해두고, 그 약속을 상대와 함께 지켜나갑니다.",
+      "관계에서 자기 기준이 뚜렷해, 상대가 흔들어도 잘 흔들리지 않습니다.",
+      "정해진 게 없어도 상대 상황에 맞춰 유연하게 관계를 맞춰갑니다.",
+      "관계에서도 자기 리듬대로 움직이고, 상대에게 크게 맞추지 않습니다.",
     ],
   };
   const idx = structured ? (relational ? 0 : 1) : relational ? 2 : 3;
@@ -208,10 +210,10 @@ function realLifeScene(structured: boolean, relational: boolean, domain: "money"
 /** 강점이 약점으로 뒤집히는 지점 — structured/relational 조합별로 다른
  * 문장을 준다(모든 조합에 "과유불급"이 있다는 걸 보여주기 위함). */
 function strengthFlip(structured: boolean, relational: boolean): string {
-  if (structured && relational) return "다만 계획도 관계도 다 챙기려다 정작 자기 결정을 뒤로 미루는 순간이 있을 수 있어요.";
-  if (structured && !relational) return "다만 계획이 틀어지는 상황에서 유독 완고해져서, 주변 도움을 놓칠 수 있어요.";
-  if (!structured && relational) return "다만 상황과 사람에 맞추다 보면 정작 자기 기준이 흐려질 때가 있을 수 있어요.";
-  return "다만 혼자 판단하고 즉흥적으로 움직이다 보면, 중요한 순간에 필요한 정보를 놓칠 수 있어요.";
+  if (structured && relational) return "다만 계획도 관계도 다 챙기려다 정작 자기 결정을 뒤로 미루는 순간을 조심해야 합니다.";
+  if (structured && !relational) return "다만 계획이 틀어지는 상황에서 유독 완고해져, 주변 도움을 놓치기 쉽습니다.";
+  if (!structured && relational) return "다만 상황과 사람에 맞추다 보면 정작 자기 기준이 흐려질 때가 있습니다.";
+  return "다만 혼자 판단하고 즉흥적으로 움직이다 보면, 중요한 순간에 필요한 정보를 놓치기 쉽습니다.";
 }
 
 /** structured(계획적)/relational(관계영향) 두 축을 한 번만 derive해서
@@ -246,7 +248,7 @@ export function buildRealWorldPersonalization(
   const evidenceParts: string[] = [];
 
   if (mbti) {
-    sentences.push(`${ei(mbti)}이고, ${sn(mbti)}이에요.`);
+    sentences.push(`${ei(mbti)}이고, ${sn(mbti)}입니다.`);
     evidenceParts.push(`MBTI ${mbti}`);
   }
 
@@ -255,22 +257,20 @@ export function buildRealWorldPersonalization(
 
   if (structuredText) {
     const fromCheck = structureFromCheck(check) !== null;
-    sentences.push(`${fromCheck ? "직접 답한 것만 보면" : "MBTI로 보면"} ${structuredText}이에요.`);
+    sentences.push(`${structuredText}입니다.`);
     if (fromCheck && mbti) {
       const mbtiStructured = mbti[3] === "J";
       const checkStructured = check!.levels.plan === "왼쪽";
       if (mbtiStructured !== checkStructured) {
-        sentences.push(
-          `그런데 MBTI(${mbti[3]}형)로 보면 ${structureFromMbti(mbti)}이라고 나와요 — 익숙한 영역에서는 응답 그대로, 낯선 영역에서는 MBTI 쪽 얼굴이 나오는 식으로 상황마다 다르게 보일 수 있어요.`,
-        );
+        sentences.push("다만 익숙한 일과 낯선 일에서는 태도가 갈립니다 — 상황에 따라 다른 얼굴이 나올 수 있습니다.");
       }
     }
-    evidenceParts.push(structureFromCheck(check) !== null ? "6문항 speed/plan" : `MBTI ${mbti![3]}`);
+    evidenceParts.push(fromCheck ? "6문항 speed/plan" : `MBTI ${mbti![3]}`);
   }
 
   if (relationText) {
     const fromCheck = relationFromCheck(check) !== null;
-    sentences.push(`${fromCheck ? "직접 답한 것만 보면" : "MBTI로 보면"} ${relationText}이에요.`);
+    sentences.push(`${relationText}입니다.`);
     evidenceParts.push(fromCheck ? "6문항 autonomy" : `MBTI ${mbti![2]}`);
   }
 
@@ -346,13 +346,13 @@ export function buildNextMove(facts: SajuFacts, personality: PersonalityInput | 
   const { currentDaeun } = facts;
   if (!currentDaeun) {
     return {
-      text: "태어난 시간 정보가 없어서 지금 대운까지는 짚어드리기 어려워요. 다만 지금 하고 있는 일에서 성과가 눈에 보이는 쪽으로 움직이는 게 유리한 흐름이에요.",
+      text: "출생시간이 없어 지금 대운까지는 짚어드리기 어렵습니다. 다만 이 사주는 성과가 눈에 보이는 쪽으로 움직이는 것이 유리합니다.",
       evidence: "대운 정보 없음(출생시간 미상)",
     };
   }
 
   const group = TEN_GOD_GROUP[currentDaeun.stemTenGod] ?? TEN_GOD_GROUP[currentDaeun.branchTenGod] ?? null;
-  const sentences = [`지금은 ${currentDaeun.ageRange}세, ${daeunFlavor(currentDaeun)} 시기예요.`];
+  const sentences = [`${currentDaeun.ageRange}세부터 이어지는 지금 대운은 ${daeunFlavor(currentDaeun)} 시기입니다.`];
 
   if (group) {
     sentences.push(GROUP_ACTION_HINT[group]);
@@ -360,8 +360,8 @@ export function buildNextMove(facts: SajuFacts, personality: PersonalityInput | 
       const { structured } = derivePersonalityAxes(facts, personality);
       sentences.push(
         structured
-          ? "계획을 세워두는 편이니, 이번엔 그 계획을 실제 행동으로 옮길 날짜까지 정해두고 밀어붙여보세요."
-          : "즉흥적으로 움직이는 편이니, 이번엔 마음먹은 그 순간 바로 첫걸음 하나만이라도 떼보세요.",
+          ? "평소 계획을 세워두는 사람이니, 이번에는 그 계획을 실행에 옮길 날짜까지 정해두는 게 순서입니다."
+          : "평소 즉흥적으로 움직이는 사람이니, 이번에는 마음먹은 그 순간 첫걸음부터 떼는 게 순서입니다.",
       );
     }
   }
@@ -379,15 +379,15 @@ export function buildTimingShift(facts: SajuFacts): ReportParagraph {
   const { nextDaeun } = facts;
   if (!nextDaeun) {
     return {
-      text: "다음 대운은 아직 계산되지 않았어요. 지금 흐름이 당분간 그대로 이어진다고 보시면 돼요.",
+      text: "다음 대운은 아직 계산되지 않았습니다. 지금 흐름이 당분간 그대로 이어진다고 보시면 됩니다.",
       evidence: "다음 대운 정보 없음",
     };
   }
 
   const shifts = deriveDaeunShift(facts);
   const text = shifts
-    ? `${nextDaeun.ageRange}세, ${daeunFlavor(nextDaeun)} 시기로 넘어가면서 결이 한 번 크게 바뀌어요. 지금 익숙해진 방식 중 하나가 그때부턴 슬슬 안 맞기 시작할 수 있어요.`
-    : `${nextDaeun.ageRange}세로 넘어가도 ${daeunFlavor(nextDaeun)} 흐름은 계속 이어져요. 큰 전환보다는 지금 방식을 더 깊게 파고드는 게 맞는 시기예요.`;
+    ? `${nextDaeun.ageRange}세부터는 ${daeunFlavor(nextDaeun)} 쪽으로 넘어가면서 결이 한 번 크게 바뀝니다. 지금 익숙한 방식 하나가 그 무렵부터는 슬슬 맞지 않기 시작할 수 있습니다.`
+    : `${nextDaeun.ageRange}세로 넘어가도 ${daeunFlavor(nextDaeun)} 흐름은 계속 이어집니다. 큰 전환보다는 지금 방식을 더 깊게 파고드는 것이 맞는 시기입니다.`;
 
   return { text, evidence: `다음 대운 ${nextDaeun.ganzhi}(${nextDaeun.stemTenGod})` };
 }
@@ -395,7 +395,9 @@ export function buildTimingShift(facts: SajuFacts): ReportParagraph {
 /** 손금 완료 직후에 보여줄 종합판정 — 지금까지 모인 원국+대운+성향+손금을
  * 하나의 결정적인 문단으로 묶는다. 절대 null을 반환하지 않는다(무료
  * 경험의 클라이맥스라 항상 떠야 한다). personality/palm/daeunAnalysis 중
- * 없는 게 있으면 해당 문장만 조용히 생략한다. */
+ * 없는 게 있으면 해당 문장만 조용히 생략한다. 마지막 문장은 이 다음에
+ * 나올 "지금 가장 궁금할 흐름" 추천으로 자연스럽게 이어지는 다리 역할을
+ * 한다 — 무엇을 더 풀어줄지 예고하되, 광고 카피처럼 부풀리지 않는다. */
 export function buildComprehensiveVerdict(
   facts: SajuFacts,
   personality: PersonalityInput | null,
@@ -405,12 +407,12 @@ export function buildComprehensiveVerdict(
   const evidenceParts: string[] = [`일간 ${facts.dayStemKo}(${facts.dayElement})`, `격국 ${facts.geukguk}`];
 
   const imagery = dayStemImagery(facts.dayStemKo);
-  sentences.push(`당신은 ${imagery.image}처럼 ${imagery.core} 사람이에요. ${dayStrengthLabel(facts.dayStrength)}이고, ${facts.geukguk}의 결을 타고났어요.`);
+  sentences.push(`이 사주는 ${imagery.image}처럼 ${imagery.core} 사람의 사주입니다. ${dayStrengthLabel(facts.dayStrength)}이고, ${facts.geukguk}을 타고났습니다.`);
 
   sentences.push(
     facts.wealthOpportunityDaeunCount > 0
-      ? "평생 흐름을 보면 재물이 크게 움직이는 시기가 여러 번 와요 — 돈과 인연이 없는 사주는 아니에요."
-      : "재물이 저절로 붙는 사주는 아니지만, 그만큼 본업과 전문성을 무기로 벌어들이는 힘이 커요.",
+      ? "평생 대운을 보면 재물이 크게 움직이는 시기가 여러 번 옵니다. 돈과 인연이 없는 사주는 아닙니다."
+      : "재물이 저절로 붙는 사주는 아니지만, 그만큼 본업과 전문성을 무기로 버는 힘이 큽니다.",
   );
 
   const currentPeriod = facts.daeunAnalysis?.find((d) => d.isCurrent) ?? null;
@@ -418,11 +420,11 @@ export function buildComprehensiveVerdict(
   if (currentPeriod) {
     group = dominantGroup(currentPeriod);
     if (group) {
-      sentences.push(`지금은 ${GROUP_SIGNAL[group].label}이 강해지는 시기고, ${relationsClause(currentPeriod)}`);
+      sentences.push(`지금 대운에서는 ${GROUP_SIGNAL[group].label}이 강해집니다. ${relationsClause(currentPeriod)}`);
       evidenceParts.push(`현재 대운 ${currentPeriod.ganzhi}(${currentPeriod.tenGods.stem})`);
     }
   } else if (facts.currentDaeun) {
-    sentences.push(`지금은 ${facts.currentDaeun.ageRange}세, ${daeunFlavor(facts.currentDaeun)} 시기예요.`);
+    sentences.push(`${facts.currentDaeun.ageRange}세부터 이어지는 지금 대운은 ${daeunFlavor(facts.currentDaeun)} 시기입니다.`);
   }
 
   if (personality && (personality.mbti || personality.check) && group) {
@@ -436,7 +438,7 @@ export function buildComprehensiveVerdict(
     if (palmClause) sentences.push(palmClause);
   }
 
-  sentences.push("지금 이 흐름을 어떻게 쓰느냐에 따라 앞으로 몇 년의 결이 갈릴 수 있어요.");
+  sentences.push("지금 이 사주에서 가장 먼저 봐야 할 부분은 정해졌습니다. 이어서 그 흐름부터 구체적으로 짚어드리겠습니다.");
 
   return {
     text: sentences.join(" "),

@@ -22,13 +22,13 @@ const LINE_LABEL = { heartLine: "감정선", headLine: "두뇌선", lifeLine: "�
 /** ① 실제 이미지 관측 — ONNX 모델이 실제로 반환한 수치만, 분석 용어 없이 */
 export function buildRealObservationText(facts: PalmFacts): string {
   if (!facts.onnxLines) {
-    return "이번 사진은 실제 이미지 분석 모델이 결과를 내지 못했어요. 아래 내용은 보조 신호만으로 채운 참고 수준이에요.";
+    return "이번 사진은 이미지 분석 모델이 결과를 내지 못했습니다. 아래 내용은 보조 신호만으로 채운 참고 수준입니다.";
   }
   const parts = (["heartLine", "headLine", "lifeLine"] as const).map((key) => {
     const d: OnnxLineDetail = facts.onnxLines![key];
     const label = LINE_LABEL[key];
-    if (!d.detected) return `${label}은 이번 사진에서 뚜렷하게 보이지 않았어요`;
-    return `${label}은 ${d.length} 길이에 ${d.curve}으로 나타났어요`;
+    if (!d.detected) return `${label}은 이번 사진에서 뚜렷하게 보이지 않았습니다`;
+    return `${label}은 ${d.length} 길이에 ${d.curve}으로 나타났습니다`;
   });
   return parts.join(". ") + ".";
 }
@@ -38,7 +38,7 @@ export function buildRealObservationText(facts: PalmFacts): string {
  * 활력·건강 쪽 단정으로 흐르기 쉬워 해석에서 제외했다 — ①에서 사실만
  * 전달한다. 검출된 선에만 붙이고, 항상 "전통적으로 보는 편" 톤을 유지한다. */
 export function buildTraditionalReadingText(facts: PalmFacts): string {
-  if (!facts.onnxLines) return "실제 관측 결과가 없어 해석도 이번엔 생략할게요.";
+  if (!facts.onnxLines) return "관측 결과가 없어 해석은 이번에 생략합니다.";
 
   const heart = facts.onnxLines.heartLine;
   const head = facts.onnxLines.headLine;
@@ -47,40 +47,40 @@ export function buildTraditionalReadingText(facts: PalmFacts): string {
   if (heart.detected) {
     const lengthNote =
       heart.length === "김"
-        ? "감정 표현이 풍부하고 관계에 마음을 많이 쓰는 편으로"
+        ? "감정 표현이 풍부하고 관계에 마음을 많이 쓰는 사람으로"
         : heart.length === "짧음"
-          ? "감정을 크게 드러내기보다 실용적으로 관계를 대하는 편으로"
-          : "감정을 상황에 맞게 적당히 조절해 표현하는 편으로";
+          ? "감정을 크게 드러내기보다 실용적으로 관계를 대하는 사람으로"
+          : "감정을 상황에 맞게 적당히 조절해 표현하는 사람으로";
     const curveNote =
       heart.curve === "완만한 곡선" ? "표현 방식 자체는 유연한 쪽" : "표현보다는 원칙과 기준이 앞서는 쪽";
-    notes.push(`감정선은 ${lengthNote} 보고, ${curveNote}으로 보는 게 전통적인 해석이에요.`);
+    notes.push(`감정선은 전통적으로 ${lengthNote} 보고, ${curveNote}으로 봅니다.`);
   }
 
   if (head.detected) {
     const lengthNote =
       head.length === "김"
-        ? "여러 각도로 오래 따져보고 결정하는 편으로"
+        ? "여러 각도로 오래 따져보고 결정하는 사람으로"
         : head.length === "짧음"
-          ? "판단이 빠르고 실용적인 편으로"
-          : "필요한 만큼만 재고 결정하는 편으로";
+          ? "판단이 빠르고 실용적인 사람으로"
+          : "필요한 만큼만 재고 결정하는 사람으로";
     const curveNote = head.curve === "완만한 곡선" ? "직관적이고 유연한 사고와" : "논리적이고 현실적인 사고와";
-    notes.push(`두뇌선은 ${lengthNote} 보고, ${curveNote} 연결해서 보는 편이에요.`);
+    notes.push(`두뇌선은 전통적으로 ${lengthNote} 보고, ${curveNote} 연결해서 봅니다.`);
   }
 
   if (heart.detected && head.detected) {
     const bothFlexible = heart.curve === "완만한 곡선" && head.curve === "완만한 곡선";
     const bothLinear = heart.curve !== "완만한 곡선" && head.curve !== "완만한 곡선";
     if (bothFlexible) {
-      notes.push("감정선과 두뇌선이 둘 다 완만한 곡선이라, 감정과 사고 모두 유연하게 움직이는 결로 함께 읽혀요.");
+      notes.push("감정선과 두뇌선이 둘 다 완만한 곡선이라, 감정과 사고 모두 유연하게 움직이는 결로 함께 읽힙니다.");
     } else if (bothLinear) {
-      notes.push("감정선과 두뇌선이 둘 다 직선에 가까워서, 감정과 사고 모두 원칙·기준을 앞세우는 결로 함께 읽혀요.");
+      notes.push("감정선과 두뇌선이 둘 다 직선에 가까워, 감정과 사고 모두 원칙과 기준을 앞세우는 결로 함께 읽힙니다.");
     } else {
-      notes.push("감정선과 두뇌선이 서로 다른 결이라, 감정과 사고가 늘 같은 방향으로 움직이지는 않는 편일 수 있어요.");
+      notes.push("감정선과 두뇌선이 서로 다른 결이라, 감정과 사고가 늘 같은 방향으로 움직이지는 않을 수 있습니다.");
     }
   }
 
   if (notes.length === 0) {
-    return "이번 사진에서는 해석을 붙일 만큼 뚜렷하게 보인 선이 적어요 — 억지로 해석을 만들지 않을게요.";
+    return "이번 사진에서는 해석을 붙일 만큼 뚜렷하게 보인 선이 적어, 억지로 해석을 만들지 않습니다.";
   }
   return notes.join(" ");
 }
