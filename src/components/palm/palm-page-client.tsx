@@ -3,13 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Camera, ImagePlus, RotateCcw, HandMetal, Compass, Check, ArrowRight } from "lucide-react";
+import { Camera, ImagePlus, RotateCcw, HandMetal, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepBadge } from "@/components/diagnosis/step-badge";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
 import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
 import { VerdictCard } from "@/components/diagnosis/verdict-card";
+import { TrustSection } from "@/components/diagnosis/trust-section";
 import { ReportSection, ParagraphSection, EvidenceItemCard, EvidenceToggle } from "@/components/diagnosis/report-section";
+import { RealityInputForm } from "@/components/palm/reality-input-form";
+import { ConnectionDiagnosisCard } from "@/components/palm/connection-diagnosis-card";
 import {
   analyzePalmFromCanvas,
   preloadHandLandmarker,
@@ -17,9 +20,10 @@ import {
 import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
 import { buildRealObservationText, buildTraditionalReadingText } from "@/lib/palm-observation-text";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
-import type { FortuneCandidate, FortuneInterestId, SituationOption } from "@/lib/fortune-candidates";
 import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
+import type { RealityInput } from "@/lib/reality-input";
+import type { ConnectionDiagnosis } from "@/lib/connection-diagnosis";
 import { track } from "@/lib/analytics";
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
@@ -101,246 +105,97 @@ function TripleCompareSection({ items }: { items: CompareItem[] }) {
   );
 }
 
-/** "내 운세 지도" — 종합판정 다음에 뜬다. 3개를 동등하게 나열하지 않고,
- * selectPrimaryCandidate(이미 계산된 신호 재사용, 새 점수 없음)가 고른
- * 1개를 "지금 이것부터"로 먼저 크게 보여주고, 나머지 2개는 그 아래
- * 작게 — 사용자는 여전히 둘 중 아무거나 눌러서 바꿔볼 수 있다. */
-function FortuneMap({
-  candidates,
-  primaryCandidateId,
-  onSelect,
+/** 손금 완료 -> 현실정보 입력 -> 사주+현실 1차 연결진단 -> 신뢰 설명 ->
+ * 첫 실행 리포트 결제 직전까지의 다리. 이전 라운드의 "운세 후보 3개 중
+ * 1개 선택" 흐름을 대체한다 — 사주 방향은 이미 종합판정(VerdictCard)에서
+ * 짚었으므로, 여기서는 곧바로 현실정보를 받아 그 방향과 지금 위치를
+ * 잇는다. 결제 이후 실제 실행 리포트 생성/상세 재무상담 구조는 이번
+ * 라운드에서 확정하지 않는다 — Paywall은 여전히 "준비 중" placeholder다. */
+function PaymentBridge({
+  birthInput,
+  personalityInput,
+  onReset,
 }: {
-  candidates: FortuneCandidate[];
-  primaryCandidateId: FortuneInterestId | null;
-  onSelect: (c: FortuneCandidate) => void;
+  birthInput: BirthInput;
+  personalityInput?: PersonalityInputEcho;
+  onReset: () => void;
 }) {
-  const primary = candidates.find((c) => c.id === primaryCandidateId) ?? candidates[0];
-  const secondary = candidates.filter((c) => c.id !== primary.id);
+  const [stage, setStage] = useState<"intro" | "reality" | "diagnosis">("intro");
+  const [diagnosis, setDiagnosis] = useState<ConnectionDiagnosis | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleRealitySubmit(reality: RealityInput) {
+    setLoading(true);
+    track("reality_input_submitted");
+    try {
+      const res = await fetch("/api/reality/diagnose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...birthInput,
+          personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
+          mbti: personalityInput?.mbti ?? undefined,
+          reality,
+        }),
+      });
+      const data = await res.json();
+      if (data.diagnosis) {
+        setDiagnosis(data.diagnosis);
+        setStage("diagnosis");
+        track("connection_diagnosis_viewed");
+        track("paywall_viewed");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0.5, y: 8 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.4 }}
-      className="mt-8"
-    >
-      <p className="flex items-center gap-1.5 text-sm font-medium">
-        <Compass className="size-4 text-(--gold)" />
-        지금 가장 궁금할 흐름
-      </p>
-
-      <button
-        type="button"
-        onClick={() => onSelect(primary)}
-        className="mystic-card mystic-ring mt-3 flex w-full items-start gap-3 p-4 text-left transition-colors hover:border-(--gold-soft)"
-      >
-        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-(--gold-soft) text-(--gold)">
-          <Compass className="size-4" />
-        </span>
-        <span className="flex-1">
-          <span className="block text-[11px] font-semibold tracking-wide text-(--gold)">지금 이것부터</span>
-          <span className="mt-0.5 block text-sm font-semibold">{primary.label}</span>
-          <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{primary.reason}</span>
-        </span>
-        <ArrowRight className="mt-1 size-4 shrink-0 text-(--gold)" />
-      </button>
-
-      <p className="mt-5 text-xs text-muted-foreground">다른 흐름도 궁금하다면</p>
-      <div className="mt-2 flex flex-col gap-2">
-        {secondary.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => onSelect(c)}
-            className="mystic-card flex items-start gap-3 p-3.5 text-left transition-colors hover:border-(--gold-soft)"
-          >
-            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-(--gold-soft) text-(--gold)">
-              {c.alreadyCovered ? <Check className="size-3" /> : <Compass className="size-3" />}
-            </span>
-            <span className="flex-1">
-              <span className="block text-sm font-medium">{c.label}</span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">{c.reason}</span>
-            </span>
-            <ArrowRight className="mt-1 size-3.5 shrink-0 text-(--gold)" />
-          </button>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-/** 선택한 운의 실제 무료 미니리딩. 타고난 방식/현재 대운 흐름/다음 흐름
- * 변화/손금과의 비교(있으면)/생활 속 미래 장면까지 실제 정보량을 늘린
- * 무료 리딩을 먼저 다 보여준 다음(§H), 결제 유도 전에 재무 정보를 묻지
- * 않는 현재상황 1문항을 받는다(§I). 그 응답을 고른 뒤에야 "그래서 나는
- * 무엇을 해야 하나?" 질문과 두 번째 자발적 CTA가 나온다 — 그 전까지 가격은
- * 절대 렌더링하지 않는다(컴포넌트 자체를 mount하지 않음, §L). */
-function MiniReading({
-  candidate,
-  finalReport,
-  situationAnswer,
-  onSituationSelect,
-  onDeeper,
-  onBack,
-}: {
-  candidate: FortuneCandidate;
-  finalReport: FreeSajuReport;
-  situationAnswer: string | null;
-  onSituationSelect: (option: SituationOption) => void;
-  onDeeper: () => void;
-  onBack: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0.5, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="mt-8"
-    >
-      <p className="flex items-center gap-1.5 text-sm font-medium">
-        <Compass className="size-4 text-(--gold)" />
-        {candidate.label}
-      </p>
-      <p className="mt-3 text-sm leading-relaxed">{candidate.bornWay}</p>
-      <p className="mt-2 text-sm leading-relaxed">{candidate.currentFlow}</p>
-      {candidate.compareNote && (
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{candidate.compareNote}</p>
-      )}
-      <p className="mt-3 rounded-xl bg-accent p-3.5 text-sm leading-relaxed text-accent-foreground">
-        {candidate.futureScene}
-      </p>
-
-      {/* 무료 심화 맛보기 4가지 — 전부 이미 계산된 데이터를 재사용한다 */}
-      <div className="mt-4 space-y-2.5">
-        <div className="rounded-xl border border-border p-3">
-          <p className="text-[11px] font-semibold text-(--gold)">지금 가장 강한 신호</p>
-          <p className="mt-0.5 text-sm leading-relaxed">{candidate.currentFlow}</p>
-        </div>
-        {finalReport.cautions[0] && (
-          <div className="rounded-xl border border-border p-3">
-            <p className="text-[11px] font-semibold text-(--gold)">지금 막히는 지점</p>
-            <p className="mt-0.5 text-sm leading-relaxed">{finalReport.cautions[0].detail}</p>
-          </div>
-        )}
-        {finalReport.strengths[0] && (
-          <div className="rounded-xl border border-border p-3">
-            <p className="text-[11px] font-semibold text-(--gold)">지금 잘 쓰고 있는 강점</p>
-            <p className="mt-0.5 text-sm leading-relaxed">{finalReport.strengths[0].detail}</p>
-          </div>
-        )}
-        <div className="rounded-xl border border-border p-3">
-          <p className="text-[11px] font-semibold text-(--gold)">앞으로 바뀔 핵심</p>
-          <p className="mt-0.5 text-sm leading-relaxed">{candidate.nextShift}</p>
-        </div>
-      </div>
-
-      {!situationAnswer ? (
-        <div className="mt-5">
-          <p className="text-sm font-medium">{candidate.situation.question}</p>
-          <div className="mt-3 flex flex-col gap-2">
-            {candidate.situation.options.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => onSituationSelect(opt)}
-                className="mystic-card p-3 text-left text-sm transition-colors hover:border-(--gold-soft)"
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <motion.div initial={{ opacity: 0.5, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          <p className="mt-5 text-sm font-medium">{candidate.situationCopy[situationAnswer].deeperQuestion}</p>
-          <Button size="lg" onClick={onDeeper} className="mt-4 h-13 w-full rounded-full text-base">
-            {candidate.situationCopy[situationAnswer].ctaLabel}
+    <div className="mt-8">
+      {stage === "intro" && (
+        <motion.div
+          initial={{ opacity: 0.5, y: 8 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.4 }}
+        >
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <Compass className="size-4 text-(--gold)" />
+            사주가 본 방향, 지금 현실과 이어보겠습니다
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            소득이나 지출을 자세히 묻지 않습니다. 구간 선택 몇 번이면 지금 위치를 확인할 수 있습니다.
+          </p>
+          <Button size="lg" onClick={() => setStage("reality")} className="mt-4 h-13 w-full rounded-full text-base">
+            내 현실정보 입력하기
           </Button>
         </motion.div>
       )}
 
-      <button type="button" onClick={onBack} className="mt-4 w-full text-center text-xs text-muted-foreground">
-        다른 운 선택하기
-      </button>
-    </motion.div>
-  );
-}
-
-/** 모든 무료 콘텐츠가 끝난 뒤 나오는 전환 흐름. 운세지도 -> 관심운 선택
- * -> 미니리딩 -> "더 보기" 클릭 -> 그제서야 개인화된 결제창. 결제창은
- * 선택한 운과 같은 대화를 이어간다(§M) — 모든 사람에게 같은 제목이 아니다. */
-function ConversionFlow({
-  candidates,
-  finalReport,
-  primaryCandidateId,
-  onReset,
-}: {
-  candidates: FortuneCandidate[];
-  finalReport: FreeSajuReport;
-  primaryCandidateId: FortuneInterestId | null;
-  onReset: () => void;
-}) {
-  const [selected, setSelected] = useState<FortuneCandidate | null>(null);
-  const [situationAnswer, setSituationAnswer] = useState<string | null>(null);
-  const [opened, setOpened] = useState(false);
-
-  function selectCandidate(c: FortuneCandidate) {
-    setSelected(c);
-    setSituationAnswer(null);
-    setOpened(false);
-    track("fortune_interest_selected", { interest: c.id });
-    track("mini_reading_viewed", { interest: c.id });
-  }
-
-  function backToMap() {
-    setSelected(null);
-    setSituationAnswer(null);
-    setOpened(false);
-  }
-
-  function selectSituation(option: SituationOption) {
-    setSituationAnswer(option.value);
-    track("mini_reading_viewed", { interest: selected?.id, situation: option.value });
-  }
-
-  function openPaywall() {
-    setOpened(true);
-    track("deeper_cta_clicked", { interest: selected?.id, situation: situationAnswer });
-    track("paywall_viewed", { interest: selected?.id, situation: situationAnswer });
-  }
-
-  return (
-    <>
-      {!selected && (
-        <FortuneMap candidates={candidates} primaryCandidateId={primaryCandidateId} onSelect={selectCandidate} />
+      {stage === "reality" && (
+        <RealityInputForm onSubmit={handleRealitySubmit} onBack={() => setStage("intro")} />
       )}
-      {selected && !opened && (
-        <MiniReading
-          candidate={selected}
-          finalReport={finalReport}
-          situationAnswer={situationAnswer}
-          onSituationSelect={selectSituation}
-          onDeeper={openPaywall}
-          onBack={backToMap}
-        />
+
+      {loading && <p className="mt-6 text-center text-sm text-muted-foreground">지금 위치를 확인하는 중입니다…</p>}
+
+      {stage === "diagnosis" && diagnosis && (
+        <>
+          <ConnectionDiagnosisCard diagnosis={diagnosis} />
+          <TrustSection />
+          <div className="mt-6">
+            <PaywallOffer
+              title="지금 제 상황에서는 뭐부터 손대야 할까요"
+              includedItems={[
+                "지금 막힌 지점부터 정리한 실행 순서",
+                "이번 대운 안에서 놓치면 안 되는 시기",
+                "소득·지출·저축 구조에 맞춘 다음 행동",
+              ]}
+              ctaText="내 첫 실행 리포트 받기"
+            />
+          </div>
+        </>
       )}
-      {selected && opened && situationAnswer && (
-        <div className="mt-8">
-          <PaywallOffer
-            title={selected.situationCopy[situationAnswer].paywallTitle}
-            includedItems={selected.situationCopy[situationAnswer].paywallItems}
-            ctaText={selected.situationCopy[situationAnswer].ctaLabel}
-          />
-          <button
-            type="button"
-            onClick={() => setOpened(false)}
-            className="mt-3 w-full text-center text-xs text-muted-foreground"
-          >
-            다른 운 선택하기
-          </button>
-        </div>
-      )}
+
       <button
         type="button"
         onClick={onReset}
@@ -349,7 +204,7 @@ function ConversionFlow({
         <RotateCcw className="size-3.5" />
         다른 사진으로 다시 보기
       </button>
-    </>
+    </div>
   );
 }
 
@@ -364,10 +219,8 @@ export function PalmPageClient({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
-  const [fortuneCandidates, setFortuneCandidates] = useState<FortuneCandidate[]>([]);
   const [tripleCompare, setTripleCompare] = useState<CompareItem[]>([]);
   const [verdict, setVerdict] = useState<ReportParagraph | null>(null);
-  const [primaryCandidateId, setPrimaryCandidateId] = useState<FortuneInterestId | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retakeAttempts, setRetakeAttempts] = useState(0);
 
@@ -405,12 +258,9 @@ export function PalmPageClient({
     }
 
     setFinalReport(data.freeReport?.report ?? null);
-    setFortuneCandidates(data.fortuneCandidates ?? []);
     setTripleCompare(data.tripleCompare ?? []);
     setVerdict(data.verdict ?? null);
-    setPrimaryCandidateId(data.primaryCandidateId ?? null);
     track("free_report_completed", { palmSkipped: Boolean(data.palmSkipped) });
-    track("fortune_map_viewed");
     setStage(data.palmSkipped ? "saju_only" : "result");
   }
 
@@ -461,10 +311,8 @@ export function PalmPageClient({
     setStage("upload");
     setPalmFacts(null);
     setFinalReport(null);
-    setFortuneCandidates([]);
     setTripleCompare([]);
     setVerdict(null);
-    setPrimaryCandidateId(null);
     setErrorMsg(null);
     setRetakeAttempts(0);
   }
@@ -663,12 +511,7 @@ export function PalmPageClient({
 
           <FinalReportSections report={finalReport} />
           {verdict && <VerdictCard verdict={verdict} />}
-          <ConversionFlow
-            candidates={fortuneCandidates}
-            finalReport={finalReport}
-            primaryCandidateId={primaryCandidateId}
-            onReset={reset}
-          />
+          <PaymentBridge birthInput={birthInput} personalityInput={personalityInput} onReset={reset} />
         </div>
       )}
 
@@ -680,12 +523,7 @@ export function PalmPageClient({
           <TripleCompareSection items={tripleCompare} />
           <FinalReportSections report={finalReport} />
           {verdict && <VerdictCard verdict={verdict} />}
-          <ConversionFlow
-            candidates={fortuneCandidates}
-            finalReport={finalReport}
-            primaryCandidateId={primaryCandidateId}
-            onReset={reset}
-          />
+          <PaymentBridge birthInput={birthInput} personalityInput={personalityInput} onReset={reset} />
         </div>
       )}
 

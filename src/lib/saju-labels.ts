@@ -57,7 +57,7 @@ export function dayStemImagery(dayStemKo: string): { image: string; core: string
     정: { image: "촛불·등불", core: "섬세하게 몰입하고 헌신하는" },
     무: { image: "산·대지", core: "듬직하게 포용하고 중심을 잡는" },
     기: { image: "논밭·정원", core: "섬세하게 챙기고 관리하는" },
-    경: { image: "원석·도끼", core: "강직하게 밀어붙이고 결단하는" },
+    경: { image: "무쇠·바윗돌", core: "강직하게 밀어붙이고 결단하는" },
     신: { image: "보석·칼", core: "예리하고 세련되게 기준을 세우는" },
     임: { image: "바다·강", core: "큰 그릇으로 통찰하고 유연한" },
     계: { image: "비·이슬", core: "총명하고 섬세하게 감지하는" },

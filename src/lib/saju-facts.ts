@@ -95,6 +95,10 @@ export interface SajuFacts {
   /** oh-my-saju timing으로 받은 대운 8~10구간 전체 + 원국과의 합충형파해.
    * ssaju 자체 계산이 아니라 oh-my-saju 호출 결과라 null일 수 있다(호출 실패/시간 미상). */
   daeunAnalysis: DaeunAnalysis[] | null;
+  /** 생년월일 기준 만 나이(ssaju가 이미 계산해서 주는 값 그대로 REUSE — 새로
+   * 계산하지 않는다). 대운 시작 나이(daeunAnalysis[].age, currentDaeun.ageRange)와
+   * 절대 혼동하면 안 된다 — 이 값이 "사용자의 실제 지금 나이"다. */
+  currentAge: number;
 }
 
 export interface DaeunRelation {
@@ -291,5 +295,6 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     daeunList,
     compactText: result.toCompact(),
     daeunAnalysis: null,
+    currentAge: result.currentAge,
   };
 }

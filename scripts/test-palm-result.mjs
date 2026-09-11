@@ -81,6 +81,12 @@ async function main() {
     console.log(`verdict 존재: ${verdictOk ? "PASS" : "FAIL"} — "${json.verdict?.text?.slice(0, 60)}..."`);
     if (!verdictOk) allPass = false;
 
+    // 나이 오류 수정 확인: 대운 시작 나이(ageRange)와 실제 현재 나이(currentAge)가
+    // 둘 다 명시적으로 구분되어 등장해야 한다 — "지금 만 OO세, XX세부터 이어지는".
+    const ageOk = /지금 만 \d+세, \d+세부터 이어지는/.test(json.verdict?.text ?? "");
+    console.log(`실제 현재 나이 표기(지금 만 OO세, XX세부터): ${ageOk ? "PASS" : "FAIL"}`);
+    if (!ageOk) allPass = false;
+
     const idOk = VALID_IDS.has(json.primaryCandidateId);
     console.log(`primaryCandidateId(${json.primaryCandidateId}) 유효: ${idOk ? "PASS" : "FAIL"}`);
     if (!idOk) allPass = false;

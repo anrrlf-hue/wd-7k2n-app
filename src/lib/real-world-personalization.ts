@@ -352,7 +352,7 @@ export function buildNextMove(facts: SajuFacts, personality: PersonalityInput | 
   }
 
   const group = TEN_GOD_GROUP[currentDaeun.stemTenGod] ?? TEN_GOD_GROUP[currentDaeun.branchTenGod] ?? null;
-  const sentences = [`${currentDaeun.ageRange}세부터 이어지는 지금 대운은 ${daeunFlavor(currentDaeun)} 시기입니다.`];
+  const sentences = [`지금 만 ${facts.currentAge}세, ${currentDaeun.ageRange}세부터 이어지는 이 대운은 ${daeunFlavor(currentDaeun)} 시기입니다.`];
 
   if (group) {
     sentences.push(GROUP_ACTION_HINT[group]);
@@ -420,11 +420,11 @@ export function buildComprehensiveVerdict(
   if (currentPeriod) {
     group = dominantGroup(currentPeriod);
     if (group) {
-      sentences.push(`지금 대운에서는 ${GROUP_SIGNAL[group].label}이 강해집니다. ${relationsClause(currentPeriod)}`);
+      sentences.push(`지금 만 ${facts.currentAge}세, ${currentPeriod.age}세부터 이어지는 이 대운에서는 ${GROUP_SIGNAL[group].label}이 강해집니다. ${relationsClause(currentPeriod)}`);
       evidenceParts.push(`현재 대운 ${currentPeriod.ganzhi}(${currentPeriod.tenGods.stem})`);
     }
   } else if (facts.currentDaeun) {
-    sentences.push(`${facts.currentDaeun.ageRange}세부터 이어지는 지금 대운은 ${daeunFlavor(facts.currentDaeun)} 시기입니다.`);
+    sentences.push(`지금 만 ${facts.currentAge}세, ${facts.currentDaeun.ageRange}세부터 이어지는 이 대운은 ${daeunFlavor(facts.currentDaeun)} 시기입니다.`);
   }
 
   if (personality && (personality.mbti || personality.check) && group) {

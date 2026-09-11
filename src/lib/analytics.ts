@@ -6,10 +6,8 @@
 
 export type ConversionEvent =
   | "free_report_completed"
-  | "fortune_map_viewed"
-  | "fortune_interest_selected"
-  | "mini_reading_viewed"
-  | "deeper_cta_clicked"
+  | "reality_input_submitted"
+  | "connection_diagnosis_viewed"
   | "paywall_viewed";
 
 export function track(event: ConversionEvent, props?: Record<string, unknown>): void {
