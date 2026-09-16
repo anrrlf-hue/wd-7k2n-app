@@ -1,6 +1,7 @@
 // 분석 결과 화면 카피 — 순수 데이터, 로직 없음(운영자 교체 가능).
-// BottleneckCode별 {제목, 왜, 생활에서의 의미, 지금 안 해도 되는 것}.
-// 특정 금융상품·해법은 지목하지 않는다.
+// BottleneckCode별 {제목, 왜, 생활에서의 의미, 지금 안 해도 되는 것 + 그 이유}.
+// 특정 금융상품·해법은 지목하지 않는다. notUrgentReason은 "왜 뒤로 밀리는지"를
+// 반드시 설명한다(결과만 던지지 않는다 — 운영 문서 §5 요구사항).
 
 import type { BottleneckCode } from "@/lib/bottleneck-engine";
 
@@ -9,6 +10,7 @@ export interface BottleneckCopyEntry {
   why: string;
   lifeMeaning: string;
   notUrgent: string;
+  notUrgentReason: string;
 }
 
 export const BOTTLENECK_COPY: Record<BottleneckCode, BottleneckCopyEntry> = {
@@ -17,65 +19,76 @@ export const BOTTLENECK_COPY: Record<BottleneckCode, BottleneckCopyEntry> = {
     why: "월 소득에서 고정지출과 저축을 빼면 마이너스입니다.",
     lifeMeaning: "매달 쓸 수 있는 돈보다 나가는 돈이 더 많다는 뜻입니다. 카드값이나 마이너스통장으로 메우고 있을 가능성이 높습니다.",
     notUrgent: "투자나 저축을 늘리는 것",
+    notUrgentReason: "지금은 나가는 돈부터 줄이는 게 먼저이고, 마이너스 상태에서 늘리는 저축은 오히려 부담만 키우기 때문입니다.",
   },
   income_interruption_risk: {
     title: "소득 중단 위험",
     why: "곧 소득이 끊기거나 줄어들 수 있는 시기입니다.",
     lifeMeaning: "지금 소득 흐름이 당연하게 계속될 거라 가정하고 있다면 위험합니다.",
     notUrgent: "장기 투자 계획",
+    notUrgentReason: "소득이 불안정한 시기엔 장기 계획보다 지금 당장의 현금 흐름을 지키는 게 우선이기 때문입니다.",
   },
   high_interest_debt: {
     title: "고금리 부채",
     why: "금리가 높거나 만기가 임박한 빚이 있습니다.",
     lifeMeaning: "이자만으로 매달 상당액이 그냥 빠져나가고 있을 수 있습니다.",
     notUrgent: "저축을 늘리는 것",
+    notUrgentReason: "빚의 이자율이 저축으로 버는 수익보다 훨씬 크면, 저축보다 빚부터 줄이는 쪽이 실질적으로 더 이득이기 때문입니다.",
   },
   near_future_funds_shortfall: {
     title: "가까운 목적자금",
     why: "가까운 시일 안에 목돈이 필요한데 준비된 돈이 부족합니다.",
     lifeMeaning: "그 시점이 왔을 때 급하게 빚을 내거나 계획을 미뤄야 할 수 있습니다.",
     notUrgent: "장기 자산관리",
+    notUrgentReason: "가까운 시점에 필요한 돈부터 확보되지 않으면, 장기 계획은 그 전에 흔들릴 수 있기 때문입니다.",
   },
   emergency_fund_shortage: {
     title: "비상자금",
     why: "비상자금이 부족합니다.",
     lifeMeaning: "예상 못 한 지출이 생기면 바로 흔들릴 수 있는 구조입니다.",
-    notUrgent: "투자 효율을 높이는 것",
+    notUrgent: "투자",
+    notUrgentReason: "비상자금이 채워지기 전엔 투자 수익률보다, 그 돈이 필요할 때 바로 쓸 수 있는지가 더 중요하기 때문입니다.",
   },
   biz_personal_mixed: {
     title: "사업자금·생활비 혼합",
     why: "사업자금과 생활비가 섞여 있습니다.",
     lifeMeaning: "실제로 얼마나 벌고 얼마나 쓰는지 스스로도 파악하기 어려운 상태입니다.",
     notUrgent: "저축 시스템을 만드는 것",
+    notUrgentReason: "지금 얼마가 진짜 내 돈인지부터 명확해지지 않으면, 저축 목표 자체를 정하기 어렵기 때문입니다.",
   },
   card_installment_dependence: {
     title: "카드·할부 의존",
     why: "카드나 할부에 반복적으로 의존하고 있습니다.",
     lifeMeaning: "이번 달 지출이 다음 달로 계속 넘어가는 구조입니다.",
     notUrgent: "투자",
+    notUrgentReason: "매달 카드값이 먼저 빠져나가는 구조에서는 투자할 여윳돈 자체가 계속 줄어들기 때문입니다.",
   },
   no_expense_awareness: {
     title: "지출 파악",
     why: "실제 지출을 정확히 모르고 계십니다.",
     lifeMeaning: "어디서 새는지 모르는 채로 절약을 시도하면 효과가 안 보입니다.",
     notUrgent: "저축액부터 늘리는 것",
+    notUrgentReason: "어디서 새는지 모르는 채로 저축만 늘리면, 결국 새는 곳을 못 막아 저축도 오래 못 가기 때문입니다.",
   },
   no_savings_system: {
     title: "저축 시스템",
     why: "정해진 저축 시스템이 없습니다.",
     lifeMeaning: "남으면 저축하는 방식이라 남는 달도 있고 아예 없는 달도 있을 수 있습니다.",
     notUrgent: "투자 상품을 고르는 것",
+    notUrgentReason: "저축 자체가 자동으로 안 되는 구조에서는 투자 상품을 골라도 매달 넣을 돈이 달라지기 때문입니다.",
   },
   long_term_goal_pace_short: {
     title: "장기 목표 속도",
     why: "장기 목표 대비 준비 속도가 느립니다.",
     lifeMeaning: "지금 속도로는 목표 시점에 필요한 만큼 모이지 않을 수 있습니다.",
     notUrgent: "단기 지출 관리",
+    notUrgentReason: "장기 목표의 속도 자체가 문제라면, 단기 지출을 아무리 관리해도 목표 시점을 맞추기 어렵기 때문입니다.",
   },
   investment_efficiency: {
     title: "자산 운용 효율",
     why: "기본적인 자금 구조는 안정적입니다.",
     lifeMeaning: "이제는 지금 자산을 얼마나 효율적으로 굴리고 있는지 볼 차례입니다.",
     notUrgent: "추가 소득원을 찾는 것",
+    notUrgentReason: "지금 구조가 안정적이라면, 새 소득원을 찾기 전에 있는 자산을 효율적으로 굴리는 쪽이 먼저이기 때문입니다.",
   },
 };
