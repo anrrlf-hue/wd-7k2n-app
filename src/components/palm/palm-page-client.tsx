@@ -3,27 +3,29 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Camera, ImagePlus, RotateCcw, HandMetal, Compass } from "lucide-react";
+import { Camera, ImagePlus, RotateCcw, HandMetal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepBadge } from "@/components/diagnosis/step-badge";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
-import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
 import { VerdictCard } from "@/components/diagnosis/verdict-card";
-import { TrustSection } from "@/components/diagnosis/trust-section";
 import { ReportSection, ParagraphSection, EvidenceItemCard, EvidenceToggle } from "@/components/diagnosis/report-section";
-import { RealityInputForm } from "@/components/palm/reality-input-form";
-import { ConnectionDiagnosisCard } from "@/components/palm/connection-diagnosis-card";
+import { IndirectExperience } from "@/components/palm/indirect-experience";
+import { SurveyForm } from "@/components/palm/survey-form";
+import { AnalysisResultCard } from "@/components/palm/analysis-result-card";
+import { PaymentScreen } from "@/components/palm/payment-screen";
 import {
   analyzePalmFromCanvas,
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
 import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
 import { buildRealObservationText, buildTraditionalReadingText } from "@/lib/palm-observation-text";
+import { derivePalmKeyword } from "@/lib/palm-keyword";
+import { buildAnalysisResult, type AnalysisResult } from "@/lib/analysis-result";
+import type { SurveyInput } from "@/lib/survey-input";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
-import type { RealityInput } from "@/lib/reality-input";
-import type { ConnectionDiagnosis } from "@/lib/connection-diagnosis";
+import type { WealthTypeResult } from "@/lib/wealth-type";
 import { track } from "@/lib/analytics";
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
@@ -105,96 +107,64 @@ function TripleCompareSection({ items }: { items: CompareItem[] }) {
   );
 }
 
-/** 손금 완료 -> 현실정보 입력 -> 사주+현실 1차 연결진단 -> 신뢰 설명 ->
- * 첫 실행 리포트 결제 직전까지의 다리. 이전 라운드의 "운세 후보 3개 중
- * 1개 선택" 흐름을 대체한다 — 사주 방향은 이미 종합판정(VerdictCard)에서
- * 짚었으므로, 여기서는 곧바로 현실정보를 받아 그 방향과 지금 위치를
- * 잇는다. 결제 이후 실제 실행 리포트 생성/상세 재무상담 구조는 이번
- * 라운드에서 확정하지 않는다 — Paywall은 여전히 "준비 중" placeholder다. */
-function PaymentBridge({
-  birthInput,
-  personalityInput,
+/** 손금 완료 -> 간접체험(재물유형×손금 개인화) -> 재무 설문 -> 병목 진단 ->
+ * 분석 결과 확인(결제 버튼 없음) -> 결제 화면. 이전 라운드의 "현실정보
+ * 입력 -> 사주 연결진단" 다리를 대체한다 — 병목 판단은 설문 응답만 쓰고
+ * 사주·손금 요소가 전혀 개입하지 않으므로(§7 원칙) 서버 호출 없이 순수
+ * 클라이언트 함수로 동작한다. 결제 이후 실제 실행 리포트 생성 로직은
+ * 이번 라운드에서도 확정하지 않는다 — PaywallOffer의 CTA는 실제 결제로
+ * 이어지지 않아 도달할 방법 자체가 없다. */
+type FunnelStage = "experience" | "survey" | "analysis" | "payment";
+
+function ConversionFunnel({
+  wealthType,
+  palmFacts,
   onReset,
 }: {
-  birthInput: BirthInput;
-  personalityInput?: PersonalityInputEcho;
+  wealthType: WealthTypeResult | null;
+  palmFacts: PalmFacts | null;
   onReset: () => void;
 }) {
-  const [stage, setStage] = useState<"intro" | "reality" | "diagnosis">("intro");
-  const [diagnosis, setDiagnosis] = useState<ConnectionDiagnosis | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState<FunnelStage>("experience");
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
-  async function handleRealitySubmit(reality: RealityInput) {
-    setLoading(true);
-    track("reality_input_submitted");
-    try {
-      const res = await fetch("/api/reality/diagnose", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...birthInput,
-          personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
-          mbti: personalityInput?.mbti ?? undefined,
-          reality,
-        }),
-      });
-      const data = await res.json();
-      if (data.diagnosis) {
-        setDiagnosis(data.diagnosis);
-        setStage("diagnosis");
-        track("connection_diagnosis_viewed");
-        track("paywall_viewed");
-      }
-    } finally {
-      setLoading(false);
-    }
+  if (!wealthType) return null;
+
+  function handleExperienceComplete() {
+    track("indirect_experience_completed");
+    setStage("survey");
+  }
+
+  function handleSurveyComplete(input: SurveyInput) {
+    track("survey_completed");
+    setAnalysisResult(buildAnalysisResult(input));
+    setStage("analysis");
+    track("analysis_result_viewed");
   }
 
   return (
     <div className="mt-8">
-      {stage === "intro" && (
-        <motion.div
-          initial={{ opacity: 0.5, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.4 }}
-        >
-          <p className="flex items-center gap-1.5 text-sm font-medium">
-            <Compass className="size-4 text-(--gold)" />
-            사주가 본 방향, 지금 현실과 이어보겠습니다
-          </p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            소득이나 지출을 자세히 묻지 않습니다. 구간 선택 몇 번이면 지금 위치를 확인할 수 있습니다.
-          </p>
-          <Button size="lg" onClick={() => setStage("reality")} className="mt-4 h-13 w-full rounded-full text-base">
-            내 현실정보 입력하기
-          </Button>
-        </motion.div>
+      {stage === "experience" && (
+        <IndirectExperience
+          wealthTypeCode={wealthType.code}
+          palmKeyword={derivePalmKeyword(palmFacts)}
+          onComplete={handleExperienceComplete}
+        />
       )}
 
-      {stage === "reality" && (
-        <RealityInputForm onSubmit={handleRealitySubmit} onBack={() => setStage("intro")} />
+      {stage === "survey" && <SurveyForm onComplete={handleSurveyComplete} />}
+
+      {stage === "analysis" && analysisResult && (
+        <AnalysisResultCard
+          result={analysisResult}
+          onProceed={() => {
+            track("payment_screen_viewed");
+            setStage("payment");
+          }}
+        />
       )}
 
-      {loading && <p className="mt-6 text-center text-sm text-muted-foreground">지금 위치를 확인하는 중입니다…</p>}
-
-      {stage === "diagnosis" && diagnosis && (
-        <>
-          <ConnectionDiagnosisCard diagnosis={diagnosis} />
-          <TrustSection />
-          <div className="mt-6">
-            <PaywallOffer
-              title="지금 제 상황에서는 뭐부터 손대야 할까요"
-              includedItems={[
-                "지금 막힌 지점부터 정리한 실행 순서",
-                "이번 대운 안에서 놓치면 안 되는 시기",
-                "소득·지출·저축 구조에 맞춘 다음 행동",
-              ]}
-              ctaText="내 첫 실행 리포트 받기"
-            />
-          </div>
-        </>
-      )}
+      {stage === "payment" && <PaymentScreen />}
 
       <button
         type="button"
@@ -221,6 +191,7 @@ export function PalmPageClient({
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
   const [tripleCompare, setTripleCompare] = useState<CompareItem[]>([]);
   const [verdict, setVerdict] = useState<ReportParagraph | null>(null);
+  const [wealthType, setWealthType] = useState<WealthTypeResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retakeAttempts, setRetakeAttempts] = useState(0);
 
@@ -260,6 +231,7 @@ export function PalmPageClient({
     setFinalReport(data.freeReport?.report ?? null);
     setTripleCompare(data.tripleCompare ?? []);
     setVerdict(data.verdict ?? null);
+    setWealthType(data.wealthType ?? null);
     track("free_report_completed", { palmSkipped: Boolean(data.palmSkipped) });
     setStage(data.palmSkipped ? "saju_only" : "result");
   }
@@ -313,6 +285,7 @@ export function PalmPageClient({
     setFinalReport(null);
     setTripleCompare([]);
     setVerdict(null);
+    setWealthType(null);
     setErrorMsg(null);
     setRetakeAttempts(0);
   }
@@ -511,7 +484,7 @@ export function PalmPageClient({
 
           <FinalReportSections report={finalReport} />
           {verdict && <VerdictCard verdict={verdict} />}
-          <PaymentBridge birthInput={birthInput} personalityInput={personalityInput} onReset={reset} />
+          <ConversionFunnel wealthType={wealthType} palmFacts={palmFacts} onReset={reset} />
         </div>
       )}
 
@@ -523,7 +496,7 @@ export function PalmPageClient({
           <TripleCompareSection items={tripleCompare} />
           <FinalReportSections report={finalReport} />
           {verdict && <VerdictCard verdict={verdict} />}
-          <PaymentBridge birthInput={birthInput} personalityInput={personalityInput} onReset={reset} />
+          <ConversionFunnel wealthType={wealthType} palmFacts={palmFacts} onReset={reset} />
         </div>
       )}
 

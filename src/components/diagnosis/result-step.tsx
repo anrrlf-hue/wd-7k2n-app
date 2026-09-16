@@ -10,7 +10,6 @@ import { ReportSection, ParagraphSection, EvidenceItemCard } from "@/components/
 import { WealthTypeSection } from "@/components/diagnosis/wealth-type-section";
 import { MyeongsikSection } from "@/components/diagnosis/myeongsik-section";
 import { DaeunFlowSection } from "@/components/diagnosis/daeun-flow-section";
-import { MonthSimulation } from "@/components/diagnosis/month-simulation";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 
@@ -179,8 +178,6 @@ export function ResultStep({
           <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} />
         </div>
       </div>
-
-      {wealthType && <MonthSimulation wealthTypeCode={wealthType.code} />}
     </div>
   );
 }

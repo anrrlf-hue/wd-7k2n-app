@@ -53,6 +53,7 @@ const CASES = [
 ];
 
 const VALID_IDS = new Set(["wealth_timing", "career_business", "change_opportunity"]);
+const VALID_WEALTH_TYPE_CODES = new Set(["ACCUM", "LEAK", "HOLD", "TIGHT"]);
 
 async function call(body) {
   const res = await fetch(`${BASE}/api/palm/interpret`, {
@@ -91,6 +92,10 @@ async function main() {
     console.log(`primaryCandidateId(${json.primaryCandidateId}) 유효: ${idOk ? "PASS" : "FAIL"}`);
     if (!idOk) allPass = false;
 
+    const wealthTypeOk = VALID_WEALTH_TYPE_CODES.has(json.wealthType?.code);
+    console.log(`wealthType.code(${json.wealthType?.code}) 유효: ${wealthTypeOk ? "PASS" : "FAIL"}`);
+    if (!wealthTypeOk) allPass = false;
+
     const cautionsOk = Array.isArray(json.freeReport?.report?.cautions) && json.freeReport.report.cautions.length >= 1;
     const strengthsOk = Array.isArray(json.freeReport?.report?.strengths) && json.freeReport.report.strengths.length >= 1;
     console.log(`cautions/strengths 존재(미니리딩 티저용): ${cautionsOk && strengthsOk ? "PASS" : "FAIL"}`);
@@ -98,7 +103,10 @@ async function main() {
 
     // 재호출 결정론 확인
     const second = await call(c.body);
-    const stable = second.json.primaryCandidateId === json.primaryCandidateId && second.json.verdict?.text === json.verdict?.text;
+    const stable =
+      second.json.primaryCandidateId === json.primaryCandidateId &&
+      second.json.verdict?.text === json.verdict?.text &&
+      second.json.wealthType?.code === json.wealthType?.code;
     console.log(`동일 입력 재호출 결정론: ${stable ? "PASS" : "FAIL"}`);
     if (!stable) allPass = false;
   }

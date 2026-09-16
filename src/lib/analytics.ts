@@ -6,9 +6,11 @@
 
 export type ConversionEvent =
   | "free_report_completed"
-  | "reality_input_submitted"
-  | "connection_diagnosis_viewed"
-  | "paywall_viewed";
+  | "indirect_experience_started"
+  | "indirect_experience_completed"
+  | "survey_completed"
+  | "analysis_result_viewed"
+  | "payment_screen_viewed";
 
 export function track(event: ConversionEvent, props?: Record<string, unknown>): void {
   if (process.env.NODE_ENV !== "production") {

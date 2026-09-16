@@ -9,6 +9,7 @@ import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { buildFortuneCandidates, selectPrimaryCandidate } from "@/lib/fortune-candidates";
 import { buildTripleCompare } from "@/lib/triple-compare";
 import { buildLifetimeStory, buildComprehensiveVerdict } from "@/lib/real-world-personalization";
+import { classifyWealthType } from "@/lib/wealth-type";
 
 // 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe/ONNX로
 // 이미 분석해 만든 PalmFacts(구조화 JSON)만 받는다. palmFacts가 없으면
@@ -105,7 +106,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const deepFacts: SajuFacts = enrichSajuFacts(computeSajuFacts(parsed.data), parsed.data);
+    const shallowFacts = computeSajuFacts(parsed.data);
+    // 재물 유형은 순수 ssaju 십성 카운트만 쓴다 — oh-my-saju 서브프로세스
+    // 성공 여부와 무관해야 하므로 enrichSajuFacts 호출 전에 계산한다
+    // (api/saju/route.ts와 같은 패턴).
+    const wealthType = classifyWealthType(shallowFacts);
+    const deepFacts: SajuFacts = enrichSajuFacts(shallowFacts, parsed.data);
 
     const personalityCheck = parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null;
     const mbti = parsed.data.mbti ?? null;
@@ -134,6 +140,7 @@ export async function POST(request: Request) {
       lifetimeStory,
       verdict,
       primaryCandidateId,
+      wealthType,
     });
   } catch (err) {
     return NextResponse.json(
