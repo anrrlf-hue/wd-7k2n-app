@@ -1,8 +1,7 @@
 "use client";
 
 import { ReportSection } from "@/components/diagnosis/report-section";
-import { dayStrengthShort, pillarLifeAreaLabel } from "@/lib/saju-labels";
-import { daeunFlavor } from "@/lib/fortune-candidates";
+import { pillarLifeAreaLabel } from "@/lib/saju-labels";
 import type { MyeongsikView } from "@/lib/myeongsik-view";
 
 const PILLAR_LABEL_KO: Record<MyeongsikView["pillars"][number]["pillar"], string> = {
@@ -68,7 +67,7 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
 
       <p className="mt-4 text-sm">
         격국(格局) <span className="font-semibold">{view.geukguk}</span> · 신강신약(身强身弱){" "}
-        <span className="font-semibold">{dayStrengthShort(view.dayStrength)}</span>({view.dayStrengthScore}점)
+        <span className="font-semibold">{view.dayStrengthGrade}</span>({view.dayStrengthScore}점)
       </p>
       {view.geukgukSource === "ziping_ditianshui" && (
         <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
@@ -89,13 +88,6 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
           ? view.officerStarPillars.map((p) => pillarLifeAreaLabel(p)).join(", ")
           : "원국에 직접 드러나지 않음"}
       </p>
-
-      {view.currentDaeun && (
-        <p className="mt-4 text-sm">
-          현재 대운 {view.currentDaeun.ageRange}세 <span className="font-semibold">{view.currentDaeun.ganzhi}</span> —{" "}
-          {daeunFlavor(view.currentDaeun)} 시기
-        </p>
-      )}
     </ReportSection>
   );
 }

@@ -25,10 +25,12 @@ export interface MyeongsikView {
   geukguk: string;
   dayStrength: SajuFacts["dayStrength"];
   dayStrengthScore: number;
+  dayStrengthGrade: string;
   geukgukSource: SajuFacts["geukgukSource"];
   wealthStarPillars: PillarFact["pillar"][];
   officerStarPillars: PillarFact["pillar"][];
   currentDaeun: DaeunFact | null;
+  nextDaeun: DaeunFact | null;
 }
 
 const PILLAR_ORDER: PillarFact["pillar"][] = ["year", "month", "day", "hour"];
@@ -67,9 +69,11 @@ export function buildMyeongsikView(facts: SajuFacts): MyeongsikView {
     geukguk: facts.geukguk,
     dayStrength: facts.dayStrength,
     dayStrengthScore: facts.dayStrengthScore,
+    dayStrengthGrade: facts.dayStrengthGrade,
     geukgukSource: facts.geukgukSource,
     wealthStarPillars: facts.wealthStarPillars,
     officerStarPillars: facts.officerStarPillars,
     currentDaeun: facts.currentDaeun,
+    nextDaeun: facts.nextDaeun,
   };
 }

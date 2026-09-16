@@ -367,6 +367,7 @@ export function enrichSajuFacts(facts: SajuFacts, input: SajuFactsInput): SajuFa
           geukguk: result.enrichment.pattern,
           dayStrength: result.enrichment.strengthBucket,
           dayStrengthScore: result.enrichment.strengthScore,
+          dayStrengthGrade: result.enrichment.strengthGrade,
           geukgukSource: "ziping_ditianshui" as const,
         }
       : {}),

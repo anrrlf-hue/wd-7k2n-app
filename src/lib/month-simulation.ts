@@ -26,9 +26,19 @@ export function getMonthSimSteps(code: WealthTypeCode): MonthChoiceStep[] {
   return MONTH_SIM_STEPS[code];
 }
 
-export function computeMonthSimResult(code: WealthTypeCode, selections: MonthSimSelection[]): MonthSimulationResult {
+export function defaultStartingIncome(code: WealthTypeCode): number {
+  return MONTH_SIM_STARTING_INCOME_KRW[code];
+}
+
+/** startingIncomeKrw를 생략하면 유형별 기본 시작 금액을 쓴다. 사용자가 자기
+ * 실제 월급을 입력했다면 그 값을 그대로 시작 잔액으로 쓴다 — 선택지별
+ * 증감액(amountKrw)은 유형별 세트 그대로 재사용, 시작점만 바뀐다. */
+export function computeMonthSimResult(
+  code: WealthTypeCode,
+  selections: MonthSimSelection[],
+  startingIncomeKrw: number = MONTH_SIM_STARTING_INCOME_KRW[code],
+): MonthSimulationResult {
   const steps = MONTH_SIM_STEPS[code];
-  const startingIncomeKrw = MONTH_SIM_STARTING_INCOME_KRW[code];
 
   const endingBalanceKrw = steps.reduce((balance, step) => {
     const selection = selections.find((s) => s.stepId === step.id);
@@ -41,4 +51,19 @@ export function computeMonthSimResult(code: WealthTypeCode, selections: MonthSim
   const closingText = template.replace("{amount}", amountLabel);
 
   return { startingIncomeKrw, endingBalanceKrw, closingText };
+}
+
+/** 선택 하나가 반영된 직후의 잔액(장면별 연출용) — computeMonthSimResult와
+ * 같은 산술을 지금까지의 선택분만 부분 적용해서 재사용한다. */
+export function computeRunningBalance(
+  code: WealthTypeCode,
+  selections: MonthSimSelection[],
+  startingIncomeKrw: number = MONTH_SIM_STARTING_INCOME_KRW[code],
+): number {
+  const steps = MONTH_SIM_STEPS[code];
+  return steps.reduce((balance, step) => {
+    const selection = selections.find((s) => s.stepId === step.id);
+    const option = selection ? step.options.find((o) => o.id === selection.optionId) : undefined;
+    return balance + (option?.amountKrw ?? 0);
+  }, startingIncomeKrw);
 }

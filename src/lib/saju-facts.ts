@@ -55,6 +55,12 @@ export interface SajuFacts {
   dayElement: string;
   dayStrength: "strong" | "weak" | "neutral";
   dayStrengthScore: number;
+  /** dayStrength(3단계)가 파생되어 나온 세분화된 등급. oh-my-saju 판정이
+   * 성공하면 그 원본 등급("태왕"|"신강"|"약한 신강"|"중화"|"신약"|"태약"|
+   * "극약")을 그대로 노출한다(새 판정 아님) — enrichSajuFacts 성공 전에는
+   * ssaju가 이 세분화 등급을 안 주므로 dayStrengthShort(dayStrength)와
+   * 같은 3단계 값으로 시작한다. */
+  dayStrengthGrade: string;
   geukguk: string;
   yongsin: string[];
   fiveElements: Record<string, number>;
@@ -230,8 +236,28 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
   const outputStarPillars = pillarsWithTenGod(pillars, OUTPUT_STARS);
   const officerStarPillars = pillarsWithTenGod(pillars, OFFICER_STARS);
 
-  const dominantElement = Object.entries(result.fiveElements).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
-  const missingElements = Object.entries(result.fiveElements)
+  // ssaju는 hour를 항상 필수로 받아(시간 미상이면 12시로 우리가 채워 호출)
+  // 시주를 포함한 전체 4기둥 기준으로 fiveElements/관계를 계산한다 — 즉
+  // "시간 미상"이어도 가짜 시주(예: 12시=午)가 오행 집계와 합충형파해 판정에
+  // 그대로 섞여 들어온다. pillars 배열은 이미 hasTimeInput 기준으로 hour를
+  // 뺐으니, 오행은 그 pillars만으로 직접 재계산하고(result.fiveElements를
+  // 그대로 쓰지 않는다), 관계는 "hour" 키에 걸린 값과 동일한 문자열을
+  // 전부 제외해 가짜 시주가 만든 합/충/귀문 등이 새지 않게 한다.
+  const elementByPillar: Record<PillarFact["pillar"], { stem: string; branch: string }> = {
+    year: result.pillarDetails.year.element,
+    month: result.pillarDetails.month.element,
+    day: result.pillarDetails.day.element,
+    hour: result.pillarDetails.hour.element,
+  };
+  const fiveElements: Record<string, number> = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+  for (const p of pillars) {
+    const el = elementByPillar[p.pillar];
+    fiveElements[el.stem] = (fiveElements[el.stem] ?? 0) + 1;
+    fiveElements[el.branch] = (fiveElements[el.branch] ?? 0) + 1;
+  }
+
+  const dominantElement = Object.entries(fiveElements).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+  const missingElements = Object.entries(fiveElements)
     .filter(([, count]) => count === 0)
     .map(([el]) => el);
 
@@ -240,26 +266,41 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
   // 넣는다 — 즉 Object.values()로 펼치면 관계 하나가 항상 2번 찍힌다
   // (humanize-writing 스킬로 실제 생성 문장을 검토하다 "辰巳 귀문, 辰巳 귀문"처럼
   // 같은 문구가 그대로 중복 출력되는 걸 발견하고 역추적함). new Set()으로 dedupe.
+  // ssaju가 관계 하나를 참여 기둥별로 각자 다른 문자열(단수/복수 병기 등)로
+  // 저장하는 경우가 있어(예: hour="午丑 해, 午丑 해" vs month="午丑 해"),
+  // 값 비교만으로는 가짜 시주가 낀 관계를 다 걸러내지 못한다. 대신 가짜
+  // 시주의 지지 한자(예: 午) 자체가 문자열 어디에도 등장하지 않는 것만
+  // 남긴다 — 이견 없는 고정 조합표라 지지 한자가 곧 그 관계의 식별자다.
+  const fakeHourBranchHanja = input.hour === null ? result.pillarDetails.hour.branch : null;
+  function relationValues(record: Record<string, string | null>): string[] {
+    const entries = Object.entries(record).filter((e): e is [string, string] => Boolean(e[1]));
+    if (fakeHourBranchHanja === null) return entries.map(([, v]) => v);
+    return entries.filter(([k, v]) => k !== "hour" && !v.includes(fakeHourBranchHanja)).map(([, v]) => v);
+  }
+
+  const stemRelationDescs =
+    input.hour !== null
+      ? result.stemRelations.map((r) => r.desc)
+      : result.stemRelations.filter((r) => !r.pillars.includes("hour")).map((r) => r.desc);
+
   const keyRelations: string[] = Array.from(
     new Set(
       [
-        ...result.stemRelations.map((r) => r.desc),
-        ...Object.values(result.branchRelations.방합),
-        ...Object.values(result.branchRelations.삼합),
-        ...Object.values(result.branchRelations.반합),
-        ...Object.values(result.branchRelations.육합),
-        ...Object.values(result.branchRelations.충),
-        ...Object.values(result.branchRelations.형),
-        ...Object.values(result.branchRelations.파),
-        ...Object.values(result.branchRelations.해),
-        ...Object.values(result.branchRelations.원진),
+        ...stemRelationDescs,
+        ...relationValues(result.branchRelations.방합),
+        ...relationValues(result.branchRelations.삼합),
+        ...relationValues(result.branchRelations.반합),
+        ...relationValues(result.branchRelations.육합),
+        ...relationValues(result.branchRelations.충),
+        ...relationValues(result.branchRelations.형),
+        ...relationValues(result.branchRelations.파),
+        ...relationValues(result.branchRelations.해),
+        ...relationValues(result.branchRelations.원진),
       ].filter((v): v is string => Boolean(v)),
     ),
   );
 
-  const gwimunRelations = Array.from(
-    new Set(Object.values(result.branchRelations.귀문).filter((v): v is string => Boolean(v))),
-  );
+  const gwimunRelations = Array.from(new Set(relationValues(result.branchRelations.귀문)));
 
   const pillarStages: PillarStageFact[] = (["year", "month", "day", "hour"] as const)
     .filter((key) => key !== "hour" || input.hour !== null)
@@ -284,9 +325,15 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     dayElement: result.pillarDetails.day.element.stem,
     dayStrength: result.advanced.dayStrength.strength,
     dayStrengthScore: result.advanced.dayStrength.score,
+    dayStrengthGrade:
+      result.advanced.dayStrength.strength === "strong"
+        ? "강함"
+        : result.advanced.dayStrength.strength === "weak"
+          ? "약함"
+          : "중화",
     geukguk: result.advanced.geukguk,
     yongsin: result.advanced.yongsin,
-    fiveElements: result.fiveElements,
+    fiveElements,
     dominantElement,
     wealthStarCount: wealthStarTypes.length,
     wealthStarTypes,
@@ -310,7 +357,15 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     currentDaeun,
     nextDaeun,
     daeunList,
-    compactText: result.toCompact(),
+    // ssaju.toCompact()는 항상 4기둥(시주 포함) 기준 원국표를 반환한다 —
+    // 시간 미상이어도 우리가 채운 임시 12시(午)를 실제 시주인 것처럼
+    // "12:00"·시 열에 그대로 적어준다. 이 텍스트는 LLM 프롬프트에 그대로
+    // 들어가므로(interpretation-prompt.ts/free-report-prompt.ts), 시간
+    // 미상일 땐 그 시 열/시각을 사실로 쓰지 말라는 경고를 앞에 붙인다.
+    compactText:
+      input.hour === null
+        ? `※ 출생 시간을 몰라 아래 "시" 열과 "12:00" 표기는 계산 편의상 넣은 임시값입니다. 시주(시 기둥)와 관련된 어떤 내용도 사실로 언급하지 마세요.\n\n${result.toCompact()}`
+        : result.toCompact(),
     daeunAnalysis: null,
     currentAge: result.currentAge,
     geukgukSource: "ssaju_fallback",

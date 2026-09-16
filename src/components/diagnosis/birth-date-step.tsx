@@ -29,7 +29,7 @@ export function BirthDateStep({
         알려주세요
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        음력이든 양력이든 실제 태어난 날짜면 돼요. 대운 방향 계산에 성별도 함께 써요.
+        사주는 양력 날짜 기준으로 계산돼요. 음력 생일만 알고 계시다면 양력으로 변환한 날짜를 입력해주세요. 대운 방향 계산에 성별도 함께 써요.
       </p>
 
       <div className="mystic-card mt-10 flex flex-col gap-2 p-5">

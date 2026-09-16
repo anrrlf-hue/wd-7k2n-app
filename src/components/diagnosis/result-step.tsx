@@ -9,6 +9,7 @@ import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
 import { ReportSection, ParagraphSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
 import { WealthTypeSection } from "@/components/diagnosis/wealth-type-section";
 import { MyeongsikSection } from "@/components/diagnosis/myeongsik-section";
+import { DaeunFlowSection } from "@/components/diagnosis/daeun-flow-section";
 import { MonthSimulation } from "@/components/diagnosis/month-simulation";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { FullSajuDiagnosis } from "@/lib/saju";
@@ -120,12 +121,13 @@ export function ResultStep({
         {saving ? "저장 중..." : "이미지로 저장하고 공유하기"}
       </Button>
 
-      {/* 재물 유형(훅)과 명식(근거)을 문단 리포트보다 먼저 보여준다 — "이건
-       * 내 얘기 같다"는 확신을 먼저 만들고, 그 다음 세부 문단으로 들어간다.
-       * 둘 다 freeReport와 독립적으로 SajuFacts만으로 계산되므로 freeReport
-       * 파이프라인이 실패해도(report === null) 그대로 렌더된다. */}
-      <WealthTypeSection result={wealthType} />
+      {/* 명식(근거) -> 재물유형(훅) -> 대운 흐름(지금 이 시기) 순서로
+       * 문단 리포트보다 먼저 보여준다. 셋 다 freeReport와 독립적으로
+       * SajuFacts만으로 계산되므로 freeReport 파이프라인이 실패해도
+       * (report === null) 그대로 렌더된다. */}
       <MyeongsikSection view={myeongsik} />
+      <WealthTypeSection result={wealthType} />
+      <DaeunFlowSection view={myeongsik} />
 
       {/* 1차 무료 결과 — 사용자가 실제로 궁금해하는 7가지 질문 순서로
        * 배치한다: 크게 벌 수 있는 타입인가 -> 왜 모이거나 안 모이는가 ->
