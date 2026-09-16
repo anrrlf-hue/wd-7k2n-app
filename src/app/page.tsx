@@ -21,9 +21,9 @@ export default function Home() {
           놓치는 사람일까?
         </h1>
         <p className="mx-auto mt-5 max-w-xs text-balance text-base leading-relaxed text-muted-foreground">
-          내 사주엔 큰돈이 들어오는 때가 있을까?
+          사주로 내 돈 습관을 읽고,
           <br />
-          생년월일 하나로 지금 확인해보세요.
+          바꿀 수 있는 것부터 알려드립니다.
         </p>
 
         <DestinyCardPreview />

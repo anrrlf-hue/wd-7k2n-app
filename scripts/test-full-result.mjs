@@ -52,8 +52,23 @@ async function main() {
       console.log("FAILED", JSON.stringify(r.json, null, 2));
       continue;
     }
-    const { resultSource, deep, freeReport, dayPillar } = r.json;
+    const { resultSource, deep, freeReport, dayPillar, myeongsik, wealthType } = r.json;
     console.log(`dayPillar=${dayPillar} resultSource=${resultSource} deepSource=${deep?.source ?? "-"} freeReportSource=${freeReport?.source ?? "-"}`);
+    if (myeongsik) {
+      const hourPillar = myeongsik.pillars.find((p) => p.pillar === "hour");
+      console.log(
+        `myeongsik: pillars=${myeongsik.pillars.length} hasTimeInput=${myeongsik.hasTimeInput} hourStem=${hourPillar?.stemKo ?? "null"} geukgukSource=${myeongsik.geukgukSource}`,
+      );
+    } else {
+      console.log("myeongsik: 없음(실패)");
+    }
+    if (wealthType) {
+      console.log(
+        `wealthType: code=${wealthType.code} earning=${wealthType.earning.level}(${wealthType.earning.grade}) keeping=${wealthType.keeping.level}(${wealthType.keeping.grade})`,
+      );
+    } else {
+      console.log("wealthType: 없음(실패)");
+    }
     if (freeReport) {
       const rep = freeReport.report;
       console.log(`snapshot: ${rep.snapshot.text}`);
@@ -129,6 +144,55 @@ async function main() {
     }
   }
   console.log(`전문용어 노출 검사(text 필드, mock 10개): ${jargonLeaks === 0 ? "PASS (누출 없음)" : `FAIL (${jargonLeaks}건 누출)`}`);
+
+  // 작업 A(명식) / 작업 B(재물 유형) 검증. wealthType.code는 4개 값만
+  // 가능하므로(ACCUM/LEAK/HOLD/TIGHT), freeReport에 쓴 "10개 입력 10/10
+  // 고유" 기준을 여기 적용하지 않는다 — 대신 4개 값 범위 안에 있는지만 본다.
+  const VALID_WEALTH_TYPE_CODES = new Set(["ACCUM", "LEAK", "HOLD", "TIGHT"]);
+  let myeongsikOk = true;
+  let wealthTypeCodeOk = true;
+  for (const r of results) {
+    const { myeongsik, wealthType } = r.json ?? {};
+    if (myeongsik) {
+      if (myeongsik.pillars.length !== 4) {
+        myeongsikOk = false;
+        console.log(`  [myeongsik FAIL] case=${r.label} pillars.length=${myeongsik.pillars.length}`);
+      }
+      const hourPillar = myeongsik.pillars.find((p) => p.pillar === "hour");
+      if (!myeongsik.hasTimeInput && hourPillar?.stemHanja !== null) {
+        myeongsikOk = false;
+        console.log(`  [myeongsik FAIL] case=${r.label} hasTimeInput=false인데 hour.stemHanja가 null이 아님`);
+      }
+    }
+    if (wealthType && !VALID_WEALTH_TYPE_CODES.has(wealthType.code)) {
+      wealthTypeCodeOk = false;
+      console.log(`  [wealthType FAIL] case=${r.label} code=${wealthType.code}`);
+    }
+  }
+  console.log(`명식 구조(4-pillar, 시간 미상 시 hour null) 검사: ${myeongsikOk ? "PASS" : "FAIL"}`);
+  console.log(`재물 유형 코드가 4개 값 범위 안(ACCUM/LEAK/HOLD/TIGHT): ${wealthTypeCodeOk ? "PASS" : "FAIL"}`);
+
+  const wtA = a?.json?.wealthType;
+  const wtRepeat = d?.json?.wealthType;
+  console.log(`1과 1-repeat의 wealthType 결정론(순수 ssaju 카운트라 항상 성립해야 함): ${JSON.stringify(wtA) === JSON.stringify(wtRepeat) ? "일치" : "불일치"}`);
+
+  // 재물 유형 4조각에 특정 해법이 지목되지 않는지 회귀 검사(wealth-type.ts의
+  // BANNED_SOLUTION_PATTERNS와 동일한 목록을 여기서도 재현 — 이 스크립트가
+  // .ts를 직접 import하지 않는 기존 관례를 따른다).
+  const BANNED_SOLUTION_PATTERNS = [/통장을?\s*나누/, /가계부를?\s*쓰/, /적금을?\s*(들|가입)/, /예산\s*앱/, /(자동이체|풍차\s*돌리기)/];
+  let bannedSolutionLeaks = 0;
+  for (const r of results) {
+    const pieces = r.json?.wealthType?.pieces;
+    if (!pieces) continue;
+    const text = [pieces.typeAndDiagnosis, pieces.evidence, pieces.problem, pieces.bridge].join("\n");
+    for (const re of BANNED_SOLUTION_PATTERNS) {
+      if (re.test(text)) {
+        bannedSolutionLeaks++;
+        console.log(`  [banned solution leak] case=${r.label} pattern=${re.source}`);
+      }
+    }
+  }
+  console.log(`재물 유형 4조각에 특정 해법 미지목 검사: ${bannedSolutionLeaks === 0 ? "PASS (지목 없음)" : `FAIL (${bannedSolutionLeaks}건)`}`);
 
   const latencies = results.filter((r) => r.status === 200).map((r) => r.ms);
   console.log(`응답 시간: min=${Math.min(...latencies)}ms max=${Math.max(...latencies)}ms avg=${Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)}ms`);

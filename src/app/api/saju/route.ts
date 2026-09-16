@@ -8,6 +8,8 @@ import { getFreeSajuReport } from "@/lib/free-report-engine";
 import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { buildLifetimeStory } from "@/lib/real-world-personalization";
+import { buildMyeongsikView } from "@/lib/myeongsik-view";
+import { classifyWealthType } from "@/lib/wealth-type";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
 // 요청 1회로 (1) 얕은 사주팔자+money-tendency(fallback/게이지 근거로 항상 유지)
@@ -55,9 +57,16 @@ export async function POST(request: Request) {
   let freeReport: FullSajuDiagnosis["freeReport"] = null;
   let daeunAnalysis: FullSajuDiagnosis["daeunAnalysis"] = null;
   let lifetimeStory: FullSajuDiagnosis["lifetimeStory"] = null;
+  let myeongsik: FullSajuDiagnosis["myeongsik"] = null;
+  let wealthType: FullSajuDiagnosis["wealthType"] = null;
 
   try {
-    const facts = enrichSajuFacts(computeSajuFacts(parsed.data), parsed.data);
+    const shallowFacts = computeSajuFacts(parsed.data);
+    // 재물 유형은 순수 ssaju 십성 카운트만 쓴다 — oh-my-saju 서브프로세스
+    // 성공 여부와 무관해야 하므로 enrichSajuFacts 호출 전에 계산한다.
+    wealthType = classifyWealthType(shallowFacts);
+    const facts = enrichSajuFacts(shallowFacts, parsed.data);
+    myeongsik = buildMyeongsikView(facts);
     daeunAnalysis = facts.daeunAnalysis;
     const personality = {
       mbti: parsed.data.mbti ?? null,
@@ -105,6 +114,8 @@ export async function POST(request: Request) {
     },
     daeunAnalysis,
     lifetimeStory,
+    myeongsik,
+    wealthType,
   };
   return NextResponse.json(payload);
 }

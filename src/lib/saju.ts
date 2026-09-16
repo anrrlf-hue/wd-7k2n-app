@@ -5,6 +5,8 @@ import type { FreeSajuReport } from "./free-report-schema";
 import type { MbtiType } from "./mbti-facts";
 import type { DaeunAnalysis } from "./saju-facts";
 import type { LifetimePeriodStory } from "./real-world-personalization";
+import type { MyeongsikView } from "./myeongsik-view";
+import type { WealthTypeResult } from "./wealth-type";
 
 export interface BirthInput {
   year: number;
@@ -62,6 +64,11 @@ export interface FullSajuDiagnosis extends SajuDiagnosis {
   /** 대운 10구간 전체 x MBTI/6문항 x (있으면) 손금 통합 서사. 무료 화면은
    * 현재/다음만 보여주고, 이건 심층 해석용 원자료 — 성향 입력이 없으면 null. */
   lifetimeStory: LifetimePeriodStory[] | null;
+  /** 명식(원국 8자·오행·격국·신강신약·재성관성 궁위·대운) 화면 표시용 뷰.
+   * SajuFacts 계산 자체가 실패하는 드문 경우에만 null. */
+  myeongsik: MyeongsikView | null;
+  /** 버는 힘×지키는 힘 재물 유형 판정. myeongsik과 같은 이유로만 null. */
+  wealthType: WealthTypeResult | null;
 }
 
 export function diagnoseSaju(input: BirthInput): SajuDiagnosis {

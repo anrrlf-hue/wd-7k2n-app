@@ -22,6 +22,45 @@ import type { SajuFacts, SajuFactsInput, DaeunAnalysis, DaeunRelation, PillarFac
 const SCRIPT_PATH = path.join(process.cwd(), "vendor", "oh-my-saju", "oh-my-saju.mjs");
 const TIMEOUT_MS = 6000;
 
+// 폴백 발생 측정용(수정 아님) — 이 프로젝트엔 로깅 인프라가 없어서(analytics.ts도
+// console.debug뿐) 새 인프라 없이 구조화 console.error만 남긴다. 같은 사람을
+// 다시 조회했을 때 격국/신강신약이 달라지는 사고(엔진 실패 시 ssaju 원본으로
+// 조용히 폴백)의 발생 빈도를 나중에 파악하기 위한 것 — 폴백 자체의 동작은
+// 하나도 바꾸지 않는다.
+const PROCESS_STARTED_AT = Date.now();
+let calledOnce = false;
+
+type OhMySajuFallbackReason = "timeout" | "nonzero_exit" | "parse_error" | "enrichment_missing" | "unknown_error";
+
+function classifyOhMySajuError(err: unknown): { reason: OhMySajuFallbackReason; exitCode?: number | null } {
+  if (err instanceof SyntaxError) return { reason: "parse_error" };
+  if (typeof err === "object" && err !== null) {
+    const e = err as { killed?: boolean; signal?: string | null; status?: number | null };
+    if (e.killed || e.signal === "SIGTERM") return { reason: "timeout" };
+    if (typeof e.status === "number") return { reason: "nonzero_exit", exitCode: e.status };
+  }
+  return { reason: "unknown_error" };
+}
+
+/** callOhMySaju 진입 시점에 한 번 호출 — "이 프로세스에서 첫 호출이거나 모듈
+ * 로드 15초 이내"를 콜드스타트로 근사한다(별도 인프라 없이 쓸 수 있는 유일한
+ * 신호). 반드시 calledOnce를 true로 갱신하기 전에 판정값을 캡처해야 한다. */
+function markCallAndGetColdStart(): boolean {
+  const coldStart = !calledOnce || Date.now() - PROCESS_STARTED_AT < 15000;
+  calledOnce = true;
+  return coldStart;
+}
+
+function logOhMySajuFallback(info: {
+  reason: OhMySajuFallbackReason;
+  elapsedMs: number;
+  coldStart: boolean;
+  exitCode?: number | null;
+  errorMessage?: string;
+}): void {
+  console.error("[oh-my-saju-fallback]", JSON.stringify({ ...info, timeoutMs: TIMEOUT_MS }));
+}
+
 export interface OhMySajuEnrichment {
   /** 예: "칠살격", "편재격" — ziping 팩의 실제 월률분야 판정 */
   pattern: string;
@@ -167,18 +206,48 @@ function bucketFromGrade(grade: string): "strong" | "weak" | "neutral" {
 interface OhMySajuCallResult {
   enrichment: OhMySajuEnrichment | null;
   rawTimingPillars: unknown;
+  elapsedMs: number;
+  coldStart: boolean;
 }
 
 function callOhMySaju(input: SajuFactsInput): OhMySajuCallResult {
+  const coldStart = markCallAndGetColdStart();
+  const startedAt = Date.now();
   const command = buildCommand(input);
-  const stdout = execFileSync(process.execPath, [SCRIPT_PATH], {
-    input: JSON.stringify(command),
-    timeout: TIMEOUT_MS,
-    maxBuffer: 16 * 1024 * 1024,
-    encoding: "utf8",
-  });
 
-  const data = JSON.parse(stdout);
+  let stdout: string;
+  try {
+    stdout = execFileSync(process.execPath, [SCRIPT_PATH], {
+      input: JSON.stringify(command),
+      timeout: TIMEOUT_MS,
+      maxBuffer: 16 * 1024 * 1024,
+      encoding: "utf8",
+    });
+  } catch (err) {
+    const { reason, exitCode } = classifyOhMySajuError(err);
+    logOhMySajuFallback({
+      reason,
+      elapsedMs: Date.now() - startedAt,
+      coldStart,
+      exitCode,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 원본 JSON.parse(stdout)와 동일하게 any로 둔다(아래 옵셔널 체이닝 탐색용)
+  let data: any;
+  try {
+    data = JSON.parse(stdout);
+  } catch (err) {
+    logOhMySajuFallback({
+      reason: "parse_error",
+      elapsedMs: Date.now() - startedAt,
+      coldStart,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
   const analysis = data?.result?.analysis;
   const doctrines: unknown[] = analysis?.doctrines ?? [];
 
@@ -203,7 +272,12 @@ function callOhMySaju(input: SajuFactsInput): OhMySajuCallResult {
       ? { pattern, strengthGrade, strengthScore, strengthBucket: bucketFromGrade(strengthGrade) }
       : null;
 
-  return { enrichment, rawTimingPillars: data?.result?.timing?.luckPillars?.pillars };
+  return {
+    enrichment,
+    rawTimingPillars: data?.result?.timing?.luckPillars?.pillars,
+    elapsedMs: Date.now() - startedAt,
+    coldStart,
+  };
 }
 
 interface RawLuckPillar {
@@ -278,6 +352,14 @@ export function enrichSajuFacts(facts: SajuFacts, input: SajuFactsInput): SajuFa
 
   const daeunAnalysis = buildDaeunAnalysis(result.rawTimingPillars, facts.pillars, input);
 
+  if (!result.enrichment) {
+    // 소프트 폴백: 서브프로세스 자체는 성공(예외 없음)했지만 ziping/ditianshui
+    // 판정 결과가 findings에 없었던 경우. callOhMySaju 내부 catch로는 못
+    // 잡히는 경로라 여기서 별도로 로그한다 — 이 경로도 geukgukSource를
+    // "ssaju_fallback"으로 남긴다.
+    logOhMySajuFallback({ reason: "enrichment_missing", elapsedMs: result.elapsedMs, coldStart: result.coldStart });
+  }
+
   return {
     ...facts,
     ...(result.enrichment
@@ -285,6 +367,7 @@ export function enrichSajuFacts(facts: SajuFacts, input: SajuFactsInput): SajuFa
           geukguk: result.enrichment.pattern,
           dayStrength: result.enrichment.strengthBucket,
           dayStrengthScore: result.enrichment.strengthScore,
+          geukgukSource: "ziping_ditianshui" as const,
         }
       : {}),
     daeunAnalysis,

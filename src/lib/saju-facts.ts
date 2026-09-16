@@ -18,6 +18,12 @@ export interface SajuFactsInput {
 export interface PillarFact {
   pillar: "year" | "month" | "day" | "hour";
   ganzhi: string;
+  /** 아래 4개는 ssaju가 이미 계산해서 주는 값을 그대로 노출한다(새 계산 아님) —
+   * 명식 표(원국 8글자)를 한자+한글 병기로 보여줄 때 쓴다. */
+  stemHanja: string;
+  branchHanja: string;
+  stemKo: string;
+  branchKo: string;
   stemTenGod: string;
   branchTenGod: string;
   hiddenStems: { 여기: string | null; 중기: string | null; 정기: string | null };
@@ -99,6 +105,13 @@ export interface SajuFacts {
    * 계산하지 않는다). 대운 시작 나이(daeunAnalysis[].age, currentDaeun.ageRange)와
    * 절대 혼동하면 안 된다 — 이 값이 "사용자의 실제 지금 나이"다. */
   currentAge: number;
+  /** geukguk/dayStrength/dayStrengthScore가 oh-my-saju(자평진전+적천수) 판정에서
+   * 왔는지, ssaju 원본 폴백인지. enrichSajuFacts가 성공하면 이 3개 필드가
+   * 항상 같이 바뀌므로(atomic) 플래그 1개로 셋 다 게이트한다. UI는 이 값이
+   * "ssaju_fallback"이면 판정 방식 근거 문장을 표시하지 않는다 — 없는 근거를
+   * 말하면 안 된다. computeSajuFacts는 oh-my-saju를 호출하지 않으므로 항상
+   * "ssaju_fallback"으로 시작하고, enrichSajuFacts 성공 시에만 바뀐다. */
+  geukgukSource: "ziping_ditianshui" | "ssaju_fallback";
 }
 
 export interface DaeunRelation {
@@ -128,6 +141,10 @@ function toPillarFact(result: SajuResult, key: PillarFact["pillar"]): PillarFact
   return {
     pillar: key,
     ganzhi: `${detail.stem}${detail.branch}`,
+    stemHanja: detail.stem,
+    branchHanja: detail.branch,
+    stemKo: detail.stemKo,
+    branchKo: detail.branchKo,
     stemTenGod: tenGod.stem,
     branchTenGod: tenGod.branch,
     hiddenStems: detail.hiddenStems,
@@ -296,5 +313,6 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     compactText: result.toCompact(),
     daeunAnalysis: null,
     currentAge: result.currentAge,
+    geukgukSource: "ssaju_fallback",
   };
 }

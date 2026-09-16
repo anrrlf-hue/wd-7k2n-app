@@ -19,6 +19,9 @@ export function TrustSection() {
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
         사주는 성향과 시기를 참고하고, 실제 실행 방향은 소득·지출·저축·대출 같은 현실정보를 함께 분석해 제안합니다.
       </p>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+        사주 해석은 참고용이에요. 다만 바꾸는 방법은 재무 관점에서 말씀드려요.
+      </p>
     </div>
   );
 }
