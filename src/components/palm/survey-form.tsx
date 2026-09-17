@@ -49,14 +49,14 @@ function SingleSelectField({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="rounded-xl border border-border p-3.5">
-      <p className="text-sm font-medium">{label}</p>
+    <fieldset className="survey-field">
+      <legend className="text-sm font-medium">{label}</legend>
       <div className="mt-2.5 flex flex-wrap gap-2">
         {options.map((opt) => (
           <TapOption key={opt.value} selected={value === opt.value} onClick={() => onChange(opt.value)} label={opt.label} />
         ))}
       </div>
-    </div>
+    </fieldset>
   );
 }
 
@@ -85,21 +85,21 @@ function MultiSelectField({
     );
   }
   return (
-    <div className="rounded-xl border border-border p-3.5">
-      <p className="text-sm font-medium">{label}</p>
+    <fieldset className="survey-field">
+      <legend className="text-sm font-medium">{label}</legend>
       <div className="mt-2.5 flex flex-wrap gap-2">
         {options.map((opt) => (
           <TapOption key={opt.value} selected={values.includes(opt.value)} onClick={() => toggle(opt.value)} label={opt.label} />
         ))}
       </div>
-    </div>
+    </fieldset>
   );
 }
 
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   const id = useId();
   return (
-    <div className="rounded-xl border border-border p-3.5">
+    <div className="survey-field">
       <label htmlFor={id} className="text-sm font-medium">{label}</label>
       <input
         id={id}
@@ -108,8 +108,8 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
         inputMode="numeric"
         value={Number.isFinite(value) ? value : ""}
         onChange={(e) => onChange(e.target.value === "" ? NaN : Number(e.target.value))}
-        placeholder="0"
-        className="mt-1.5 w-full border-none bg-transparent p-0 text-base font-semibold outline-none"
+        placeholder="금액 입력"
+        className="mt-2 min-h-11 w-full border-none bg-transparent p-0 text-xl font-semibold tabular-nums"
       />
     </div>
   );
@@ -133,9 +133,9 @@ const initialInput: SurveyInput = {
 /** 재무 설문 3스텝, 원페이지형. 진행바(1/3~3/3)만 표시하고 장면 연출은
  * 넣지 않는다 — 간접체험에서 이미 체감 장치를 썼으므로 여기선 속도가
  * 우선이다. 숫자 직접입력은 소득/고정지출/생활비/저축 4개. */
-export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) => void }) {
+export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: SurveyInput) => void; initialValue?: SurveyInput }) {
   const [step, setStep] = useState(1);
-  const [input, setInput] = useState<SurveyInput>(initialInput);
+  const [input, setInput] = useState<SurveyInput>(initialValue ?? initialInput);
 
   function set<K extends keyof SurveyInput>(key: K, value: SurveyInput[K]) {
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -158,16 +158,18 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
     (!isFreelancer || (input.freelancerIncomeLow && input.freelancerIncomeAvg && input.freelancerIncomeHigh));
 
   return (
-    <div className="mt-8 flex flex-1 flex-col">
+    <div className="survey-form flex flex-1 flex-col">
       <p className="section-eyebrow">현실 재무질문 · {step} / 3</p>
       <h2 className="mt-2 text-2xl font-semibold">{["지금의 생활부터", "한 달 돈의 흐름", "내게 필요한 준비"][step - 1]}</h2>
-      {step === 1 && <p className="mt-1.5 text-xs text-muted-foreground">{PRIVACY_NOTICE}</p>}
+      <p className="mt-2 text-sm text-muted-foreground">{["내 상황에 필요한 질문만 이어집니다.", "한 달 기준, 원 단위로 입력해 주세요.", "해당하는 상황만 조금 더 확인할게요."][step - 1]}</p>
+      {step === 1 && <p className="mt-2 text-xs text-muted-foreground">{PRIVACY_NOTICE}</p>}
 
       {step === 1 && (
         <div className="mt-3 space-y-4">
-          <div className="rounded-xl border border-border p-3.5">
-            <label className="text-sm font-medium">지금 가장 큰 재무 고민을 적어주세요</label>
+          <div className="survey-field">
+            <label htmlFor="money-concern" className="text-sm font-medium">가장 신경 쓰이는 돈 고민 <span className="text-xs text-muted-foreground">· 선택</span></label>
             <textarea
+              id="money-concern"
               value={input.biggestConcern}
               onChange={(e) => set("biggestConcern", e.target.value)}
               placeholder="예: 매달 돈이 어디로 가는지 모르겠어요"
@@ -215,7 +217,7 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
             onChange={(v) => set("emergencyFund", v)}
           />
 
-          <div className="rounded-xl border border-border p-3.5">
+          <div className="survey-field">
             <p className="text-sm font-medium">대출이나 빚이 있으세요?</p>
             <div className="mt-2.5 flex gap-2">
               <TapOption selected={input.hasDebt === false} onClick={() => set("hasDebt", false)} label="없음" />
@@ -240,7 +242,7 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
           )}
 
           {isBusinessOwner && (
-            <div className="rounded-xl border border-border p-3.5">
+            <div className="survey-field">
               <p className="text-sm font-medium">사업자금과 생활비를 분리해서 관리하세요?</p>
               <div className="mt-2.5 flex gap-2">
                 <TapOption selected={input.businessSeparatesFinance === true} onClick={() => set("businessSeparatesFinance", true)} label="예" />
@@ -250,24 +252,30 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
           )}
 
           {isFreelancer && (
-            <div className="rounded-xl border border-border p-3.5">
+            <div className="survey-field">
               <p className="text-sm font-medium">월 소득이 들쭉날쭉하다면, 낮은 달/평균/높은 달은요?</p>
               <div className="mt-2.5 space-y-2">
                 <input
                   value={input.freelancerIncomeLow ?? ""}
                   onChange={(e) => set("freelancerIncomeLow", e.target.value)}
+                  aria-label="낮은 달(만원)"
+                  inputMode="decimal"
                   placeholder="낮은 달(만원)"
                   className="w-full rounded-lg border border-border p-2 text-sm outline-none"
                 />
                 <input
                   value={input.freelancerIncomeAvg ?? ""}
                   onChange={(e) => set("freelancerIncomeAvg", e.target.value)}
+                  aria-label="평균 달(만원)"
+                  inputMode="decimal"
                   placeholder="평균 달(만원)"
                   className="w-full rounded-lg border border-border p-2 text-sm outline-none"
                 />
                 <input
                   value={input.freelancerIncomeHigh ?? ""}
                   onChange={(e) => set("freelancerIncomeHigh", e.target.value)}
+                  aria-label="높은 달(만원)"
+                  inputMode="decimal"
                   placeholder="높은 달(만원)"
                   className="w-full rounded-lg border border-border p-2 text-sm outline-none"
                 />
@@ -292,7 +300,7 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
 
       <div className="mt-auto flex gap-2 pt-8">
         {step > 1 && (
-          <Button variant="outline" size="lg" onClick={() => setStep((s) => s - 1)} className="h-13 rounded-full">
+          <Button variant="outline" size="lg" onClick={() => { setStep((s) => s - 1); document.getElementById("conversion-funnel")?.scrollIntoView({ block: "start" }); }} className="h-13 rounded-full">
             이전
           </Button>
         )}

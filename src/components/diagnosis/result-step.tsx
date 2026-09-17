@@ -70,7 +70,7 @@ export function ResultStep({
 
   return (
     <div className="result-bright flex flex-1 flex-col">
-      <p className="text-sm font-medium text-(--gold)">나의 재물운</p>
+      <p className="section-eyebrow">나의 재물사주</p>
 
       <motion.div
         ref={cardRef}
@@ -96,7 +96,7 @@ export function ResultStep({
             />
             {tendency.element}(五行) · {tendency.stemName}
           </Badge>
-          <h2 className="text-xl leading-snug font-semibold tracking-tight text-(--gold)">
+          <h2 className="text-2xl leading-snug font-semibold tracking-tight text-foreground">
             {lead ? lead.headline : tendency.wealthType}
           </h2>
           {(lead ? lead.rest : isDeep ? interp!.summary : tendency.summary) && (

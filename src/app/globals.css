@@ -307,4 +307,29 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .diagnosis-layers { display: grid; gap: 0; border-block: 1px solid var(--border); }
 .diagnosis-layers > div { padding: 18px 0; }
 .diagnosis-layers > div + div { border-top: 1px solid var(--border); }
+.journey-surface { display: flex; flex: 1; width: 100%; min-height: 100svh; }
+.journey-shell { display: flex; flex: 1; flex-direction: column; width: 100%; max-width: 480px; margin-inline: auto; padding: max(24px, env(safe-area-inset-top)) 24px max(40px, env(safe-area-inset-bottom)); word-break: keep-all; overflow-wrap: anywhere; }
+.journey-header { margin-bottom: 36px; }
+.journey-scene { width: 100%; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 22px; background: #e9dec9; }
+.journey-scene-compact { aspect-ratio: 2.1; }
+.journey-scene-compact img { object-position: center 64%; }
+.experience-panel.transition-panel { padding: 16px 16px 24px; }
+.experience-panel .journey-scene { border-radius: 15px; }
+.reading-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; padding-block: 12px; border-block: 1px solid var(--border); color: var(--muted-foreground); font-size: 12px; text-align: left; }
+.report-section { margin-top: 36px; }
+.report-section > h3 { padding-top: 12px; }
+.report-section + .report-section { border-top: 1px solid var(--border); padding-top: 16px; }
+.report-section p { word-break: keep-all; overflow-wrap: anywhere; }
+.survey-field { min-width: 0; border: 1px solid var(--border); border-radius: 18px; padding: 18px; background: var(--card); }
+fieldset.survey-field { padding-top: 8px; }
+.survey-field legend { padding-inline: 4px; max-width: 100%; line-height: 1.6; }
+.survey-form textarea { min-height: 72px; }
+.survey-form input { min-height: 44px; }
+.survey-form > div.space-y-4 { margin-top: 24px; }
+.diagnosis-priority { padding: 24px; border: 1px solid var(--gold-soft); border-radius: 22px; background: var(--card); box-shadow: 0 14px 32px -28px #283b5440; }
+.result-bright .diagnosis-layers > div { padding-block: 24px; }
+@media (min-width: 640px) {
+  .journey-shell { max-width: 520px; padding: 32px 40px 64px; }
+  .journey-header { margin-bottom: 44px; }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

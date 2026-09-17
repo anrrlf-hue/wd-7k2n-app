@@ -38,6 +38,7 @@ export function BirthTimeStep({
         <button
           type="button"
           onClick={() => onKnowsTimeChange(true)}
+          aria-pressed={knowsTime}
           className={`rounded-xl border p-4 text-left transition-colors ${
             knowsTime ? "mystic-card border-(--gold-soft)" : "border-border"
           }`}
@@ -63,6 +64,7 @@ export function BirthTimeStep({
         <button
           type="button"
           onClick={() => onKnowsTimeChange(false)}
+          aria-pressed={!knowsTime}
           className={`rounded-xl border p-4 text-left transition-colors ${
             !knowsTime ? "mystic-card border-(--gold-soft)" : "border-border"
           }`}
@@ -81,7 +83,7 @@ export function BirthTimeStep({
           onClick={onNext}
           className="h-13 flex-1 rounded-full text-base"
         >
-          내 재물운 보기
+          다음
         </Button>
       </div>
     </div>

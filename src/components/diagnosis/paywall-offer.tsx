@@ -7,10 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RECOMMENDED_PRICE } from "@/lib/pricing";
 import { track } from "@/lib/analytics";
 
-/** 첫 유료 결제창은 극도로 단순화한다 — 개인화 제목 -> 이 결제로 알게 될
- * 3~4가지 -> 가격 -> CTA, 그게 전부다. 이전에 있던 Trust Signal Grid(기술
- * 근거·금융상품 미판매·이미지 저장 안내)는 전부 제거했다 — 사용자가 이
- * 화면에서 계속 생각해야 하는 건 자기 재물운뿐이어야 한다. */
+/** Management report preview. Until payment is connected, the CTA explains availability. */
 export function PaywallOffer({
   title,
   includedItems,

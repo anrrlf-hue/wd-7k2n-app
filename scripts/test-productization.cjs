@@ -19,6 +19,18 @@ const { computeExperienceOutcome } = require('../src/lib/indirect-experience.ts'
 const base = { biggestConcern: '', jobType: 'employee_fixed', futureEvents: ['none'], monthlyIncomeKrw: 3000000,
   monthlyFixedCostKrw: 1000000, monthlyLivingCostKrw: 1200000, monthlySavingsKrw: 900000,
   expenseAwareness: 'rough', emergencyFund: '3_6m', hasDebt: false, moneyManagementUnit: 'individual', spendingPatterns: ['auto_savings'] };
+
+test('management routines reflect behavior without changing financial diagnosis', () => {
+  const { suggestManagementMethod } = require('../src/lib/management-method.ts');
+  const before = buildAnalysisResult(base);
+  assert.equal(suggestManagementMethod(['security', 'security', 'growth'], []).id, 'rules');
+  assert.equal(suggestManagementMethod(['flexibility', 'flexibility', 'growth'], []).id, 'simple');
+  assert.equal(suggestManagementMethod(['growth', 'growth', 'security'], []).id, 'review');
+  assert.equal(suggestManagementMethod(['security', 'flexibility', 'growth'], []).id, 'neutral');
+  assert.equal(suggestManagementMethod([], []).id, 'neutral');
+  assert.equal(suggestManagementMethod(['security', 'security', 'growth'], ['avoidance']).id, 'scheduled');
+  assert.deepEqual(buildAnalysisResult(base), before);
+});
 test('living expenses expose an overcommitted monthly budget', () => {
   assert.equal(surplusKrw(base), -100000);
   assert.equal(detectBottleneck(base), 'cash_flow_deficit');

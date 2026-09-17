@@ -3,7 +3,6 @@
 // 손금(생명선/감정선/두뇌선)을 추상적인 라인 아트로 표현한 장식용 일러스트.
 // 실제 손금 인식/분석과는 무관하며, 손금 업로드 유도 카드에만 사용한다.
 
-import { motion } from "framer-motion";
 
 const LINES = [
   "M20 78 C 30 65, 28 45, 42 30", // 생명선
@@ -25,25 +24,14 @@ export function PalmLineIllustration() {
         strokeWidth="1.4"
         opacity="0.35"
       />
-      {LINES.map((d, i) => (
-        <motion.path
+      {LINES.map((d) => (
+        <path
           key={d}
           d={d}
           fill="none"
           stroke="currentColor"
           strokeWidth="2.2"
           strokeLinecap="round"
-          initial={{ pathLength: 0.001, opacity: 0.9 }}
-          animate={{ pathLength: 1, opacity: [0.9, 1, 0.55, 1] }}
-          transition={{
-            pathLength: { duration: 1.2, delay: 0.15 + i * 0.25, ease: "easeInOut" },
-            opacity: {
-              duration: 2.6,
-              repeat: Infinity,
-              delay: 1.4 + i * 0.5,
-              ease: "easeInOut",
-            },
-          }}
         />
       ))}
     </svg>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { JourneyScene } from "@/components/journey-scene";
 import { Button } from "@/components/ui/button";
 import { getExperienceScenes, computeExperienceOutcome } from "@/lib/indirect-experience";
 import { PALM_FLAVOR_LINE } from "@/lib/indirect-experience-data";
@@ -18,10 +19,12 @@ export function IndirectExperience({
   wealthTypeCode,
   palmKeyword,
   onComplete,
+  onStart,
 }: {
   wealthTypeCode: WealthTypeCode;
   palmKeyword: PalmKeyword;
-  onComplete: (summary: string) => void;
+  onComplete: (summary: string, choices: ExperienceChoice["tendency"][]) => void;
+  onStart: () => void;
 }) {
   const [stage, setStage] = useState<Stage>("intro");
   const [choices, setChoices] = useState<ExperienceChoice["tendency"][]>([]);
@@ -39,10 +42,12 @@ export function IndirectExperience({
   }
 
   return (
-    <div ref={panelRef} className="transition-panel mt-8 scroll-mt-6">
+    <div ref={panelRef} className={`experience-panel scroll-mt-6 ${stage === "intro" ? "transition-panel" : ""}`}>
       {stage === "intro" && (
         <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <p className="text-sm font-medium">나는 실제로 어떤 선택을 할까요?</p>
+          <JourneyScene scene="choice" />
+          <p className="section-eyebrow mt-6">다음 이야기 · 나의 선택</p>
+          <h2 className="mt-2 text-2xl leading-snug font-semibold">나는 실제로<br />어떤 선택을 할까요?</h2>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
             세 가지 일상 장면에서 더 마음이 가는 쪽을 골라보세요. 정답도 점수도 없습니다.
           </p>
@@ -51,6 +56,7 @@ export function IndirectExperience({
             size="lg"
             onClick={() => {
               track("indirect_experience_started");
+              onStart();
               setStage(0);
             }}
             className="mt-4 h-13 w-full rounded-full text-base"
@@ -65,8 +71,8 @@ export function IndirectExperience({
           <p className="text-xs text-muted-foreground">
             {stage + 1} / {scenes.length}
           </p>
-          <p className="mt-1.5 text-xl leading-relaxed font-semibold">{scenes[stage].situation}</p>
-          <div className="mt-3 flex flex-col gap-2">
+          <p className="mt-4 text-2xl leading-relaxed font-semibold">{scenes[stage].situation}</p>
+          <div className="mt-7 flex flex-col gap-3">
             {scenes[stage].choices.map((opt) => (
               <button
                 key={opt.id}
@@ -83,11 +89,14 @@ export function IndirectExperience({
 
       {stage === "outcome" && (
         <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <p className="rounded-xl bg-accent p-3.5 text-sm leading-relaxed text-accent-foreground">
+          <p className="section-eyebrow">타고난 성향과 나의 선택</p>
+          <h2 className="mt-2 text-2xl font-semibold">이번 선택에서 발견한 나</h2>
+          <p className="mt-4 rounded-2xl bg-card border border-border p-5 text-base leading-relaxed">
             {computeExperienceOutcome(wealthTypeCode, choices)}
           </p>
-          <p className="mt-6 text-lg font-semibold leading-relaxed">이제, 타고난 운세를 현실과 연결해 볼까요?</p>
-          <Button size="lg" onClick={() => onComplete(computeExperienceOutcome(wealthTypeCode, choices))} className="mt-4 h-13 w-full rounded-full text-base">
+          <div className="mt-8"><JourneyScene scene="reality" /></div>
+          <p className="mt-6 text-xl font-semibold leading-relaxed">이제, 타고난 운세를 현실과 연결해 볼까요?</p>
+          <Button size="lg" onClick={() => onComplete(computeExperienceOutcome(wealthTypeCode, choices), choices)} className="mt-4 h-13 w-full rounded-full text-base">
             내 현실 재무상태 연결하기
           </Button>
         </motion.div>

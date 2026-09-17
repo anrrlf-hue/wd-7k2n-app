@@ -48,10 +48,11 @@ export function PersonalityStep({
         <br />볼까요?
       </h2>
       <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-        간단 성향 체크 6문항이에요. 사주를 맞추는 용도가 아니라, 사주와 자기 생각이 얼마나 비슷한지 비교하는 용도예요. 건너뛰어도 결과에는 영향 없어요.
+        내 생각과 사주 해석을 비교하는 6문항이에요. 건너뛰어도 사주 결과를 볼 수 있어요.
       </p>
 
-      <div className="mt-6 space-y-4">
+      <p className="mt-4 text-xs text-muted-foreground">왼쪽에 가까우면 1, 오른쪽에 가까우면 5를 골라요.</p>
+      <div className="mt-4 space-y-4">
         {PERSONALITY_CHECK_ITEMS.map((item) => (
           <div key={item.id} className="rounded-xl border border-border p-3.5">
             <div className="flex items-start justify-between gap-3 text-sm text-foreground/80">
@@ -64,6 +65,8 @@ export function PersonalityStep({
                   key={v}
                   type="button"
                   onClick={() => onPersonalityChange(item.id, v)}
+                  aria-pressed={personalityAnswers[item.id] === v}
+                  aria-label={`${item.leftLabel}에서 ${item.rightLabel}까지 5단계 중 ${v}`}
                   className={`flex-1 rounded-lg border py-3 text-base transition-colors ${
                     personalityAnswers[item.id] === v
                       ? "border-(--gold) bg-(--gold-soft) text-(--gold)"
@@ -79,8 +82,9 @@ export function PersonalityStep({
       </div>
 
       <div className="mt-6">
-        <p className="text-[15px] font-medium">MBTI를 알고 있다면 선택해주세요</p>
+        <label htmlFor="mbti" className="text-[15px] font-medium">MBTI를 알고 있다면 선택해주세요</label>
         <select
+          id="mbti"
           value={mbti}
           onChange={(e) => onMbtiChange(e.target.value as MbtiType | "모름")}
           className="mystic-card mt-2 w-full rounded-xl border border-border p-3.5 text-[15px]"

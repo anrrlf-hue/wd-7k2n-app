@@ -9,9 +9,9 @@ export function StepBadge({ icon }: { icon: ReactNode }) {
       initial={false}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="relative mb-6 flex size-14 items-center justify-center rounded-full bg-(--gold-soft) text-(--gold)"
+      className="relative mb-5 flex size-12 items-center justify-center rounded-full bg-(--gold-soft) text-(--gold)"
     >
-      <div className="animate-twinkle absolute inset-0 rounded-full ring-1 ring-(--gold-soft)" />
+      <div className="absolute inset-0 rounded-full ring-1 ring-(--gold-soft)" />
       {icon}
     </motion.div>
   );

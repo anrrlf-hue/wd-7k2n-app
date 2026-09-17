@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Camera, ImagePlus, RotateCcw, HandMetal } from "lucide-react";
+import { Camera, ImagePlus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { StepBadge } from "@/components/diagnosis/step-badge";
-import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
+import { JourneyHeader } from "@/components/journey-header";
+import { JourneyScene } from "@/components/journey-scene";
+import { suggestManagementMethod, type ManagementMethod } from "@/lib/management-method";
+import type { ChoiceTendency } from "@/lib/indirect-experience-data";
 import { VerdictCard } from "@/components/diagnosis/verdict-card";
 import { ReportSection, ParagraphSection, EvidenceItemCard, EvidenceToggle } from "@/components/diagnosis/report-section";
 import { IndirectExperience } from "@/components/palm/indirect-experience";
@@ -86,10 +88,10 @@ const COMPARE_KIND_LABEL: Record<CompareItem["kind"], string> = { 일치: "일�
 /** 손금 자체 해석이 끝난 뒤 딱 한 번 나오는 사주×손금×자기응답 통합 비교.
  * 데이터가 있는 축만 서버(triple-compare.ts)에서 내려오므로, 여기서는
  * 있는 그대로 나열만 한다 — 일치로 억지로 맞추지 않는다. */
-function TripleCompareSection({ items }: { items: CompareItem[] }) {
+function TripleCompareSection({ items, withPalm = true }: { items: CompareItem[]; withPalm?: boolean }) {
   if (items.length === 0) return null;
   return (
-    <ReportSection step="③" title="비교 · 사주와 손금의 같은 점과 다른 점">
+    <ReportSection step="③" title={withPalm ? "비교 · 사주와 손금의 같은 점과 다른 점" : "비교 · 사주와 나의 응답"}>
       <div className="space-y-2.5">
         {items.map((item) => (
           <div key={item.topic} className="rounded-xl border border-border p-3.5">
@@ -120,21 +122,30 @@ function ConversionFunnel({
   wealthType,
   palmFacts,
   onReset,
+  onStart,
+  onChapterChange,
 }: {
   wealthType: WealthTypeResult | null;
   palmFacts: PalmFacts | null;
   onReset: () => void;
+  onStart: () => void;
+  onChapterChange: (chapter: 3 | 4 | 5) => void;
 }) {
   const [stage, setStage] = useState<FunnelStage>("experience");
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
+  const [choiceTendencies, setChoiceTendencies] = useState<ChoiceTendency[]>([]);
+  const [surveyInput, setSurveyInput] = useState<SurveyInput | undefined>();
+  const [method, setMethod] = useState<ManagementMethod | null>(null);
   const [choiceSummary, setChoiceSummary] = useState<string | null>(null);
   const funnelRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (stage !== "experience") funnelRef.current?.scrollIntoView({ block: "start" }); }, [stage]);
 
   if (!wealthType) return null;
 
-  function handleExperienceComplete(summary: string) {
+  function handleExperienceComplete(summary: string, choices: ChoiceTendency[]) {
+    setChoiceTendencies(choices);
+    onChapterChange(4);
     setChoiceSummary(summary);
     track("indirect_experience_completed");
     setStage("survey");
@@ -142,6 +153,8 @@ function ConversionFunnel({
 
   function handleSurveyComplete(input: SurveyInput) {
     track("survey_completed");
+    setSurveyInput(input);
+    setMethod(suggestManagementMethod(choiceTendencies, input.spendingPatterns));
     setAnalysisResult(buildAnalysisResult(input));
     setStage("analysis");
     track("analysis_result_viewed");
@@ -153,26 +166,29 @@ function ConversionFunnel({
         <IndirectExperience
           wealthTypeCode={wealthType.code}
           palmKeyword={derivePalmKeyword(palmFacts)}
+          onStart={() => { onStart(); onChapterChange(3); }}
           onComplete={handleExperienceComplete}
         />
       )}
 
-      {stage === "survey" && <SurveyForm onComplete={handleSurveyComplete} />}
+      {stage === "survey" && <SurveyForm initialValue={surveyInput} onComplete={handleSurveyComplete} />}
 
       {stage === "analysis" && analysisResult && (
         <AnalysisResultCard
           result={analysisResult}
+          method={method}
           innateSummary={wealthType.pieces.typeAndDiagnosis}
           choiceSummary={choiceSummary}
           onRevise={() => setStage("survey")}
           onProceed={() => {
             track("payment_screen_viewed");
+            onChapterChange(5);
             setStage("payment");
           }}
         />
       )}
 
-      {stage === "payment" && <PaymentScreen />}
+      {stage === "payment" && <PaymentScreen method={method} onBack={() => { onChapterChange(4); setStage("analysis"); }} />}
 
       <button
         type="button"
@@ -180,7 +196,7 @@ function ConversionFunnel({
         className="mt-6 flex w-full items-center justify-center gap-1.5 text-center text-xs text-muted-foreground"
       >
         <RotateCcw className="size-3.5" />
-        다른 사진으로 다시 보기
+        손금부터 다시 보기
       </button>
     </div>
   );
@@ -202,6 +218,9 @@ export function PalmPageClient({
   const [wealthType, setWealthType] = useState<WealthTypeResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retakeAttempts, setRetakeAttempts] = useState(0);
+  const [funnelActive, setFunnelActive] = useState(false);
+  const [readingOpen, setReadingOpen] = useState(true);
+  const [chapter, setChapter] = useState<2 | 3 | 4 | 5>(2);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -288,6 +307,10 @@ export function PalmPageClient({
   }
 
   function reset() {
+    setFunnelActive(false);
+    setReadingOpen(true);
+    setChapter(2);
+    window.scrollTo({ top: 0 });
     setStage("upload");
     setPalmFacts(null);
     setFinalReport(null);
@@ -313,24 +336,25 @@ export function PalmPageClient({
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-sm flex-1 flex-col px-6 py-10 ${stage === "result" || stage === "saju_only" ? "result-bright" : ""}`}
+      className={`journey-surface ${stage === "result" || stage === "saju_only" ? "result-bright" : ""}`}
     >
-      <StepBadge icon={<HandMetal className="size-5" />} />
+      <div className="journey-shell">
+      <JourneyHeader chapter={chapter} />
+      <div hidden={funnelActive}>
       <p className="section-eyebrow">두 번째 분석 · 손금</p>
       <h1 className="mt-2 text-xl leading-snug font-semibold tracking-tight">
         {stage === "result" ? "손에서 관측한 것부터, 하나씩" : stage === "saju_only" ? "사주에서 선택으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
       </h1>
+      </div>
 
       {stage === "upload" && (
-        <div className="mt-8 flex flex-1 flex-col">
-          <div className="palm-capture-card rounded-3xl flex flex-col items-center gap-4 p-7 text-center">
-            <span className="flex size-16 items-center justify-center rounded-full bg-(--gold-soft)">
-              <PalmLineIllustration />
-            </span>
+        <div className="mt-6 flex flex-1 flex-col">
+          <JourneyScene scene="palm" />
+          <div className="mt-5">
             <p className="text-sm leading-relaxed text-muted-foreground">
-              손바닥 전체가 프레임 안에 들어오게, 밝은 곳에서 찍어주세요.
+              밝은 곳에서 손바닥 전체를 담아주세요.
               <br />
-              손금선이 잘 보이도록 손가락을 살짝 펴면 더 좋아요.
+              손가락을 살짝 펴고, 손금선에 초점을 맞춰요.
             </p>
           </div>
 
@@ -450,6 +474,8 @@ export function PalmPageClient({
         </div>
       )}
 
+      {funnelActive && <button type="button" className="reading-toggle" aria-expanded={readingOpen} aria-controls="previous-reading" onClick={() => setReadingOpen(!readingOpen)}>{readingOpen ? "이전 결과 접기" : "이전 사주·손금 결과 다시 보기"}<span aria-hidden="true">{readingOpen ? "−" : "+"}</span></button>}
+      <div id="previous-reading" hidden={!readingOpen}>
       {stage === "result" && palmFacts && finalReport && (
         <div className="mt-6 flex flex-1 flex-col">
           <motion.div
@@ -490,7 +516,6 @@ export function PalmPageClient({
 
           <FinalReportSections report={finalReport} />
           {verdict && <VerdictCard verdict={verdict} />}
-          <ConversionFunnel wealthType={wealthType} palmFacts={palmFacts} onReset={reset} />
         </div>
       )}
 
@@ -499,18 +524,21 @@ export function PalmPageClient({
           <div className="mystic-card p-4 text-sm text-muted-foreground">
             이번 결과는 사주와 입력한 정보를 중심으로 봤어요.
           </div>
-          <TripleCompareSection items={tripleCompare} />
+          <TripleCompareSection items={tripleCompare} withPalm={false} />
           <FinalReportSections report={finalReport} />
           {verdict && <VerdictCard verdict={verdict} />}
-          <ConversionFunnel wealthType={wealthType} palmFacts={palmFacts} onReset={reset} />
         </div>
       )}
+
+      </div>
+      {(stage === "result" || stage === "saju_only") && <ConversionFunnel wealthType={wealthType} palmFacts={stage === "result" ? palmFacts : null} onReset={reset} onStart={() => { setFunnelActive(true); setReadingOpen(false); }} onChapterChange={setChapter} />}
 
       {/* 무료 리포트 Peak와 다음 행동(운세지도) 사이에 고지 문구가 끼면
        * 몰입이 끊긴다(§O) — 필요한 고지는 여기, 진짜 페이지 최하단에만 둔다. */}
       {(stage === "result" || stage === "saju_only") && (
         <p className="mt-8 text-center text-[11px] text-muted-foreground">이 결과로 중요한 결정을 대신하지 마세요.</p>
       )}
+      </div>
     </div>
   );
 }

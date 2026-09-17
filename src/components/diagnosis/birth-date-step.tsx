@@ -29,7 +29,7 @@ export function BirthDateStep({
         알려주세요
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        사주는 양력 날짜 기준으로 계산돼요. 음력 생일만 알고 계시다면 양력으로 변환한 날짜를 입력해주세요. 대운 방향 계산에 성별도 함께 써요.
+        양력 생일을 입력해 주세요. 성별은 대운의 방향을 계산할 때 사용해요.
       </p>
 
       <div className="mystic-card mt-10 flex flex-col gap-2 p-5">
@@ -53,6 +53,7 @@ export function BirthDateStep({
             key={g}
             type="button"
             onClick={() => onGenderChange(g)}
+            aria-pressed={gender === g}
             className={`rounded-xl border p-3 text-sm font-medium transition-colors ${
               gender === g ? "mystic-card border-(--gold-soft)" : "border-border"
             }`}

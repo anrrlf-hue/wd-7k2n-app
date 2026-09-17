@@ -6,7 +6,7 @@ import { HeroVisual } from "@/components/landing/hero-visual";
 export default function Home() {
   return <main className="landing-screen flex flex-1 flex-col items-center justify-center text-center">
     <LandingReveal>
-      <p className="landing-brand section-eyebrow">재물사주</p>
+      <p className="landing-brand text-sm font-semibold tracking-widest">재물사주</p>
       <HeroVisual />
       <div className="landing-content px-6">
       <h1 className="landing-headline font-semibold tracking-tight">타고난 운세로 끝내지 않고,<br /><span>현실로 연결합니다.</span></h1>
