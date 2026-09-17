@@ -1,5 +1,6 @@
 "use client";
 
+import { CompanionHeading } from "@/components/angel-companion";
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
@@ -70,7 +71,7 @@ export function ResultStep({
 
   return (
     <div className="result-bright flex flex-1 flex-col">
-      <p className="section-eyebrow">나의 재물사주</p>
+      <CompanionHeading state="saju-companion"><p className="section-eyebrow">나의 재물사주</p></CompanionHeading>
 
       <motion.div
         ref={cardRef}

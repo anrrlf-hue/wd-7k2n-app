@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { CompanionHeading } from "@/components/angel-companion";
 import { JourneyScene } from "@/components/journey-scene";
 import { Button } from "@/components/ui/button";
 import { getExperienceScenes, computeExperienceOutcome } from "@/lib/indirect-experience";
@@ -46,8 +47,10 @@ export function IndirectExperience({
       {stage === "intro" && (
         <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <JourneyScene scene="choice" />
-          <p className="section-eyebrow mt-6">다음 이야기 · 나의 선택</p>
+          <div className="mt-6"><CompanionHeading state="simulation-companion" presence="regular">
+          <p className="section-eyebrow">다음 이야기 · 나의 선택</p>
           <h2 className="mt-2 text-2xl leading-snug font-semibold">나는 실제로<br />어떤 선택을 할까요?</h2>
+          </CompanionHeading></div>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
             세 가지 일상 장면에서 더 마음이 가는 쪽을 골라보세요. 정답도 점수도 없습니다.
           </p>
@@ -68,9 +71,7 @@ export function IndirectExperience({
 
       {typeof stage === "number" && scenes[stage] && (
         <motion.div key={scenes[stage].id} initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          <p className="text-xs text-muted-foreground">
-            {stage + 1} / {scenes.length}
-          </p>
+          <CompanionHeading state="simulation-companion"><p className="text-xs text-muted-foreground">{stage + 1} / {scenes.length}</p></CompanionHeading>
           <p className="mt-4 text-2xl leading-relaxed font-semibold">{scenes[stage].situation}</p>
           <div className="mt-7 flex flex-col gap-3">
             {scenes[stage].choices.map((opt) => (
@@ -89,8 +90,10 @@ export function IndirectExperience({
 
       {stage === "outcome" && (
         <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <CompanionHeading state="reality-transition" presence="regular">
           <p className="section-eyebrow">타고난 성향과 나의 선택</p>
           <h2 className="mt-2 text-2xl font-semibold">이번 선택에서 발견한 나</h2>
+          </CompanionHeading>
           <p className="mt-4 rounded-2xl bg-card border border-border p-5 text-base leading-relaxed">
             {computeExperienceOutcome(wealthTypeCode, choices)}
           </p>

@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { SajuFormingVisual } from "@/components/diagnosis/saju-forming-visual";
+import { AngelCompanion } from "@/components/angel-companion";
 
 // 실제 파이프라인 4단계(사주 계산 -> 구조 분석 -> 재물/직업 흐름 분석 ->
 // 개인 해석 생성)에 맞춘 문구. 딥 해석 호출이 오래 걸리면 마지막 문구에서
 // 자연스럽게 반복된다. 콜드스타트 등으로 서버가 평소보다 오래 걸릴 때
 // "멈춘 것 같다"는 인상을 주지 않도록 5번째 문구를 추가해둔다 — 화면
-// 자체(SajuFormingVisual)는 계속 움직이지만, 텍스트도 가만히 있지 않게.
+// 캐릭터는 조용히 머물고, 상태 문구만 진행 상황을 알려준다.
 const STATUS_MESSAGES = [
   "사주를 계산하는 중이에요",
   "명식 구조를 분석하는 중이에요",
@@ -31,7 +31,7 @@ export function LoadingStep() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
-      <SajuFormingVisual />
+      <AngelCompanion state="analyzing" presence="transition" />
       <AnimatePresence mode="wait" initial={false}>
         <motion.p
           key={statusIndex}

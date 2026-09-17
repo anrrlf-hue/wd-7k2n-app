@@ -1,5 +1,6 @@
 "use client";
 
+import { CompanionHeading } from "@/components/angel-companion";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -159,8 +160,10 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
 
   return (
     <div className="survey-form flex flex-1 flex-col">
+      <CompanionHeading state="finance-guide">
       <p className="section-eyebrow">현실 재무질문 · {step} / 3</p>
       <h2 className="mt-2 text-2xl font-semibold">{["지금의 생활부터", "한 달 돈의 흐름", "내게 필요한 준비"][step - 1]}</h2>
+      </CompanionHeading>
       <p className="mt-2 text-sm text-muted-foreground">{["내 상황에 필요한 질문만 이어집니다.", "한 달 기준, 원 단위로 입력해 주세요.", "해당하는 상황만 조금 더 확인할게요."][step - 1]}</p>
       {step === 1 && <p className="mt-2 text-xs text-muted-foreground">{PRIVACY_NOTICE}</p>}
 

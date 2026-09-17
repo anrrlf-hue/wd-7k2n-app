@@ -4,6 +4,7 @@ import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
 import { TrustBadges } from "@/components/palm/trust-badges";
 import { REPORT_CONTENTS } from "@/lib/report-contents";
 import { PAYMENT_TIMING_NOTICE, REFUND_POLICY_NOTICE } from "@/lib/payment-notices";
+import { CompanionHeading } from "@/components/angel-companion";
 import { JourneyScene } from "@/components/journey-scene";
 import type { ManagementMethod } from "@/lib/management-method";
 
@@ -17,8 +18,10 @@ export function PaymentScreen({ method, onBack }: { method: ManagementMethod | n
   return (
     <div>
       <JourneyScene scene="reality" compact />
-      <p className="section-eyebrow mt-6">맞춤 관리 리포트</p>
+      <div className="mt-6"><CompanionHeading state="report-handoff" presence="transition">
+      <p className="section-eyebrow">맞춤 관리 리포트</p>
       <h2 className="mt-3 text-2xl font-semibold">알게 된 나를,<br />지속할 수 있는 방법으로</h2>
+      </CompanionHeading></div>
       <p className="mt-3 text-sm text-muted-foreground">현재 준비 중인 리포트의 구성입니다. 결제 기능과 리포트 제공은 아직 시작되지 않았어요.</p>
       {method && <div className="mt-6 rounded-2xl border border-border p-5">
         <p className="section-eyebrow">내 응답에서 찾은 실행 방향</p>

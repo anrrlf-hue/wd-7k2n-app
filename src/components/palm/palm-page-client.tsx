@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Camera, ImagePlus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CompanionHeading } from "@/components/angel-companion";
 import { JourneyHeader } from "@/components/journey-header";
 import { JourneyScene } from "@/components/journey-scene";
 import { suggestManagementMethod, type ManagementMethod } from "@/lib/management-method";
@@ -341,10 +342,12 @@ export function PalmPageClient({
       <div className="journey-shell">
       <JourneyHeader chapter={chapter} />
       <div hidden={funnelActive}>
+      <CompanionHeading state={stage === "upload" ? "palm-guide" : "palm-observing"} presence={stage === "upload" ? "transition" : "quiet"}>
       <p className="section-eyebrow">두 번째 분석 · 손금</p>
       <h1 className="mt-2 text-xl leading-snug font-semibold tracking-tight">
         {stage === "result" ? "손에서 관측한 것부터, 하나씩" : stage === "saju_only" ? "사주에서 선택으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
       </h1>
+      </CompanionHeading>
       </div>
 
       {stage === "upload" && (
