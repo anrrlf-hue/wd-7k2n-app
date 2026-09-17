@@ -225,13 +225,7 @@
     0 12px 40px -18px #15203325;
 }
 
-/* 결과를 3~5분 읽는 화면 전용 밝은 테마. 랜딩/입력 단계의 어두운 신비 테마는
- * 그대로 두고, 이 클래스로 감싼 하위 트리에서만 변수를 덮어써 가독성을
- * 우선한다(카드보다 문단 중심, 아이보리 배경 + 짙은 먹색/네이비 본문,
- * 에메랄드 그린은 포인트로만 — 어두운 테마와 동일한 브랜드 컬러를 유지해
- * 화면이 전환돼도 "재물운=에메랄드" 톤이 이어지게 한다). mystic-card/
- * mystic-ring 등 기존 컴포넌트는 var(--card)/var(--gold) 등을 그대로
- * 참조하므로 별도 리팩터 없이 밝은 톤으로 자연스럽게 전환된다. */
+/* Quiet ivory reading surface; navy text and restrained warm-gold highlights. */
 .result-bright {
   --background: oklch(0.975 0.01 85);
   --foreground: oklch(0.26 0.03 265);
@@ -263,8 +257,43 @@
   line-height: 1.7;
 }
 /* Product surfaces: still hero, quiet reading, one clear next action. */
-.landing-screen { min-height: 100svh; background: radial-gradient(ellipse at 50% 18%, #253146 0%, #152033 65%); }
-.hero-art { height: clamp(160px, 31svh, 270px); margin-block: 8px 12px; mask-image: radial-gradient(ellipse 65% 60% at center, black 48%, transparent 100%); }
+.landing-screen {
+  min-height: 100svh;
+  padding-block: max(20px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-bottom));
+  background: radial-gradient(ellipse at 50% 28%, #283144, #152033 70%);
+}
+.landing-screen > div { width: 100%; max-width: 480px; }
+.landing-brand { position: relative; z-index: 1; margin-bottom: 4px; }
+.hero-scene {
+  height: clamp(270px, 47svh, 410px);
+  mask-image: linear-gradient(to bottom, transparent, black 9%, black 83%, transparent);
+}
+.hero-scene img { object-position: 50% 55%; }
+.landing-content { position: relative; margin-top: -2px; }
+.landing-headline { font-size: clamp(20px, 5.6vw, 25px); line-height: 1.65; text-wrap: balance; }
+.landing-headline span { color: #f1d6a1; }
+@media (min-width: 640px) {
+  .hero-scene { height: 420px; }
+  .landing-screen { padding-block: 32px; }
+}
+.palm-capture-card {
+  background: radial-gradient(ellipse at 50% 0, #c8ab7426, transparent 75%), var(--card);
+  border: 1px solid #c8ab7440;
+  box-shadow: inset 0 1px #f0d8a714, 0 18px 45px -35px #0008;
+}
+.palm-capture-card > span {
+  background: linear-gradient(145deg, #ead3a6, #b79661);
+  color: #152033;
+  box-shadow: inset 0 1px 2px #fff8, 0 6px 20px #0003;
+}
+.result-bright .transition-panel {
+  background: linear-gradient(135deg, #fffdf8, #f5eee2);
+  border-color: #b58a4230;
+}
+.result-bright h2, .result-bright h3 { text-wrap: pretty; }
+.result-bright .diagnosis-layers > div { padding-block: 22px; }
+.result-bright .diagnosis-layers .section-eyebrow { letter-spacing: .1em; }
+
 .section-eyebrow { font-size: 11px; letter-spacing: .16em; font-weight: 600; color: var(--gold); }
 .primary-cta { background: linear-gradient(115deg, #f0d8a7, #d7b372); color: #152033; box-shadow: 0 8px 24px #0003, inset 0 1px #fff6; }
 .transition-panel { padding: 24px 20px; border: 1px solid var(--border); border-radius: 24px; background: linear-gradient(140deg, var(--card), var(--background)); box-shadow: 0 14px 35px -25px #15203355; }

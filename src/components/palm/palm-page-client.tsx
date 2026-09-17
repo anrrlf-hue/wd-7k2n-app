@@ -323,7 +323,7 @@ export function PalmPageClient({
 
       {stage === "upload" && (
         <div className="mt-8 flex flex-1 flex-col">
-          <div className="mystic-card flex flex-col items-center gap-3 p-6 text-center">
+          <div className="palm-capture-card rounded-3xl flex flex-col items-center gap-4 p-7 text-center">
             <span className="flex size-16 items-center justify-center rounded-full bg-(--gold-soft)">
               <PalmLineIllustration />
             </span>
@@ -338,7 +338,7 @@ export function PalmPageClient({
             <Button
               size="lg"
               onClick={() => cameraInputRef.current?.click()}
-              className="h-13 w-full rounded-full text-base"
+              className="primary-cta h-14 w-full rounded-full text-base"
             >
               <Camera className="size-4" />
               카메라로 촬영하기
