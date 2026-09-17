@@ -339,22 +339,38 @@ fieldset.survey-field { padding-top: 8px; }
 .angel-shadow { position: absolute; z-index: -1; inset: 86% 17% 5%; border-radius: 50%; background: radial-gradient(ellipse, #17263c30, transparent 72%); }
 .angel-quiet .angel-light { opacity: .45; }
 .angel-quiet .angel-shadow { opacity: .35; }
-/* Entry gestures finish once. Reading and survey companions remain completely still. */
-.angel-companion[data-motion="arrive"] .angel-portrait { animation: angel-settle 1800ms ease-out both; }
-.angel-companion[data-motion="arrive"] .angel-light { animation: angel-light-settle 2200ms ease-out both; }
-.angel-companion[data-motion="focus"] .angel-portrait { animation: angel-focus 2800ms ease-in-out both; }
-@keyframes angel-settle {
-  0% { opacity: 0; transform: translateY(5px) rotate(-2deg) scale(.97); }
-  45% { opacity: 1; transform: translateY(-1px) rotate(.7deg) scale(1.01); }
-  100% { opacity: 1; transform: none; }
+/* Start only after image decode, viewport entry and a foreground tab.
+   Each greeting has two gentle gestures, then settles; reading stays still. */
+.angel-companion { --gesture-duration: 3800ms; --gesture-angle: -3deg; --gesture-rise: -2px; }
+.angel-scene, .angel-transition { --gesture-duration: 6800ms; --gesture-angle: -5deg; --gesture-rise: -4px; }
+.angel-companion[data-motion-ready="true"][data-motion="arrive"] .angel-portrait { animation: angel-greet var(--gesture-duration) ease-in-out both; }
+.angel-companion[data-motion-ready="true"]:not([data-motion="still"]) .angel-light { animation: angel-light-greet var(--gesture-duration) ease-in-out both; }
+.angel-companion[data-motion-ready="true"]:not([data-motion="still"]) .angel-shadow { animation: angel-shadow-greet var(--gesture-duration) ease-in-out both; }
+.angel-companion[data-motion-ready="true"][data-motion="focus"] .angel-portrait { animation: angel-focus 6800ms ease-in-out both; }
+@keyframes angel-greet {
+  0% { transform: rotate(0) scale(1); }
+  18% { transform: translate(2px, var(--gesture-rise)) rotate(var(--gesture-angle)) scale(1.035); }
+  38% { transform: translateX(-1px) rotate(2deg) scale(1.015); }
+  55% { transform: none; }
+  73% { transform: translateY(-2px) rotate(-1.5deg) scale(1.025); }
+  100% { transform: none; }
 }
 @keyframes angel-focus {
-  0% { opacity: .5; transform: rotate(-2deg) scale(.98); }
-  35% { opacity: 1; transform: rotate(1deg) scale(1.012); }
-  70% { transform: rotate(-.5deg) scale(.998); }
-  100% { opacity: 1; transform: none; }
+  0%, 55%, 100% { transform: none; }
+  22% { transform: translateY(-2px) rotate(-3deg) scale(1.035); }
+  38% { transform: rotate(1.5deg) scale(1.015); }
+  76% { transform: rotate(-2deg) scale(1.025); }
 }
-@keyframes angel-light-settle { from { opacity: .2; transform: scale(.85); } 50% { opacity: 1; } to { opacity: .65; transform: scale(1); } }
+@keyframes angel-light-greet {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  20% { opacity: 1; transform: translateX(-3px) scale(1.2); }
+  55% { opacity: .5; transform: scale(.95); }
+  75% { opacity: .85; transform: translateX(2px) scale(1.12); }
+}
+@keyframes angel-shadow-greet {
+  0%, 55%, 100% { opacity: .6; transform: scale(1); }
+  20%, 75% { opacity: .35; transform: scale(.85); }
+}
 .hero-scene { overflow: hidden; }
 .hero-world { position: absolute; left: 0; width: 100%; aspect-ratio: 4 / 5; top: 55%; transform: translateY(-55%); }
 .hero-background { width: 100%; height: 100%; object-fit: cover; animation: world-settle 2200ms ease-out both; }

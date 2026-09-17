@@ -1,5 +1,7 @@
+"use client";
+
 import Image from "next/image";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export type CompanionState =
   | "welcome" | "input-guide" | "analyzing" | "saju-companion"
@@ -22,16 +24,43 @@ const POSE: Record<CompanionState, "guide" | "reading" | "handoff"> = {
   "report-handoff": "handoff",
 };
 
-export function AngelCompanion({ state, presence = "quiet" }: {
+type CompanionProps = {
   state: CompanionState;
   presence?: "quiet" | "regular" | "transition" | "scene";
-}) {
-  return <span className={`angel-companion angel-${presence}`} data-companion-state={state} data-motion={presence === "quiet" ? "still" : state === "analyzing" ? "focus" : "arrive"} aria-hidden="true">
+};
+
+export function AngelCompanion({ state, presence = "quiet" }: CompanionProps) {
+  return <CompanionPortrait key={state + presence} state={state} presence={presence} />;
+}
+
+function CompanionPortrait({ state, presence = "quiet" }: CompanionProps) {
+  const root = useRef<HTMLSpanElement>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const element = root.current;
+    if (!element || presence === "quiet") return;
+    let inView = false;
+    const updateVisibility = () => setVisible(inView && document.visibilityState === "visible");
+    const observer = new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting && entry.intersectionRatio >= 0.5;
+      updateVisibility();
+    }, { threshold: [0, 0.5] });
+    observer.observe(element);
+    document.addEventListener("visibilitychange", updateVisibility);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", updateVisibility);
+    };
+  }, [presence]);
+
+  return <span ref={root} data-motion-ready={loaded && visible} className={`angel-companion angel-${presence}`} data-companion-state={state} data-motion={presence === "quiet" ? "still" : state === "analyzing" ? "focus" : "arrive"} aria-hidden="true">
     <span className="angel-light" />
     <span className="angel-shadow" />
     <Image src={`/images/angel-${POSE[state]}.webp`} alt="" width={240} height={320}
       sizes={presence === "quiet" ? "48px" : presence === "regular" ? "64px" : presence === "scene" ? "140px" : "80px"}
-      className="angel-portrait" />
+      onLoad={() => setLoaded(true)} className="angel-portrait" />
   </span>;
 }
 
