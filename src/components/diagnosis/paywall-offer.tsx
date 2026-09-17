@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RECOMMENDED_PRICE } from "@/lib/pricing";
+import { track } from "@/lib/analytics";
 
 /** 첫 유료 결제창은 극도로 단순화한다 — 개인화 제목 -> 이 결제로 알게 될
  * 3~4가지 -> 가격 -> CTA, 그게 전부다. 이전에 있던 Trust Signal Grid(기술
@@ -52,7 +53,10 @@ export function PaywallOffer({
 
       <Button
         size="lg"
-        onClick={() => setRequested(true)}
+        onClick={() => {
+          track("payment_cta_clicked");
+          setRequested(true);
+        }}
         className="relative mt-4 h-13 w-full rounded-full text-base shadow-[0_0_24px_var(--gold-soft)]"
       >
         {ctaText}

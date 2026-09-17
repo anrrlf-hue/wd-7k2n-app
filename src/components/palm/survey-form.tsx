@@ -17,6 +17,7 @@ import {
   MONEY_MANAGEMENT_UNIT_OPTIONS,
   SPENDING_PATTERN_OPTIONS,
   surplusKrw,
+  PRIVACY_NOTICE,
   type SurveyInput,
   type SurveyOption,
 } from "@/lib/survey-input";
@@ -154,6 +155,7 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
   return (
     <div className="mt-8 flex flex-1 flex-col">
       <p className="text-xs text-muted-foreground">{step} / 3</p>
+      {step === 1 && <p className="mt-1.5 text-xs text-muted-foreground">{PRIVACY_NOTICE}</p>}
 
       {step === 1 && (
         <div className="mt-3 space-y-4">

@@ -7,6 +7,10 @@ export interface SurveyOption {
   label: string;
 }
 
+/** 설문 스텝1 진입 시 보여줄 개인정보 안내 한 줄. 상수로 분리해 운영자가
+ * 문구를 바꿀 수 있게 한다. */
+export const PRIVACY_NOTICE = "입력하신 정보는 진단 목적에만 사용되며 외부에 공유되지 않습니다.";
+
 export const JOB_TYPE_OPTIONS: SurveyOption[] = [
   { value: "employee_fixed", label: "직장인(고정급)" },
   { value: "employee_variable", label: "직장인(변동급·성과급)" },

@@ -4,13 +4,21 @@
 // 수 있도록 아주 작은 인터페이스만 만든다. 지금은 개발 중 확인용으로
 // console.debug만 한다.
 
+// 퍼널 6단계(§8-7): 무료진단 완료 -> 간접체험 완료 -> 설문 완료 -> 분석결과
+// 화면 도달 -> 결제 버튼 클릭 -> 결제 완료. 앞 4개는 이미 커버돼 있었고
+// (free_report_completed/indirect_experience_completed/survey_completed/
+// analysis_result_viewed), payment_cta_clicked만 이번에 추가했다.
+// payment_completed는 타입만 정의해둔다 — 실제 결제 게이트웨이가 없어서
+// 지금은 이 이벤트를 발생시키는 곳이 없다(결제 성공 콜백이 생기면 그때 호출).
 export type ConversionEvent =
   | "free_report_completed"
   | "indirect_experience_started"
   | "indirect_experience_completed"
   | "survey_completed"
   | "analysis_result_viewed"
-  | "payment_screen_viewed";
+  | "payment_screen_viewed"
+  | "payment_cta_clicked"
+  | "payment_completed";
 
 export function track(event: ConversionEvent, props?: Record<string, unknown>): void {
   if (process.env.NODE_ENV !== "production") {
