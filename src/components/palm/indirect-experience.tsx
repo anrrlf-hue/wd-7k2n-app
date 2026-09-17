@@ -90,14 +90,14 @@ export function IndirectExperience({
 
       {stage === "outcome" && (
         <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <CompanionHeading state="reality-transition" presence="regular">
+          <CompanionHeading state="reality-transition" showCompanion={false}>
           <p className="section-eyebrow">타고난 성향과 나의 선택</p>
           <h2 className="mt-2 text-2xl font-semibold">이번 선택에서 발견한 나</h2>
           </CompanionHeading>
           <p className="mt-4 rounded-2xl bg-card border border-border p-5 text-base leading-relaxed">
             {computeExperienceOutcome(wealthTypeCode, choices)}
           </p>
-          <div className="mt-8"><JourneyScene scene="reality" /></div>
+          <div className="mt-8"><JourneyScene scene="reality" companion="reality-transition" /></div>
           <p className="mt-6 text-xl font-semibold leading-relaxed">이제, 타고난 운세를 현실과 연결해 볼까요?</p>
           <Button size="lg" onClick={() => onComplete(computeExperienceOutcome(wealthTypeCode, choices), choices)} className="mt-4 h-13 w-full rounded-full text-base">
             현실과 연결해 보기

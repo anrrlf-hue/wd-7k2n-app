@@ -342,7 +342,7 @@ export function PalmPageClient({
       <div className="journey-shell">
       <JourneyHeader chapter={chapter} />
       <div hidden={funnelActive}>
-      <CompanionHeading state={stage === "upload" ? "palm-guide" : "palm-observing"} presence={stage === "upload" ? "transition" : "quiet"}>
+      <CompanionHeading showCompanion={stage !== "upload"} state={stage === "upload" ? "palm-guide" : "palm-observing"} presence={stage === "upload" ? "transition" : "quiet"}>
       <p className="section-eyebrow">두 번째 분석 · 손금</p>
       <h1 className="mt-2 text-xl leading-snug font-semibold tracking-tight">
         {stage === "result" ? "손에서 관측한 것부터, 하나씩" : stage === "saju_only" ? "사주에서 선택으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
@@ -352,7 +352,7 @@ export function PalmPageClient({
 
       {stage === "upload" && (
         <div className="mt-6 flex flex-1 flex-col">
-          <JourneyScene scene="palm" />
+          <JourneyScene scene="palm" companion="palm-guide" />
           <div className="mt-5">
             <p className="text-sm leading-relaxed text-muted-foreground">
               밝은 곳에서 손바닥 전체를 담아주세요.

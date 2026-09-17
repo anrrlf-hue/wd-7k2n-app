@@ -14,7 +14,7 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
 }) {
   const insufficient = result.bottleneck === "insufficient_data";
   return <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-    <CompanionHeading state="diagnosis-reveal">
+    <CompanionHeading state="diagnosis-reveal" presence="regular">
     <p className="section-eyebrow">나의 무료 총평</p>
     <h2 className="mt-3 text-2xl leading-snug font-semibold tracking-tight">타고난 나, 선택한 나,<br />그리고 지금의 돈</h2>
     </CompanionHeading>

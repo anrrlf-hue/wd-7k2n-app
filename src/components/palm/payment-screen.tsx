@@ -18,7 +18,7 @@ export function PaymentScreen({ method, onBack }: { method: ManagementMethod | n
   return (
     <div>
       <JourneyScene scene="reality" compact />
-      <div className="mt-6"><CompanionHeading state="report-handoff" presence="transition">
+      <div className="mt-6"><CompanionHeading state="report-handoff" presence="regular">
       <p className="section-eyebrow">맞춤 관리 리포트</p>
       <h2 className="mt-3 text-2xl font-semibold">알게 된 나를,<br />지속할 수 있는 방법으로</h2>
       </CompanionHeading></div>

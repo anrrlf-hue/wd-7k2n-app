@@ -328,14 +328,43 @@ fieldset.survey-field { padding-top: 8px; }
 .survey-form > div.space-y-4 { margin-top: 24px; }
 .diagnosis-priority { padding: 24px; border: 1px solid var(--gold-soft); border-radius: 22px; background: var(--card); box-shadow: 0 14px 32px -28px #283b5440; }
 .companion-heading { display: flex; align-items: flex-start; gap: 16px; }
-.angel-companion { display: block; flex: none; pointer-events: none; user-select: none; }
-.angel-quiet { width: 40px; height: 54px; }
-.angel-regular { width: 56px; height: 75px; }
-.angel-transition { width: 68px; height: 91px; }
-.angel-portrait { display: block; width: 100%; height: 100%; object-fit: contain; }
-/* Reading and form companions are still and scroll naturally with their heading. */
-.angel-transition { animation: angel-arrive 360ms ease-out both; }
-@keyframes angel-arrive { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+.angel-companion { position: relative; display: block; flex: none; isolation: isolate; pointer-events: none; user-select: none; }
+.angel-quiet { width: 48px; height: 64px; }
+.angel-regular { width: 64px; height: 85px; }
+.angel-transition { width: 80px; height: 107px; }
+.angel-scene { width: 100%; aspect-ratio: 3 / 4; }
+.angel-portrait { position: relative; display: block; width: 100%; height: 100%; object-fit: contain; transform-origin: 50% 78%; }
+.angel-light { position: absolute; z-index: -1; inset: -4% -18% 35%; border-radius: 50%; background: radial-gradient(ellipse, #f3d49f30, transparent 68%); }
+.angel-shadow { position: absolute; z-index: -1; inset: 86% 17% 5%; border-radius: 50%; background: radial-gradient(ellipse, #17263c30, transparent 72%); }
+.angel-quiet .angel-light { opacity: .45; }
+.angel-quiet .angel-shadow { opacity: .35; }
+/* Entry gestures finish once. Reading and survey companions remain completely still. */
+.angel-companion[data-motion="arrive"] .angel-portrait { animation: angel-settle 1800ms ease-out both; }
+.angel-companion[data-motion="arrive"] .angel-light { animation: angel-light-settle 2200ms ease-out both; }
+.angel-companion[data-motion="focus"] .angel-portrait { animation: angel-focus 2800ms ease-in-out both; }
+@keyframes angel-settle {
+  0% { opacity: 0; transform: translateY(5px) rotate(-2deg) scale(.97); }
+  45% { opacity: 1; transform: translateY(-1px) rotate(.7deg) scale(1.01); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes angel-focus {
+  0% { opacity: .5; transform: rotate(-2deg) scale(.98); }
+  35% { opacity: 1; transform: rotate(1deg) scale(1.012); }
+  70% { transform: rotate(-.5deg) scale(.998); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes angel-light-settle { from { opacity: .2; transform: scale(.85); } 50% { opacity: 1; } to { opacity: .65; transform: scale(1); } }
+.hero-scene { overflow: hidden; }
+.hero-world { position: absolute; left: 0; width: 100%; aspect-ratio: 4 / 5; top: 55%; transform: translateY(-55%); }
+.hero-background { width: 100%; height: 100%; object-fit: cover; animation: world-settle 2200ms ease-out both; }
+.hero-companion { position: absolute; right: 4%; top: 34%; width: 28%; }
+.hero-companion .angel-light { background: radial-gradient(ellipse, #fff1c950, transparent 70%); }
+@keyframes world-settle { from { transform: translateX(-2px) scale(1.025); } to { transform: none; } }
+.journey-scene { position: relative; isolation: isolate; }
+.scene-companion { position: absolute; right: 5%; bottom: 5%; width: 25%; }
+[data-scene="reality"] .scene-companion { right: 6%; bottom: 6%; width: 28%; }
+.scene-companion .angel-shadow { opacity: .6; }
 .result-bright .diagnosis-layers > div { padding-block: 24px; }
 @media (min-width: 640px) {
   .journey-shell { max-width: 520px; padding: 32px 40px 64px; }
