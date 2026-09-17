@@ -38,20 +38,20 @@ export function PalmEntryCard({
   return (
     <Link
       href={`/diagnosis/palm?${params.toString()}`}
-      className="mystic-card flex items-center gap-3 border-dashed p-4 transition-colors hover:border-(--gold-soft)"
+      className="primary-cta flex items-center gap-3 rounded-2xl p-5 transition-colors hover:border-(--gold-soft)"
     >
       <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-(--gold-soft)">
         <PalmLineIllustration />
       </span>
       <div className="flex-1">
         <p className="text-sm leading-snug font-medium">
-          사주에서 짚은 이 재물의 결, 손에도 같은 흐름이 있을까?
+          손금에서는 어떤 내가 보일까요?
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          손금 사진 한 장이면 종합판정까지 이어서 볼 수 있어요.
+        <p className="mt-1 text-xs opacity-80">
+          손금 무료로 보기 · 사진 한 장으로 독립된 두 번째 분석
         </p>
       </div>
-      <ArrowRight className="size-4 shrink-0 text-(--gold)" />
+      <ArrowRight className="size-4 shrink-0 text-current" />
     </Link>
   );
 }

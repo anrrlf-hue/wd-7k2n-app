@@ -89,7 +89,7 @@ const COMPARE_KIND_LABEL: Record<CompareItem["kind"], string> = { 일치: "일�
 function TripleCompareSection({ items }: { items: CompareItem[] }) {
   if (items.length === 0) return null;
   return (
-    <ReportSection step="③" title="사주 · 손금 · 자기응답 비교">
+    <ReportSection step="③" title="비교 · 사주와 손금의 같은 점과 다른 점">
       <div className="space-y-2.5">
         {items.map((item) => (
           <div key={item.topic} className="rounded-xl border border-border p-3.5">
@@ -128,9 +128,14 @@ function ConversionFunnel({
   const [stage, setStage] = useState<FunnelStage>("experience");
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
+  const [choiceSummary, setChoiceSummary] = useState<string | null>(null);
+  const funnelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (stage !== "experience") funnelRef.current?.scrollIntoView({ block: "start" }); }, [stage]);
+
   if (!wealthType) return null;
 
-  function handleExperienceComplete() {
+  function handleExperienceComplete(summary: string) {
+    setChoiceSummary(summary);
     track("indirect_experience_completed");
     setStage("survey");
   }
@@ -143,7 +148,7 @@ function ConversionFunnel({
   }
 
   return (
-    <div className="mt-8">
+    <div id="conversion-funnel" ref={funnelRef} className="mt-8 scroll-mt-6">
       {stage === "experience" && (
         <IndirectExperience
           wealthTypeCode={wealthType.code}
@@ -157,6 +162,9 @@ function ConversionFunnel({
       {stage === "analysis" && analysisResult && (
         <AnalysisResultCard
           result={analysisResult}
+          innateSummary={wealthType.pieces.typeAndDiagnosis}
+          choiceSummary={choiceSummary}
+          onRevise={() => setStage("survey")}
           onProceed={() => {
             track("payment_screen_viewed");
             setStage("payment");
@@ -308,11 +316,9 @@ export function PalmPageClient({
       className={`mx-auto flex w-full max-w-sm flex-1 flex-col px-6 py-10 ${stage === "result" || stage === "saju_only" ? "result-bright" : ""}`}
     >
       <StepBadge icon={<HandMetal className="size-5" />} />
-      <p className="text-sm font-medium text-(--gold)">손금까지 더해 마저 봅니다</p>
+      <p className="section-eyebrow">두 번째 분석 · 손금</p>
       <h1 className="mt-2 text-xl leading-snug font-semibold tracking-tight">
-        사주에서 짚은 이 재물의 결,
-        <br />
-        손에도 같은 흐름이 있을까?
+        {stage === "result" ? "손에서 관측한 것부터, 하나씩" : stage === "saju_only" ? "사주에서 선택으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
       </h1>
 
       {stage === "upload" && (
@@ -473,10 +479,10 @@ export function PalmPageClient({
            * (그 다음에야) 사주와의 비교. "사주 문단 + 손에도 같은 모습이
            * 보여요" 식으로 섞지 않는다. */}
           <div className="mt-5">
-            <ReportSection step="①" title="실제 이미지에서 관측된 것">
+            <ReportSection step="①" title="관측 · 사진에서 확인한 특징">
               <p>{buildRealObservationText(palmFacts)}</p>
             </ReportSection>
-            <ReportSection step="②" title="손금이 보여주는 것">
+            <ReportSection step="②" title="해석 · 손금이 보여주는 성향">
               <p className="text-sm text-muted-foreground">{buildTraditionalReadingText(palmFacts)}</p>
             </ReportSection>
             <TripleCompareSection items={tripleCompare} />

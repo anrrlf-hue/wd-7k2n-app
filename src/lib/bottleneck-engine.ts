@@ -1,10 +1,5 @@
-// 병목 판단 — 순수 계산 함수, AI 아님. 사주·손금 요소는 전혀 개입하지
-// 않는다(설문 응답만 쓴다). 11단계를 우선순위 순서로 검사해 처음 걸리는
-// 것을 채택한다. 절대적 점수공식이 아니라 순서 기반 체인이다. 필요한
-// 정보가 없는 단계는 무조건 스킵한다(억지로 진단하지 않는다) — 10번
-// (장기목표 대비 준비속도)은 설문에 해당 필드 자체가 없어 항상 스킵되는
-// "정보 부족시 스킵" 원칙의 실제 사례다.
-
+// 설문만으로 우선순위를 계산한다. 필수 정보가 없으면 보류하고,
+// 측정한 병목이 없으면 새 투자 문제를 추정하지 않는다.
 import type { SurveyInput } from "@/lib/survey-input";
 import { surplusKrw } from "@/lib/survey-input";
 
@@ -19,11 +14,11 @@ export type BottleneckCode =
   | "no_expense_awareness"
   | "no_savings_system"
   | "long_term_goal_pace_short"
-  | "investment_efficiency";
+  | "investment_efficiency"
+  | "insufficient_data"
+  | "no_priority_bottleneck";
 
 const TRANSITIONING_EVENTS = new Set(["leave", "retirement", "job_change"]);
-const AMOUNT_RANK: Record<string, number> = { under_500: 1, "500_2000": 2, over_2000: 3 };
-const PREPARED_RANK: Record<string, number> = { none: 0, under_half: 1, over_half: 2, enough: 3 };
 
 function step1CashFlowDeficit(input: SurveyInput): boolean {
   return surplusKrw(input) < 0;
@@ -42,12 +37,7 @@ function step3HighInterestDebt(input: SurveyInput): boolean {
 function step4NearFutureFundsShortfall(input: SurveyInput): boolean {
   if (input.futureEvents.length === 0 || input.futureEvents.includes("none")) return false;
   if (!input.futureEventAmount || !input.futureEventPrepared) return false; // 정보 부족 -> 스킵
-  const needed = AMOUNT_RANK[input.futureEventAmount] ?? 0;
-  const prepared = PREPARED_RANK[input.futureEventPrepared] ?? 0;
-  // needed(1~3)와 prepared(0~3)를 같은 척도로 비교 — prepared가 "충분하다"(3)면
-  // 항상 부족하지 않다고 본다. 그 외엔 prepared가 needed보다 낮으면 부족.
-  if (input.futureEventPrepared === "enough") return false;
-  return prepared < needed;
+  return input.futureEventTiming !== "over_1y" && input.futureEventPrepared !== "enough";
 }
 
 function step5EmergencyFundShortage(input: SurveyInput): boolean {
@@ -73,6 +63,13 @@ function step9NoSavingsSystem(input: SurveyInput): boolean {
 // step10: 장기목표 대비 준비속도 — 설문에 해당 필드가 없어 항상 스킵.
 
 export function detectBottleneck(input: SurveyInput): BottleneckCode {
+  const amounts = [input.monthlyIncomeKrw, input.monthlyFixedCostKrw, input.monthlyLivingCostKrw, input.monthlySavingsKrw];
+  if (amounts.some((n) => !Number.isFinite(n) || n < 0) || !input.jobType ||
+    !input.expenseAwareness || !input.emergencyFund || !input.moneyManagementUnit ||
+    !input.spendingPatterns.length || !input.futureEvents.length ||
+    (input.hasDebt && (!input.debtInterestRate || !input.debtMaturity || !input.debtMonthlyPayment || !input.debtRepaymentType)) ||
+    (!input.futureEvents.includes("none") && (!input.futureEventTiming || !input.futureEventAmount || !input.futureEventPrepared)) ||
+    (input.jobType === "business_owner" && input.businessSeparatesFinance === undefined)) return "insufficient_data";
   if (step1CashFlowDeficit(input)) return "cash_flow_deficit";
   if (step2IncomeInterruptionRisk(input)) return "income_interruption_risk";
   if (step3HighInterestDebt(input)) return "high_interest_debt";
@@ -83,5 +80,5 @@ export function detectBottleneck(input: SurveyInput): BottleneckCode {
   if (step8NoExpenseAwareness(input)) return "no_expense_awareness";
   if (step9NoSavingsSystem(input)) return "no_savings_system";
   // step10 (long_term_goal_pace_short): 정보 부족 -> 항상 스킵
-  return "investment_efficiency"; // catch-all, 항상 매치
+  return "no_priority_bottleneck"; // 투자 정보 없이 투자 효율을 추정하지 않는다.
 }

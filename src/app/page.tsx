@@ -1,53 +1,22 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LandingReveal } from "@/components/landing/landing-reveal";
 import { HeroVisual } from "@/components/landing/hero-visual";
-import { DestinyCardPreview } from "@/components/landing/destiny-card-preview";
-
 export default function Home() {
-  return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 py-14 text-center">
-      <LandingReveal>
-        <HeroVisual />
-
-        <p className="mb-4 text-sm font-medium tracking-wide text-(--gold)">
-          1분이면 끝나는 무료 사주 진단
-        </p>
-        <h1 className="mx-auto max-w-xs text-balance text-4xl leading-snug font-semibold tracking-tight">
-          나는 돈을
-          <br />
-          끌어당기는 사람일까,
-          <br />
-          놓치는 사람일까?
-        </h1>
-        <p className="mx-auto mt-5 max-w-xs text-balance text-base leading-relaxed text-muted-foreground">
-          사주로 내 돈 습관을 읽고,
-          <br />
-          바꿀 수 있는 것부터 알려드립니다.
-        </p>
-
-        <DestinyCardPreview />
-
-        <div className="mt-8">
-          <Button
-            asChild
-            size="lg"
-            className="h-13 w-full max-w-xs rounded-full text-base shadow-[0_0_24px_var(--gold-soft)]"
-          >
-            <Link href="/diagnosis">내 재물운 무료로 확인하기</Link>
-          </Button>
-        </div>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span>1분 무료 진단</span>
-          <span aria-hidden="true">·</span>
-          <span>결과 이미지 저장 가능</span>
-          <span aria-hidden="true">·</span>
-          <span>출생시간 몰라도 진행 가능</span>
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground">
-          재미로 보는 콘텐츠예요. 특정 금융상품을 권유하지 않아요.
-        </p>
-      </LandingReveal>
-    </main>
-  );
+  return <main className="landing-screen flex flex-1 flex-col items-center justify-center px-6 py-8 text-center">
+    <LandingReveal>
+      <p className="section-eyebrow">재물사주</p>
+      <HeroVisual />
+      <h1 className="mx-auto max-w-sm text-balance text-[2rem] leading-tight font-semibold tracking-tight">내 돈의 흐름에는<br />어떤 내가 있을까?</h1>
+      <p className="mx-auto mt-4 max-w-xs text-balance text-base leading-relaxed text-muted-foreground">타고난 운세로 끝내지 않고,<br />현실로 연결합니다.</p>
+      <div className="mx-auto mt-7 w-full max-w-sm">
+        <Button asChild size="lg" className="primary-cta h-14 w-full rounded-full text-base">
+          <Link href="/diagnosis">내 재물사주 무료로 보기 <ArrowRight className="size-4" /></Link>
+        </Button>
+        <p className="mt-3 text-xs text-muted-foreground">약 1분 · 출생시간 몰라도 가능</p>
+      </div>
+      <p className="mt-7 text-[11px] text-muted-foreground">사주와 손금은 재미와 자기이해를 위한 콘텐츠예요.</p>
+    </LandingReveal>
+  </main>;
 }

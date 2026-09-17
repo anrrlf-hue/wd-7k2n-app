@@ -14,10 +14,13 @@ import { PAYMENT_TIMING_NOTICE, REFUND_POLICY_NOTICE } from "@/lib/payment-notic
 export function PaymentScreen() {
   return (
     <div className="mt-8">
+      <p className="section-eyebrow">맞춤 관리 리포트</p>
+      <h2 className="mt-3 text-2xl font-semibold">알게 된 나를,<br />지속할 수 있는 방법으로</h2>
+      <p className="mt-3 text-sm text-muted-foreground">현재 준비 중인 리포트의 구성입니다. 결제 기능과 리포트 제공은 아직 시작되지 않았어요.</p>
       <PaywallOffer
-        title="당신에게 맞는 실행 방법"
+        title="나에게 맞는 실제 돈 관리방법"
         includedItems={REPORT_CONTENTS}
-        ctaText="결제하고 실행 방법 확인하기"
+        ctaText="나에게 맞는 관리계획 받기"
       />
       <TrustBadges />
       <p className="mt-3 text-center text-xs text-muted-foreground">{PAYMENT_TIMING_NOTICE}</p>

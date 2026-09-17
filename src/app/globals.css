@@ -51,31 +51,27 @@
 
 :root {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", sans-serif;
-  /* 현대적 동양미 + 프리미엄 신비감: 딥 틸(청록) 배경에, 포인트는 절제된
-   * 채도의 에메랄드 그린("재물/돈"과 직관적으로 연결되는 색). A/B 비교
-   * 끝에 5개 후보(기본/에메랄드/버건디/바이올렛/틸) 중 틸을 확정.
-   * --gold/--gold-soft 변수명은 하위 호환을 위해 유지하되(수십 개
-   * 컴포넌트가 참조 중) 실제 값은 에메랄드 그린이다. */
-  --background: oklch(0.28 0.035 200);
-  --foreground: oklch(0.95 0.012 85);
-  --card: oklch(0.33 0.04 200);
-  --card-foreground: oklch(0.95 0.012 85);
-  --popover: oklch(0.33 0.04 200);
-  --popover-foreground: oklch(0.95 0.012 85);
-  --primary: oklch(0.66 0.1 162);
-  --primary-foreground: oklch(0.14 0.03 158);
-  --secondary: oklch(0.4 0.035 200);
-  --secondary-foreground: oklch(0.95 0.012 85);
-  --muted: oklch(0.38 0.032 200);
-  --muted-foreground: oklch(0.72 0.035 158);
-  --accent: oklch(0.46 0.06 200);
-  --accent-foreground: oklch(0.92 0.05 150);
-  --destructive: oklch(0.62 0.21 25);
-  --border: oklch(0.7 0.06 158 / 16%);
-  --input: oklch(0.7 0.06 158 / 18%);
-  --ring: oklch(0.66 0.1 162);
-  --gold: oklch(0.66 0.1 162);
-  --gold-soft: oklch(0.66 0.1 162 / 32%);
+  /* Navy / ivory / warm gold. Existing semantic tokens stay compatible. */
+  --background: #152033;
+  --foreground: #f7f2e8;
+  --card: #1c2a40;
+  --card-foreground: #f7f2e8;
+  --popover: #1c2a40;
+  --popover-foreground: #f7f2e8;
+  --primary: #e7c78b;
+  --primary-foreground: #152033;
+  --secondary: #29364a;
+  --secondary-foreground: #f7f2e8;
+  --muted: #29364a;
+  --muted-foreground: #bac2ce;
+  --accent: #2e3949;
+  --accent-foreground: #f2dfba;
+  --destructive: #ed8580;
+  --border: #c8b79130;
+  --input: #c8b79145;
+  --ring: #e7c78b;
+  --gold: #e7c78b;
+  --gold-soft: #c8ab7429;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -226,7 +222,7 @@
 .mystic-ring {
   box-shadow:
     0 0 0 1px var(--gold-soft),
-    0 12px 40px -18px oklch(0.66 0.1 162 / 45%);
+    0 12px 40px -18px #15203325;
 }
 
 /* 결과를 3~5분 읽는 화면 전용 밝은 테마. 랜딩/입력 단계의 어두운 신비 테마는
@@ -243,20 +239,20 @@
   --card-foreground: oklch(0.26 0.03 265);
   --popover: oklch(0.995 0.006 85);
   --popover-foreground: oklch(0.26 0.03 265);
-  --primary: oklch(0.4 0.09 162);
+  --primary: #283b54;
   --primary-foreground: oklch(0.98 0.006 85);
   --secondary: oklch(0.94 0.014 85);
   --secondary-foreground: oklch(0.26 0.03 265);
   --muted: oklch(0.94 0.014 85);
   --muted-foreground: oklch(0.47 0.025 265);
-  --accent: oklch(0.92 0.035 155);
-  --accent-foreground: oklch(0.32 0.08 160);
+  --accent: #eee5d5;
+  --accent-foreground: #554322;
   --destructive: oklch(0.55 0.19 25);
   --border: oklch(0.3 0.03 265 / 12%);
   --input: oklch(0.3 0.03 265 / 14%);
-  --ring: oklch(0.42 0.1 162);
-  --gold: oklch(0.42 0.1 162);
-  --gold-soft: oklch(0.42 0.1 162 / 16%);
+  --ring: #795922;
+  --gold: #795922;
+  --gold-soft: #b58a4224;
 
   background: var(--background);
   color: var(--foreground);
@@ -266,3 +262,19 @@
 .result-bright li {
   line-height: 1.7;
 }
+/* Product surfaces: still hero, quiet reading, one clear next action. */
+.landing-screen { min-height: 100svh; background: radial-gradient(ellipse at 50% 18%, #253146 0%, #152033 65%); }
+.hero-art { height: clamp(160px, 31svh, 270px); margin-block: 8px 12px; mask-image: radial-gradient(ellipse 65% 60% at center, black 48%, transparent 100%); }
+.section-eyebrow { font-size: 11px; letter-spacing: .16em; font-weight: 600; color: var(--gold); }
+.primary-cta { background: linear-gradient(115deg, #f0d8a7, #d7b372); color: #152033; box-shadow: 0 8px 24px #0003, inset 0 1px #fff6; }
+.transition-panel { padding: 24px 20px; border: 1px solid var(--border); border-radius: 24px; background: linear-gradient(140deg, var(--card), var(--background)); box-shadow: 0 14px 35px -25px #15203355; }
+.choice-card { border: 1px solid var(--border); border-radius: 16px; background: var(--card); line-height: 1.6; }
+.choice-card:hover, .choice-card:focus-visible { border-color: var(--gold); background: var(--accent); }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+.result-bright .mystic-card { background: var(--card); border-color: var(--border); }
+.result-bright .mystic-ring { box-shadow: 0 8px 24px -20px #15203355; }
+.result-bright .shimmer-text { animation: none; background: none; color: var(--gold); }
+.diagnosis-layers { display: grid; gap: 0; border-block: 1px solid var(--border); }
+.diagnosis-layers > div { padding: 18px 0; }
+.diagnosis-layers > div + div { border-top: 1px solid var(--border); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   JOB_TYPE_OPTIONS,
@@ -27,7 +27,8 @@ function TapOption({ selected, onClick, label }: { selected: boolean; onClick: (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
+      aria-pressed={selected}
+      className={`rounded-full border min-h-11 px-3 py-2 text-[13px] transition-colors ${
         selected ? "border-(--gold) bg-(--gold-soft) text-(--gold)" : "border-border text-foreground/80"
       }`}
     >
@@ -96,14 +97,17 @@ function MultiSelectField({
 }
 
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  const id = useId();
   return (
     <div className="rounded-xl border border-border p-3.5">
-      <label className="text-sm font-medium">{label}</label>
+      <label htmlFor={id} className="text-sm font-medium">{label}</label>
       <input
+        id={id}
+        min={0}
         type="number"
         inputMode="numeric"
-        value={value || ""}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        value={Number.isFinite(value) ? value : ""}
+        onChange={(e) => onChange(e.target.value === "" ? NaN : Number(e.target.value))}
         placeholder="0"
         className="mt-1.5 w-full border-none bg-transparent p-0 text-base font-semibold outline-none"
       />
@@ -115,9 +119,10 @@ const initialInput: SurveyInput = {
   biggestConcern: "",
   jobType: "",
   futureEvents: [],
-  monthlyIncomeKrw: 0,
-  monthlyFixedCostKrw: 0,
-  monthlySavingsKrw: 0,
+  monthlyIncomeKrw: NaN,
+  monthlyFixedCostKrw: NaN,
+  monthlyLivingCostKrw: NaN,
+  monthlySavingsKrw: NaN,
   expenseAwareness: "",
   emergencyFund: "",
   hasDebt: false,
@@ -127,7 +132,7 @@ const initialInput: SurveyInput = {
 
 /** 재무 설문 3스텝, 원페이지형. 진행바(1/3~3/3)만 표시하고 장면 연출은
  * 넣지 않는다 — 간접체험에서 이미 체감 장치를 썼으므로 여기선 속도가
- * 우선이다. 숫자 직접입력은 소득/고정지출/저축 3개뿐. */
+ * 우선이다. 숫자 직접입력은 소득/고정지출/생활비/저축 4개. */
 export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) => void }) {
   const [step, setStep] = useState(1);
   const [input, setInput] = useState<SurveyInput>(initialInput);
@@ -141,20 +146,21 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
   const hasFutureEvent = input.futureEvents.length > 0 && !input.futureEvents.includes("none");
 
   const step1Complete = input.jobType !== "" && input.futureEvents.length > 0;
-  const step2Complete = input.monthlyIncomeKrw > 0 && input.monthlyFixedCostKrw >= 0 && input.monthlySavingsKrw >= 0;
+  const step2Complete = [input.monthlyIncomeKrw, input.monthlyFixedCostKrw, input.monthlyLivingCostKrw, input.monthlySavingsKrw].every((n) => Number.isFinite(n) && n >= 0);
   const step3Complete =
     input.expenseAwareness !== "" &&
     input.emergencyFund !== "" &&
     input.moneyManagementUnit !== "" &&
     input.spendingPatterns.length > 0 &&
-    (!input.hasDebt || (input.debtInterestRate && input.debtMaturity && input.debtRepaymentType)) &&
+    (!input.hasDebt || (input.debtInterestRate && input.debtMonthlyPayment && input.debtMaturity && input.debtRepaymentType)) &&
     (!hasFutureEvent || (input.futureEventTiming && input.futureEventAmount && input.futureEventPrepared)) &&
     (!isBusinessOwner || input.businessSeparatesFinance !== undefined) &&
     (!isFreelancer || (input.freelancerIncomeLow && input.freelancerIncomeAvg && input.freelancerIncomeHigh));
 
   return (
     <div className="mt-8 flex flex-1 flex-col">
-      <p className="text-xs text-muted-foreground">{step} / 3</p>
+      <p className="section-eyebrow">현실 재무질문 · {step} / 3</p>
+      <h2 className="mt-2 text-2xl font-semibold">{["지금의 생활부터", "한 달 돈의 흐름", "내게 필요한 준비"][step - 1]}</h2>
       {step === 1 && <p className="mt-1.5 text-xs text-muted-foreground">{PRIVACY_NOTICE}</p>}
 
       {step === 1 && (
@@ -181,12 +187,15 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
 
       {step === 2 && (
         <div className="mt-3 space-y-4">
+          <p className="text-sm leading-relaxed text-muted-foreground">같은 기준의 금액을 입력해 주세요. 부부 공동관리라면 소득과 지출 모두 합산해요. 없는 항목은 0원으로 입력하세요.</p>
           <NumberField label="월 소득(원)" value={input.monthlyIncomeKrw} onChange={(v) => set("monthlyIncomeKrw", v)} />
-          <NumberField label="월 고정지출(원)" value={input.monthlyFixedCostKrw} onChange={(v) => set("monthlyFixedCostKrw", v)} />
+          <NumberField label="월 고정지출·대출상환액(원)" value={input.monthlyFixedCostKrw} onChange={(v) => set("monthlyFixedCostKrw", v)} />
+          <p className="text-xs text-muted-foreground">고정지출에는 월세·보험·정기결제와 대출 원리금 상환을 포함해요. 아래 생활비와 중복해서 넣지 않아요.</p>
+          <NumberField label="월 생활비·변동지출(원)" value={input.monthlyLivingCostKrw} onChange={(v) => set("monthlyLivingCostKrw", v)} />
           <NumberField label="월 저축·투자액(원)" value={input.monthlySavingsKrw} onChange={(v) => set("monthlySavingsKrw", v)} />
           <div className="mystic-card p-3.5">
-            <p className="text-xs text-muted-foreground">월 잉여금</p>
-            <p className="mt-1 text-lg font-semibold text-(--gold)">{surplusKrw(input).toLocaleString("ko-KR")}원</p>
+            <p className="text-xs text-muted-foreground">저축까지 배분한 뒤 남는 돈</p>
+            <p className="mt-1 text-lg font-semibold text-(--gold)">{step2Complete ? `${surplusKrw(input).toLocaleString("ko-KR")}원` : "네 금액을 입력하면 계산돼요"}</p>
           </div>
         </div>
       )}
@@ -200,7 +209,7 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
             onChange={(v) => set("expenseAwareness", v)}
           />
           <SingleSelectField
-            label="비상자금은 어느 정도 있으세요?"
+            label="바로 꺼낼 현금으로 고정지출·생활비를 몇 개월 낼 수 있나요?"
             options={EMERGENCY_FUND_OPTIONS}
             value={input.emergencyFund}
             onChange={(v) => set("emergencyFund", v)}
@@ -224,7 +233,7 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
 
           {hasFutureEvent && (
             <>
-              <SingleSelectField label="그 변화, 언제쯤이에요?" options={FUTURE_EVENT_TIMING_OPTIONS} value={input.futureEventTiming} onChange={(v) => set("futureEventTiming", v)} />
+              <SingleSelectField label="가장 가까운 변화는 언제쯤이에요?" options={FUTURE_EVENT_TIMING_OPTIONS} value={input.futureEventTiming} onChange={(v) => set("futureEventTiming", v)} />
               <SingleSelectField label="대략 얼마나 필요할까요?" options={FUTURE_EVENT_AMOUNT_OPTIONS} value={input.futureEventAmount} onChange={(v) => set("futureEventAmount", v)} />
               <SingleSelectField label="지금 준비된 돈은 어느 정도예요?" options={FUTURE_EVENT_PREPARED_OPTIONS} value={input.futureEventPrepared} onChange={(v) => set("futureEventPrepared", v)} />
             </>
@@ -290,7 +299,7 @@ export function SurveyForm({ onComplete }: { onComplete: (input: SurveyInput) =>
         <Button
           size="lg"
           disabled={(step === 1 && !step1Complete) || (step === 2 && !step2Complete) || (step === 3 && !step3Complete)}
-          onClick={() => (step < 3 ? setStep((s) => s + 1) : onComplete(input))}
+          onClick={() => { if (step < 3) { setStep((s) => s + 1); document.getElementById("conversion-funnel")?.scrollIntoView({ block: "start" }); } else onComplete(input); }}
           className="h-13 flex-1 rounded-full text-base"
         >
           {step < 3 ? "다음" : "분석 결과 보기"}

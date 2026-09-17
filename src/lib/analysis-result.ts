@@ -23,7 +23,8 @@ export interface AnalysisResult {
   lifeMeaning: string;
   notUrgent: string;
   notUrgentReason: string;
-  surplusKrw: number;
+  surplusKrw: number | null;
+  immediateDirection: string;
   gapStatement: string;
 }
 
@@ -49,28 +50,30 @@ function buildGapStatement(bottleneck: BottleneckCode, input: SurveyInput): stri
   const surplus = surplusKrw(input);
 
   switch (bottleneck) {
+    case "insufficient_data": return "확인되지 않은 금액은 계산에서 제외했습니다.";
+    case "no_priority_bottleneck": return "목표 금액과 시점을 정하면 현재 저축 속도와 비교할 수 있어요.";
     case "cash_flow_deficit": {
       const yearlyDeficit = Math.abs(surplus) * 12;
-      return `지금 흐름이 그대로면, 1년 뒤 ${fmt(yearlyDeficit)}만큼 마이너스가 쌓입니다.`;
+      return `현재 월 예산의 부족분을 12개월로 환산하면 ${fmt(yearlyDeficit)}입니다. 실제 부채 증가액은 아닙니다.`;
     }
     case "emergency_fund_shortage": {
-      const targetKrw = 3 * input.monthlyFixedCostKrw;
-      const currentKrw = (EMERGENCY_FUND_MONTHS[input.emergencyFund] ?? 0) * input.monthlyFixedCostKrw;
+      const targetKrw = 3 * (input.monthlyFixedCostKrw + input.monthlyLivingCostKrw);
+      const currentKrw = (EMERGENCY_FUND_MONTHS[input.emergencyFund] ?? 0) * (input.monthlyFixedCostKrw + input.monthlyLivingCostKrw);
       const rate = monthlySavingCapacity(input);
       const remaining = targetKrw - currentKrw;
       if (remaining <= 0) return "비상자금 3개월 치는 이미 채워져 있는 수준입니다.";
       if (rate <= 0) return "지금 저축 여력으로는 비상자금을 채울 속도 자체를 계산하기 어렵습니다.";
       const months = Math.ceil(remaining / rate);
-      return `지금 저축 속도라면, 비상자금 3개월 치를 채우는 데 ${months}개월이 걸립니다.`;
+      return `지금 저축 속도라면, 고정지출과 생활비 3개월 치를 채우는 데 약 ${months}개월입니다. 구간 응답을 환산한 추정치예요.`;
     }
     case "income_interruption_risk": {
       const months = EMERGENCY_FUND_MONTHS[input.emergencyFund] ?? 0;
-      return `지금 비상자금 수준이면, 소득이 끊겨도 버틸 수 있는 기간은 약 ${months}개월입니다.`;
+      return `지금 비상자금 수준이면, 소득이 끊겨도 버틸 수 있는 기간은 약 ${months}개월로 추정됩니다. 구간 응답 기준이며 실제 지출에 따라 달라져요.`;
     }
     case "high_interest_debt": {
       const monthly = input.debtMonthlyPayment ? DEBT_PAYMENT_MONTHLY_KRW[input.debtMonthlyPayment] : undefined;
       if (!monthly) return "지금 잉여금 기준으로 1년을 환산하면 " + fmt(surplus * 12) + "입니다.";
-      return `지금 상환 규모라면, 1년 동안 빚에 들어가는 돈이 약 ${fmt(monthly * 12)}입니다.`;
+      return `지금 상환 규모라면, 1년 동안 상환액을 연환산하면 약 ${fmt(monthly * 12)}입니다. 구간의 대표 금액으로 계산한 추정치예요.`;
     }
     case "near_future_funds_shortfall": {
       const target = input.futureEventAmount ? FUTURE_EVENT_AMOUNT_KRW[input.futureEventAmount] : undefined;
@@ -82,7 +85,7 @@ function buildGapStatement(bottleneck: BottleneckCode, input: SurveyInput): stri
       if (remaining <= 0) return "필요한 금액은 이미 준비된 수준입니다.";
       if (rate <= 0) return "지금 저축 여력으로는 필요한 금액을 채울 속도 자체를 계산하기 어렵습니다.";
       const months = Math.ceil(remaining / rate);
-      return `지금 저축 속도라면, 필요한 금액을 채우는 데 약 ${months}개월이 걸립니다.`;
+      return `지금 저축 속도라면, 필요한 금액을 채우는 데 약 ${months}개월입니다. 구간을 대표 금액으로 환산한 추정치예요.`;
     }
     default: {
       // 전용 계산식이 없는 병목(사업자금혼합/카드의존/지출파악못함/저축시스템없음/
@@ -90,7 +93,7 @@ function buildGapStatement(bottleneck: BottleneckCode, input: SurveyInput): stri
       // 공통 격차로 대체한다.
       const yearly = surplus * 12;
       return yearly >= 0
-        ? `지금 잉여금 흐름이 그대로면, 1년 뒤 ${fmt(yearly)}이 모입니다.`
+        ? `현재 미배분 금액을 12개월로 환산하면 ${fmt(yearly)}입니다. 실제 저축을 보장하는 금액은 아니에요.`
         : `지금 흐름이 그대로면, 1년 뒤 ${fmt(Math.abs(yearly))}만큼 마이너스가 쌓입니다.`;
     }
   }
@@ -106,7 +109,24 @@ export function buildAnalysisResult(input: SurveyInput): AnalysisResult {
     lifeMeaning: copy.lifeMeaning,
     notUrgent: copy.notUrgent,
     notUrgentReason: copy.notUrgentReason,
-    surplusKrw: surplusKrw(input),
+    surplusKrw: bottleneck === "insufficient_data" ? null : surplusKrw(input),
+    immediateDirection: IMMEDIATE_DIRECTION[bottleneck],
     gapStatement: buildGapStatement(bottleneck, input),
   };
 }
+
+const IMMEDIATE_DIRECTION: Record<BottleneckCode, string> = {
+  cash_flow_deficit: "이번 달 고정지출·생활비·저축 배분을 한 줄로 적고, 소득 안에서 다시 나눠보세요.",
+  income_interruption_risk: "소득이 줄어드는 달과 바로 꺼낼 수 있는 현금을 먼저 적어보세요.",
+  high_interest_debt: "대출별 금리·만기·월 상환액을 한곳에 모아 확인해 보세요.",
+  near_future_funds_shortfall: "가장 가까운 일정 하나의 필요 금액과 준비된 돈을 나란히 적어보세요.",
+  emergency_fund_shortage: "투자자산과 구분해서, 바로 쓸 수 있는 비상자금 잔액을 확인해 보세요.",
+  biz_personal_mixed: "이번 달 사업 지출과 개인 생활비를 먼저 구분해 보세요.",
+  card_installment_dependence: "다음 결제일의 일시불·할부 합계부터 확인해 보세요.",
+  no_expense_awareness: "최근 한 달 결제내역을 고정비와 생활비로 나눠보세요.",
+  no_savings_system: "다음 소득일에 무리 없이 남길 수 있는 금액 하나를 정해보세요.",
+  long_term_goal_pace_short: "목표 금액과 날짜를 적고 준비된 돈을 확인해 보세요.",
+  investment_efficiency: "목표별로 쓸 시점과 현재 자산 구성을 정리해 보세요.",
+  insufficient_data: "최근 한 달 거래내역으로 빈 항목을 확인한 뒤 다시 진단해 주세요.",
+  no_priority_bottleneck: "현재 방식을 유지하면서, 다음 목표의 금액과 날짜를 적어보세요.",
+};

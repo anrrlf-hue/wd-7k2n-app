@@ -1,17 +1,12 @@
-// 간접체험 로직 — 순수 함수, 난수 없음(같은 유형·같은 선택=같은 결과).
 import type { WealthTypeCode } from "@/lib/wealth-type-copy";
-import { INDIRECT_EXPERIENCE_SCENES, EXPERIENCE_OUTCOME_TEXT, type ExperienceScene, type ExperienceChoice } from "@/lib/indirect-experience-data";
-
-export function getExperienceScenes(code: WealthTypeCode): ExperienceScene[] {
-  return INDIRECT_EXPERIENCE_SCENES[code];
-}
-
-export function computeExperienceOutcome(code: WealthTypeCode, tones: ExperienceChoice["tone"][]): string {
-  const total = tones.length || 1;
-  const goodCount = tones.filter((t) => t === "good").length;
-  const badCount = tones.filter((t) => t === "bad").length;
-  const text = EXPERIENCE_OUTCOME_TEXT[code];
-  if (goodCount > total / 2) return text.good;
-  if (badCount > total / 2) return text.bad;
-  return text.mixed;
+import { EXPERIENCE_SCENES, INNATE_TENDENCY, TENDENCY_LABEL, type ChoiceTendency } from "@/lib/indirect-experience-data";
+export function getExperienceScenes() { return EXPERIENCE_SCENES; }
+export function computeExperienceOutcome(code: WealthTypeCode, choices: ChoiceTendency[]): string {
+  if (choices.length === 0) return "아직 선택 기록이 없어요. 세 장면을 선택하면 비교할 수 있습니다.";
+  const counts = { security: 0, flexibility: 0, growth: 0 };
+  choices.forEach((choice) => { counts[choice] += 1; });
+  const highest = Math.max(...Object.values(counts));
+  const strongest = (Object.keys(counts) as ChoiceTendency[]).filter((key) => counts[key] === highest);
+  const actual = strongest.length > 1 ? "여러 기준을 고르게 사용했습니다" : TENDENCY_LABEL[strongest[0]] + "을 더 자주 선택했습니다";
+  return "사주에서는 " + INNATE_TENDENCY[code] + " 경향을 읽었고, 이번 " + choices.length + "번의 선택에서는 " + actual + ". 세 장면에서의 선택이며, 고정된 성격이나 재무 능력을 뜻하지는 않아요.";
 }

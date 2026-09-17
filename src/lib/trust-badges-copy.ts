@@ -18,12 +18,13 @@ export const TRUST_BADGES: TrustBadge[] = [
     enabled: true,
   },
   {
+    // 수치와 기관 표기는 별도 증빙 확인 전 노출하지 않는다.
     text: "실제 대면상담 녹취 34건, 32시간 이상의 온라인 상담 데이터를 바탕으로 설계했습니다.",
-    enabled: true,
+    enabled: false,
   },
   {
     text: "서민금융진흥원 찾아가는 재무상담 서비스와 연계해 상담을 진행합니다.",
-    enabled: true,
+    enabled: false,
   },
   {
     // 명칭·표기 형태 운영자 확인 후 text 채우고 enabled: true로 전환.

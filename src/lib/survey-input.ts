@@ -1,5 +1,5 @@
 // 간접체험 다음, 결제 전 재무 설문 — 3스텝. 숫자 직접입력은 소득/고정지출/
-// 저축 3개뿐(병목 계산에 실수값이 필요한 항목), 나머지 숫자성 정보는 전부
+// 생활비·저축 4개뿐(병목 계산에 실수값이 필요한 항목), 나머지 숫자성 정보는 전부
 // 구간 버튼. 사주 요소는 전혀 개입하지 않는다(순수 재무 설문).
 
 export interface SurveyOption {
@@ -116,6 +116,7 @@ export interface SurveyInput {
   futureEvents: string[];
   monthlyIncomeKrw: number;
   monthlyFixedCostKrw: number;
+  monthlyLivingCostKrw: number;
   monthlySavingsKrw: number;
   expenseAwareness: string;
   emergencyFund: string;
@@ -135,6 +136,6 @@ export interface SurveyInput {
   spendingPatterns: string[];
 }
 
-export function surplusKrw(input: Pick<SurveyInput, "monthlyIncomeKrw" | "monthlyFixedCostKrw" | "monthlySavingsKrw">): number {
-  return input.monthlyIncomeKrw - input.monthlyFixedCostKrw - input.monthlySavingsKrw;
+export function surplusKrw(input: Pick<SurveyInput, "monthlyIncomeKrw" | "monthlyFixedCostKrw" | "monthlyLivingCostKrw" | "monthlySavingsKrw">): number {
+  return input.monthlyIncomeKrw - input.monthlyFixedCostKrw - input.monthlyLivingCostKrw - input.monthlySavingsKrw;
 }

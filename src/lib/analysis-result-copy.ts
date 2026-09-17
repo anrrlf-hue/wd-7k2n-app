@@ -14,10 +14,20 @@ export interface BottleneckCopyEntry {
 }
 
 export const BOTTLENECK_COPY: Record<BottleneckCode, BottleneckCopyEntry> = {
+  insufficient_data: {
+    title: "추가 정보 확인", why: "현재 답변만으로는 우선순위를 정하기 어렵습니다.",
+    lifeMeaning: "빈칸은 0원과 다릅니다. 한 달 소득과 지출, 준비된 현금을 확인해 주세요.",
+    notUrgent: "관리방법을 결정하는 것", notUrgentReason: "확인되지 않은 숫자로 계획을 세우면 실제 상황과 어긋날 수 있어요.",
+  },
+  no_priority_bottleneck: {
+    title: "현재 흐름 유지", why: "입력한 범위에서는 먼저 해결할 뚜렷한 병목이 보이지 않습니다.",
+    lifeMeaning: "투자를 더 해야 한다는 뜻은 아닙니다. 목표와 자산 구성이 있어야 다음 판단이 가능해요.",
+    notUrgent: "새로운 투자 방법을 찾는 것", notUrgentReason: "지금 답변으로는 투자 효율을 평가할 수 없어요.",
+  },
   cash_flow_deficit: {
     title: "현금흐름",
-    why: "월 소득에서 고정지출과 저축을 빼면 마이너스입니다.",
-    lifeMeaning: "매달 쓸 수 있는 돈보다 나가는 돈이 더 많다는 뜻입니다. 카드값이나 마이너스통장으로 메우고 있을 가능성이 높습니다.",
+    why: "월 소득에서 고정지출·생활비·저축과 투자를 빼면 마이너스입니다.",
+    lifeMeaning: "매달 쓸 수 있는 돈보다 나가는 돈이 더 많다는 뜻입니다. 저축 배분까지 포함한 예산이 소득을 넘습니다. 실제 차입 여부는 별도로 확인해야 해요.",
     notUrgent: "투자나 저축을 늘리는 것",
     notUrgentReason: "지금은 나가는 돈부터 줄이는 게 먼저이고, 마이너스 상태에서 늘리는 저축은 오히려 부담만 키우기 때문입니다.",
   },
