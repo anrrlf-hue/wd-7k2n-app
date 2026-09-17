@@ -2,6 +2,7 @@
 // 측정한 병목이 없으면 새 투자 문제를 추정하지 않는다.
 import type { SurveyInput } from "@/lib/survey-input";
 import { surplusKrw } from "@/lib/survey-input";
+import { futureEventPlan, futureEventAnswersComplete, futureEventNeedsClarification } from "@/lib/future-event";
 
 export type BottleneckCode =
   | "cash_flow_deficit"
@@ -18,15 +19,16 @@ export type BottleneckCode =
   | "insufficient_data"
   | "no_priority_bottleneck";
 
-const TRANSITIONING_EVENTS = new Set(["leave", "retirement", "job_change"]);
-
 function step1CashFlowDeficit(input: SurveyInput): boolean {
   return surplusKrw(input) < 0;
 }
 
 function step2IncomeInterruptionRisk(input: SurveyInput): boolean {
+  if (futureEventPlan(input)?.kind === "income") {
+    return input.futureEventTiming !== "over_1y" && (input.futureIncomeChange === "reduced" || input.futureIncomeChange === "stopped");
+  }
   if (input.jobType === "transitioning") return true;
-  return input.futureEvents.some((e) => TRANSITIONING_EVENTS.has(e));
+  return false;
 }
 
 function step3HighInterestDebt(input: SurveyInput): boolean {
@@ -35,7 +37,7 @@ function step3HighInterestDebt(input: SurveyInput): boolean {
 }
 
 function step4NearFutureFundsShortfall(input: SurveyInput): boolean {
-  if (input.futureEvents.length === 0 || input.futureEvents.includes("none")) return false;
+  if (futureEventPlan(input)?.kind !== "purpose") return false;
   if (!input.futureEventAmount || !input.futureEventPrepared) return false; // 정보 부족 -> 스킵
   return input.futureEventTiming !== "over_1y" && input.futureEventPrepared !== "enough";
 }
@@ -68,7 +70,7 @@ export function detectBottleneck(input: SurveyInput): BottleneckCode {
     !input.expenseAwareness || !input.emergencyFund || !input.moneyManagementUnit ||
     !input.spendingPatterns.length || !input.futureEvents.length ||
     (input.hasDebt && (!input.debtInterestRate || !input.debtMaturity || !input.debtMonthlyPayment || !input.debtRepaymentType)) ||
-    (!input.futureEvents.includes("none") && (!input.futureEventTiming || !input.futureEventAmount || !input.futureEventPrepared)) ||
+    !futureEventAnswersComplete(input) || futureEventNeedsClarification(input) ||
     (input.jobType === "business_owner" && input.businessSeparatesFinance === undefined)) return "insufficient_data";
   if (step1CashFlowDeficit(input)) return "cash_flow_deficit";
   if (step2IncomeInterruptionRisk(input)) return "income_interruption_risk";

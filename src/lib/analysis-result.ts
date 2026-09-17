@@ -15,6 +15,7 @@ import type { SurveyInput } from "@/lib/survey-input";
 import { surplusKrw } from "@/lib/survey-input";
 import { detectBottleneck, type BottleneckCode } from "@/lib/bottleneck-engine";
 import { BOTTLENECK_COPY } from "@/lib/analysis-result-copy";
+import { futureEventPlan, futureEventNeedsClarification, LIVING_BUFFER_OPTIONS } from "@/lib/future-event";
 
 export interface AnalysisResult {
   bottleneck: BottleneckCode;
@@ -26,6 +27,7 @@ export interface AnalysisResult {
   surplusKrw: number | null;
   immediateDirection: string;
   gapStatement: string;
+  eventContext?: string;
 }
 
 // 구간 응답을 실제 계산에 쓸 수 있는 근사 숫자로 바꾸는 고정 환산표(코드가
@@ -67,6 +69,13 @@ function buildGapStatement(bottleneck: BottleneckCode, input: SurveyInput): stri
       return `지금 저축 속도라면, 고정지출과 생활비 3개월 치를 채우는 데 약 ${months}개월입니다. 구간 응답을 환산한 추정치예요.`;
     }
     case "income_interruption_risk": {
+      const event = futureEventPlan(input);
+      if (event?.kind === "income") {
+        const buffer = LIVING_BUFFER_OPTIONS.find((option) => option.value === input.futureLivingBuffer)?.label;
+        return input.futureLivingBuffer === "none"
+          ? `${event.label}에 대비해 별도로 준비된 생활비가 없다고 답했어요. 예상 소득과 고정지출·생활비를 함께 확인해 보세요.`
+          : `${event.label}에 대비한 생활비는 ${buffer}분을 준비했다고 답했어요. 실제 버틸 수 있는 기간은 이후 소득과 지출에 따라 달라집니다.`;
+      }
       const months = EMERGENCY_FUND_MONTHS[input.emergencyFund] ?? 0;
       return `지금 비상자금 수준이면, 소득이 끊겨도 버틸 수 있는 기간은 약 ${months}개월로 추정됩니다. 구간 응답 기준이며 실제 지출에 따라 달라져요.`;
     }
@@ -102,16 +111,19 @@ function buildGapStatement(bottleneck: BottleneckCode, input: SurveyInput): stri
 export function buildAnalysisResult(input: SurveyInput): AnalysisResult {
   const bottleneck = detectBottleneck(input);
   const copy = BOTTLENECK_COPY[bottleneck];
+  const event = futureEventPlan(input);
+  const unclearEvent = bottleneck === "insufficient_data" && event && futureEventNeedsClarification(input);
   return {
     bottleneck,
     headline: `지금 가장 먼저 봐야 할 건 ${copy.title}입니다.`,
-    why: copy.why,
-    lifeMeaning: copy.lifeMeaning,
+    why: unclearEvent ? `${event.label} 이후의 소득 변화나 준비된 생활비가 아직 확인되지 않았어요.` : copy.why,
+    lifeMeaning: unclearEvent ? `현재 소득·지출과 별개로, ${event.label} 이후의 생활을 먼저 확인해야 해요.` : copy.lifeMeaning,
     notUrgent: copy.notUrgent,
     notUrgentReason: copy.notUrgentReason,
     surplusKrw: bottleneck === "insufficient_data" ? null : surplusKrw(input),
-    immediateDirection: IMMEDIATE_DIRECTION[bottleneck],
+    immediateDirection: unclearEvent ? `${event.label} 이후의 예상 소득과 바로 쓸 생활비를 확인한 뒤 다시 답해 주세요.` : IMMEDIATE_DIRECTION[bottleneck],
     gapStatement: buildGapStatement(bottleneck, input),
+    eventContext: event ? `미래 일정은 ${event.label} 기준으로 확인했어요.${input.futureEvents.length > 1 ? " 선택한 다른 일정의 준비 상태는 이번 진단에 포함하지 않았어요." : ""}` : undefined,
   };
 }
 

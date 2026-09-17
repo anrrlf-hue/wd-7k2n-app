@@ -100,7 +100,7 @@ export function IndirectExperience({
           <div className="mt-8"><JourneyScene scene="reality" /></div>
           <p className="mt-6 text-xl font-semibold leading-relaxed">이제, 타고난 운세를 현실과 연결해 볼까요?</p>
           <Button size="lg" onClick={() => onComplete(computeExperienceOutcome(wealthTypeCode, choices), choices)} className="mt-4 h-13 w-full rounded-full text-base">
-            내 현실 재무상태 연결하기
+            현실과 연결해 보기
           </Button>
         </motion.div>
       )}

@@ -18,6 +18,7 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
     <p className="section-eyebrow">나의 무료 총평</p>
     <h2 className="mt-3 text-2xl leading-snug font-semibold tracking-tight">타고난 나, 선택한 나,<br />그리고 지금의 돈</h2>
     </CompanionHeading>
+    {result.eventContext && <p className="mt-3 text-xs text-muted-foreground">{result.eventContext}</p>}
     <div className="diagnosis-layers mt-7">
       <div><p className="section-eyebrow">01 · 타고난 재물성향</p><p className="mt-2 text-sm">{innateSummary}</p><p className="mt-1 text-xs text-muted-foreground">사주 해석 · 자기이해를 위한 관점</p></div>
       <div><p className="section-eyebrow">02 · 실제로 고른 선택</p><p className="mt-2 text-sm">{choiceSummary ?? "선택 기록이 없어 비교하지 않았습니다."}</p></div>

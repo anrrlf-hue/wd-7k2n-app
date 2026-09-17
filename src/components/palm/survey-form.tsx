@@ -1,5 +1,6 @@
 "use client";
 
+import { futureEventPlan, primaryFutureEvent, futureEventAnswersComplete, selectFutureEvents, selectPrimaryFutureEvent, INCOME_CHANGE_OPTIONS, LIVING_BUFFER_OPTIONS } from "@/lib/future-event";
 import { CompanionHeading } from "@/components/angel-companion";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -146,7 +147,9 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
   const isFreelancer = input.jobType === "freelancer";
   const hasFutureEvent = input.futureEvents.length > 0 && !input.futureEvents.includes("none");
 
-  const step1Complete = input.jobType !== "" && input.futureEvents.length > 0;
+  const eventPlan = futureEventPlan(input);
+  const primaryEvent = primaryFutureEvent(input);
+  const step1Complete = input.jobType !== "" && input.futureEvents.length > 0 && (!hasFutureEvent || Boolean(primaryEvent));
   const step2Complete = [input.monthlyIncomeKrw, input.monthlyFixedCostKrw, input.monthlyLivingCostKrw, input.monthlySavingsKrw].every((n) => Number.isFinite(n) && n >= 0);
   const step3Complete =
     input.expenseAwareness !== "" &&
@@ -154,7 +157,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
     input.moneyManagementUnit !== "" &&
     input.spendingPatterns.length > 0 &&
     (!input.hasDebt || (input.debtInterestRate && input.debtMonthlyPayment && input.debtMaturity && input.debtRepaymentType)) &&
-    (!hasFutureEvent || (input.futureEventTiming && input.futureEventAmount && input.futureEventPrepared)) &&
+    futureEventAnswersComplete(input) &&
     (!isBusinessOwner || input.businessSeparatesFinance !== undefined) &&
     (!isFreelancer || (input.freelancerIncomeLow && input.freelancerIncomeAvg && input.freelancerIncomeHigh));
 
@@ -185,8 +188,15 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
             label="1년 안에 예정된 큰 변화가 있다면요?"
             options={FUTURE_EVENT_OPTIONS}
             values={input.futureEvents}
-            onChange={(v) => set("futureEvents", v)}
+            onChange={(v) => setInput((prev) => selectFutureEvents(prev, v))}
           />
+          {hasFutureEvent && input.futureEvents.length > 1 && <SingleSelectField
+            label="이 중 가장 가깝거나 먼저 준비할 일정 하나는 무엇인가요?"
+            options={FUTURE_EVENT_OPTIONS.filter((option) => input.futureEvents.includes(option.value))}
+            value={primaryEvent}
+            onChange={(v) => setInput((prev) => selectPrimaryFutureEvent(prev, v))}
+          />}
+          {eventPlan && <p className="text-xs text-muted-foreground">다음 질문은 {eventPlan.label} 기준으로 이어집니다.</p>}
         </div>
       )}
 
@@ -236,12 +246,19 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
             </>
           )}
 
-          {hasFutureEvent && (
-            <>
-              <SingleSelectField label="가장 가까운 변화는 언제쯤이에요?" options={FUTURE_EVENT_TIMING_OPTIONS} value={input.futureEventTiming} onChange={(v) => set("futureEventTiming", v)} />
-              <SingleSelectField label="대략 얼마나 필요할까요?" options={FUTURE_EVENT_AMOUNT_OPTIONS} value={input.futureEventAmount} onChange={(v) => set("futureEventAmount", v)} />
-              <SingleSelectField label="지금 준비된 돈은 어느 정도예요?" options={FUTURE_EVENT_PREPARED_OPTIONS} value={input.futureEventPrepared} onChange={(v) => set("futureEventPrepared", v)} />
-            </>
+          {eventPlan && (
+            <section aria-label={`${eventPlan.label} 준비`} className="space-y-4">
+              <h3 className="pt-3 text-sm font-semibold text-(--gold)">먼저 확인할 일정 · {eventPlan.label}</h3>
+              <SingleSelectField label={eventPlan.timing} options={FUTURE_EVENT_TIMING_OPTIONS} value={input.futureEventTiming} onChange={(v) => set("futureEventTiming", v)} />
+              {eventPlan.kind === "purpose" ? <>
+                <SingleSelectField label={eventPlan.amount} options={FUTURE_EVENT_AMOUNT_OPTIONS} value={input.futureEventAmount} onChange={(v) => set("futureEventAmount", v)} />
+                <SingleSelectField label={eventPlan.prepared} options={FUTURE_EVENT_PREPARED_OPTIONS} value={input.futureEventPrepared} onChange={(v) => set("futureEventPrepared", v)} />
+              </> : <>
+                <SingleSelectField label={eventPlan.income} options={INCOME_CHANGE_OPTIONS} value={input.futureIncomeChange} onChange={(v) => set("futureIncomeChange", v)} />
+                <p className="text-xs text-muted-foreground">예상 소득을 제외하고, 바로 쓸 현금으로 고정지출·생활비를 감당할 기간을 골라요.</p>
+                <SingleSelectField label={eventPlan.buffer} options={LIVING_BUFFER_OPTIONS} value={input.futureLivingBuffer} onChange={(v) => set("futureLivingBuffer", v)} />
+              </>}
+            </section>
           )}
 
           {isBusinessOwner && (

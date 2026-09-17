@@ -16,7 +16,7 @@ export default function Home() {
         </Button>
         <p className="mt-3 text-xs text-muted-foreground">약 1분 · 출생시간 몰라도 가능</p>
       </div>
-      <p className="mt-6 text-[11px] text-muted-foreground">사주와 손금은 재미와 자기이해를 위한 콘텐츠예요.</p>
+      <p className="mt-6 text-[11px] text-muted-foreground">사주·손금에서 시작해, 나의 돈 관리까지</p>
       </div>
     </LandingReveal>
   </main>;

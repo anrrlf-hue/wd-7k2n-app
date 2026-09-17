@@ -114,6 +114,7 @@ export interface SurveyInput {
   biggestConcern: string;
   jobType: string;
   futureEvents: string[];
+  primaryFutureEvent?: string;
   monthlyIncomeKrw: number;
   monthlyFixedCostKrw: number;
   monthlyLivingCostKrw: number;
@@ -128,6 +129,8 @@ export interface SurveyInput {
   futureEventTiming?: string;
   futureEventAmount?: string;
   futureEventPrepared?: string;
+  futureIncomeChange?: string;
+  futureLivingBuffer?: string;
   businessSeparatesFinance?: boolean;
   freelancerIncomeLow?: string;
   freelancerIncomeAvg?: string;

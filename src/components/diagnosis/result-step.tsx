@@ -108,7 +108,7 @@ export function ResultStep({
         </motion.div>
 
         <p className="mt-6 text-[11px] text-muted-foreground">
-          정답이 아니라 흐름을 보는 콘텐츠예요.
+          사주에서 읽은 재물 성향과 흐름입니다.
         </p>
       </motion.div>
 
