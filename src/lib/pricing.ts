@@ -31,5 +31,19 @@ export const PRICE_CANDIDATES: PriceCandidate[] = [
   },
 ];
 
-/** 1순위 추천: 결제 장벽은 낮으면서 저가 인상은 덜한 지점 */
-export const RECOMMENDED_PRICE = PRICE_CANDIDATES[1];
+function priceFromEnv(): PriceCandidate | null {
+  const raw = process.env.NEXT_PUBLIC_PAYMENT_PRICE_KRW;
+  const amountKrw = raw ? Number(raw) : NaN;
+  if (!Number.isFinite(amountKrw) || amountKrw <= 0) return null;
+  return { amountKrw, label: `${amountKrw.toLocaleString("ko-KR")}원`, hypothesis: "운영자 설정값(NEXT_PUBLIC_PAYMENT_PRICE_KRW)" };
+}
+
+/** 1순위 추천: 결제 장벽은 낮으면서 저가 인상은 덜한 지점. 가격이 아직
+ * 미정이라 운영자가 코드 수정 없이(Vercel 환경변수 NEXT_PUBLIC_PAYMENT_PRICE_KRW)
+ * 바꿔볼 수 있게 한다 — 값을 못 읽으면 후보 중 추천값(4,900원)으로 떨어진다. */
+export const RECOMMENDED_PRICE: PriceCandidate = priceFromEnv() ?? PRICE_CANDIDATES[1];
+
+/** 결제수단 노출 목록. 아직 실제 결제 연동 전이라 문구만 준비한다 — 마찬가지로
+ * 환경변수(쉼표 구분)로 운영자가 바꿀 수 있다. */
+export const PAYMENT_METHODS: string[] =
+  process.env.NEXT_PUBLIC_PAYMENT_METHODS?.split(",").map((s) => s.trim()).filter(Boolean) ?? ["카카오페이", "토스페이"];
