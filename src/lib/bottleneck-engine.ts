@@ -70,7 +70,7 @@ export function detectBottleneck(input: SurveyInput): BottleneckCode {
   const amounts = [input.monthlyIncomeKrw, input.monthlyFixedCostKrw, input.monthlyLivingCostKrw, input.monthlySavingsKrw];
   if (amounts.some((n) => !Number.isFinite(n) || n < 0) || !input.jobType ||
     !input.expenseAwareness || !input.emergencyFund || !input.moneyManagementUnit ||
-    !input.spendingPatterns.length || !input.futureEvents.length ||
+    input.hasDebt === undefined || !input.spendingPatterns.length || !input.futureEvents.length ||
     (input.hasDebt && (!input.debtInterestRate || !input.debtMaturity || !input.debtMonthlyPayment || !input.debtRepaymentType)) ||
     !futureEventAnswersComplete(input) || futureEventNeedsClarification(input) ||
     (input.jobType === "business_owner" && input.businessSeparatesFinance === undefined) ||

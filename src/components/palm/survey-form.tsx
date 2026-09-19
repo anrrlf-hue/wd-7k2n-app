@@ -128,7 +128,6 @@ const initialInput: SurveyInput = {
   monthlySavingsKrw: NaN,
   expenseAwareness: "",
   emergencyFund: "",
-  hasDebt: false,
   moneyManagementUnit: "",
   spendingPatterns: [],
 };
@@ -161,6 +160,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
     input.emergencyFund !== "" &&
     input.moneyManagementUnit !== "" &&
     input.spendingPatterns.length > 0 &&
+    input.hasDebt !== undefined &&
     (!input.hasDebt || (input.debtInterestRate && input.debtMonthlyPayment && input.debtMaturity && input.debtRepaymentType)) &&
     futureEventAnswersComplete(input) &&
     (!isBusinessOwner || input.businessSeparatesFinance !== undefined) &&
@@ -336,7 +336,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
             values={input.spendingPatterns}
             onChange={(v) => set("spendingPatterns", v)}
           />
-          <DateField label="다음에 실제로 점검할 수 있는 날짜 · 선택" value={input.nextReviewDate} onChange={v => set("nextReviewDate", v)} />
+
         </div>
       )}
 

@@ -35,9 +35,9 @@ export const BOTTLENECK_COPY: Record<BottleneckCode, BottleneckCopyEntry> = {
     notUrgent: "관리방법을 결정하는 것", notUrgentReason: "확인되지 않은 숫자로 계획을 세우면 실제 상황과 어긋날 수 있어요.",
   },
   no_priority_bottleneck: {
-    title: "현재 흐름 유지", why: "입력한 범위에서는 먼저 해결할 뚜렷한 병목이 보이지 않습니다.",
-    lifeMeaning: "투자를 더 해야 한다는 뜻은 아닙니다. 목표와 자산 구성이 있어야 다음 판단이 가능해요.",
-    notUrgent: "새로운 투자 방법을 찾는 것", notUrgentReason: "지금 답변으로는 투자 효율을 평가할 수 없어요.",
+    title: "현재 흐름 유지", why: "지금 입력한 소득·지출·비상자금·부채 조건에서는 먼저 고쳐야 할 문제가 없습니다.",
+    lifeMeaning: "새 문제를 만들기보다 지금의 돈 흐름을 유지하는 게 우선입니다. 다음 목표가 생기면 그때 필요한 금액과 시점을 붙여 보면 됩니다.",
+    notUrgent: "새로운 투자 방법을 찾는 것", notUrgentReason: "현재 구조에 급한 문제가 없다는 뜻이지, 투자를 더 해야 한다는 뜻은 아닙니다.",
   },
   cash_flow_deficit: {
     title: "현금흐름",

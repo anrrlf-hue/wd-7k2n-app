@@ -37,5 +37,4 @@ export const SURVEY_USAGE = {
   freelancerIncomeHigh: usageEntry("높은 달 소득", "만원 자기보고", "freelancerEvidence/buildAnalysisResult", "변동 폭·순서 검증", "반복 소득으로 가정 안 함"),
   moneyManagementUnit: usageEntry("관리 단위", "개인/공동/혼합", "suggestManagementMethod", "기록 범위 표시", "소득·지출 범위 통일"),
   spendingPatterns: usageEntry("소비 패턴", "선택한 습관", "detectBottleneck/suggestManagementMethod", "반복 충당·저축만 판정; 할부 단독 제외", "선택 습관 실제 내역 점검·회피는 점검 방식 완화"),
-  nextReviewDate: usageEntry("점검 가능일", "선택 날짜/미정", "suggestManagementMethod", "날짜 또는 미정 표시", "그 날짜에 점검"),
 } satisfies Record<keyof SurveyInput, QuestionUsage>;

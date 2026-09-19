@@ -36,6 +36,11 @@ test('C: maturity is not high interest, principal repayment is not interest expe
 test('one installment answer alone does not establish dependence', () => {
   assert.equal(detectBottleneck({ ...base, spendingPatterns: ['installment'] }), 'no_priority_bottleneck');
 });
+test('debt question must be answered explicitly instead of defaulting to none', () => {
+  const unanswered = { ...base };
+  delete unanswered.hasDebt;
+  assert.equal(detectBottleneck(unanswered), 'insufficient_data');
+});
 test('neutral and unknown personality are distinct', () => {
   assert.equal(scorePersonalityCheck({ speed: 3 }).levels.speed, '중간');
   assert.equal(scorePersonalityCheck({}).levels.speed, '미확인');
@@ -102,9 +107,9 @@ test('all retained financial questions have fact, consumer, result and action tr
   const concern = buildAnalysisResult({ ...base, biggestConcern: '내 돈이 전부 사라졌나 걱정돼요' });
   assert.equal(concern.bottleneck, 'no_priority_bottleneck');
   assert.match(concern.userConcern, /걱정/);
-  const method = suggestManagementMethod([], ['social_spending'], { ...base, moneyManagementUnit:'couple', nextReviewDate:'2026-10-01' });
+  const method = suggestManagementMethod([], ['social_spending'], { ...base, moneyManagementUnit:'couple' });
   assert.match(method.whatToRecord, /부부공동.*관계지출/);
-  assert.match(method.whenToCheck, /2026-10-01/);
+  assert.match(method.whenToCheck, /급여|입금|만기|목표/);
 });
 test('counseling evidence has no invented cases and confirmed outcome requires measurement provenance', () => {
   const { CounselingPatternSchema, COUNSELING_PATTERNS } = require('../src/lib/counseling-evidence.ts');

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AmbientBgm } from "@/components/ambient-bgm";
 import "./globals.css";
 
 
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         {children}
+        <AmbientBgm />
       </body>
     </html>
   );

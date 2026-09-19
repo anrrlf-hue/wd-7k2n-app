@@ -107,7 +107,13 @@ export function buildAnalysisResult(input: SurveyInput): AnalysisResult {
   const income = freelancerEvidence(input);
   return {
     bottleneck,
-    headline: `지금 가장 먼저 봐야 할 건 ${copy.title}입니다.`,
+    headline: bottleneck === "no_priority_bottleneck"
+      ? "지금 가장 먼저 고쳐야 할 문제는 없습니다."
+      : bottleneck === "insufficient_data"
+        ? "지금은 빠진 숫자부터 확인하면 됩니다."
+        : bottleneck === "purpose_fund_confirmation"
+          ? "목적자금은 정확한 금액과 시점만 더 확인하면 됩니다."
+          : `지금 가장 먼저 볼 부분은 ${copy.title}입니다.`,
     why: unclearEvent ? `${event.label} 이후의 소득 변화나 준비된 생활비가 아직 확인되지 않았어요.` : copy.why,
     lifeMeaning: unclearEvent ? `현재 소득·지출과 별개로, ${event.label} 이후의 생활을 먼저 확인해야 해요.` : copy.lifeMeaning,
     notUrgent: copy.notUrgent,
@@ -117,7 +123,7 @@ export function buildAnalysisResult(input: SurveyInput): AnalysisResult {
     gapStatement: buildGapStatement(bottleneck, input),
     eventContext: event ? `미래 일정은 ${event.label}, ${FUTURE_EVENT_TIMING_OPTIONS.find(o => o.value === input.futureEventTiming)?.label ?? "시기 미확인"} 기준으로 확인했어요.${event.kind === "purpose" ? ` 필요액 구간: ${FUTURE_EVENT_AMOUNT_OPTIONS.find(o => o.value === input.futureEventAmount)?.label ?? "미확인"}, 준비: ${FUTURE_EVENT_PREPARED_OPTIONS.find(o => o.value === input.futureEventPrepared)?.label ?? "미확인"}.` : ""}${input.futureEvents.length > 1 ? " 선택한 다른 일정의 준비 상태는 이번 진단에 포함하지 않았어요." : ""}` : undefined,
     userConcern: input.biggestConcern.trim() || undefined,
-    answerContext: `지출 파악: ${EXPENSE_AWARENESS_OPTIONS.find(o => o.value === input.expenseAwareness)?.label ?? "미확인"}.${input.hasDebt ? ` 부채 자기응답: ${DEBT_INTEREST_OPTIONS.find(o => o.value === input.debtInterestRate)?.label ?? "미확인"}, 월 상환 ${DEBT_PAYMENT_OPTIONS.find(o => o.value === input.debtMonthlyPayment)?.label ?? "미확인"}, 만기 ${DEBT_MATURITY_OPTIONS.find(o => o.value === input.debtMaturity)?.label ?? "미확인"}, ${REPAYMENT_TYPE_OPTIONS.find(o => o.value === input.debtRepaymentType)?.label ?? "미확인"}. 상환액 전체를 이자로 계산하지 않았어요.` : " 부채 없음으로 답했어요."}`,
+    answerContext: `지출 파악: ${EXPENSE_AWARENESS_OPTIONS.find(o => o.value === input.expenseAwareness)?.label ?? "미확인"}.${input.hasDebt === true ? ` 부채 자기응답: ${DEBT_INTEREST_OPTIONS.find(o => o.value === input.debtInterestRate)?.label ?? "미확인"}, 월 상환 ${DEBT_PAYMENT_OPTIONS.find(o => o.value === input.debtMonthlyPayment)?.label ?? "미확인"}, 만기 ${DEBT_MATURITY_OPTIONS.find(o => o.value === input.debtMaturity)?.label ?? "미확인"}, ${REPAYMENT_TYPE_OPTIONS.find(o => o.value === input.debtRepaymentType)?.label ?? "미확인"}. 상환액 전체를 이자로 계산하지 않았어요.` : input.hasDebt === false ? " 부채 없음으로 답했어요." : " 부채 여부는 아직 답하지 않았어요."}`,
     incomeContext: income ? `직접 입력한 낮은 달 ${fmt(income.low)}·평균 ${fmt(income.average)}·높은 달 ${fmt(income.high)}로 소득 폭은 ${fmt(income.range)}입니다. 평균에서 고정지출·생활비를 빼면 ${fmt(income.averageRemaining)}, 낮은 달에는 ${income.lowGap > 0 ? `${fmt(income.lowGap)} 부족` : "이 지출을 감당할 수 있는 범위"}입니다. 높은 달은 반복 소득으로 가정하지 않았어요.` : input.jobType === "freelancer" ? "낮은 달·평균·높은 달 소득을 0 이상의 만원 단위로, 낮은 달 ≤ 평균 ≤ 높은 달 순서로 확인해 주세요." : undefined,
     fundingContext: event?.kind === "purpose" ? describeFunding(input) : undefined,
   };

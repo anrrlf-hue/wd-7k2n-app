@@ -15,20 +15,20 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
   const insufficient = result.bottleneck === "insufficient_data";
   return <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
     <CompanionHeading state="diagnosis-reveal" presence="regular">
-    <p className="section-eyebrow">나의 무료 총평</p>
+    <p className="section-eyebrow">현실 재무진단</p>
     <h2 className="mt-3 text-2xl leading-snug font-semibold tracking-tight">타고난 나, 선택한 나,<br />그리고 지금의 돈</h2>
     </CompanionHeading>
-    {result.eventContext && <p className="mt-3 text-xs text-muted-foreground">{result.eventContext}</p>}
-    {result.userConcern && <p className="mt-3 text-sm">직접 적은 고민: “{result.userConcern}” <span className="text-xs text-muted-foreground">· 확인된 재무 사실이나 진단은 아닙니다.</span></p>}
+
+    {result.userConcern && <p className="mt-3 text-sm text-muted-foreground">내가 적은 고민 · “{result.userConcern}”</p>}
     <div className="diagnosis-layers mt-7">
-      <div><p className="section-eyebrow">01 · 타고난 재물성향</p><p className="mt-2 text-sm">{innateSummary}</p><p className="mt-1 text-xs text-muted-foreground">사주 해석 · 자기이해를 위한 관점</p></div>
+      <div><p className="section-eyebrow">01 · 타고난 재물성향</p><p className="mt-2 text-sm">{innateSummary}</p><p className="mt-1 text-xs text-muted-foreground">사주에서 읽은 타고난 재물성향</p></div>
       <div><p className="section-eyebrow">02 · 실제로 고른 선택</p><p className="mt-2 text-sm">{choiceSummary ?? "선택 기록이 없어 비교하지 않았습니다."}</p></div>
-      <div><p className="section-eyebrow">03 · 현재 현실 재무상태</p><p className="mt-2 text-sm">{result.lifeMeaning}</p>
+      <div><p className="section-eyebrow">03 · 현재 돈의 구조</p><p className="mt-2 text-sm">{result.lifeMeaning}</p>
         {result.surplusKrw !== null && <div className="my-4"><p className="text-xs text-muted-foreground">저축까지 배분한 뒤 남는 돈</p><p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{result.surplusKrw.toLocaleString("ko-KR")}원 <span className="text-sm font-normal">/ 월</span></p></div>}
         <p className="mt-1 text-xs text-muted-foreground">소득 − 고정지출(대출상환 포함) − 생활비 − 저축·투자. 재무 우선순위는 설문 답변만으로 판단해요.</p>
-        {result.incomeContext && <p className="mt-3 text-sm">{result.incomeContext}</p>}
-        <p className="mt-3 text-xs text-muted-foreground">{result.answerContext}</p>
-        {result.fundingContext && <p className="mt-3 text-sm">{result.fundingContext}</p>}
+
+
+
       </div>
     </div>
     <section className="diagnosis-priority mt-8">
@@ -36,6 +36,16 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
       <h3 className="mt-3 text-2xl leading-snug font-semibold">{result.headline}</h3>
       <p className="mt-4 text-base">{result.why}</p>
     </section>
+    <details className="mt-4 rounded-2xl border border-border bg-card p-4">
+      <summary className="cursor-pointer text-sm font-medium">왜 이렇게 판단했는지 보기</summary>
+      <div className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
+        {result.eventContext && <p>{result.eventContext}</p>}
+        {result.incomeContext && <p>{result.incomeContext}</p>}
+        {result.fundingContext && <p>{result.fundingContext}</p>}
+        <p>{result.answerContext}</p>
+        <p>{result.gapStatement}</p>
+      </div>
+    </details>
     <div className="mt-6 rounded-2xl bg-accent p-5 text-accent-foreground">
       <h3 className="text-sm font-semibold">지금은 뒤로 둬도 괜찮아요</h3>
       <p className="mt-2 text-sm">{result.notUrgent}{eunNeun(result.notUrgent)} 우선순위가 아닙니다. {result.notUrgentReason}</p>
@@ -43,7 +53,6 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
     <div className="mt-6">
       <h3 className="text-base font-semibold">오늘은 이것 하나부터</h3>
       <p className="mt-2 text-base">{result.immediateDirection}</p>
-      <p className="mt-3 text-xs text-muted-foreground">{result.gapStatement}</p>
     </div>
     {method && <div className="mt-6 border-l-2 border-(--gold-soft) pl-4">
       <p className="section-eyebrow">이 행동을 이어가는 나만의 방식</p>
@@ -52,7 +61,7 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
       {method.whatToDo && <dl className="mt-3 space-y-2 text-sm">
         <div><dt className="font-medium">할 일</dt><dd>{method.whatToDo}</dd></div>
         <div><dt className="font-medium">기록할 것</dt><dd>{method.whatToRecord}</dd></div>
-        <div><dt className="font-medium">확인할 때</dt><dd>{method.whenToCheck}</dd></div>
+        <div><dt className="font-medium">언제 하면 되나요</dt><dd>{method.whenToCheck}</dd></div>
         <div><dt className="font-medium">끝났다고 볼 기준</dt><dd>{method.doneWhen}</dd></div>
       </dl>}
       <p className="mt-2 text-xs text-muted-foreground">이번 응답을 바탕으로 한 제안이에요. 편한 방식으로 조정해도 괜찮아요.</p>

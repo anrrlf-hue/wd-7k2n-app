@@ -118,7 +118,6 @@ export interface SurveyInput {
   debtMaturityDate?: string;
   debtRemainingKrw?: number;
   debtPreparedKrw?: number;
-  nextReviewDate?: string;
   biggestConcern: string;
   jobType: string;
   futureEvents: string[];
@@ -129,7 +128,7 @@ export interface SurveyInput {
   monthlySavingsKrw: number;
   expenseAwareness: string;
   emergencyFund: string;
-  hasDebt: boolean;
+  hasDebt?: boolean;
   debtInterestRate?: string;
   debtMonthlyPayment?: string;
   debtMaturity?: string;

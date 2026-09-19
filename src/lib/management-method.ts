@@ -29,7 +29,7 @@ function managementStyle(choices: ChoiceTendency[], patterns: string[]): Managem
   if (dominant[0] === "security") return {
     id: "rules", title: "반복할 수 있는 규칙 하나부터",
     reason: "세 장면에서는 예측 가능한 쪽을 더 골랐어요.",
-    routine: "반복되는 확인 항목을 한곳에 적고, 같은 순서로 짧게 점검해 보세요.",
+    routine: "반복되는 확인 항목을 한곳에 적고, 같은 순서로 짧게 확인해 보세요.",
   };
   if (dominant[0] === "flexibility") return {
     id: "simple", title: "관리 항목은 적게, 조정은 유연하게",
@@ -39,7 +39,7 @@ function managementStyle(choices: ChoiceTendency[], patterns: string[]): Managem
   if (dominant[0] === "growth") return {
     id: "review", title: "작게 실행하고, 돌아보는 시간까지",
     reason: "세 장면에서는 새로운 시도를 더 골랐어요.",
-    routine: "아래 행동을 작은 단계로 나누어 하나씩 실행하고, 점검 때 빠진 항목을 보완해 보세요.",
+    routine: "아래 행동을 작은 단계로 나누어 하나씩 실행하고, 다음에 확인할 때 빠진 항목을 보완해 보세요.",
   };
   return {
     id: "neutral", title: "지속하기 편한 방식부터 찾아보기",
@@ -65,22 +65,21 @@ export function suggestManagementMethod(choices: ChoiceTendency[], patterns: str
     biz_personal_mixed: ["사업 입출금·세금 등 사업에 남겨둘 돈·개인 생활비", "지출이 두 번 잡히지 않게 사업과 개인 내역을 구분했을 때"],
     card_installment_dependence: ["다음 결제일·일시불/할부 합계·생활비 부족을 카드로 충당한 내역", "다음 결제액과 입금액을 맞춰 반복 부족분을 확인했을 때"],
     no_expense_awareness: ["최근 한 달 결제내역·고정비·생활비", "내역을 분류하고 실제 총액과 입력한 지출을 대조했을 때"],
-    no_savings_system: ["실제 입금액·필수 지출·무리 없이 남길 금액", "다음 입금 시 남길 금액과 점검일을 정했을 때"],
+    no_savings_system: ["실제 입금액·필수 지출·무리 없이 남길 금액", "다음 소득이 들어올 때 남길 금액을 정했을 때"],
     long_term_goal_pace_short: ["목표 금액·날짜·준비액", "목표의 조건을 확인했을 때"],
     investment_efficiency: ["목표별 사용 시점·현재 자산 구성", "목표와 자산 정보를 확인했을 때"],
     insufficient_data: ["미입력 항목·확인할 거래내역", "모르는 값과 0원을 구분해 확인한 뒤 다시 진단했을 때"],
-    no_priority_bottleneck: ["현재 흐름·다음 목표(있다면)·다음 점검 날짜", "현재 방식을 유지하며 다음 점검일 또는 목표를 정했을 때"],
+    no_priority_bottleneck: ["현재 흐름·다음 목표(있다면)", "현재 방식을 유지하면서 다음 목표의 금액이나 시점을 정했을 때"],
   };
   let [record, done] = plans[result.bottleneck];
-  let when = input.jobType === "employee_fixed" ? "다음 실제 급여 입금일에 확인하고 다음 결제 전에 다시 점검" : "실제 소득이 입금될 때마다 확인하고 다음 고정비 결제 전에 다시 점검";
-  when = `${validDate(input.nextReviewDate) ? input.nextReviewDate : "점검일 미정: 달력에서 가능한 날짜를 먼저 정하세요"}. ${when}`;
-  if (result.bottleneck === "maturity_preparation") when = `${validDate(input.debtMaturityDate) ? input.debtMaturityDate : "정확한 만기일을 계약에서 확인한 뒤"} 만기 전에 상환계획 확인. ${when}`;
+  let when = input.jobType === "employee_fixed" ? "다음 급여가 들어오면 이번 달 실제 지출과 함께 한 번 확인하세요." : "다음 소득이 입금되면 실제 지출과 함께 한 번 확인하세요.";
+  if (result.bottleneck === "maturity_preparation") when = validDate(input.debtMaturityDate) ? `${input.debtMaturityDate} 만기 전에 잔액과 준비자금을 확인하세요.` : "이번 주 안에 정확한 만기일·만기 잔액·준비자금을 확인하세요.";
   if (futureEventPlan(input)?.kind === "purpose" && ["purpose_fund_confirmation", "near_future_funds_shortfall", "no_priority_bottleneck"].includes(result.bottleneck)) {
     record = plans.purpose_fund_confirmation[0];
     done = plans.purpose_fund_confirmation[1];
-    when = `${validDate(input.goalDeadline) ? input.goalDeadline : "목표일을 먼저 정한 뒤"} 목표일 전에 배정액 확인. ${when}`;
+    when = validDate(input.goalDeadline) ? `다음 소득이 들어오면 목표일 ${input.goalDeadline}까지 필요한 월 배정액을 확인하세요.` : "다음 소득이 들어오면 이 목표에 실제로 배정할 금액과 목표일을 확인하세요.";
   }
-  if (result.bottleneck === "income_interruption_risk") when = `소득이 바뀌는 실제 날짜를 확인하고 그 전에 점검. ${when}`;
+  if (result.bottleneck === "income_interruption_risk") when = "소득이 바뀌기 전에 바로 쓸 생활비와 변경 후 예상 소득을 먼저 확인하세요.";
   if (input.jobType === "freelancer" && result.bottleneck === "insufficient_data") record += ". 낮은 달 ≤ 평균 ≤ 높은 달 소득(만원)";
   const unit = MONEY_MANAGEMENT_UNIT_OPTIONS.find(o => o.value === input.moneyManagementUnit)?.label ?? "입력한 관리 단위";
   record += ` (${unit} 기준, 소득과 지출 범위 통일)`;

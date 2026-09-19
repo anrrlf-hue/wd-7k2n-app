@@ -381,6 +381,24 @@ fieldset.survey-field { padding-top: 8px; }
 .scene-companion { position: absolute; right: 5%; bottom: 5%; width: 25%; }
 [data-scene="reality"] .scene-companion { right: 6%; bottom: 6%; width: 28%; }
 .scene-companion .angel-shadow { opacity: .6; }
+.bgm-toggle {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e7c78b35;
+  border-radius: 999px;
+  background: #152033d9;
+  color: #f0d8a7;
+  box-shadow: 0 8px 22px #0003;
+  backdrop-filter: blur(10px);
+  opacity: .78;
+}
+.bgm-toggle:hover, .bgm-toggle:focus-visible { opacity: 1; }
 .result-bright .diagnosis-layers > div { padding-block: 24px; }
 @media (min-width: 640px) {
   .journey-shell { max-width: 520px; padding: 32px 40px 64px; }
