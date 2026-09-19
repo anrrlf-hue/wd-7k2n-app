@@ -173,7 +173,7 @@ export function ResultStep({
           손에도 같은 흐름이 있을까요?
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          손금 사진 한 장이면 사주와 교차 비교하고, 나머지 심층 리포트까지 이어서 볼 수 있어요.
+          손금 사진 한 장으로 마음을 표현하고 생각을 펼치는 방식을 읽고, 사주 풀이와 함께 살펴볼 수 있어요.
         </p>
         <div className="mt-3">
           <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} />

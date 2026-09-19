@@ -21,7 +21,7 @@ import {
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
 import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
-import { buildRealObservationText, buildTraditionalReadingText } from "@/lib/palm-observation-text";
+import { PalmReadingSections, TripleCompareSection } from "@/components/palm/palm-reading-sections";
 import { derivePalmKeyword } from "@/lib/palm-keyword";
 import { buildAnalysisResult, type AnalysisResult } from "@/lib/analysis-result";
 import type { SurveyInput } from "@/lib/survey-input";
@@ -81,32 +81,6 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
         <EvidenceToggle evidence={report.evidenceExplainer} />
       </div>
     </div>
-  );
-}
-
-const COMPARE_KIND_LABEL: Record<CompareItem["kind"], string> = { 일치: "일치", 차이: "차이", 보완: "보완", 중립: "중립", 미확인: "미확인", "비교 불가": "비교 불가" };
-
-/** 손금 자체 해석이 끝난 뒤 딱 한 번 나오는 사주×손금×자기응답 통합 비교.
- * 데이터가 있는 축만 서버(triple-compare.ts)에서 내려오므로, 여기서는
- * 있는 그대로 나열만 한다 — 일치로 억지로 맞추지 않는다. */
-function TripleCompareSection({ items, withPalm = true }: { items: CompareItem[]; withPalm?: boolean }) {
-  if (items.length === 0) return null;
-  return (
-    <ReportSection step="③" title={withPalm ? "비교 · 사주와 손금의 같은 점과 다른 점" : "비교 · 사주와 나의 응답"}>
-      <div className="space-y-2.5">
-        {items.map((item) => (
-          <div key={item.topic} className="rounded-xl border border-border p-3.5">
-            <p className="flex items-center gap-1.5 text-sm font-semibold">
-              <span className="rounded-full bg-(--gold-soft) px-2 py-0.5 text-[11px] text-(--gold)">
-                {COMPARE_KIND_LABEL[item.kind]}
-              </span>
-              {item.topic}
-            </p>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.text}</p>
-          </div>
-        ))}
-      </div>
-    </ReportSection>
   );
 }
 
@@ -508,12 +482,7 @@ export function PalmPageClient({
            * (그 다음에야) 사주와의 비교. "사주 문단 + 손에도 같은 모습이
            * 보여요" 식으로 섞지 않는다. */}
           <div className="mt-5">
-            <ReportSection step="①" title="관측 · 사진에서 확인한 특징">
-              <p>{buildRealObservationText(palmFacts)}</p>
-            </ReportSection>
-            <ReportSection step="②" title="해석 · 손금이 보여주는 성향">
-              <p className="text-sm text-muted-foreground">{buildTraditionalReadingText(palmFacts)}</p>
-            </ReportSection>
+            <PalmReadingSections facts={palmFacts} />
             <TripleCompareSection items={tripleCompare} />
           </div>
 
@@ -539,7 +508,7 @@ export function PalmPageClient({
       {/* 무료 리포트 Peak와 다음 행동(운세지도) 사이에 고지 문구가 끼면
        * 몰입이 끊긴다(§O) — 필요한 고지는 여기, 진짜 페이지 최하단에만 둔다. */}
       {(stage === "result" || stage === "saju_only") && (
-        <p className="mt-8 text-center text-[11px] text-muted-foreground">이 결과로 중요한 결정을 대신하지 마세요.</p>
+        <p className="mt-8 text-center text-[11px] leading-relaxed text-muted-foreground">사주·손금은 자신을 돌아보는 전통 해석입니다. 실제 재무 판단은 소득·지출 등 확인된 정보를 기준으로 해요.</p>
       )}
       </div>
     </div>

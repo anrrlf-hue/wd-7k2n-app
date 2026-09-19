@@ -40,7 +40,7 @@ import { deriveSajuWorkCore } from "@/lib/saju-work-core";
 import type { SajuFacts, PillarFact } from "@/lib/saju-facts";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { PersonalityInput } from "@/lib/personality-check";
-import { dayStrengthLabel, dayStrengthShort, elementTemperamentPhrase, dayStemImagery } from "@/lib/saju-labels";
+import { dayStrengthShort, elementTemperamentPhrase, dayStemImagery } from "@/lib/saju-labels";
 import { buildRealWorldPersonalization, buildNextMove, buildTimingShift } from "@/lib/real-world-personalization";
 
 // ---------- 문장 구조 다양화 유틸 ----------
@@ -208,10 +208,10 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const imagery = dayStemImagery(dayStemKo);
   const snapshot: ReportParagraph = {
     text:
-      `이 해석에서는 ${imagery.image}처럼 ${imagery.core} 경향으로 읽습니다. ${dayStrengthLabel(dayStrength)}이라는 해석이며 실제 성격을 측정한 결과는 아닙니다. ` +
-      `재물은 ${wLevel === "없음" ? "사주에 직접 드러나 있지는 않고" : `${wLevel} 수준으로 보이고`}${wealthStarPillars.length > 0 ? `(${pillarNamesKo(wealthStarPillars)} 자리)` : ""}, ` +
-      `${activeCompare === "output" ? "표현하고 만들어내는 활동" : activeCompare === "peer" ? "직접 실행하고 경쟁하는 활동" : "어느 한 활동에 치우치지 않은 균형"}에 주목합니다. 실제 수입과 자산 상태는 별도 확인이 필요합니다.`,
-    evidence: `일간 ${dayStemKo}(${dayElement}), 격국 ${geukguk}, 재성 ${wealthStarCount}개`,
+      `사주에서 당신을 비추는 이미지는 ${imagery.image}입니다. ${imagery.core} 경향을 중심으로 읽습니다. ` +
+      `${dayStrength === "strong" ? "내 기준을 세우는 힘" : dayStrength === "weak" ? "주변의 도움과 환경을 활용하는 힘" : "내 기준과 주변 상황 사이의 균형"}이 이번 풀이의 첫 번째 주제입니다. ` +
+      `일과 재물 이야기는 ${activeCompare === "output" ? "생각을 표현하고 결과물로 만드는 과정" : activeCompare === "peer" ? "직접 실행하며 내 몫을 만들어가는 과정" : "구상과 실행을 함께 엮는 과정"}을 중심으로 풀어볼게요.`,
+    evidence: `일간 ${dayStemKo}(${dayElement}), 격국 ${geukguk}, 재성 ${wealthStarCount}개. 전통적 성향 해석이며 실제 성격·수입·자산을 측정한 결과는 아닙니다.`,
   };
 
   // ② 타고난 성향
@@ -257,17 +257,17 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     dayStrength === "strong"
       ? {
           text:
-            `이 해석에서는 자기 기준을 세우는 경향으로 읽습니다. 결정 전에 다른 관점도 확인하는 편인가요? ` +
-            `실제로 조언을 듣지 않거나 손해를 봤다는 뜻은 아닙니다. 자신의 결정 과정과 비교해 보세요.`,
+            `이 해석에서는 자기 기준을 세우고 지키는 힘에 주목합니다. 마음이 움직이는 제안을 만나도 ‘내가 처음 정한 기준에 맞는가’를 짚는 것이 살펴볼 포인트입니다. ` +
+            `내가 지킬 기준 하나와 다른 관점에서 확인할 질문 하나를 나란히 적어 보면, 고집과 확신 사이를 돌아보기 좋습니다.`,
           evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)}), 격국 ${geukguk}`,
         }
       : dayStrength === "weak"
         ? {
-            text: `이 해석에서는 주변의 지원과 정리된 기준을 참고하는 경향으로 읽습니다. 결정에 도움을 주는 정보원이 있나요? 실제 저축이나 상환 방법은 소득과 지출을 확인한 뒤 정해야 합니다.`,
+            text: `이 해석에서는 주변의 지원과 정리된 기준을 활용하는 힘에 주목합니다. 믿을 만한 조언을 들었을 때, 그중 무엇을 내 기준으로 삼을지가 살펴볼 포인트입니다. 남의 설명을 그대로 옮기기보다 ‘내가 이해한 이유’를 한 문장으로 정리해 보는 장면을 떠올려 보세요.`,
             evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)})`,
           }
         : {
-            text: `이 해석에서는 한쪽으로 치우친 성향을 정하지 않습니다. 어떤 상황에서 기준을 지키고 바꾸는지 떠올려 보세요. 중립이라는 이유로 재무 관리에 문제가 있다고 보지 않습니다.`,
+            text: `이 해석에서는 기준을 지키는 힘과 상황을 살피는 힘을 함께 놓고 봅니다. 늘 같은 방식으로 움직여야 한다기보다, 바꿔도 되는 조건과 꼭 지킬 조건을 구분해 보는 것이 핵심입니다. 최근 고민했던 선택에서 두 조건이 무엇이었는지 떠올려 보세요.`,
             evidence: `일간 ${dayStemKo}(중화)`,
           };
 
@@ -312,26 +312,28 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     socialCompare === "officer"
       ? {
           text:
-            `이 해석에서는 관계의 역할과 약속을 확인하는 경향으로 읽습니다. ` +
-            `약속의 기준을 분명히 하는 것과 실행 방법을 스스로 정하는 것은 공존할 수 있습니다. 실제로 편한 조건인지 확인해 보세요.`,
+            `이 해석에서는 관계의 역할과 약속을 분명히 하는 면에 주목합니다. ` +
+            `함께 일하거나 돈이 오가는 일을 의논할 때, 누가 무엇을 맡고 언제까지 할지 맞추는 장면에 연결됩니다. 약속은 함께 정하되 맡은 일을 풀어가는 방법에는 내 재량을 두는 식으로 생각해 볼 수 있습니다.`,
           evidence: `관성(편관+정관) ${officerStarCount}개`,
         }
       : socialCompare === "resource"
         ? {
             text:
-              `이 해석에서는 정보와 지원을 참고하는 경향으로 읽습니다. ` +
-              `조언을 구하는 것과 최종 판단을 직접 하는 것은 다릅니다. 실제 결정에서 어느 정도 참고하는지 확인해 보세요.`,
+              `이 해석에서는 사람을 통해 배우고 필요한 도움을 모으는 면에 주목합니다. ` +
+              `경험 있는 사람의 설명에서 힌트를 얻고, 내 상황에 맞는 부분을 골라 쓰는 장면을 떠올릴 수 있습니다. 조언을 들은 뒤 ‘나는 어떤 이유로 이쪽을 택하는가’를 내 말로 정리하면 배움과 자기 판단을 함께 살펴보기 좋습니다.`,
             evidence: `인성(편인+정인) ${resourceStarCount}개`,
           }
         : {
-            text: `이 해석에서는 역할과 지원 요소의 비중이 같아 한쪽으로 정하지 않습니다. 실제 타인 영향이나 독립성을 확인한 값은 아니므로 직접 응답과 구분해 보세요.`,
+            text: `이 해석에서는 약속과 책임을 살피는 면, 도움을 주고받는 면에 비슷한 무게를 둡니다. 함께할 때 정해야 할 기준과 상대에게 배울 부분을 나눠 보는 것이 핵심입니다. 누군가와 일을 의논할 때 서로 기대하는 역할부터 맞추고 필요한 도움을 구체적으로 말하는 장면에 연결해 보세요.`,
             evidence: `관성 ${officerStarCount}개·인성 ${resourceStarCount}개의 균형`,
           };
 
   const decisionStyle: ReportParagraph = {
     text: dayStrength === "neutral"
-      ? "이 해석에서는 자기 주도와 환경 반응을 한쪽으로 정하지 않습니다. 결정 속도는 중립인 강약 해석으로 판단할 수 없어요. 실제로 빠르게 결정할 때와 시간을 두는 때를 나눠 떠올려 보세요."
-      : `이 해석에서는 ${dayStrength === "strong" ? "자기 기준을 세우는" : "환경과 지원을 살피는"} 경향으로 읽습니다. 빠르거나 느린 결정 속도를 측정한 값은 아닙니다. 실제 결정에서 어떤 정보를 확인하는지 살펴보세요.`,
+      ? "이 해석에서는 자기 주도와 환경 반응을 한쪽으로 정하지 않고, 두 축을 함께 봅니다. 먼저 내 기준을 적고 상황에 따라 조정할 부분을 덧붙이는 장면에 연결할 수 있습니다. 중요한 선택에서 무엇만큼은 지키고 무엇은 의논할 수 있는지 나눠 보세요."
+      : dayStrength === "strong"
+        ? "이 해석에서는 스스로 납득할 기준을 세우는 경향에 주목합니다. 선택지가 많을 때 내가 중요하게 보는 조건을 먼저 정리하는 장면과 이어집니다. 이미 마음이 기운 선택이 있다면, 그 이유를 다른 사람에게도 설명할 수 있는지 돌아보세요."
+        : "이 해석에서는 환경과 지원을 살피며 판단의 발판을 만드는 경향에 주목합니다. 필요한 정보와 조언을 모은 다음, 내 상황에 맞는 조건을 골라내는 장면과 이어집니다. 여러 의견 중 어떤 근거가 나에게 가장 중요한지 한 가지부터 짚어보세요.",
     evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)}), 강약과 속도는 다른 의미`,
   };
 
