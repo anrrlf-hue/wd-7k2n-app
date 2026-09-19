@@ -28,7 +28,7 @@ export function AmbientBgm() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const target = muted ? 0 : pathname === "/" ? 0.18 : pathname === "/diagnosis" ? 0.12 : 0.07;
+    const target = muted ? 0 : pathname === "/" ? 0.32 : pathname === "/diagnosis" ? 0.22 : 0.12;
     const id = window.setInterval(() => {
       const delta = target - audio.volume;
       if (Math.abs(delta) < 0.004) {
