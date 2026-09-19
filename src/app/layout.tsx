@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { AmbientBgm } from "@/components/ambient-bgm";
 import "./globals.css";
-
 
 export const metadata: Metadata = {
   title: "재물사주 · 내 돈의 흐름을 현실로",
@@ -12,6 +12,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         {children}
+        <AmbientBgm />
       </body>
     </html>
   );
