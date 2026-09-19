@@ -3,11 +3,15 @@
 import type { SurveyInput } from "@/lib/survey-input";
 import { surplusKrw } from "@/lib/survey-input";
 import { futureEventPlan, futureEventAnswersComplete, futureEventNeedsClarification } from "@/lib/future-event";
+import { purposeFunding, freelancerEvidence } from "@/lib/financial-evidence";
 
 export type BottleneckCode =
   | "cash_flow_deficit"
   | "income_interruption_risk"
   | "high_interest_debt"
+  | "maturity_preparation"
+  | "purpose_fund_confirmation"
+  | "income_variability_risk"
   | "near_future_funds_shortfall"
   | "emergency_fund_shortage"
   | "biz_personal_mixed"
@@ -33,13 +37,11 @@ function step2IncomeInterruptionRisk(input: SurveyInput): boolean {
 
 function step3HighInterestDebt(input: SurveyInput): boolean {
   if (!input.hasDebt) return false;
-  return input.debtInterestRate === "over_15" || input.debtMaturity === "under_3m";
+  return input.debtInterestRate === "over_15";
 }
 
 function step4NearFutureFundsShortfall(input: SurveyInput): boolean {
-  if (futureEventPlan(input)?.kind !== "purpose") return false;
-  if (!input.futureEventAmount || !input.futureEventPrepared) return false; // 정보 부족 -> 스킵
-  return input.futureEventTiming !== "over_1y" && input.futureEventPrepared !== "enough";
+  return input.futureEventTiming !== "over_1y" && purposeFunding(input).state === "SHORTFALL";
 }
 
 function step5EmergencyFundShortage(input: SurveyInput): boolean {
@@ -51,7 +53,7 @@ function step6BizPersonalMixed(input: SurveyInput): boolean {
 }
 
 function step7CardInstallmentDependence(input: SurveyInput): boolean {
-  return input.spendingPatterns.includes("card_dependence") || input.spendingPatterns.includes("installment");
+  return input.spendingPatterns.includes("card_dependence");
 }
 
 function step8NoExpenseAwareness(input: SurveyInput): boolean {
@@ -71,16 +73,20 @@ export function detectBottleneck(input: SurveyInput): BottleneckCode {
     !input.spendingPatterns.length || !input.futureEvents.length ||
     (input.hasDebt && (!input.debtInterestRate || !input.debtMaturity || !input.debtMonthlyPayment || !input.debtRepaymentType)) ||
     !futureEventAnswersComplete(input) || futureEventNeedsClarification(input) ||
-    (input.jobType === "business_owner" && input.businessSeparatesFinance === undefined)) return "insufficient_data";
+    (input.jobType === "business_owner" && input.businessSeparatesFinance === undefined) ||
+    (input.jobType === "freelancer" && !freelancerEvidence(input))) return "insufficient_data";
   if (step1CashFlowDeficit(input)) return "cash_flow_deficit";
   if (step2IncomeInterruptionRisk(input)) return "income_interruption_risk";
   if (step3HighInterestDebt(input)) return "high_interest_debt";
+  if (input.hasDebt && input.debtMaturity === "under_3m") return "maturity_preparation";
+  if ((freelancerEvidence(input)?.lowGap ?? 0) > 0) return "income_variability_risk";
   if (step4NearFutureFundsShortfall(input)) return "near_future_funds_shortfall";
   if (step5EmergencyFundShortage(input)) return "emergency_fund_shortage";
   if (step6BizPersonalMixed(input)) return "biz_personal_mixed";
   if (step7CardInstallmentDependence(input)) return "card_installment_dependence";
   if (step8NoExpenseAwareness(input)) return "no_expense_awareness";
   if (step9NoSavingsSystem(input)) return "no_savings_system";
+  if (input.futureEventTiming !== "over_1y" && purposeFunding(input).state === "NEEDS_CONFIRMATION") return "purpose_fund_confirmation";
   // step10 (long_term_goal_pace_short): 정보 부족 -> 항상 스킵
   return "no_priority_bottleneck"; // 투자 정보 없이 투자 효율을 추정하지 않는다.
 }

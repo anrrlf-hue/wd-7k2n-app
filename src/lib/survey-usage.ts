@@ -1,0 +1,41 @@
+import type { SurveyInput } from "@/lib/survey-input";
+
+export interface QuestionUsage { question: string; fact: string; usedBy: string; resultEffect: string; actionEffect: string }
+const usageEntry = (question: string, fact: string, usedBy: string, resultEffect: string, actionEffect: string): QuestionUsage => ({ question, fact, usedBy, resultEffect, actionEffect });
+/** Audit map only, not a second diagnosis engine. */
+export const SURVEY_USAGE = {
+  biggestConcern: usageEntry("돈 고민", "걱정, 검증 사실 아님", "buildAnalysisResult/suggestManagementMethod", "별도 인용; 진단 변경 안 함", "고민과 숫자를 나눠 기록"),
+  jobType: usageEntry("근무 형태", "자기보고", "detectBottleneck/freelancerEvidence/suggestManagementMethod", "소득중단·변동·사업분리 적용", "고정급은 실제 급여 입금일, 나머지는 실제 입금 때"),
+  futureEvents: usageEntry("예정 변화", "선택 일정", "futureEventPlan/buildAnalysisResult", "진단 범위", "해당 일정 자료 준비"),
+  primaryFutureEvent: usageEntry("우선 일정", "사용자 지정", "primaryFutureEvent/selectPrimaryFutureEvent", "오래된 다른 일정 답변 제외", "한 일정부터 확인"),
+  monthlyIncomeKrw: usageEntry("월 소득", "원 입력", "surplusKrw/detectBottleneck", "월 예산 차이", "소득 안에서 재배분"),
+  monthlyFixedCostKrw: usageEntry("고정지출·상환", "원 입력", "surplusKrw/freelancerEvidence", "필수지출·비상금 기준", "상환 중복 차감 없이 점검"),
+  monthlyLivingCostKrw: usageEntry("생활비", "원 입력", "surplusKrw/freelancerEvidence", "월 예산·필수지출 차이", "고정비와 나눠 기록"),
+  monthlySavingsKrw: usageEntry("저축·투자", "현재 배분액, 목표별 아님", "surplusKrw/buildAnalysisResult", "미배분액·비상금 계획 추정", "목표 월 배정 별도 확인"),
+  expenseAwareness: usageEntry("지출 파악", "자기보고 정확도", "detectBottleneck/buildAnalysisResult", "지출 우선순위·정확도 표시", "거래내역 대조"),
+  emergencyFund: usageEntry("현금으로 버틸 기간", "자기보고 구간", "detectBottleneck/buildAnalysisResult", "비상금·중단 준비 추정", "실제 현금 확인"),
+  hasDebt: usageEntry("부채 유무", "자기보고", "detectBottleneck/buildAnalysisResult", "부채 적용 여부", "있을 때 계약 확인"),
+  debtInterestRate: usageEntry("금리", "구간", "detectBottleneck/buildAnalysisResult", "고금리와 만기 분리", "정확한 금리 확인"),
+  debtMonthlyPayment: usageEntry("월 상환", "원금 포함 가능 구간", "buildAnalysisResult", "구간 표시, 이자 추정 안 함", "월 결제내역 대조"),
+  debtMaturity: usageEntry("만기", "구간", "detectBottleneck/buildAnalysisResult", "3개월 내 만기 준비", "정확한 날짜 확인"),
+  debtRepaymentType: usageEntry("상환 방식", "원리금/이자만", "buildAnalysisResult", "원금·이자 구분", "계약 잔액 확인"),
+  debtMaturityDate: usageEntry("만기일", "선택 날짜/미확인", "buildAnalysisResult/suggestManagementMethod", "날짜 표시", "만기 전 점검"),
+  debtRemainingKrw: usageEntry("만기 잔액", "선택 금액/미확인", "buildAnalysisResult", "준비금과 차이", "계약 잔액 대조"),
+  debtPreparedKrw: usageEntry("상환 준비금", "선택 금액/미확인", "buildAnalysisResult", "준비 차이", "다른 목적 중복 확인"),
+  futureEventTiming: usageEntry("일정 시기", "구간", "detectBottleneck/buildAnalysisResult", "근거리 우선순위·시기 표시", "지급 날짜 확인"),
+  futureEventAmount: usageEntry("필요액 구간", "대표값 확정 금지", "futureEventAnswersComplete/buildAnalysisResult", "구간 표시·확인 필요", "실제 필요액 확인"),
+  futureEventPrepared: usageEntry("준비 비율", "자기보고 구간", "purposeFunding/buildAnalysisResult", "충분 응답과 숫자 확인 구분", "실제 준비액 확인"),
+  goalRequiredKrw: usageEntry("실제 필요액", "선택 원 입력", "purposeFunding/buildAnalysisResult", "계획 부족액", "목표 규모 비교"),
+  goalPreparedKrw: usageEntry("목표 준비액", "선택 원 입력", "purposeFunding/buildAnalysisResult", "남은 금액", "잔액 대조"),
+  goalMonthlyAllocationKrw: usageEntry("목표 월 배정", "전체 저축 대체 금지", "purposeFunding/buildAnalysisResult", "기한 내 적립 계획", "실제 입금별 배정 확인"),
+  goalDeadline: usageEntry("목표일", "선택 날짜", "purposeFunding/suggestManagementMethod", "남은 계획 횟수 추정", "목표일 전 점검"),
+  futureIncomeChange: usageEntry("변화 후 소득", "유지/감소/중단/모름", "detectBottleneck/buildAnalysisResult", "중단 위험/확인 필요", "예상 소득 확인"),
+  futureLivingBuffer: usageEntry("변화 후 준비", "기간/모름", "buildAnalysisResult/futureEventNeedsClarification", "기간과 미확인 구분", "소득 변화 시점 현금 확인"),
+  businessSeparatesFinance: usageEntry("사업 분리", "자기보고", "detectBottleneck", "혼합 여부", "사업/개인 장부 구분"),
+  freelancerIncomeLow: usageEntry("낮은 달 소득", "만원 자기보고", "freelancerEvidence/detectBottleneck", "필수지출 부족분", "낮은 달 현금 준비"),
+  freelancerIncomeAvg: usageEntry("평균 소득", "만원 자기보고", "freelancerEvidence/buildAnalysisResult", "평균 잔여액·순서 검증", "평균만으로 계획 안 함"),
+  freelancerIncomeHigh: usageEntry("높은 달 소득", "만원 자기보고", "freelancerEvidence/buildAnalysisResult", "변동 폭·순서 검증", "반복 소득으로 가정 안 함"),
+  moneyManagementUnit: usageEntry("관리 단위", "개인/공동/혼합", "suggestManagementMethod", "기록 범위 표시", "소득·지출 범위 통일"),
+  spendingPatterns: usageEntry("소비 패턴", "선택한 습관", "detectBottleneck/suggestManagementMethod", "반복 충당·저축만 판정; 할부 단독 제외", "선택 습관 실제 내역 점검·회피는 점검 방식 완화"),
+  nextReviewDate: usageEntry("점검 가능일", "선택 날짜/미정", "suggestManagementMethod", "날짜 또는 미정 표시", "그 날짜에 점검"),
+} satisfies Record<keyof SurveyInput, QuestionUsage>;

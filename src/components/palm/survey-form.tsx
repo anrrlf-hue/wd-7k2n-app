@@ -3,6 +3,7 @@
 import { futureEventPlan, primaryFutureEvent, futureEventAnswersComplete, selectFutureEvents, selectPrimaryFutureEvent, INCOME_CHANGE_OPTIONS, LIVING_BUFFER_OPTIONS } from "@/lib/future-event";
 import { CompanionHeading } from "@/components/angel-companion";
 import { useId, useState } from "react";
+import { freelancerEvidence } from "@/lib/financial-evidence";
 import { Button } from "@/components/ui/button";
 import {
   JOB_TYPE_OPTIONS,
@@ -132,9 +133,13 @@ const initialInput: SurveyInput = {
   spendingPatterns: [],
 };
 
+function DateField({ label, value, onChange }: { label: string; value?: string; onChange: (value: string) => void }) {
+  const id = useId();
+  return <div className="survey-field"><label htmlFor={id} className="text-sm font-medium">{label}</label><input id={id} type="date" value={value ?? ""} onChange={e => onChange(e.target.value)} className="mt-2 block min-h-11 w-full rounded-lg border border-border bg-transparent p-2" /></div>;
+}
+
 /** 재무 설문 3스텝, 원페이지형. 진행바(1/3~3/3)만 표시하고 장면 연출은
- * 넣지 않는다 — 간접체험에서 이미 체감 장치를 썼으므로 여기선 속도가
- * 우선이다. 숫자 직접입력은 소득/고정지출/생활비/저축 4개. */
+ * 넣지 않는다. 해당 일정/만기의 상세금액은 아는 경우에만 펼쳐 입력한다. */
 export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: SurveyInput) => void; initialValue?: SurveyInput }) {
   const [step, setStep] = useState(1);
   const [input, setInput] = useState<SurveyInput>(initialValue ?? initialInput);
@@ -159,7 +164,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
     (!input.hasDebt || (input.debtInterestRate && input.debtMonthlyPayment && input.debtMaturity && input.debtRepaymentType)) &&
     futureEventAnswersComplete(input) &&
     (!isBusinessOwner || input.businessSeparatesFinance !== undefined) &&
-    (!isFreelancer || (input.freelancerIncomeLow && input.freelancerIncomeAvg && input.freelancerIncomeHigh));
+    (!isFreelancer || Boolean(freelancerEvidence(input)));
 
   return (
     <div className="survey-form flex flex-1 flex-col">
@@ -243,6 +248,13 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
               <SingleSelectField label="월 상환액은요?" options={DEBT_PAYMENT_OPTIONS} value={input.debtMonthlyPayment} onChange={(v) => set("debtMonthlyPayment", v)} />
               <SingleSelectField label="만기는 언제예요?" options={DEBT_MATURITY_OPTIONS} value={input.debtMaturity} onChange={(v) => set("debtMaturity", v)} />
               <SingleSelectField label="상환 방식은요?" options={REPAYMENT_TYPE_OPTIONS} value={input.debtRepaymentType} onChange={(v) => set("debtRepaymentType", v)} />
+              {input.debtMaturity === "under_3m" && <details className="survey-field space-y-3">
+                <summary className="cursor-pointer text-sm">만기 준비 상세 · 아는 경우만 입력</summary>
+                <p className="text-xs text-muted-foreground">빈칸은 미확인으로 남깁니다. 현재 잔액이 아니라 만기에 갚을 금액을 확인해 주세요.</p>
+                <DateField label="정확한 만기일" value={input.debtMaturityDate} onChange={v => set("debtMaturityDate", v)} />
+                <NumberField label="만기에 갚을 잔액(원)" value={input.debtRemainingKrw ?? NaN} onChange={v => set("debtRemainingKrw", v)} />
+                <NumberField label="준비한 상환자금(원)" value={input.debtPreparedKrw ?? NaN} onChange={v => set("debtPreparedKrw", v)} />
+              </details>}
             </>
           )}
 
@@ -253,6 +265,14 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
               {eventPlan.kind === "purpose" ? <>
                 <SingleSelectField label={eventPlan.amount} options={FUTURE_EVENT_AMOUNT_OPTIONS} value={input.futureEventAmount} onChange={(v) => set("futureEventAmount", v)} />
                 <SingleSelectField label={eventPlan.prepared} options={FUTURE_EVENT_PREPARED_OPTIONS} value={input.futureEventPrepared} onChange={(v) => set("futureEventPrepared", v)} />
+                <details className="survey-field space-y-3">
+                  <summary className="cursor-pointer text-sm">이 목표의 준비 계획 · 아는 경우만 입력</summary>
+                  <p className="text-xs text-muted-foreground">모르면 비워 두세요. 전체 저축액을 이 목표에 쓰는 돈으로 가정하지 않습니다.</p>
+                  <NumberField label="이 목표의 실제 필요액(원)" value={input.goalRequiredKrw ?? NaN} onChange={v => set("goalRequiredKrw", v)} />
+                  <NumberField label="이 목표에 준비한 금액(원)" value={input.goalPreparedKrw ?? NaN} onChange={v => set("goalPreparedKrw", v)} />
+                  <NumberField label="이 목표에 매월 배정할 금액(원)" value={input.goalMonthlyAllocationKrw ?? NaN} onChange={v => set("goalMonthlyAllocationKrw", v)} />
+                  <DateField label="목표 금액이 필요한 날짜" value={input.goalDeadline} onChange={v => set("goalDeadline", v)} />
+                </details>
               </> : <>
                 <SingleSelectField label={eventPlan.income} options={INCOME_CHANGE_OPTIONS} value={input.futureIncomeChange} onChange={(v) => set("futureIncomeChange", v)} />
                 <p className="text-xs text-muted-foreground">예상 소득을 제외하고, 바로 쓸 현금으로 고정지출·생활비를 감당할 기간을 골라요.</p>
@@ -274,6 +294,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
           {isFreelancer && (
             <div className="survey-field">
               <p className="text-sm font-medium">월 소득이 들쭉날쭉하다면, 낮은 달/평균/높은 달은요?</p>
+              <p className="mt-1 text-xs text-muted-foreground">같은 기간 기준으로 낮은 달 ≤ 평균 ≤ 높은 달 순서로 입력해 주세요. 소득이 없는 달은 0입니다.</p>
               <div className="mt-2.5 space-y-2">
                 <input
                   value={input.freelancerIncomeLow ?? ""}
@@ -315,6 +336,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
             values={input.spendingPatterns}
             onChange={(v) => set("spendingPatterns", v)}
           />
+          <DateField label="다음에 실제로 점검할 수 있는 날짜 · 선택" value={input.nextReviewDate} onChange={v => set("nextReviewDate", v)} />
         </div>
       )}
 

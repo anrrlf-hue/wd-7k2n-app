@@ -62,6 +62,11 @@ export const FreeSajuReportSchema = z.object({
 export type FreeSajuReport = z.infer<typeof FreeSajuReportSchema>;
 
 const BANNED_PATTERNS: RegExp[] = [
+  /흔치\s*않은|희귀한\s*일치/,
+  /주변에서도.*들었을|자주\s*보였을|이미\s*느끼고\s*있었을/,
+  /수입이\s*적어서\s*못\s*모으는\s*(게|것이)\s*아닙/,
+  /돈이\s*그대로\s*멈춰/,
+  /사업이나\s*프리랜서.*더\s*맞/,
   /반드시\s*(성공|부자|대박)/,
   /100\s*%/,
   /무조건\s*(성공|보장)/,

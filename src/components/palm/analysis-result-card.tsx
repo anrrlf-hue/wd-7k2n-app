@@ -19,16 +19,20 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
     <h2 className="mt-3 text-2xl leading-snug font-semibold tracking-tight">타고난 나, 선택한 나,<br />그리고 지금의 돈</h2>
     </CompanionHeading>
     {result.eventContext && <p className="mt-3 text-xs text-muted-foreground">{result.eventContext}</p>}
+    {result.userConcern && <p className="mt-3 text-sm">직접 적은 고민: “{result.userConcern}” <span className="text-xs text-muted-foreground">· 확인된 재무 사실이나 진단은 아닙니다.</span></p>}
     <div className="diagnosis-layers mt-7">
       <div><p className="section-eyebrow">01 · 타고난 재물성향</p><p className="mt-2 text-sm">{innateSummary}</p><p className="mt-1 text-xs text-muted-foreground">사주 해석 · 자기이해를 위한 관점</p></div>
       <div><p className="section-eyebrow">02 · 실제로 고른 선택</p><p className="mt-2 text-sm">{choiceSummary ?? "선택 기록이 없어 비교하지 않았습니다."}</p></div>
       <div><p className="section-eyebrow">03 · 현재 현실 재무상태</p><p className="mt-2 text-sm">{result.lifeMeaning}</p>
         {result.surplusKrw !== null && <div className="my-4"><p className="text-xs text-muted-foreground">저축까지 배분한 뒤 남는 돈</p><p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{result.surplusKrw.toLocaleString("ko-KR")}원 <span className="text-sm font-normal">/ 월</span></p></div>}
         <p className="mt-1 text-xs text-muted-foreground">소득 − 고정지출(대출상환 포함) − 생활비 − 저축·투자. 재무 우선순위는 설문 답변만으로 판단해요.</p>
+        {result.incomeContext && <p className="mt-3 text-sm">{result.incomeContext}</p>}
+        <p className="mt-3 text-xs text-muted-foreground">{result.answerContext}</p>
+        {result.fundingContext && <p className="mt-3 text-sm">{result.fundingContext}</p>}
       </div>
     </div>
     <section className="diagnosis-priority mt-8">
-      <p className="section-eyebrow">{insufficient ? "먼저 확인할 정보" : result.bottleneck === "no_priority_bottleneck" ? "현재의 우선순위" : "지금 가장 먼저 풀 부분"}</p>
+      <p className="section-eyebrow">{insufficient || result.bottleneck === "purpose_fund_confirmation" ? "먼저 확인할 정보" : result.bottleneck === "no_priority_bottleneck" ? "현재의 우선순위" : "지금 가장 먼저 풀 부분"}</p>
       <h3 className="mt-3 text-2xl leading-snug font-semibold">{result.headline}</h3>
       <p className="mt-4 text-base">{result.why}</p>
     </section>
@@ -41,10 +45,16 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
       <p className="mt-2 text-base">{result.immediateDirection}</p>
       <p className="mt-3 text-xs text-muted-foreground">{result.gapStatement}</p>
     </div>
-    {!insufficient && method && <div className="mt-6 border-l-2 border-(--gold-soft) pl-4">
+    {method && <div className="mt-6 border-l-2 border-(--gold-soft) pl-4">
       <p className="section-eyebrow">이 행동을 이어가는 나만의 방식</p>
       <h3 className="mt-2 text-base font-semibold">{method.title}</h3>
       <p className="mt-2 text-sm text-muted-foreground">{method.reason} {method.routine}</p>
+      {method.whatToDo && <dl className="mt-3 space-y-2 text-sm">
+        <div><dt className="font-medium">할 일</dt><dd>{method.whatToDo}</dd></div>
+        <div><dt className="font-medium">기록할 것</dt><dd>{method.whatToRecord}</dd></div>
+        <div><dt className="font-medium">확인할 때</dt><dd>{method.whenToCheck}</dd></div>
+        <div><dt className="font-medium">끝났다고 볼 기준</dt><dd>{method.doneWhen}</dd></div>
+      </dl>}
       <p className="mt-2 text-xs text-muted-foreground">이번 응답을 바탕으로 한 제안이에요. 편한 방식으로 조정해도 괜찮아요.</p>
     </div>}
     {insufficient ? <Button size="lg" onClick={onRevise} className="mt-6 h-14 w-full rounded-full">답변 확인하고 다시 진단하기</Button> :

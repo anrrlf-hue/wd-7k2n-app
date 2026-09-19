@@ -49,8 +49,8 @@ test('zero income is valid and zero costs are explicit data', () => {
 test('healthy answers do not imply an unmeasured investment problem', () => {
   assert.equal(detectBottleneck({ ...base, monthlySavingsKrw: 500000 }), 'no_priority_bottleneck');
 });
-test('partially prepared small event remains a shortfall', () => {
-  assert.equal(detectBottleneck({ ...base, monthlySavingsKrw: 0, futureEvents: ['moving'], futureEventTiming: 'under_3m', futureEventAmount: 'under_500', futureEventPrepared: 'over_half' }), 'near_future_funds_shortfall');
+test('partially prepared small event requires goal allocation before shortfall judgment', () => {
+  assert.equal(detectBottleneck({ ...base, monthlySavingsKrw: 0, futureEvents: ['moving'], futureEventTiming: 'under_3m', futureEventAmount: 'under_500', futureEventPrepared: 'over_half' }), 'purpose_fund_confirmation');
 });
 test('simulation reflects selected behavior and ties without grading', () => {
   const a = computeExperienceOutcome('HOLD', ['flexibility', 'flexibility', 'security']);

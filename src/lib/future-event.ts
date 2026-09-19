@@ -63,7 +63,7 @@ export function futureEventNeedsClarification(input: SurveyInput): boolean {
 }
 
 function resetEventAnswers(input: SurveyInput): SurveyInput {
-  return { ...input, futureEventTiming: undefined, futureEventAmount: undefined, futureEventPrepared: undefined, futureIncomeChange: undefined, futureLivingBuffer: undefined };
+  return { ...input, futureEventTiming: undefined, futureEventAmount: undefined, futureEventPrepared: undefined, futureIncomeChange: undefined, futureLivingBuffer: undefined, goalRequiredKrw: undefined, goalPreparedKrw: undefined, goalMonthlyAllocationKrw: undefined, goalDeadline: undefined };
 }
 export function selectFutureEvents(input: SurveyInput, events: string[]): SurveyInput {
   // Adding a second event requires an explicit priority; don't silently pick one.

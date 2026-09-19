@@ -84,7 +84,7 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
   );
 }
 
-const COMPARE_KIND_LABEL: Record<CompareItem["kind"], string> = { 일치: "일치", 차이: "차이", 보완: "보완" };
+const COMPARE_KIND_LABEL: Record<CompareItem["kind"], string> = { 일치: "일치", 차이: "차이", 보완: "보완", 중립: "중립", 미확인: "미확인", "비교 불가": "비교 불가" };
 
 /** 손금 자체 해석이 끝난 뒤 딱 한 번 나오는 사주×손금×자기응답 통합 비교.
  * 데이터가 있는 축만 서버(triple-compare.ts)에서 내려오므로, 여기서는
@@ -155,7 +155,7 @@ function ConversionFunnel({
   function handleSurveyComplete(input: SurveyInput) {
     track("survey_completed");
     setSurveyInput(input);
-    setMethod(suggestManagementMethod(choiceTendencies, input.spendingPatterns));
+    setMethod(suggestManagementMethod(choiceTendencies, input.spendingPatterns, input));
     setAnalysisResult(buildAnalysisResult(input));
     setStage("analysis");
     track("analysis_result_viewed");

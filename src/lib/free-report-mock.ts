@@ -36,6 +36,7 @@
 // interpret/route.ts에서 직접 만든다 — palm은 무료 사주 단계(/api/saju)엔
 // 존재하지 않으므로 이 파일/이 함수는 palm을 아예 받지 않는다.
 
+import { deriveSajuWorkCore } from "@/lib/saju-work-core";
 import type { SajuFacts, PillarFact } from "@/lib/saju-facts";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { PersonalityInput } from "@/lib/personality-check";
@@ -85,16 +86,16 @@ function compose(seed: number, parts: { claim: string; scene: string; evidence: 
       text = `${claim} ${scene}`;
       break;
   }
-  return { text: text.trim(), evidence };
+  return { text: `이 해석에서 살펴볼 경향입니다. ${text.trim()}`, evidence };
 }
 
 const SELF_CHECK_POOL = [
-  "스스로도 이미 느끼고 있었을 부분입니다.",
-  "주변에서도 비슷한 이야기를 한 번쯤 들었을 것입니다.",
-  "최근 있었던 일 하나를 떠올려보면 바로 확인됩니다.",
-  "실제로 이렇게 움직이는 경우가 많습니다.",
-  "본인은 이미 알고 있었을 수 있습니다.",
-  "가까운 사람이라면 고개를 끄덕일 대목입니다.",
+  "실제 경험에도 해당하는지 돌아보세요.",
+  "비슷했던 상황과 달랐던 상황은 무엇인가요?",
+  "최근 일을 떠올렸을 때 이 설명과 맞는 부분이 있나요?",
+  "실제로도 이렇게 움직이는지 확인해 보세요.",
+  "자신의 경험과 다른 부분은 그대로 구분해 주세요.",
+  "주변의 평가보다 직접 경험한 장면을 떠올려 보세요.",
 ];
 function selfCheck(seed: number): string {
   return SELF_CHECK_POOL[seed % SELF_CHECK_POOL.length];
@@ -174,9 +175,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     wealthStarPillars,
     peerStarCount,
     outputStarCount,
-    outputStarPillars,
     officerStarCount,
-    officerStarPillars,
     resourceStarCount,
     hyungsin,
     gilsin,
@@ -190,6 +189,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     fiveElements,
   } = facts;
 
+  const core = deriveSajuWorkCore(facts);
   const baseSeed = hashStr(
     `${dayStemKo}${dayStrength}${geukguk}${wealthStarCount}${peerStarCount}${outputStarCount}${officerStarCount}${resourceStarCount}${gwimunRelations.length}`,
   );
@@ -208,9 +208,9 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const imagery = dayStemImagery(dayStemKo);
   const snapshot: ReportParagraph = {
     text:
-      `이 사주는 ${imagery.image}처럼 ${imagery.core} 사람의 사주입니다. ${dayStrengthLabel(dayStrength)}이라 ${dayStrength === "strong" ? "그 결이 겉으로도 뚜렷하게 드러납니다" : dayStrength === "weak" ? "그 결이 상황에 따라 완만하게 조절됩니다" : "그 결이 상황 따라 유연하게 나타납니다"}. ` +
+      `이 해석에서는 ${imagery.image}처럼 ${imagery.core} 경향으로 읽습니다. ${dayStrengthLabel(dayStrength)}이라는 해석이며 실제 성격을 측정한 결과는 아닙니다. ` +
       `재물은 ${wLevel === "없음" ? "사주에 직접 드러나 있지는 않고" : `${wLevel} 수준으로 보이고`}${wealthStarPillars.length > 0 ? `(${pillarNamesKo(wealthStarPillars)} 자리)` : ""}, ` +
-      `${activeCompare === "output" ? "뭔가를 만들어내는 활동이 곧 돈이 되는" : activeCompare === "peer" ? "직접 부딪히고 경쟁하는 자리에서 돈이 붙는" : "타고난 균형 쪽 흐름이 더 크게 작동하는"} 구조입니다.`,
+      `${activeCompare === "output" ? "표현하고 만들어내는 활동" : activeCompare === "peer" ? "직접 실행하고 경쟁하는 활동" : "어느 한 활동에 치우치지 않은 균형"}에 주목합니다. 실제 수입과 자산 상태는 별도 확인이 필요합니다.`,
     evidence: `일간 ${dayStemKo}(${dayElement}), 격국 ${geukguk}, 재성 ${wealthStarCount}개`,
   };
 
@@ -249,46 +249,25 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     evidence: `재성 ${wealthStarCount}개, 용신 ${yongsin.join(", ") || "특이 없음"}`,
   });
 
-  // ④ 돈을 버는 방식
-  const earningStyle: ReportParagraph =
-    activeCompare === "output"
-      ? {
-          text:
-            `아이디어를 내거나 뭔가를 만들어서 그게 돈으로 바뀌는 방식이 맞습니다. ` +
-            `특히 ${pillarNamesKo(outputStarPillars)} 자리에 그 힘이 있어, ${outputStarPillars.includes("month") ? "실제 사회생활과 업무에서" : outputStarPillars.includes("day") ? "본인 성향 자체에서" : "삶의 배경이 되는 부분에서"} 이 활동력이 두드러집니다. ` +
-            `직장에 오래 묶여 있기보다, 벌인 일을 마무리 짓는 순간 돈이 따라오는 구조입니다.`,
-          evidence: `식상(식신+상관) ${outputStarCount}개, 위치: ${pillarNamesKo(outputStarPillars) || "없음"}`,
-        }
-      : activeCompare === "peer"
-        ? {
-            text:
-              `직접 경쟁하거나 스스로 실행해야 돈이 붙는 방식입니다. 남이 대신 해주는 일보다, 본인이 직접 판단하고 부딪히는 일에서 결과가 더 좋습니다. ` +
-              selfCheck(seedFor(4)),
-            evidence: `비겁(비견+겁재) ${peerStarCount}개`,
-          }
-        : {
-            text:
-              `식상과 비겁이 뚜렷하게 우세하지 않아, 벌어들이는 힘은 타고난 균형 쪽에서 더 크게 작동합니다. ` +
-              `정해진 활동력보다는 상황과 타이밍에 맞춰 버는 방식이 유연하게 바뀝니다.`,
-            evidence: `식상 ${outputStarCount}개·비겁 ${peerStarCount}개, 용신(${yongsin.join(", ") || "특이 없음"})`,
-          };
+  // Shared work interpretation: roles and execution autonomy may coexist.
+  const earningStyle = core.sections.earningStyle;
 
   // ⑤ 돈을 지키는 방식
   const keepingStyle: ReportParagraph =
     dayStrength === "strong"
       ? {
           text:
-            `자기 기준이 뚜렷해 웬만해서는 흔들리지 않습니다. 다만 그 확신이 지나치면 주변 조언을 듣지 않고 밀어붙이다 지키는 힘을 스스로 깎아먹기 쉽습니다. ` +
-            `결정하기 전에 딱 한 번만 다른 사람 의견을 들어보는 것이 순서입니다. 이미 마음을 정한 뒤에는 의견을 구해도 잘 듣지 않게 되니, 결정하기 전이 핵심입니다.`,
+            `이 해석에서는 자기 기준을 세우는 경향으로 읽습니다. 결정 전에 다른 관점도 확인하는 편인가요? ` +
+            `실제로 조언을 듣지 않거나 손해를 봤다는 뜻은 아닙니다. 자신의 결정 과정과 비교해 보세요.`,
           evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)}), 격국 ${geukguk}`,
         }
       : dayStrength === "weak"
         ? {
-            text: `혼자 판단하기보다 믿을 만한 사람이나 체계를 곁에 둘 때 돈이 더 잘 지켜집니다. 자동이체나 정기저축처럼 스스로 흔들리지 않아도 되는 장치를 만들어두는 것이 실질적인 도움이 됩니다.`,
+            text: `이 해석에서는 주변의 지원과 정리된 기준을 참고하는 경향으로 읽습니다. 결정에 도움을 주는 정보원이 있나요? 실제 저축이나 상환 방법은 소득과 지출을 확인한 뒤 정해야 합니다.`,
             evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)})`,
           }
         : {
-            text: `한쪽으로 치우치기보다 상황에 맞게 지키는 방식을 바꿉니다. 다만 기준이 유연한 만큼, 명확한 규칙 하나는 고정해두는 것이 흔들림을 줄여줍니다.`,
+            text: `이 해석에서는 한쪽으로 치우친 성향을 정하지 않습니다. 어떤 상황에서 기준을 지키고 바꾸는지 떠올려 보세요. 중립이라는 이유로 재무 관리에 문제가 있다고 보지 않습니다.`,
             evidence: `일간 ${dayStemKo}(중화)`,
           };
 
@@ -302,7 +281,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
         : "뚜렷한 위험 신호는 없지만, 벌어들이는 힘과 실행하는 힘의 균형이 무너질 때가 돈이 새는 신호입니다.",
     scene:
       hyungsin.length > 0 || cautionSinsal
-        ? "큰 결정 앞에서는 하루만 미루고 다시 보는 습관을 들이면 이 패턴이 확실히 줄어듭니다."
+        ? "큰 결정 앞에서는 하루만 미루고 다시 보는 습관을 들이면 판단 근거를 다시 확인해 볼 수 있습니다."
         : "평소보다 결정을 빨리 내리고 있다면, 그것이 신호일 수 있습니다.",
     evidence: cautionSinsal
       ? `신살 ${cautionSinsal.name}`
@@ -326,82 +305,35 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     evidence: `대운 중 재성 겹침 ${wealthOpportunityDaeunCount}회, 정점 12운성 자리 ${pillarNamesKo(peakStagePillars) || "없음"}`,
   });
 
-  // ⑧ 직장형/사업형 성향
-  const jobOrientation: ReportParagraph =
-    wealthStarCount + outputStarCount > peerStarCount + officerStarCount
-      ? {
-          text:
-            `직장에 오래 묶여 있기보다, 성과가 바로 돈으로 연결되는 사업이나 프리랜서 쪽 일이 더 맞습니다. 조직 안에 있더라도, 스스로 결과를 만들어내는 역할을 맡을 때 만족도가 훨씬 높습니다. ` +
-            `지시받은 일보다 스스로 기획한 일이 더 잘 풀리는 사주입니다.`,
-          evidence: `재성+식상 ${wealthStarCount + outputStarCount}개 vs 비겁+관성 ${peerStarCount + officerStarCount}개`,
-        }
-      : {
-          text:
-            `안정적인 체계 안에서 신뢰를 쌓아가는 쪽에서 재물이 더 안정적으로 늘어납니다. 혼자 판을 짜기보다, 명확한 규칙과 역할이 있는 환경에서 오히려 더 크게 성장합니다. ` +
-            `자유롭게 알아서 하라고 하면 오히려 막막해지는 사주입니다.`,
-          evidence: `비겁+관성 ${peerStarCount + officerStarCount}개 vs 재성+식상 ${wealthStarCount + outputStarCount}개`,
-        };
-
-  // ⑨ 조직에서 강한 부분
-  const teamStrength = compose(seedFor(9), {
-    claim:
-      officerStarCount === 0
-        ? "조직과 규율을 뜻하는 기운이 사주에 없어, 조직 안에서도 정해진 규칙보다 스스로 만든 기준으로 움직일 때 더 강합니다."
-        : "조직 안에서 역할과 책임이 분명할 때 오히려 힘이 붙습니다.",
-    scene:
-      officerStarPillars.includes("month")
-        ? "특히 실제 업무 환경에 그 힘이 있어, 회사와 조직 생활에서 이 성향이 더 뚜렷하게 드러납니다."
-        : officerStarCount > 0
-          ? "책임을 맡았을 때 회피하지 않고 끝까지 챙기는 쪽에 가깝습니다."
-          : "규칙이 너무 촘촘한 곳보다는 결과로 평가받는 구조가 더 맞습니다.",
-    evidence: `관성(편관+정관) ${officerStarCount}개, 위치 ${pillarNamesKo(officerStarPillars) || "없음"}`,
-  });
-
-  // ⑩ 독립적으로 움직일 때 강한 부분
-  const soloStrength = compose(seedFor(10), {
-    claim:
-      peerStarCount + outputStarCount >= 3
-        ? "실행력과 활동력이 함께 강해, 혼자 판단하고 혼자 실행하는 상황에서 오히려 힘이 붙는 사주입니다."
-        : "혼자 움직일 때 아주 도드라지는 사주는 아니지만, 필요할 때는 스스로 책임지고 마무리하는 힘이 있습니다.",
-    scene:
-      peerStarCount + outputStarCount >= 3
-        ? "누가 시키지 않아도 스스로 일을 벌이고, 끝까지 밀어붙이는 모습을 자주 보였을 것입니다."
-        : "여럿이 헤매는 상황에서 조용히 자기 몫부터 정리하는 쪽에 가깝습니다.",
-    evidence: `비겁 ${peerStarCount}개 + 식상 ${outputStarCount}개`,
-  });
+  const { jobOrientation, teamStrength, soloStrength } = core.sections;
 
   // ⑪ 사람과 돈
   const peopleAndMoney: ReportParagraph =
     socialCompare === "officer"
       ? {
           text:
-            `조직이나 규칙, 정해진 관계 안에서 돈이 도는 것을 편하게 느낍니다. 이런 구조가 있는 자리에서 돈 관련 결정도 더 안정적으로 내립니다. ` +
-            `믿을 만한 시스템이나 계약이 있어야 마음이 놓이는 사주입니다.`,
+            `이 해석에서는 관계의 역할과 약속을 확인하는 경향으로 읽습니다. ` +
+            `약속의 기준을 분명히 하는 것과 실행 방법을 스스로 정하는 것은 공존할 수 있습니다. 실제로 편한 조건인지 확인해 보세요.`,
           evidence: `관성(편관+정관) ${officerStarCount}개`,
         }
       : socialCompare === "resource"
         ? {
             text:
-              `정보나 조언을 얻은 뒤에 돈 관련 결정을 내립니다. 믿을 만한 사람의 말 한마디가 실제 선택에 큰 영향을 줍니다. ` +
-              `중요한 결정 전에 누군가에게 먼저 물어보고 움직이는 사주입니다.`,
+              `이 해석에서는 정보와 지원을 참고하는 경향으로 읽습니다. ` +
+              `조언을 구하는 것과 최종 판단을 직접 하는 것은 다릅니다. 실제 결정에서 어느 정도 참고하는지 확인해 보세요.`,
             evidence: `인성(편인+정인) ${resourceStarCount}개`,
           }
         : {
-            text: `사람에게 크게 기대지도, 완전히 혼자 판단하지도 않는 균형 잡힌 사주입니다. 상황에 따라 조언을 참고하되 최종 결정은 스스로 내리는 쪽에 가깝습니다.`,
+            text: `이 해석에서는 역할과 지원 요소의 비중이 같아 한쪽으로 정하지 않습니다. 실제 타인 영향이나 독립성을 확인한 값은 아니므로 직접 응답과 구분해 보세요.`,
             evidence: `관성 ${officerStarCount}개·인성 ${resourceStarCount}개의 균형`,
           };
 
-  // ⑫ 의사결정 스타일
-  const decisionStyle: ReportParagraph =
-    dayStrength === "strong"
-      ? {
-          text: `직관적으로 빠르게 결정하고 밀어붙입니다. 속도는 강점이지만, 중요한 결정일수록 하루 정도 시간을 두고 다시 보면 실수가 확 줄어듭니다.`,
-          evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)})`,
-        }
-      : {
-          text: `신중하게 정보를 모으고 나서 결정합니다. 다만 너무 오래 재다가 타이밍을 놓치는 경우가 있어, 결정 기한을 스스로 정해두는 것이 도움이 됩니다.`,
-          evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)})`,
-        };
+  const decisionStyle: ReportParagraph = {
+    text: dayStrength === "neutral"
+      ? "이 해석에서는 자기 주도와 환경 반응을 한쪽으로 정하지 않습니다. 결정 속도는 중립인 강약 해석으로 판단할 수 없어요. 실제로 빠르게 결정할 때와 시간을 두는 때를 나눠 떠올려 보세요."
+      : `이 해석에서는 ${dayStrength === "strong" ? "자기 기준을 세우는" : "환경과 지원을 살피는"} 경향으로 읽습니다. 빠르거나 느린 결정 속도를 측정한 값은 아닙니다. 실제 결정에서 어떤 정보를 확인하는지 살펴보세요.`,
+    evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)}), 강약과 속도는 다른 의미`,
+  };
 
   // ⑬ 기회를 잡는 방식
   const luckySinsal = findNamedSinsal(pillarStages, "길");

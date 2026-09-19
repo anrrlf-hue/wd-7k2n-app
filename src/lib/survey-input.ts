@@ -1,6 +1,5 @@
-// 간접체험 다음, 결제 전 재무 설문 — 3스텝. 숫자 직접입력은 소득/고정지출/
-// 생활비·저축 4개뿐(병목 계산에 실수값이 필요한 항목), 나머지 숫자성 정보는 전부
-// 구간 버튼. 사주 요소는 전혀 개입하지 않는다(순수 재무 설문).
+// 간접체험 다음 재무 설문 — 3스텝. 기본 4금액과 해당 일정/만기의 선택 상세.
+// 빈 상세는 미확인으로 남긴다. 사주 요소는 개입하지 않는다.
 
 export interface SurveyOption {
   value: string;
@@ -98,7 +97,7 @@ export const MONEY_MANAGEMENT_UNIT_OPTIONS: SurveyOption[] = [
 ];
 
 export const SPENDING_PATTERN_OPTIONS: SurveyOption[] = [
-  { value: "card_dependence", label: "카드의존" },
+  { value: "card_dependence", label: "생활비 부족을 카드로 반복 충당" },
   { value: "installment", label: "할부" },
   { value: "impulse", label: "충동소비" },
   { value: "compensatory", label: "보상소비" },
@@ -111,6 +110,15 @@ export const SPENDING_PATTERN_OPTIONS: SurveyOption[] = [
 ];
 
 export interface SurveyInput {
+  // Optional exact details; blank means unconfirmed, never zero.
+  goalRequiredKrw?: number;
+  goalPreparedKrw?: number;
+  goalMonthlyAllocationKrw?: number;
+  goalDeadline?: string;
+  debtMaturityDate?: string;
+  debtRemainingKrw?: number;
+  debtPreparedKrw?: number;
+  nextReviewDate?: string;
   biggestConcern: string;
   jobType: string;
   futureEvents: string[];

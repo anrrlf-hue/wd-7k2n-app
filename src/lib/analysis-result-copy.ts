@@ -14,6 +14,21 @@ export interface BottleneckCopyEntry {
 }
 
 export const BOTTLENECK_COPY: Record<BottleneckCode, BottleneckCopyEntry> = {
+  purpose_fund_confirmation: {
+    title: "목적자금 추가 확인", why: "준비한 비율만으로는 일정까지 돈이 부족할지 판단할 수 없어요.",
+    lifeMeaning: "전체 저축액이 이 목표에 쓰일 돈과 같지는 않습니다. 아직 부족하다고 판정하지 않았어요.",
+    notUrgent: "목표를 포기하거나 차입을 결정하는 것", notUrgentReason: "실제 필요액·준비액·월 배정액·기한을 먼저 확인해야 해요.",
+  },
+  maturity_preparation: {
+    title: "만기 상환 준비", why: "대출 만기가 3개월 이내라고 답했어요. 금리가 높다는 뜻은 아닙니다.",
+    lifeMeaning: "만기에 실제로 갚아야 하는 잔액과 따로 준비한 돈을 맞춰볼 시점이에요.",
+    notUrgent: "상환 준비가 부족하다고 단정하는 것", notUrgentReason: "원리금상환 중인 대출도 만기 잔액은 계약과 상환내역을 확인해야 해요.",
+  },
+  income_variability_risk: {
+    title: "소득이 낮은 달의 생활비 준비", why: "입력한 낮은 달 소득이 고정지출·생활비 합계보다 적어요.",
+    lifeMeaning: "평균 소득만 보면 놓치는 달이 있어요. 부족분을 준비한 현금으로 충당할 수 있는지 확인해요.",
+    notUrgent: "높은 달 소득을 기준으로 지출을 늘리는 것", notUrgentReason: "높은 달의 여유가 매달 반복된다고 볼 수 없어요.",
+  },
   insufficient_data: {
     title: "추가 정보 확인", why: "현재 답변만으로는 우선순위를 정하기 어렵습니다.",
     lifeMeaning: "빈칸은 0원과 다릅니다. 한 달 소득과 지출, 준비된 현금을 확인해 주세요.",
@@ -40,15 +55,15 @@ export const BOTTLENECK_COPY: Record<BottleneckCode, BottleneckCopyEntry> = {
   },
   high_interest_debt: {
     title: "고금리 부채",
-    why: "금리가 높거나 만기가 임박한 빚이 있습니다.",
-    lifeMeaning: "이자만으로 매달 상당액이 그냥 빠져나가고 있을 수 있습니다.",
+    why: "대출 금리가 연 15% 이상 구간이라고 답했어요.",
+    lifeMeaning: "실제 이자 부담은 잔액과 상환 방식에 따라 달라요. 월 상환액 전체를 이자로 보지 않습니다.",
     notUrgent: "저축을 늘리는 것",
     notUrgentReason: "빚의 이자율이 저축으로 버는 수익보다 훨씬 크면, 저축보다 빚부터 줄이는 쪽이 실질적으로 더 이득이기 때문입니다.",
   },
   near_future_funds_shortfall: {
     title: "가까운 목적자금",
-    why: "가까운 시일 안에 목돈이 필요한데 준비된 돈이 부족합니다.",
-    lifeMeaning: "그 시점이 왔을 때 급하게 빚을 내거나 계획을 미뤄야 할 수 있습니다.",
+    why: "입력한 필요액·준비액·월 배정액·기한으로 계산한 계획에 부족분이 있어요.",
+    lifeMeaning: "정확한 입금일과 추가 자금에 따라 달라질 수 있어요. 월 배정액이나 목표 규모를 조정할 수 있는지 먼저 살펴보세요.",
     notUrgent: "장기 자산관리",
     notUrgentReason: "가까운 시점에 필요한 돈부터 확보되지 않으면, 장기 계획은 그 전에 흔들릴 수 있기 때문입니다.",
   },
@@ -68,7 +83,7 @@ export const BOTTLENECK_COPY: Record<BottleneckCode, BottleneckCopyEntry> = {
   },
   card_installment_dependence: {
     title: "카드·할부 의존",
-    why: "카드나 할부에 반복적으로 의존하고 있습니다.",
+    why: "생활비 부족을 카드로 반복 충당한다고 직접 답했어요.",
     lifeMeaning: "이번 달 지출이 다음 달로 계속 넘어가는 구조입니다.",
     notUrgent: "투자",
     notUrgentReason: "매달 카드값이 먼저 빠져나가는 구조에서는 투자할 여윳돈 자체가 계속 줄어들기 때문입니다.",

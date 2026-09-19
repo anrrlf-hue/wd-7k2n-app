@@ -12,6 +12,8 @@ import type { PersonalityInput } from "@/lib/personality-check";
 import { FREE_SAJU_REPORT_SYSTEM_PROMPT, buildFreeSajuReportUserPrompt } from "@/lib/free-report-prompt";
 import { validateFreeSajuReport, type FreeSajuReport } from "@/lib/free-report-schema";
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
+import { deriveSajuWorkCore } from "@/lib/saju-work-core";
+import { buildRealWorldPersonalization, buildNextMove, buildTimingShift } from "@/lib/real-world-personalization";
 
 export interface FreeSajuReportResult {
   source: "llm" | "mock";
@@ -78,7 +80,12 @@ export async function getFreeSajuReport(
   if (raw) {
     const validation = validateFreeSajuReport(raw);
     if (validation.ok && validation.data) {
-      return { source: "llm", report: validation.data };
+      // These interdependent fields share the exact deterministic frame used by fallback.
+      return { source: "llm", report: { ...validation.data, ...deriveSajuWorkCore(facts).sections,
+        decisionStyle: buildFreeSajuReport(facts).decisionStyle,
+        realWorldPersonalization: options?.personality ? buildRealWorldPersonalization(facts, options.personality) : null,
+        nextMove: buildNextMove(facts, options?.personality), timingShift: buildTimingShift(facts),
+      } };
     }
     fallbackReason = `validation-failed: ${validation.violations.join("; ")}`;
   }

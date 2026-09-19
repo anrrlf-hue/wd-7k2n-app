@@ -1,18 +1,27 @@
 import type { ChoiceTendency } from "@/lib/indirect-experience-data";
+import type { SurveyInput } from "@/lib/survey-input";
+import { MONEY_MANAGEMENT_UNIT_OPTIONS, SPENDING_PATTERN_OPTIONS } from "@/lib/survey-input";
+import { buildAnalysisResult } from "@/lib/analysis-result";
+import { validDate } from "@/lib/financial-evidence";
+import { futureEventPlan } from "@/lib/future-event";
 
 export interface ManagementMethod {
   id: "rules" | "simple" | "review" | "scheduled" | "neutral";
   title: string;
   reason: string;
   routine: string;
+  whatToDo?: string;
+  whatToRecord?: string;
+  whenToCheck?: string;
+  doneWhen?: string;
 }
 
 // Execution cadence only: deliberately accepts no birth data, balances or products.
-export function suggestManagementMethod(choices: ChoiceTendency[], patterns: string[]): ManagementMethod {
+function managementStyle(choices: ChoiceTendency[], patterns: string[]): ManagementMethod {
   if (patterns.includes("avoidance")) return {
     id: "scheduled", title: "매일 기록보다, 정해 둔 날에 짧게",
     reason: "돈 확인을 미루는 편이라고 답했어요.",
-    routine: "일주일에 한 번, 편한 시간에 10분만 잡아 잔액과 다음 결제일을 함께 확인해 보세요.",
+    routine: "아래에서 정한 확인 시점에 10분만 잡고, 필요한 기록부터 짧게 채워 보세요.",
   };
   const counts = { security: 0, flexibility: 0, growth: 0 };
   for (const choice of choices) counts[choice] += 1;
@@ -20,21 +29,63 @@ export function suggestManagementMethod(choices: ChoiceTendency[], patterns: str
   if (dominant[0] === "security") return {
     id: "rules", title: "반복할 수 있는 규칙 하나부터",
     reason: "세 장면에서는 예측 가능한 쪽을 더 골랐어요.",
-    routine: "급여일 다음 날을 점검일로 정하고, 반복되는 결제와 이체 일정을 한곳에 적어 두세요.",
+    routine: "반복되는 확인 항목을 한곳에 적고, 같은 순서로 짧게 점검해 보세요.",
   };
   if (dominant[0] === "flexibility") return {
     id: "simple", title: "관리 항목은 적게, 조정은 유연하게",
     reason: "세 장면에서는 선택의 여유를 더 골랐어요.",
-    routine: "세세한 항목을 늘리기보다 이번 주 생활비 총액 하나부터 확인하고, 주말에 한 번 조정해 보세요.",
+    routine: "아래 기록을 한 화면에 모으고, 확인한 항목에만 표시해 보세요. 입력 방식은 편하게 바꿔도 괜찮아요.",
   };
   if (dominant[0] === "growth") return {
     id: "review", title: "작게 실행하고, 돌아보는 시간까지",
     reason: "세 장면에서는 새로운 시도를 더 골랐어요.",
-    routine: "바꿔 볼 관리 습관 하나와 점검 날짜를 함께 적고, 다음 점검 때 계속할지 결정해 보세요.",
+    routine: "아래 행동을 작은 단계로 나누어 하나씩 실행하고, 점검 때 빠진 항목을 보완해 보세요.",
   };
   return {
     id: "neutral", title: "지속하기 편한 방식부터 찾아보기",
     reason: choices.length ? "이번 선택만으로 한 가지 방식에 묶지 않았어요." : "선택 기록이 없어 관리 성향을 정하지 않았어요.",
-    routine: "이번 주 한 번, 잔액과 다음 결제일을 확인할 시간을 정해 보세요. 이어가기 편한 주기로 바꿔도 괜찮아요.",
+    routine: "아래 행동을 메모나 표 중 편한 방식으로 기록해 보세요. 성향에 맞추려고 억지로 방식을 바꿀 필요는 없어요.",
   };
+}
+
+// Finance sets WHAT/WHEN. Simulation customizes HOW, never financial priority.
+export function suggestManagementMethod(choices: ChoiceTendency[], patterns: string[], input?: SurveyInput): ManagementMethod {
+  const style = managementStyle(choices, patterns);
+  if (!input) return style; // Compatibility for saved pre-survey results.
+  const result = buildAnalysisResult(input);
+  const plans: Record<typeof result.bottleneck, [string, string]> = {
+    cash_flow_deficit: ["월 소득·고정지출(상환 포함)·생활비·저축·실제 잔액", "입출금 내역을 대조하고 소득 안에서 배분할 계획을 정했을 때"],
+    income_interruption_risk: ["소득 변화 시작일·변경 후 예상 소득·생활비 준비액·월 필수 지출", "소득 변화 날짜와 생활비를 감당할 기간을 확인했을 때"],
+    income_variability_risk: ["낮은 달/평균/높은 달 소득·필수 지출·낮은 달 부족분·바로 쓸 현금", "낮은 달 부족분을 감당할 현금과 다음 입금·결제 계획을 확인했을 때"],
+    high_interest_debt: ["대출별 금리·만기·잔액·원금/이자 구분·월 상환액", "계약·상환내역으로 실제 금리와 부담을 확인했을 때"],
+    maturity_preparation: ["정확한 만기일·만기 잔액·준비한 상환자금·원금/이자 구분", "계약에서 만기 잔액을 확인하고 준비금과 일정을 맞췄을 때"],
+    purpose_fund_confirmation: ["실제 필요액·준비액·이 목표의 월 배정액·목표일·실제 입금일", "네 값을 확인하고 실제 입금 일정까지 반영해 목표액과 비교했을 때"],
+    near_future_funds_shortfall: ["실제 필요액·준비액·월 배정액·목표일·추가 자금 여부", "확인된 부족분에 대해 목표 규모 또는 월 배정액 조정안을 정했을 때"],
+    emergency_fund_shortage: ["바로 쓸 비상자금·월 필수 지출·비상자금에 실제 배정할 금액", "투자·다른 목표와 중복 없이 비상자금 잔액과 적립액을 확인했을 때"],
+    biz_personal_mixed: ["사업 입출금·세금 등 사업에 남겨둘 돈·개인 생활비", "지출이 두 번 잡히지 않게 사업과 개인 내역을 구분했을 때"],
+    card_installment_dependence: ["다음 결제일·일시불/할부 합계·생활비 부족을 카드로 충당한 내역", "다음 결제액과 입금액을 맞춰 반복 부족분을 확인했을 때"],
+    no_expense_awareness: ["최근 한 달 결제내역·고정비·생활비", "내역을 분류하고 실제 총액과 입력한 지출을 대조했을 때"],
+    no_savings_system: ["실제 입금액·필수 지출·무리 없이 남길 금액", "다음 입금 시 남길 금액과 점검일을 정했을 때"],
+    long_term_goal_pace_short: ["목표 금액·날짜·준비액", "목표의 조건을 확인했을 때"],
+    investment_efficiency: ["목표별 사용 시점·현재 자산 구성", "목표와 자산 정보를 확인했을 때"],
+    insufficient_data: ["미입력 항목·확인할 거래내역", "모르는 값과 0원을 구분해 확인한 뒤 다시 진단했을 때"],
+    no_priority_bottleneck: ["현재 흐름·다음 목표(있다면)·다음 점검 날짜", "현재 방식을 유지하며 다음 점검일 또는 목표를 정했을 때"],
+  };
+  let [record, done] = plans[result.bottleneck];
+  let when = input.jobType === "employee_fixed" ? "다음 실제 급여 입금일에 확인하고 다음 결제 전에 다시 점검" : "실제 소득이 입금될 때마다 확인하고 다음 고정비 결제 전에 다시 점검";
+  when = `${validDate(input.nextReviewDate) ? input.nextReviewDate : "점검일 미정: 달력에서 가능한 날짜를 먼저 정하세요"}. ${when}`;
+  if (result.bottleneck === "maturity_preparation") when = `${validDate(input.debtMaturityDate) ? input.debtMaturityDate : "정확한 만기일을 계약에서 확인한 뒤"} 만기 전에 상환계획 확인. ${when}`;
+  if (futureEventPlan(input)?.kind === "purpose" && ["purpose_fund_confirmation", "near_future_funds_shortfall", "no_priority_bottleneck"].includes(result.bottleneck)) {
+    record = plans.purpose_fund_confirmation[0];
+    done = plans.purpose_fund_confirmation[1];
+    when = `${validDate(input.goalDeadline) ? input.goalDeadline : "목표일을 먼저 정한 뒤"} 목표일 전에 배정액 확인. ${when}`;
+  }
+  if (result.bottleneck === "income_interruption_risk") when = `소득이 바뀌는 실제 날짜를 확인하고 그 전에 점검. ${when}`;
+  if (input.jobType === "freelancer" && result.bottleneck === "insufficient_data") record += ". 낮은 달 ≤ 평균 ≤ 높은 달 소득(만원)";
+  const unit = MONEY_MANAGEMENT_UNIT_OPTIONS.find(o => o.value === input.moneyManagementUnit)?.label ?? "입력한 관리 단위";
+  record += ` (${unit} 기준, 소득과 지출 범위 통일)`;
+  const selected = SPENDING_PATTERN_OPTIONS.filter(o => patterns.includes(o.value) && o.value !== "none").map(o => o.label);
+  if (selected.length) record += `. 선택한 습관: ${selected.join("·")} — 실제 내역에서 반복 여부 확인`;
+  if (input.biggestConcern.trim()) record += ". 직접 적은 고민은 확인된 숫자와 나눠 기록";
+  return { ...style, whatToDo: result.immediateDirection, whatToRecord: record, whenToCheck: when, doneWhen: done };
 }

@@ -31,7 +31,7 @@ export const PERSONALITY_CHECK_ITEMS: PersonalityCheckItem[] = [
   { id: "savingConsistency", leftLabel: "저축이 일정함", rightLabel: "저축이 들쭉날쭉" },
 ];
 
-export type PersonalityCheckLevel = "왼쪽" | "중간" | "오른쪽";
+export type PersonalityCheckLevel = "왼쪽" | "중간" | "오른쪽" | "미확인";
 
 export interface PersonalityCheckFacts {
   answers: Record<string, number>;
@@ -39,6 +39,7 @@ export interface PersonalityCheckFacts {
 }
 
 function levelOf(v: number): PersonalityCheckLevel {
+  if (!Number.isInteger(v) || v < 1 || v > 5) return "미확인";
   if (v <= 2) return "왼쪽";
   if (v >= 4) return "오른쪽";
   return "중간";
@@ -48,7 +49,7 @@ function levelOf(v: number): PersonalityCheckLevel {
 export function scorePersonalityCheck(answers: Record<string, number>): PersonalityCheckFacts {
   const levels: Record<string, PersonalityCheckLevel> = {};
   for (const item of PERSONALITY_CHECK_ITEMS) {
-    levels[item.id] = levelOf(answers[item.id] ?? 3);
+    levels[item.id] = levelOf(answers[item.id]);
   }
   return { answers, levels };
 }
