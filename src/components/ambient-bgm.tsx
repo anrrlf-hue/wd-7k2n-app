@@ -3,8 +3,13 @@
 import { usePathname } from "next/navigation";
 import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { shouldStartAmbientAudio } from "@/lib/ambient-bgm-policy";
 
 const STORAGE_KEY = "saju-bgm-muted";
+
+function volumeForPath(pathname: string) {
+  return pathname === "/" ? 0.32 : pathname === "/diagnosis" ? 0.22 : 0.12;
+}
 
 export function AmbientBgm() {
   const pathname = usePathname();
@@ -13,85 +18,50 @@ export function AmbientBgm() {
   const [started, setStarted] = useState(false);
 
   useEffect(() => {
+    const audio = audioRef.current;
+    if (audio && started && !muted) audio.volume = volumeForPath(pathname);
+  }, [muted, pathname, started]);
 
-    const audio = new Audio("/audio/wealth-ambient.mp3");
-    audio.loop = true;
-    audio.preload = "auto";
-    audio.volume = 0;
-    audioRef.current = audio;
-    return () => {
-      audio.pause();
-      audioRef.current = null;
-    };
+  useEffect(() => () => {
+    audioRef.current?.pause();
+    audioRef.current = null;
   }, []);
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const target = muted ? 0 : pathname === "/" ? 0.32 : pathname === "/diagnosis" ? 0.22 : 0.12;
-    const id = window.setInterval(() => {
-      const delta = target - audio.volume;
-      if (Math.abs(delta) < 0.004) {
-        audio.volume = target;
-        window.clearInterval(id);
-      } else {
-        audio.volume = Math.max(0, Math.min(1, audio.volume + Math.sign(delta) * 0.004));
-      }
-    }, 40);
-    return () => window.clearInterval(id);
-  }, [muted, pathname]);
-
-  useEffect(() => {
-    function startAudio() {
-      if (muted || started || !audioRef.current) return;
-      void audioRef.current.play().then(() => setStarted(true)).catch(() => undefined);
-    }
-    document.addEventListener("pointerdown", startAudio, { once: true });
-    document.addEventListener("keydown", startAudio, { once: true });
-    return () => {
-      document.removeEventListener("pointerdown", startAudio);
-      document.removeEventListener("keydown", startAudio);
-    };
-  }, [muted, started]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !started) return;
-    const current = audio;
-    function handleVisibility() {
-      if (document.hidden) {
-        current.pause();
-        return;
-      }
-      if (!muted) void current.play().catch(() => undefined);
-    }
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [muted, started]);
-
   function toggle() {
-    const audio = audioRef.current;
-    const next = !muted;
-    setMuted(next);
-    localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
-    if (!audio) return;
-    if (next) {
-      audio.pause();
-      audio.volume = 0;
+    if (started && !muted) {
+      setMuted(true);
+      localStorage.setItem(STORAGE_KEY, "1");
+      audioRef.current?.pause();
       return;
     }
-    void audio.play().then(() => setStarted(true)).catch(() => undefined);
+
+    const nextMuted = false;
+    if (!shouldStartAmbientAudio({ userInitiated: true, muted: nextMuted })) return;
+    const audio = audioRef.current ?? new Audio("/audio/wealth-ambient.mp3");
+    if (!audioRef.current) {
+      audio.loop = true;
+      audio.preload = "metadata";
+      audioRef.current = audio;
+    }
+    audio.volume = volumeForPath(pathname);
+    setMuted(false);
+    localStorage.setItem(STORAGE_KEY, "0");
+    void audio.play().then(() => setStarted(true)).catch(() => {
+      audio.pause();
+      setMuted(true);
+      localStorage.setItem(STORAGE_KEY, "1");
+    });
   }
 
   return (
     <button
       type="button"
       onClick={toggle}
-      aria-label={muted ? "배경음악 켜기" : "배경음악 끄기"}
-      title={muted ? "배경음악 켜기" : "배경음악 끄기"}
+      aria-label={started && !muted ? "배경음악 끄기" : "배경음악 켜기"}
+      title={started && !muted ? "배경음악 끄기" : "배경음악 켜기"}
       className="bgm-toggle"
     >
-      {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+      {started && !muted ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
     </button>
   );
 }
