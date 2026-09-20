@@ -40,20 +40,20 @@ export function buildTripleCompare(facts: SajuFacts, palm: OnnxPalmLines | null,
   const head = readings.find(r => r.key === "headLine");
   const heart = readings.find(r => r.key === "heartLine");
   const decisionParts = [facts.dayStrength === "neutral"
-    ? "사주에서는 자기 기준과 주변 상황을 함께 살피는 두 축에 비슷한 무게를 둡니다. 어떤 선택에서 내 기준을 지키고, 어떤 선택에서 의견을 더 듣는지가 살펴볼 주제입니다."
+    ? "사주에서는 자기 기준과 주변 상황을 함께 보는 편으로 나타납니다. 선택에 따라 혼자 정할 때와 의견을 더 들을 때가 나뉠 수 있습니다."
     : facts.dayStrength === "strong"
-      ? "사주에서는 내가 납득할 기준을 세우고 방향을 잡는 경향에 주목합니다. 무엇을 선택하느냐만큼, 그 선택이 내 기준에 맞는지가 중요한 질문입니다."
-      : "사주에서는 상황과 주변의 지원을 살피며 판단의 발판을 만드는 경향에 주목합니다. 믿을 만한 정보와 도움을 어떻게 모으는지가 중요한 질문입니다."];
+      ? "사주에서는 스스로 납득할 기준을 세우고 방향을 잡는 성향이 강하게 나타납니다. 내 기준에 맞는지가 선택의 중요한 조건이 됩니다."
+      : "사주에서는 상황과 주변의 지원을 충분히 살핀 뒤 판단하는 성향이 나타납니다. 믿을 만한 정보와 도움을 모으는 과정이 중요합니다."];
   if (head) decisionParts.push(`손금에서는 ${head.observation} ${head.summary}`);
   if (decision.self.state === "NEUTRAL") decisionParts.push("직접 답한 결정 속도는 ‘중간’입니다. 중요한 선택과 일상적인 선택에서 속도가 어떻게 달라지는지 함께 떠올려 보세요.");
   else if (decision.self.state === "DIRECTIONAL") decisionParts.push(check?.levels.speed === "왼쪽"
     ? "직접 응답에서는 빠르게 결정하는 편을 선택했어요. 선택 전에 꼭 필요한 기준 한두 가지를 짚는 습관이 자신에게 맞는지 살펴보세요."
     : "직접 응답에서는 신중하게 결정하는 편을 선택했어요. 충분히 검토했다고 볼 기준을 정해두면 선택의 마무리를 살펴보기 좋습니다.");
   const relationParts = [balanced
-    ? "사주에서는 역할과 지원을 살피는 면, 스스로 실행하고 표현하는 면을 함께 읽습니다. 함께 정할 약속과 내가 맡아 움직일 범위를 나눠 생각해 볼 수 있습니다."
+    ? "관계에서는 약속과 역할도 중요하게 보고, 내 방식대로 움직일 공간도 필요로 하는 편입니다."
     : facts.officerStarCount + facts.resourceStarCount > facts.peerStarCount + facts.outputStarCount
-      ? "사주에서는 관계 안의 역할과 서로 주고받는 도움에 무게를 둡니다. 함께하는 사람과 기대하는 바를 맞추는 것이 이 풀이의 중심 주제입니다."
-      : "사주에서는 스스로 움직이고 생각을 표현하는 면에 무게를 둡니다. 내 방식을 살리면서 상대와 어떤 기준을 공유할지가 이 풀이의 중심 주제입니다."];
+      ? "관계에서는 역할과 서로 주고받는 도움을 중요하게 보는 편입니다. 함께하는 사람과 기대치를 맞춰야 마음이 편합니다."
+      : "관계에서는 스스로 움직이고 생각을 표현하는 쪽이 더 강합니다. 내 방식을 살리면서도 상대와 기준을 맞추는 과정이 중요합니다."];
   if (heart) relationParts.push(`손금에서는 ${heart.observation} ${heart.summary}`);
   if (relation.self.state === "NEUTRAL") relationParts.push("직접 답한 의견 참고 정도는 ‘중간’입니다. 혼자 정할 일과 함께 의논할 일을 구분해 보면 나의 관계 방식이 더 구체적으로 보입니다.");
   else if (relation.self.state === "DIRECTIONAL") relationParts.push(check?.levels.autonomy === "왼쪽"
