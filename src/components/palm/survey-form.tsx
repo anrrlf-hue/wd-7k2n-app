@@ -2,7 +2,7 @@
 
 import { futureEventPlan, primaryFutureEvent, futureEventAnswersComplete, selectFutureEvents, selectPrimaryFutureEvent, INCOME_CHANGE_OPTIONS, LIVING_BUFFER_OPTIONS } from "@/lib/future-event";
 import { CompanionHeading } from "@/components/angel-companion";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { freelancerEvidence } from "@/lib/financial-evidence";
 import { Button } from "@/components/ui/button";
 import {
@@ -142,6 +142,18 @@ function DateField({ label, value, onChange }: { label: string; value?: string; 
 export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: SurveyInput) => void; initialValue?: SurveyInput }) {
   const [step, setStep] = useState(1);
   const [input, setInput] = useState<SurveyInput>(initialValue ?? initialInput);
+  const topRef = useRef<HTMLDivElement>(null);
+  const firstRender = useRef(true);
+
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    requestAnimationFrame(() => {
+      topRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+  }, [step]);
 
   function set<K extends keyof SurveyInput>(key: K, value: SurveyInput[K]) {
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -167,7 +179,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
     (!isFreelancer || Boolean(freelancerEvidence(input)));
 
   return (
-    <div className="survey-form flex flex-1 flex-col">
+    <div ref={topRef} className="survey-form flex flex-1 flex-col scroll-mt-6">
       <CompanionHeading state="finance-guide">
       <p className="section-eyebrow">현실 재무질문 · {step} / 3</p>
       <h2 className="mt-2 text-2xl font-semibold">{["지금의 생활부터", "한 달 돈의 흐름", "내게 필요한 준비"][step - 1]}</h2>

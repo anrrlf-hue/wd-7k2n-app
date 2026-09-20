@@ -113,6 +113,14 @@ function ConversionFunnel({
   const [surveyInput, setSurveyInput] = useState<SurveyInput | undefined>();
   const [method, setMethod] = useState<ManagementMethod | null>(null);
   const [choiceSummary, setChoiceSummary] = useState<string | null>(null);
+  const funnelTopRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (stage === "experience") return;
+    requestAnimationFrame(() => {
+      funnelTopRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+  }, [stage]);
 
   if (!wealthType) return null;
 
@@ -122,9 +130,6 @@ function ConversionFunnel({
     setChoiceSummary(summary);
     track("indirect_experience_completed");
     setStage("survey");
-    requestAnimationFrame(() => {
-      document.getElementById("conversion-funnel")?.scrollIntoView({ block: "start", behavior: "auto" });
-    });
   }
 
   function handleSurveyComplete(input: SurveyInput) {
@@ -137,7 +142,7 @@ function ConversionFunnel({
   }
 
   return (
-    <div id="conversion-funnel" className="mt-8 scroll-mt-6">
+    <div id="conversion-funnel" ref={funnelTopRef} className="mt-8 scroll-mt-6">
       {stage === "experience" && (
         <>
           <div className="mb-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
