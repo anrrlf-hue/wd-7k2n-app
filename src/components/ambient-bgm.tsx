@@ -4,17 +4,25 @@ import { useEffect, useRef, useState } from "react";
 
 export function AmbientBgm() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
 
   useEffect(() => {
     const audio = new Audio("/audio/ambient-cinematic-atlasaudio.mp3");
     audio.loop = true;
     audio.preload = "metadata";
     audio.volume = 0.06;
-    audio.muted = true;
+    audio.muted = false;
     audioRef.current = audio;
 
+    const start = () => {
+      if (!audio.muted) void audio.play().catch(() => undefined);
+    };
+    window.addEventListener("pointerdown", start, { once: true });
+    window.addEventListener("keydown", start, { once: true });
+
     return () => {
+      window.removeEventListener("pointerdown", start);
+      window.removeEventListener("keydown", start);
       audio.pause();
     };
   }, []);
