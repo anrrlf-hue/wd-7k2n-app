@@ -130,7 +130,7 @@ function composePeriodNarrative(
   if (!group) return null;
   const signal = GROUP_SIGNAL[group];
   const axisValue = signal.axis === "structured" ? structured : relational;
-  const parts = [`이 해석에서는 ${signal.label}을 살펴보는 시기로 읽습니다.`, relationsClause(d), axisValue === null ? "직접 응답에서 한쪽 성향이 확인되지 않아 특정 행동 방식으로 연결하지 않습니다." : axisValue ? signal.whenTrue : signal.whenFalse];
+  const parts = [`지금 이 시기에는 ${signal.label}이 평소보다 더 중요하게 드러납니다.`, relationsClause(d), axisValue === null ? "직접 응답은 한쪽으로 치우치지 않아 행동 방식도 하나로 단정하지 않습니다." : axisValue ? signal.whenTrue : signal.whenFalse];
   const palmClause = palmAlignmentClause(facts, palm, check, signal.axis);
   if (palmClause) parts.push(palmClause);
   return { text: parts.join(" "), group };
@@ -417,12 +417,12 @@ export function buildComprehensiveVerdict(
   const evidenceParts: string[] = [`일간 ${facts.dayStemKo}(${facts.dayElement})`, `격국 ${facts.geukguk}`];
 
   const imagery = dayStemImagery(facts.dayStemKo);
-  sentences.push(`이 사주는 ${imagery.image}처럼 ${imagery.core} 사람의 사주입니다. ${dayStrengthLabel(facts.dayStrength)}이고, ${facts.geukguk}을 타고났습니다.`);
+  sentences.push(`당신은 ${imagery.image}처럼 ${imagery.core} 사람입니다. ${dayStrengthLabel(facts.dayStrength)}의 기질이 깔려 있어, 평소에는 유연해 보여도 중요한 순간에는 자기 방식이 분명해질 수 있습니다.`);
 
   sentences.push(
     facts.wealthOpportunityDaeunCount > 0
-      ? "평생 대운을 보면 재물이 크게 움직이는 시기가 여러 번 옵니다. 돈과 인연이 없는 사주는 아닙니다."
-      : "재물이 저절로 붙는 사주는 아니지만, 그만큼 본업과 전문성을 무기로 버는 힘이 큽니다.",
+      ? "삶의 흐름을 길게 보면 재물과 기회가 부각되는 구간이 몇 차례 들어옵니다. 다만 그 시기 자체보다, 그때 어떤 기준으로 선택하느냐가 더 중요합니다."
+      : "한 번의 큰 기회를 기다리기보다, 잘하는 일과 전문성을 오래 쌓아 현실적인 성과로 연결하는 쪽이 더 잘 맞습니다.",
   );
 
   const currentPeriod = facts.daeunAnalysis?.find((d) => d.isCurrent) ?? null;
@@ -430,11 +430,11 @@ export function buildComprehensiveVerdict(
   if (currentPeriod) {
     group = dominantGroup(currentPeriod);
     if (group) {
-      sentences.push(`지금 만 ${facts.currentAge}세, ${currentPeriod.age}세부터 이어지는 이 대운에서는 ${GROUP_SIGNAL[group].label}이 강해집니다. ${relationsClause(currentPeriod)}`);
+      sentences.push(`지금 만 ${facts.currentAge}세, ${currentPeriod.age}세 전후부터 이어지는 흐름에서는 ${GROUP_SIGNAL[group].label}이 평소보다 더 중요하게 작용합니다. ${relationsClause(currentPeriod)}`);
       evidenceParts.push(`현재 대운 ${currentPeriod.ganzhi}(${currentPeriod.tenGods.stem})`);
     }
   } else if (facts.currentDaeun) {
-    sentences.push(`지금 만 ${facts.currentAge}세, ${facts.currentDaeun.ageRange}세부터 이어지는 이 대운은 ${daeunFlavor(facts.currentDaeun)} 시기입니다.`);
+    sentences.push(`지금 만 ${facts.currentAge}세, ${facts.currentDaeun.ageRange}세 전후부터 이어지는 흐름은 ${daeunFlavor(facts.currentDaeun)} 쪽에 무게가 실리는 시기입니다.`);
   }
 
   if (personality && (personality.mbti || personality.check) && group) {
@@ -448,7 +448,7 @@ export function buildComprehensiveVerdict(
     if (palmClause) sentences.push(palmClause);
   }
 
-  sentences.push("지금 이 사주에서 가장 먼저 봐야 할 부분은 정해졌습니다. 이어서 그 흐름부터 구체적으로 짚어드리겠습니다.");
+  sentences.push("정리하면, 타고난 성향과 지금의 흐름은 같은 방향만 보여주지는 않습니다. 잘하는 방식은 분명하지만, 그 강점이 과해질 때 어디서 흔들리는지도 함께 보는 것이 이 사람을 더 정확하게 이해하는 핵심입니다.");
 
   return {
     text: sentences.join(" "),
