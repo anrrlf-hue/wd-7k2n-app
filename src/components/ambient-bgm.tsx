@@ -7,10 +7,10 @@ export function AmbientBgm() {
   const [muted, setMuted] = useState(false);
 
   useEffect(() => {
-    const audio = new Audio("/audio/ambient-cinematic-atlasaudio.mp3");
+    const audio = new Audio("/audio/soft-background-492811.mp3");
     audio.loop = true;
     audio.preload = "metadata";
-    audio.volume = 0.06;
+    audio.volume = 0.045;
     audio.muted = false;
     audioRef.current = audio;
 
