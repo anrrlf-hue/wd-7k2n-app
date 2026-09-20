@@ -122,6 +122,9 @@ function ConversionFunnel({
     setChoiceSummary(summary);
     track("indirect_experience_completed");
     setStage("survey");
+    requestAnimationFrame(() => {
+      document.getElementById("conversion-funnel")?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
   }
 
   function handleSurveyComplete(input: SurveyInput) {
