@@ -22,6 +22,7 @@ export interface AnalysisResult {
   incomeContext?: string;
   fundingContext?: string;
   answerContext: string;
+  alsoCheck: string[];
 }
 
 // 구간 응답을 실제 계산에 쓸 수 있는 근사 숫자로 바꾸는 고정 환산표(코드가
@@ -99,6 +100,28 @@ function buildGapStatement(bottleneck: BottleneckCode, input: SurveyInput): stri
   }
 }
 
+function buildAlsoCheck(input: SurveyInput, primary: BottleneckCode): string[] {
+  if (primary === "insufficient_data") return [];
+  const event = futureEventPlan(input);
+  const income = freelancerEvidence(input);
+  const checks: Array<[BottleneckCode, boolean]> = [
+    ["income_interruption_risk", Boolean(event?.kind === "income" && input.futureEventTiming !== "over_1y" && (input.futureIncomeChange === "reduced" || input.futureIncomeChange === "stopped"))],
+    ["high_interest_debt", Boolean(input.hasDebt && input.debtInterestRate === "over_15")],
+    ["maturity_preparation", Boolean(input.hasDebt && input.debtMaturity === "under_3m")],
+    ["income_variability_risk", Boolean((income?.lowGap ?? 0) > 0)],
+    ["near_future_funds_shortfall", Boolean(input.futureEventTiming !== "over_1y" && purposeFunding(input).state === "SHORTFALL")],
+    ["emergency_fund_shortage", input.emergencyFund === "none" || input.emergencyFund === "under_1m"],
+    ["biz_personal_mixed", input.jobType === "business_owner" && input.businessSeparatesFinance === false],
+    ["card_installment_dependence", input.spendingPatterns.includes("card_dependence")],
+    ["no_expense_awareness", input.expenseAwareness === "unknown"],
+    ["no_savings_system", input.spendingPatterns.includes("spend_as_earned") && !input.spendingPatterns.includes("auto_savings")],
+  ];
+  return checks
+    .filter(([code, active]) => active && code !== primary)
+    .slice(0, 2)
+    .map(([code]) => BOTTLENECK_COPY[code].title);
+}
+
 export function buildAnalysisResult(input: SurveyInput): AnalysisResult {
   const bottleneck = detectBottleneck(input);
   const copy = BOTTLENECK_COPY[bottleneck];
@@ -126,6 +149,7 @@ export function buildAnalysisResult(input: SurveyInput): AnalysisResult {
     answerContext: `지출 파악: ${EXPENSE_AWARENESS_OPTIONS.find(o => o.value === input.expenseAwareness)?.label ?? "미확인"}.${input.hasDebt === true ? ` 부채 자기응답: ${DEBT_INTEREST_OPTIONS.find(o => o.value === input.debtInterestRate)?.label ?? "미확인"}, 월 상환 ${DEBT_PAYMENT_OPTIONS.find(o => o.value === input.debtMonthlyPayment)?.label ?? "미확인"}, 만기 ${DEBT_MATURITY_OPTIONS.find(o => o.value === input.debtMaturity)?.label ?? "미확인"}, ${REPAYMENT_TYPE_OPTIONS.find(o => o.value === input.debtRepaymentType)?.label ?? "미확인"}. 상환액 전체를 이자로 계산하지 않았어요.` : input.hasDebt === false ? " 부채 없음으로 답했어요." : " 부채 여부는 아직 답하지 않았어요."}`,
     incomeContext: income ? `직접 입력한 낮은 달 ${fmt(income.low)}·평균 ${fmt(income.average)}·높은 달 ${fmt(income.high)}로 소득 폭은 ${fmt(income.range)}입니다. 평균에서 고정지출·생활비를 빼면 ${fmt(income.averageRemaining)}, 낮은 달에는 ${income.lowGap > 0 ? `${fmt(income.lowGap)} 부족` : "이 지출을 감당할 수 있는 범위"}입니다. 높은 달은 반복 소득으로 가정하지 않았어요.` : input.jobType === "freelancer" ? "낮은 달·평균·높은 달 소득을 0 이상의 만원 단위로, 낮은 달 ≤ 평균 ≤ 높은 달 순서로 확인해 주세요." : undefined,
     fundingContext: event?.kind === "purpose" ? describeFunding(input) : undefined,
+    alsoCheck: buildAlsoCheck(input, bottleneck),
   };
 }
 

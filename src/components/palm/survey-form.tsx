@@ -31,7 +31,7 @@ function TapOption({ selected, onClick, label }: { selected: boolean; onClick: (
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`rounded-full border min-h-11 px-3 py-2 text-[13px] transition-colors ${
+      className={`rounded-full border min-h-11 px-3 py-2 text-[15px] transition-colors ${
         selected ? "border-(--gold) bg-(--gold-soft) text-(--gold)" : "border-border text-foreground/80"
       }`}
     >
@@ -53,7 +53,7 @@ function SingleSelectField({
 }) {
   return (
     <fieldset className="survey-field">
-      <legend className="text-sm font-medium">{label}</legend>
+      <legend className="text-base font-medium">{label}</legend>
       <div className="mt-2.5 flex flex-wrap gap-2">
         {options.map((opt) => (
           <TapOption key={opt.value} selected={value === opt.value} onClick={() => onChange(opt.value)} label={opt.label} />
@@ -103,7 +103,7 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
   const id = useId();
   return (
     <div className="survey-field">
-      <label htmlFor={id} className="text-sm font-medium">{label}</label>
+      <label htmlFor={id} className="text-base font-medium">{label}</label>
       <input
         id={id}
         min={0}
@@ -172,20 +172,20 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
       <p className="section-eyebrow">현실 재무질문 · {step} / 3</p>
       <h2 className="mt-2 text-2xl font-semibold">{["지금의 생활부터", "한 달 돈의 흐름", "내게 필요한 준비"][step - 1]}</h2>
       </CompanionHeading>
-      <p className="mt-2 text-sm text-muted-foreground">{["내 상황에 필요한 질문만 이어집니다.", "한 달 기준, 원 단위로 입력해 주세요.", "해당하는 상황만 조금 더 확인할게요."][step - 1]}</p>
-      {step === 1 && <p className="mt-2 text-xs text-muted-foreground">{PRIVACY_NOTICE}</p>}
+      <p className="mt-2 text-base leading-relaxed text-muted-foreground">{["내 상황에 필요한 질문만 이어집니다.", "한 달 기준, 원 단위로 입력해 주세요.", "해당하는 상황만 조금 더 확인할게요."][step - 1]}</p>
+      {step === 1 && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{PRIVACY_NOTICE}</p>}
 
       {step === 1 && (
         <div className="mt-3 space-y-4">
           <div className="survey-field">
-            <label htmlFor="money-concern" className="text-sm font-medium">가장 신경 쓰이는 돈 고민 <span className="text-xs text-muted-foreground">· 선택</span></label>
+            <label htmlFor="money-concern" className="text-base font-medium">가장 신경 쓰이는 돈 고민 <span className="text-sm text-muted-foreground">· 선택</span></label>
             <textarea
               id="money-concern"
               value={input.biggestConcern}
               onChange={(e) => set("biggestConcern", e.target.value)}
               placeholder="예: 매달 돈이 어디로 가는지 모르겠어요"
               rows={3}
-              className="mt-1.5 w-full resize-none border-none bg-transparent p-0 text-sm outline-none"
+              className="mt-1.5 w-full resize-none border-none bg-transparent p-0 text-base outline-none"
             />
           </div>
           <SingleSelectField label="지금 어떤 형태로 일하고 계세요?" options={JOB_TYPE_OPTIONS} value={input.jobType} onChange={(v) => set("jobType", v)} />
@@ -201,20 +201,20 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
             value={primaryEvent}
             onChange={(v) => setInput((prev) => selectPrimaryFutureEvent(prev, v))}
           />}
-          {eventPlan && <p className="text-xs text-muted-foreground">다음 질문은 {eventPlan.label} 기준으로 이어집니다.</p>}
+          {eventPlan && <p className="text-sm text-muted-foreground">다음 질문은 {eventPlan.label} 기준으로 이어집니다.</p>}
         </div>
       )}
 
       {step === 2 && (
         <div className="mt-3 space-y-4">
-          <p className="text-sm leading-relaxed text-muted-foreground">같은 기준의 금액을 입력해 주세요. 부부 공동관리라면 소득과 지출 모두 합산해요. 없는 항목은 0원으로 입력하세요.</p>
+          <p className="text-base leading-7 text-muted-foreground">같은 기준의 금액을 입력해 주세요. 부부 공동관리라면 소득과 지출 모두 합산해요. 없는 항목은 0원으로 입력하세요.</p>
           <NumberField label="월 소득(원)" value={input.monthlyIncomeKrw} onChange={(v) => set("monthlyIncomeKrw", v)} />
           <NumberField label="월 고정지출·대출상환액(원)" value={input.monthlyFixedCostKrw} onChange={(v) => set("monthlyFixedCostKrw", v)} />
-          <p className="text-xs text-muted-foreground">고정지출에는 월세·보험·정기결제와 대출 원리금 상환을 포함해요. 아래 생활비와 중복해서 넣지 않아요.</p>
+          <p className="text-sm text-muted-foreground">고정지출에는 월세·보험·정기결제와 대출 원리금 상환을 포함해요. 아래 생활비와 중복해서 넣지 않아요.</p>
           <NumberField label="월 생활비·변동지출(원)" value={input.monthlyLivingCostKrw} onChange={(v) => set("monthlyLivingCostKrw", v)} />
           <NumberField label="월 저축·투자액(원)" value={input.monthlySavingsKrw} onChange={(v) => set("monthlySavingsKrw", v)} />
           <div className="mystic-card p-3.5">
-            <p className="text-xs text-muted-foreground">저축까지 배분한 뒤 남는 돈</p>
+            <p className="text-sm text-muted-foreground">저축까지 배분한 뒤 남는 돈</p>
             <p className="mt-1 text-lg font-semibold text-(--gold)">{step2Complete ? `${surplusKrw(input).toLocaleString("ko-KR")}원` : "네 금액을 입력하면 계산돼요"}</p>
           </div>
         </div>
@@ -250,7 +250,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
               <SingleSelectField label="상환 방식은요?" options={REPAYMENT_TYPE_OPTIONS} value={input.debtRepaymentType} onChange={(v) => set("debtRepaymentType", v)} />
               {input.debtMaturity === "under_3m" && <details className="survey-field space-y-3">
                 <summary className="cursor-pointer text-sm">만기 준비 상세 · 아는 경우만 입력</summary>
-                <p className="text-xs text-muted-foreground">빈칸은 미확인으로 남깁니다. 현재 잔액이 아니라 만기에 갚을 금액을 확인해 주세요.</p>
+                <p className="text-sm text-muted-foreground">빈칸은 미확인으로 남깁니다. 현재 잔액이 아니라 만기에 갚을 금액을 확인해 주세요.</p>
                 <DateField label="정확한 만기일" value={input.debtMaturityDate} onChange={v => set("debtMaturityDate", v)} />
                 <NumberField label="만기에 갚을 잔액(원)" value={input.debtRemainingKrw ?? NaN} onChange={v => set("debtRemainingKrw", v)} />
                 <NumberField label="준비한 상환자금(원)" value={input.debtPreparedKrw ?? NaN} onChange={v => set("debtPreparedKrw", v)} />
@@ -267,7 +267,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
                 <SingleSelectField label={eventPlan.prepared} options={FUTURE_EVENT_PREPARED_OPTIONS} value={input.futureEventPrepared} onChange={(v) => set("futureEventPrepared", v)} />
                 <details className="survey-field space-y-3">
                   <summary className="cursor-pointer text-sm">이 목표의 준비 계획 · 아는 경우만 입력</summary>
-                  <p className="text-xs text-muted-foreground">모르면 비워 두세요. 전체 저축액을 이 목표에 쓰는 돈으로 가정하지 않습니다.</p>
+                  <p className="text-sm text-muted-foreground">모르면 비워 두세요. 전체 저축액을 이 목표에 쓰는 돈으로 가정하지 않습니다.</p>
                   <NumberField label="이 목표의 실제 필요액(원)" value={input.goalRequiredKrw ?? NaN} onChange={v => set("goalRequiredKrw", v)} />
                   <NumberField label="이 목표에 준비한 금액(원)" value={input.goalPreparedKrw ?? NaN} onChange={v => set("goalPreparedKrw", v)} />
                   <NumberField label="이 목표에 매월 배정할 금액(원)" value={input.goalMonthlyAllocationKrw ?? NaN} onChange={v => set("goalMonthlyAllocationKrw", v)} />
@@ -275,7 +275,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
                 </details>
               </> : <>
                 <SingleSelectField label={eventPlan.income} options={INCOME_CHANGE_OPTIONS} value={input.futureIncomeChange} onChange={(v) => set("futureIncomeChange", v)} />
-                <p className="text-xs text-muted-foreground">예상 소득을 제외하고, 바로 쓸 현금으로 고정지출·생활비를 감당할 기간을 골라요.</p>
+                <p className="text-sm text-muted-foreground">예상 소득을 제외하고, 바로 쓸 현금으로 고정지출·생활비를 감당할 기간을 골라요.</p>
                 <SingleSelectField label={eventPlan.buffer} options={LIVING_BUFFER_OPTIONS} value={input.futureLivingBuffer} onChange={(v) => set("futureLivingBuffer", v)} />
               </>}
             </section>
@@ -294,7 +294,7 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
           {isFreelancer && (
             <div className="survey-field">
               <p className="text-sm font-medium">월 소득이 들쭉날쭉하다면, 낮은 달/평균/높은 달은요?</p>
-              <p className="mt-1 text-xs text-muted-foreground">같은 기간 기준으로 낮은 달 ≤ 평균 ≤ 높은 달 순서로 입력해 주세요. 소득이 없는 달은 0입니다.</p>
+              <p className="mt-1 text-sm text-muted-foreground">같은 기간 기준으로 낮은 달 ≤ 평균 ≤ 높은 달 순서로 입력해 주세요. 소득이 없는 달은 0입니다.</p>
               <div className="mt-2.5 space-y-2">
                 <input
                   value={input.freelancerIncomeLow ?? ""}
@@ -342,14 +342,14 @@ export function SurveyForm({ onComplete, initialValue }: { onComplete: (input: S
 
       <div className="mt-auto flex gap-2 pt-8">
         {step > 1 && (
-          <Button variant="outline" size="lg" onClick={() => { setStep((s) => s - 1); document.getElementById("conversion-funnel")?.scrollIntoView({ block: "start" }); }} className="h-13 rounded-full">
+          <Button variant="outline" size="lg" onClick={() => setStep((s) => s - 1)} className="h-13 rounded-full">
             이전
           </Button>
         )}
         <Button
           size="lg"
           disabled={(step === 1 && !step1Complete) || (step === 2 && !step2Complete) || (step === 3 && !step3Complete)}
-          onClick={() => { if (step < 3) { setStep((s) => s + 1); document.getElementById("conversion-funnel")?.scrollIntoView({ block: "start" }); } else onComplete(input); }}
+          onClick={() => { if (step < 3) setStep((s) => s + 1); else onComplete(input); }}
           className="h-13 flex-1 rounded-full text-base"
         >
           {step < 3 ? "다음" : "분석 결과 보기"}

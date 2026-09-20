@@ -101,13 +101,13 @@ export function ResultStep({
             {lead ? lead.headline : tendency.wealthType}
           </h2>
           {(lead ? lead.rest : isDeep ? interp!.summary : tendency.summary) && (
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-3 text-base leading-7 text-muted-foreground">
               {lead ? lead.rest : isDeep ? interp!.summary : tendency.summary}
             </p>
           )}
         </motion.div>
 
-        <p className="mt-6 text-[11px] text-muted-foreground">
+        <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
           사주에서 읽은 재물 성향과 흐름입니다.
         </p>
       </motion.div>
@@ -139,7 +139,7 @@ export function ResultStep({
         {report ? (
           <>
             <ParagraphSection step="②" title="타고난 성향" paragraph={report.temperament} />
-            <ParagraphSection step="③" title="돈을 크게 벌 수 있는 타입인가" paragraph={report.bigMoneyAffinity} />
+            <ParagraphSection step="③" title="돈과 기회를 다루는 방식" paragraph={report.bigMoneyAffinity} />
             <ParagraphSection step="④" title="왜 돈이 잘 모이거나 안 모이는가" paragraph={report.wealthStructure} />
             <ParagraphSection step="⑤" title="돈을 지키는 방식" paragraph={report.keepingStyle} />
             <ParagraphSection step="⑥" title="돈을 놓치는 반복 패턴" paragraph={report.leakPattern} boxed />

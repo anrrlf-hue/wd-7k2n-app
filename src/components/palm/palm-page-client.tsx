@@ -113,8 +113,6 @@ function ConversionFunnel({
   const [surveyInput, setSurveyInput] = useState<SurveyInput | undefined>();
   const [method, setMethod] = useState<ManagementMethod | null>(null);
   const [choiceSummary, setChoiceSummary] = useState<string | null>(null);
-  const funnelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (stage !== "experience") funnelRef.current?.scrollIntoView({ block: "start" }); }, [stage]);
 
   if (!wealthType) return null;
 
@@ -136,14 +134,21 @@ function ConversionFunnel({
   }
 
   return (
-    <div id="conversion-funnel" ref={funnelRef} className="mt-8 scroll-mt-6">
+    <div id="conversion-funnel" className="mt-8 scroll-mt-6">
       {stage === "experience" && (
-        <IndirectExperience
+        <>
+          <div className="mb-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
+            <p className="text-base leading-7">
+              여기까지는 사주·손금·직접 응답으로 나를 해석한 단계예요. 이제부터는 그 해석을 사실로 단정하지 않고, 실제 소득·지출·저축 숫자로 현재 돈의 구조를 확인합니다.
+            </p>
+          </div>
+          <IndirectExperience
           wealthTypeCode={wealthType.code}
           palmKeyword={derivePalmKeyword(palmFacts)}
           onStart={() => { onStart(); onChapterChange(3); }}
           onComplete={handleExperienceComplete}
         />
+        </>
       )}
 
       {stage === "survey" && <SurveyForm initialValue={surveyInput} onComplete={handleSurveyComplete} />}
@@ -285,7 +290,6 @@ export function PalmPageClient({
     setFunnelActive(false);
     setReadingOpen(true);
     setChapter(2);
-    window.scrollTo({ top: 0 });
     setStage("upload");
     setPalmFacts(null);
     setFinalReport(null);
@@ -328,7 +332,7 @@ export function PalmPageClient({
         <div className="mt-6 flex flex-1 flex-col">
           <JourneyScene scene="palm" companion="palm-guide" />
           <div className="mt-5">
-            <p className="text-sm leading-relaxed text-muted-foreground">
+            <p className="text-base leading-7 text-muted-foreground">
               밝은 곳에서 손바닥 전체를 담아주세요.
               <br />
               손가락을 살짝 펴고, 손금선에 초점을 맞춰요.
@@ -382,7 +386,7 @@ export function PalmPageClient({
           <button
             type="button"
             onClick={handleSkipPalm}
-            className="mt-auto pt-8 text-center text-xs text-muted-foreground"
+            className="mt-auto pt-8 text-center text-sm text-muted-foreground"
           >
             손금 없이 사주 결과만 볼게요
           </button>
@@ -402,7 +406,7 @@ export function PalmPageClient({
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             {stage === "detecting" ? "손과 손금선을 확인하는 중이에요" : "리포트를 만드는 중이에요"}
           </p>
         </div>
@@ -417,8 +421,8 @@ export function PalmPageClient({
             </div>
           )}
           <div className="mystic-card mt-5 p-5">
-            <p className="text-sm font-medium text-(--gold)">손금선이 충분히 읽히지 않았어요</p>
-            <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
+            <p className="text-base font-medium text-(--gold)">손금선이 충분히 읽히지 않았어요</p>
+            <ul className="mt-2 space-y-1.5 text-base leading-7 text-muted-foreground">
               {describePalmFailureReasons(palmFacts, retakeAttempts).map((w) => (
                 <li key={w}>· {w}</li>
               ))}
@@ -430,7 +434,7 @@ export function PalmPageClient({
               다시 촬영하기
             </Button>
             {retakeAttempts >= 2 && (
-              <button type="button" onClick={handleSkipPalm} className="text-center text-xs text-muted-foreground">
+              <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">
                 손금 없이 사주 결과만 계속 보기
               </button>
             )}
@@ -508,7 +512,7 @@ export function PalmPageClient({
       {/* 무료 리포트 Peak와 다음 행동(운세지도) 사이에 고지 문구가 끼면
        * 몰입이 끊긴다(§O) — 필요한 고지는 여기, 진짜 페이지 최하단에만 둔다. */}
       {(stage === "result" || stage === "saju_only") && (
-        <p className="mt-8 text-center text-[11px] leading-relaxed text-muted-foreground">사주·손금은 자신을 돌아보는 전통 해석입니다. 실제 재무 판단은 소득·지출 등 확인된 정보를 기준으로 해요.</p>
+        <p className="mt-8 text-center text-sm leading-relaxed text-muted-foreground">사주·손금은 자신을 돌아보는 전통 해석입니다. 실제 재무 판단은 소득·지출 등 확인된 정보를 기준으로 해요.</p>
       )}
       </div>
     </div>

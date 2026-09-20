@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { CompanionHeading } from "@/components/angel-companion";
 import { JourneyScene } from "@/components/journey-scene";
@@ -30,9 +30,6 @@ export function IndirectExperience({
   const [stage, setStage] = useState<Stage>("intro");
   const [choices, setChoices] = useState<ExperienceChoice["tendency"][]>([]);
 
-  const panelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (stage !== "intro") panelRef.current?.scrollIntoView({ block: "start" }); }, [stage]);
-
   const scenes = getExperienceScenes();
   const flavorLine = PALM_FLAVOR_LINE[palmKeyword];
 
@@ -43,7 +40,7 @@ export function IndirectExperience({
   }
 
   return (
-    <div ref={panelRef} className={`experience-panel scroll-mt-6 ${stage === "intro" ? "transition-panel" : ""}`}>
+    <div className={`experience-panel scroll-mt-6 ${stage === "intro" ? "transition-panel" : ""}`}>
       {stage === "intro" && (
         <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <JourneyScene scene="choice" />
@@ -51,10 +48,10 @@ export function IndirectExperience({
           <p className="section-eyebrow">다음 이야기 · 나의 선택</p>
           <h2 className="mt-2 text-2xl leading-snug font-semibold">나는 실제로<br />어떤 선택을 할까요?</h2>
           </CompanionHeading></div>
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-base leading-7 text-muted-foreground">
             세 가지 일상 장면에서 더 마음이 가는 쪽을 골라보세요. 정답도 점수도 없습니다.
           </p>
-          {flavorLine && <p className="mt-3 text-xs text-muted-foreground">{flavorLine}</p>}
+          {flavorLine && <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{flavorLine}</p>}
           <Button
             size="lg"
             onClick={() => {
@@ -71,7 +68,7 @@ export function IndirectExperience({
 
       {typeof stage === "number" && scenes[stage] && (
         <motion.div key={scenes[stage].id} initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          <CompanionHeading state="simulation-companion"><p className="text-xs text-muted-foreground">{stage + 1} / {scenes.length}</p></CompanionHeading>
+          <CompanionHeading state="simulation-companion"><p className="text-sm text-muted-foreground">{stage + 1} / {scenes.length}</p></CompanionHeading>
           <p className="mt-4 text-2xl leading-relaxed font-semibold">{scenes[stage].situation}</p>
           <div className="mt-7 flex flex-col gap-3">
             {scenes[stage].choices.map((opt) => (

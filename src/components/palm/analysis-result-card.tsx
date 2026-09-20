@@ -19,13 +19,13 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
     <h2 className="mt-3 text-2xl leading-snug font-semibold tracking-tight">타고난 나, 선택한 나,<br />그리고 지금의 돈</h2>
     </CompanionHeading>
 
-    {result.userConcern && <p className="mt-3 text-sm text-muted-foreground">내가 적은 고민 · “{result.userConcern}”</p>}
+    {result.userConcern && <p className="mt-3 text-base text-muted-foreground">내가 적은 고민 · “{result.userConcern}”</p>}
     <div className="diagnosis-layers mt-7">
-      <div><p className="section-eyebrow">01 · 타고난 재물성향</p><p className="mt-2 text-sm">{innateSummary}</p><p className="mt-1 text-xs text-muted-foreground">사주에서 읽은 타고난 재물성향</p></div>
-      <div><p className="section-eyebrow">02 · 실제로 고른 선택</p><p className="mt-2 text-sm">{choiceSummary ?? "선택 기록이 없어 비교하지 않았습니다."}</p></div>
-      <div><p className="section-eyebrow">03 · 현재 돈의 구조</p><p className="mt-2 text-sm">{result.lifeMeaning}</p>
-        {result.surplusKrw !== null && <div className="my-4"><p className="text-xs text-muted-foreground">저축까지 배분한 뒤 남는 돈</p><p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{result.surplusKrw.toLocaleString("ko-KR")}원 <span className="text-sm font-normal">/ 월</span></p></div>}
-        <p className="mt-1 text-xs text-muted-foreground">소득 − 고정지출(대출상환 포함) − 생활비 − 저축·투자. 재무 우선순위는 설문 답변만으로 판단해요.</p>
+      <div><p className="section-eyebrow">01 · 타고난 재물성향</p><p className="mt-2 text-base leading-7">{innateSummary}</p><p className="mt-1 text-sm text-muted-foreground">사주에서 읽은 성향이며 실제 재무상태는 아래 숫자로 판단해요</p></div>
+      <div><p className="section-eyebrow">02 · 실제로 고른 선택</p><p className="mt-2 text-base leading-7">{choiceSummary ?? "선택 기록이 없어 비교하지 않았습니다."}</p></div>
+      <div><p className="section-eyebrow">03 · 현재 돈의 구조</p><p className="mt-2 text-base leading-7">{result.lifeMeaning}</p>
+        {result.surplusKrw !== null && <div className="my-4"><p className="text-sm text-muted-foreground">저축까지 배분한 뒤 남는 돈</p><p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{result.surplusKrw.toLocaleString("ko-KR")}원 <span className="text-sm font-normal">/ 월</span></p></div>}
+        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">소득 − 고정지출(대출상환 포함) − 생활비 − 저축·투자. 재무 우선순위는 설문 답변만으로 판단해요.</p>
 
 
 
@@ -36,9 +36,18 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
       <h3 className="mt-3 text-2xl leading-snug font-semibold">{result.headline}</h3>
       <p className="mt-4 text-base">{result.why}</p>
     </section>
+    {result.alsoCheck.length > 0 && (
+      <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+        <p className="text-base font-semibold">같이 확인할 부분</p>
+        <ul className="mt-2 space-y-1.5 text-base leading-7 text-muted-foreground">
+          {result.alsoCheck.map((item) => <li key={item}>· {item}</li>)}
+        </ul>
+        <p className="mt-2 text-sm text-muted-foreground">가장 먼저 볼 문제와 별개로, 입력값에서 함께 확인된 항목이에요.</p>
+      </div>
+    )}
     <details className="mt-4 rounded-2xl border border-border bg-card p-4">
-      <summary className="cursor-pointer text-sm font-medium">왜 이렇게 판단했는지 보기</summary>
-      <div className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
+      <summary className="cursor-pointer text-base font-medium">왜 이렇게 판단했는지 보기</summary>
+      <div className="mt-3 space-y-2 text-sm leading-7 text-muted-foreground">
         {result.eventContext && <p>{result.eventContext}</p>}
         {result.incomeContext && <p>{result.incomeContext}</p>}
         {result.fundingContext && <p>{result.fundingContext}</p>}
@@ -47,8 +56,8 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
       </div>
     </details>
     <div className="mt-6 rounded-2xl bg-accent p-5 text-accent-foreground">
-      <h3 className="text-sm font-semibold">지금은 뒤로 둬도 괜찮아요</h3>
-      <p className="mt-2 text-sm">{result.notUrgent}{eunNeun(result.notUrgent)} 우선순위가 아닙니다. {result.notUrgentReason}</p>
+      <h3 className="text-base font-semibold">지금은 뒤로 둬도 괜찮아요</h3>
+      <p className="mt-2 text-base leading-7">{result.notUrgent}{eunNeun(result.notUrgent)} 우선순위가 아닙니다. {result.notUrgentReason}</p>
     </div>
     <div className="mt-6">
       <h3 className="text-base font-semibold">오늘은 이것 하나부터</h3>
@@ -57,24 +66,24 @@ export function AnalysisResultCard({ result, innateSummary, choiceSummary, metho
     {method && <div className="mt-6 border-l-2 border-(--gold-soft) pl-4">
       <p className="section-eyebrow">이 행동을 이어가는 나만의 방식</p>
       <h3 className="mt-2 text-base font-semibold">{method.title}</h3>
-      <p className="mt-2 text-sm text-muted-foreground">{method.reason} {method.routine}</p>
-      {method.whatToDo && <dl className="mt-3 space-y-2 text-sm">
+      <p className="mt-2 text-base leading-7 text-muted-foreground">{method.reason} {method.routine}</p>
+      {method.whatToDo && <dl className="mt-3 space-y-3 text-base">
         <div><dt className="font-medium">할 일</dt><dd>{method.whatToDo}</dd></div>
         <div><dt className="font-medium">기록할 것</dt><dd>{method.whatToRecord}</dd></div>
         <div><dt className="font-medium">언제 하면 되나요</dt><dd>{method.whenToCheck}</dd></div>
         <div><dt className="font-medium">끝났다고 볼 기준</dt><dd>{method.doneWhen}</dd></div>
       </dl>}
-      <p className="mt-2 text-xs text-muted-foreground">이번 응답을 바탕으로 한 제안이에요. 편한 방식으로 조정해도 괜찮아요.</p>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">이번 응답을 바탕으로 한 제안이에요. 편한 방식으로 조정해도 괜찮아요.</p>
     </div>}
     {insufficient ? <Button size="lg" onClick={onRevise} className="mt-6 h-14 w-full rounded-full">답변 확인하고 다시 진단하기</Button> :
       <div className="transition-panel mt-8">
         <p className="section-eyebrow">내 상황에 맞는 다음 단계</p>
         <h3 className="mt-2 text-xl font-semibold">방향을 알았다면,<br />이제 나에게 맞는 관리방법</h3>
-        <p className="mt-3 text-sm text-muted-foreground">내 돈의 구조에 맞춘 우선순위, 30일 실행계획과 90일 관리 루틴. 무엇을 할지에서, 어떻게 이어갈지로 연결합니다.</p>
-        <p className="mt-4 text-sm">맞춤 관리 리포트 · <strong>{RECOMMENDED_PRICE.label}</strong></p>
+        <p className="mt-3 text-base leading-7 text-muted-foreground">내 돈의 구조에 맞춘 우선순위, 30일 실행계획과 90일 관리 루틴. 무엇을 할지에서, 어떻게 이어갈지로 연결합니다.</p>
+        <p className="mt-4 text-base">맞춤 관리 리포트 · <strong>{RECOMMENDED_PRICE.label}</strong></p>
         <Button size="lg" onClick={onProceed} className="mt-4 h-14 w-full rounded-full text-base">내 맞춤 관리방법 보기 <ArrowRight className="size-4" /></Button>
-        <p className="mt-2 text-center text-xs text-muted-foreground">리포트 구성 확인 · 결제 연결 준비 중</p>
+        <p className="mt-2 text-center text-sm text-muted-foreground">리포트 구성 확인 · 결제 연결 준비 중</p>
       </div>}
-    {!insufficient && <button type="button" onClick={onRevise} className="mt-5 min-h-11 w-full text-center text-xs text-muted-foreground underline underline-offset-4">재무 답변 수정하기</button>}
+    {!insufficient && <button type="button" onClick={onRevise} className="mt-5 min-h-11 w-full text-center text-sm text-muted-foreground underline underline-offset-4">재무 답변 수정하기</button>}
   </motion.div>;
 }

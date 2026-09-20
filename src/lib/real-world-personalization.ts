@@ -362,7 +362,7 @@ export function buildNextMove(facts: SajuFacts, personality: PersonalityInput | 
   }
 
   const group = TEN_GOD_GROUP[currentDaeun.stemTenGod] ?? TEN_GOD_GROUP[currentDaeun.branchTenGod] ?? null;
-  const sentences = [`지금 만 ${facts.currentAge}세, ${currentDaeun.ageRange}세부터 이어지는 이 대운은 ${daeunFlavor(currentDaeun)} 시기입니다.`];
+  const sentences = [`지금 만 ${facts.currentAge}세, ${currentDaeun.ageRange}세 전후부터 이어지는 이 대운은 ${daeunFlavor(currentDaeun)} 시기입니다.`];
 
   if (group) {
     sentences.push(GROUP_ACTION_HINT[group]);

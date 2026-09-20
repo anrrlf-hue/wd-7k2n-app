@@ -23,9 +23,9 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
   return (
     <ReportSection title="명식(命式) — 이 사주의 원국">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[280px] border-collapse text-center text-sm">
+        <table className="w-full min-w-[280px] border-collapse text-center text-base">
           <thead>
-            <tr className="text-xs text-muted-foreground">
+            <tr className="text-sm text-muted-foreground">
               {view.pillars.map((p) => (
                 <th key={p.pillar} className="pb-1.5 font-medium">
                   {PILLAR_LABEL_KO[p.pillar]}
@@ -52,15 +52,15 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
         </table>
       </div>
       {!view.hasTimeInput && (
-        <p className="mt-1.5 text-xs text-muted-foreground">시간을 알면 더 정확해집니다.</p>
+        <p className="mt-1.5 text-sm text-muted-foreground">시간을 알면 더 정확해집니다.</p>
       )}
 
-      <p className="mt-4 text-sm font-medium">오행 분포</p>
+      <p className="mt-4 text-base font-medium">오행 분포</p>
       <div className="mt-1.5 flex gap-3">
         {FIVE_ELEMENT_ORDER.map((el) => (
           <div key={el} className="flex flex-col items-center gap-0.5">
-            <span className="text-xs text-muted-foreground">{el}</span>
-            <span className="text-sm font-semibold">{view.fiveElements[el] ?? 0}</span>
+            <span className="text-sm text-muted-foreground">{el}</span>
+            <span className="text-base font-semibold">{view.fiveElements[el] ?? 0}</span>
           </div>
         ))}
       </div>
@@ -70,7 +70,7 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
         <span className="font-semibold">{view.dayStrengthGrade}</span>({view.dayStrengthScore}점)
       </p>
       {view.geukgukSource === "ziping_ditianshui" && (
-        <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
+        <div className="mt-1.5 space-y-0.5 text-sm leading-relaxed text-muted-foreground">
           <p>자평진전 방식(월지 지장간 사령·천간 투출)으로 판정</p>
           <p>적천수 방식(일간 기준 통근 위치배점)으로 산출</p>
         </div>
@@ -82,7 +82,7 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
           ? view.wealthStarPillars.map((p) => pillarLifeAreaLabel(p)).join(", ")
           : "원국에 직접 드러나지 않음"}
       </p>
-      <p className="mt-1 text-sm">
+      <p className="mt-1 text-base leading-7">
         관성 궁위 —{" "}
         {view.officerStarPillars.length > 0
           ? view.officerStarPillars.map((p) => pillarLifeAreaLabel(p)).join(", ")

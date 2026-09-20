@@ -48,14 +48,14 @@ export function PersonalityStep({
         <br />볼까요?
       </h2>
       <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-        내 생각과 사주 해석을 비교하는 6문항이에요. 건너뛰어도 사주 결과를 볼 수 있어요.
+        사주에서 읽은 모습이 실제 나와 어디가 맞고 다른지 비교하는 6문항이에요. 사주 계산 결과를 바꾸는 데 쓰지 않아요.
       </p>
 
-      <p className="mt-4 text-xs text-muted-foreground">왼쪽에 가까우면 1, 오른쪽에 가까우면 5를 골라요.</p>
+      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">왼쪽에 가까우면 1, 오른쪽에 가까우면 5를 골라요.</p>
       <div className="mt-4 space-y-4">
         {PERSONALITY_CHECK_ITEMS.map((item) => (
           <div key={item.id} className="rounded-xl border border-border p-3.5">
-            <div className="flex items-start justify-between gap-3 text-sm text-foreground/80">
+            <div className="flex items-start justify-between gap-3 text-base leading-snug text-foreground/90">
               <span className="flex-1">{item.leftLabel}</span>
               <span className="flex-1 text-right">{item.rightLabel}</span>
             </div>
@@ -82,12 +82,12 @@ export function PersonalityStep({
       </div>
 
       <div className="mt-6">
-        <label htmlFor="mbti" className="text-[15px] font-medium">MBTI를 알고 있다면 선택해주세요</label>
+        <label htmlFor="mbti" className="text-[15px] font-medium">MBTI를 알고 있다면 함께 비교해볼게요</label>
         <select
           id="mbti"
           value={mbti}
           onChange={(e) => onMbtiChange(e.target.value as MbtiType | "모름")}
-          className="mystic-card mt-2 w-full rounded-xl border border-border p-3.5 text-[15px]"
+          className="mystic-card mt-2 w-full rounded-xl border border-border p-3.5 text-base"
         >
           <option value="모름">모름 / 건너뛰기</option>
           {MBTI_TYPES.map((t) => (
@@ -116,7 +116,7 @@ export function PersonalityStep({
                 : "다음"}
           </Button>
         </div>
-        <button type="button" onClick={onSkip} className="text-center text-sm text-muted-foreground">
+        <button type="button" onClick={onSkip} className="text-center text-[15px] text-muted-foreground">
           이건 건너뛰고 바로 결과 볼게요
         </button>
       </div>

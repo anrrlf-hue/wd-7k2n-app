@@ -15,10 +15,10 @@ export function ReportSection({
   return (
     <section className="report-section">
       <h3 className="flex items-baseline gap-1.5">
-        {step && <span className="text-xs font-semibold text-(--gold)">{step}</span>}
-        <span className="text-base font-semibold tracking-tight">{title}</span>
+        {step && <span className="text-sm font-semibold text-(--gold)">{step}</span>}
+        <span className="text-lg font-semibold tracking-tight">{title}</span>
       </h3>
-      <div className="mt-2 text-[15px] leading-relaxed text-foreground/90">{children}</div>
+      <div className="mt-2 text-base leading-7 text-foreground/90">{children}</div>
     </section>
   );
 }
@@ -33,11 +33,11 @@ export function EvidenceToggle({ evidence }: { evidence: string }) {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2"
+        className="text-sm text-muted-foreground underline decoration-dotted underline-offset-2"
       >
         왜 이렇게 봤나요?
       </button>
-      {open && <p className="mt-1.5 text-xs text-muted-foreground">{evidence}</p>}
+      {open && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{evidence}</p>}
     </div>
   );
 }
@@ -82,20 +82,20 @@ export function EvidenceItemCard({
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-xl border border-border bg-card p-3.5">
-      <p className="text-sm font-semibold">
+      <p className="text-base font-semibold">
         {index}. {title}
       </p>
-      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{detail}</p>
+      <p className="mt-1.5 text-[15px] leading-7 text-muted-foreground">{detail}</p>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="mt-2 text-[11px] text-muted-foreground underline decoration-dotted underline-offset-2"
+        className="mt-2 text-sm text-muted-foreground underline decoration-dotted underline-offset-2"
       >
         왜 이렇게 봤나요?
       </button>
       {open && (
-        <span className="mt-1.5 inline-block rounded-full bg-(--gold-soft) px-2 py-0.5 text-[11px] text-(--gold)">
+        <span className="mt-1.5 inline-block rounded-full bg-(--gold-soft) px-2.5 py-1 text-xs text-(--gold)">
           {evidence}
         </span>
       )}

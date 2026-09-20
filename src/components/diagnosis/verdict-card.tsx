@@ -18,11 +18,11 @@ export function VerdictCard({ verdict }: { verdict: ReportParagraph }) {
       className="mystic-ring relative mt-8 overflow-hidden rounded-2xl border border-(--gold-soft) bg-card p-6"
     >
       <div className="pointer-events-none absolute -top-10 -right-10 size-32 rounded-full bg-(--gold-soft) blur-3xl" />
-      <p className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-(--gold)">
+      <p className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-(--gold)">
         <Sparkles className="size-3.5" />
         종합판정
       </p>
-      <p className="mt-3 text-[15px] leading-relaxed">{verdict.text}</p>
+      <p className="mt-3 text-base leading-7">{verdict.text}</p>
     </motion.div>
   );
 }

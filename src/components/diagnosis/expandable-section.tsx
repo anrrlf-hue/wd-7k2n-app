@@ -15,7 +15,7 @@ export function ExpandableSection({ title, children }: { title: string; children
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground"
+        className="flex w-full items-center justify-between text-sm font-medium text-muted-foreground"
       >
         {title}
         <ChevronDown className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -29,7 +29,7 @@ export function ExpandableSection({ title, children }: { title: string; children
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="space-y-3 pt-3 text-sm leading-relaxed">{children}</div>
+            <div className="space-y-3 pt-3 text-base leading-7">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>

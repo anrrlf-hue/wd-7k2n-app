@@ -8,6 +8,7 @@
 import type { SajuFacts } from "@/lib/saju-facts";
 import type { Interpretation } from "@/lib/interpretation-schema";
 import { dayStrengthLabel, dayStrengthShort } from "@/lib/saju-labels";
+import { deriveSajuWorkCore } from "@/lib/saju-work-core";
 
 // oh-my-saju timing으로 받은 대운과 원국 사이의 합충형파해(로컬 계산, 이견
 // 없는 고정 클래식 표) — 실제로 걸리는 게 있을 때만 문장을 만든다.
@@ -39,6 +40,7 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
   } = facts;
 
   const wLevel = wealthLevel(wealthStarCount);
+  const workCore = deriveSajuWorkCore(facts);
   // 식상(활동력) vs 비겁(경쟁력) 비교. 둘 다 0이면 "더 많다/우세하다"고 말할
   // 근거 자체가 없으므로 별도 문구를 쓴다 (그 반대로 텍스트를 만들면 사실과
   // 어긋나는 문장이 나온다 — 실제 테스트 케이스 E에서 발견된 버그).
@@ -48,7 +50,7 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
   const summary =
     `이 사주는 ${dayStrengthLabel(dayStrength)}이고, ${geukguk}을 타고났습니다. ` +
     `가장 강한 기운은 ${dominantElement}이고, 재물은 ${wLevel === "없음" ? "직접 드러나 있지는 않습니다" : wLevel === "보통" ? "적당히 자리 잡고 있습니다" : "뚜렷하게 자리 잡고 있습니다"}. ` +
-    `원래 ${activeCompare === "peer" ? "묵묵히 반복해서 자리를 잡는" : "일단 벌여놓고 결과로 증명하는"} 쪽에 가깝습니다.`;
+    `원래 ${activeCompare === "peer" ? "직접 실행하며 내 몫을 만들어가는" : activeCompare === "output" ? "생각을 결과물로 만들어 보여주는" : "구상과 실행을 함께 엮는"} 쪽에 가깝습니다.`;
 
   const money_style =
     wLevel === "없음"
@@ -57,12 +59,7 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
         ? "이 사주는 돈이 완전히 낯설지도, 너무 익숙하지도 않은 균형점에서 관계를 맺습니다."
         : "이 사주는 돈의 흐름을 감지하고 다루는 감각이 핵심 축 중 하나입니다.";
 
-  const earning_style =
-    activeCompare === "output"
-      ? "뭔가를 만들어내거나 표현하는 활동이 곧 돈으로 이어지는 구조입니다. 직장에 오래 묶여 있기보다 성과가 바로 돈으로 연결되는 일이 더 맞습니다."
-      : activeCompare === "peer"
-        ? "남과 비교되는 자리, 직접 부딪히는 자리에서 오히려 돈 버는 힘이 커집니다."
-        : "벌어들이는 힘이 활동이나 경쟁보다는 재물 자체를 다루는 쪽에서 더 크게 작동합니다.";
+  const earning_style = workCore.sections.earningStyle.text;
 
   const keeping_style =
     dayStrength === "strong"
@@ -76,10 +73,7 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
       ? "급하게 밀어붙이거나 감정적으로 판단하는 순간에 손해로 이어지기 쉬운 사주입니다. 큰 결정 전에는 한 박자 늦추는 것이 낫습니다."
       : "특별히 걸리는 것은 없지만, 벌어들이는 힘과 지키는 힘의 균형이 한쪽으로 쏠릴 때가 위험 신호입니다.";
 
-  const career_business =
-    geukguk.includes("재") || geukguk.includes("식상")
-      ? "정해진 틀 안에 오래 있기보다, 성과가 곧바로 보이는 사업이나 성과제 쪽에서 재물이 더 크게 열립니다."
-      : "안정적인 체계 안에서 신뢰를 쌓아가는 직장형 구조에서 재물이 더 안정적으로 늘어납니다.";
+  const career_business = workCore.sections.jobOrientation.text;
 
   const currentAnalysis = daeunAnalysis?.find((d) => d.isCurrent) ?? null;
   const nextAnalysis = daeunAnalysis?.find((d) => d.isNext) ?? null;
@@ -87,10 +81,10 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
   const nextRelationSentence = nextAnalysis ? daeunRelationSentence(nextAnalysis.relations) : null;
 
   const timing = currentDaeun
-    ? `${currentDaeun.ageRange}세부터 이어지는 지금 대운(${currentDaeun.ganzhi})에서는 ` +
+    ? `${currentDaeun.ageRange}세 전후부터 이어지는 지금 대운(${currentDaeun.ganzhi})에서는 ` +
       (currentRelationSentence ? `${currentRelationSentence} ` : "") +
       (nextDaeun
-        ? `다음 대운(${nextDaeun.ageRange}세부터, ${nextDaeun.ganzhi})으로 넘어가면 돈을 대하는 방식이 한 번 전환됩니다.` +
+        ? `다음 대운(${nextDaeun.ageRange}세 전후, ${nextDaeun.ganzhi})으로 넘어가면 해석에서 강조되는 주제가 달라질 수 있습니다.` +
           (nextRelationSentence ? ` ${nextRelationSentence}` : "")
         : "이 대운이 지금 재물 흐름의 기본 배경이 되고 있습니다.")
     : "출생시간이 없어 대운은 계산되지 않았습니다.";

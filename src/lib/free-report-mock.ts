@@ -294,14 +294,14 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const bigMoneyAffinity = compose(seedFor(7), {
     claim:
       wealthOpportunityDaeunCount === 0
-        ? "인생 전체 흐름 중 재물이 뚜렷하게 겹치는 구간은 없지만, 큰돈과 무관하다는 뜻은 아닙니다. 활동력과 실행력이라는 다른 축으로 돈을 만드는 사주입니다."
+        ? "대운에서 재물 신호가 뚜렷하게 겹치는 구간은 적습니다. 이것만으로 실제 큰돈 가능성을 판단하지 않고, 돈과 기회에 반응하는 방식을 살펴봅니다."
         : wealthOpportunityDaeunCount <= 2
-          ? "평생 흐름 중 재물 기운이 함께 오는 구간이 있습니다. 그 시기가 아니어도 꾸준히 관리하는 것이 기본기가 됩니다."
-          : "평생 흐름 중 재물 기운이 함께 오는 구간이 여러 번 있어, 인생 전체로 보면 기회 자체는 여러 번 찾아옵니다.",
+          ? "대운에서 재물 신호가 함께 나타나는 구간이 일부 있습니다. 수입이나 수익의 보장으로 보지 않고, 돈과 관련된 선택을 점검할 시기로 읽습니다."
+          : "대운에서 재물 신호가 함께 나타나는 구간이 여러 번 있습니다. 실제 기회나 수입은 현실 조건에 따라 달라지므로, 선택과 준비를 살펴보는 참고로만 씁니다.",
     scene:
       peakStagePillars.length > 0 && wealthStarPillars.some((p) => peakStagePillars.includes(p))
-        ? "특히 재물이 놓인 자리가 기운이 정점에 달하는 자리와 겹쳐, 기회가 왔을 때 힘 있게 받아낼 수 있는 조건입니다."
-        : "다만 기회가 왔을 때 그것을 잡을 준비, 즉 정보력과 실행력이 함께 있어야 실제로 이어집니다.",
+        ? "재물과 관련된 자리와 힘이 강해지는 자리가 겹칩니다. 돈이 걸린 제안이나 선택 앞에서 어떻게 반응하는지 살펴볼 근거로 씁니다."
+        : "다만 실제 결과는 정보, 실행, 시장 상황 같은 현실 조건에 달려 있습니다.",
     evidence: `대운 중 재성 겹침 ${wealthOpportunityDaeunCount}회, 정점 12운성 자리 ${pillarNamesKo(peakStagePillars) || "없음"}`,
   });
 

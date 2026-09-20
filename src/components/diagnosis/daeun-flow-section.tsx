@@ -13,13 +13,13 @@ export function DaeunFlowSection({ view }: { view: MyeongsikView | null }) {
 
   return (
     <ReportSection title="대운 흐름 — 지금 이 시기">
-      <p className="text-sm">
-        현재 대운 {view.currentDaeun.ageRange}세 <span className="font-semibold">{view.currentDaeun.ganzhi}</span> —{" "}
+      <p className="text-base leading-7">
+        현재 대운은 {view.currentDaeun.ageRange}세 전후부터 이어지는 <span className="font-semibold">{view.currentDaeun.ganzhi}</span> —{" "}
         {daeunFlavor(view.currentDaeun)} 시기입니다.
       </p>
       {view.nextDaeun && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          다음 대운 {view.nextDaeun.ageRange}세 <span className="font-semibold">{view.nextDaeun.ganzhi}</span>부터는{" "}
+        <p className="mt-2 text-base leading-7 text-muted-foreground">
+          다음 대운은 {view.nextDaeun.ageRange}세 전후부터 <span className="font-semibold">{view.nextDaeun.ganzhi}</span> —{" "}
           {daeunFlavor(view.nextDaeun)} 시기로 넘어갑니다.
         </p>
       )}
