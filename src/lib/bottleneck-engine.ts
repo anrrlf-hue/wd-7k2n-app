@@ -1,9 +1,6 @@
-// 설문만으로 우선순위를 계산한다. 필수 정보가 없으면 보류하고,
-// 측정한 병목이 없으면 새 투자 문제를 추정하지 않는다.
 import type { SurveyInput } from "@/lib/survey-input";
 import { surplusKrw } from "@/lib/survey-input";
-import { futureEventPlan, futureEventAnswersComplete, futureEventNeedsClarification } from "@/lib/future-event";
-import { purposeFunding, freelancerEvidence } from "@/lib/financial-evidence";
+import { futureEventPlan, primaryFutureEvent } from "@/lib/future-event";
 
 export type BottleneckCode =
   | "cash_flow_deficit"
@@ -23,70 +20,46 @@ export type BottleneckCode =
   | "insufficient_data"
   | "no_priority_bottleneck";
 
-function step1CashFlowDeficit(input: SurveyInput): boolean {
-  return surplusKrw(input) < 0;
+function hasBasicInputs(input: SurveyInput): boolean {
+  const amounts = [
+    input.monthlyIncomeKrw,
+    input.monthlyFixedCostKrw,
+    input.monthlyLivingCostKrw,
+    input.monthlySavingsKrw,
+  ];
+  if (amounts.some((value) => !Number.isFinite(value) || value < 0)) return false;
+  if (!input.jobType || !input.expenseAwareness || !input.emergencyFund || !input.moneyManagementUnit) return false;
+  if (input.hasDebt === undefined || !input.futureEvents.length) return false;
+
+  const hasFutureEvent = !input.futureEvents.includes("none");
+  if (hasFutureEvent && !primaryFutureEvent(input)) return false;
+  if (hasFutureEvent && !input.futureEventTiming) return false;
+  return true;
 }
 
-function step2IncomeInterruptionRisk(input: SurveyInput): boolean {
-  if (futureEventPlan(input)?.kind === "income") {
-    return input.futureEventTiming !== "over_1y" && (input.futureIncomeChange === "reduced" || input.futureIncomeChange === "stopped");
-  }
-  if (input.jobType === "transitioning") return true;
-  return false;
+function isNear(term?: string): boolean {
+  return term === "under_3m" || term === "3_6m" || term === "6_12m";
 }
-
-function step3HighInterestDebt(input: SurveyInput): boolean {
-  if (!input.hasDebt) return false;
-  return input.debtInterestRate === "over_15";
-}
-
-function step4NearFutureFundsShortfall(input: SurveyInput): boolean {
-  return input.futureEventTiming !== "over_1y" && purposeFunding(input).state === "SHORTFALL";
-}
-
-function step5EmergencyFundShortage(input: SurveyInput): boolean {
-  return input.emergencyFund === "none" || input.emergencyFund === "under_1m";
-}
-
-function step6BizPersonalMixed(input: SurveyInput): boolean {
-  return input.jobType === "business_owner" && input.businessSeparatesFinance === false;
-}
-
-function step7CardInstallmentDependence(input: SurveyInput): boolean {
-  return input.spendingPatterns.includes("card_dependence");
-}
-
-function step8NoExpenseAwareness(input: SurveyInput): boolean {
-  return input.expenseAwareness === "unknown";
-}
-
-function step9NoSavingsSystem(input: SurveyInput): boolean {
-  return input.spendingPatterns.includes("spend_as_earned") && !input.spendingPatterns.includes("auto_savings");
-}
-
-// step10: 장기목표 대비 준비속도 — 설문에 해당 필드가 없어 항상 스킵.
 
 export function detectBottleneck(input: SurveyInput): BottleneckCode {
-  const amounts = [input.monthlyIncomeKrw, input.monthlyFixedCostKrw, input.monthlyLivingCostKrw, input.monthlySavingsKrw];
-  if (amounts.some((n) => !Number.isFinite(n) || n < 0) || !input.jobType ||
-    !input.expenseAwareness || !input.emergencyFund || !input.moneyManagementUnit ||
-    input.hasDebt === undefined || !input.spendingPatterns.length || !input.futureEvents.length ||
-    (input.hasDebt && (!input.debtInterestRate || !input.debtMaturity || !input.debtMonthlyPayment || !input.debtRepaymentType)) ||
-    !futureEventAnswersComplete(input) || futureEventNeedsClarification(input) ||
-    (input.jobType === "business_owner" && input.businessSeparatesFinance === undefined) ||
-    (input.jobType === "freelancer" && !freelancerEvidence(input))) return "insufficient_data";
-  if (step1CashFlowDeficit(input)) return "cash_flow_deficit";
-  if (step2IncomeInterruptionRisk(input)) return "income_interruption_risk";
-  if (step3HighInterestDebt(input)) return "high_interest_debt";
-  if (input.hasDebt && input.debtMaturity === "under_3m") return "maturity_preparation";
-  if ((freelancerEvidence(input)?.lowGap ?? 0) > 0) return "income_variability_risk";
-  if (step4NearFutureFundsShortfall(input)) return "near_future_funds_shortfall";
-  if (step5EmergencyFundShortage(input)) return "emergency_fund_shortage";
-  if (step6BizPersonalMixed(input)) return "biz_personal_mixed";
-  if (step7CardInstallmentDependence(input)) return "card_installment_dependence";
-  if (step8NoExpenseAwareness(input)) return "no_expense_awareness";
-  if (step9NoSavingsSystem(input)) return "no_savings_system";
-  if (input.futureEventTiming !== "over_1y" && purposeFunding(input).state === "NEEDS_CONFIRMATION") return "purpose_fund_confirmation";
-  // step10 (long_term_goal_pace_short): 정보 부족 -> 항상 스킵
-  return "no_priority_bottleneck"; // 투자 정보 없이 투자 효율을 추정하지 않는다.
+  if (!hasBasicInputs(input)) return "insufficient_data";
+
+  if (surplusKrw(input) < 0) return "cash_flow_deficit";
+
+  const event = futureEventPlan(input);
+  if (input.jobType === "transitioning") return "income_interruption_risk";
+  if (event?.kind === "income" && isNear(input.futureEventTiming)) return "income_interruption_risk";
+
+  if (event?.kind === "purpose" && isNear(input.futureEventTiming)) {
+    return "purpose_fund_confirmation";
+  }
+
+  if (input.emergencyFund === "none" || input.emergencyFund === "under_1m") {
+    return "emergency_fund_shortage";
+  }
+
+  if (input.moneyManagementUnit === "mixed_biz_personal") return "biz_personal_mixed";
+  if (input.expenseAwareness === "unknown") return "no_expense_awareness";
+
+  return "no_priority_bottleneck";
 }

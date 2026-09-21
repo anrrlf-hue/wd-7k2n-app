@@ -1,42 +1,123 @@
 "use client";
 
+import { useState } from "react";
+import { motion } from "framer-motion";
 import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
 import { TrustBadges } from "@/components/palm/trust-badges";
 import { REPORT_CONTENTS } from "@/lib/report-contents";
 import { PAYMENT_TIMING_NOTICE, REFUND_POLICY_NOTICE } from "@/lib/payment-notices";
 import { CompanionHeading } from "@/components/angel-companion";
 import { JourneyScene } from "@/components/journey-scene";
-import type { ManagementMethod } from "@/lib/management-method";
+import { financeQuestion, type FinanceQuestionId } from "@/lib/finance-question";
+import type { AnalysisResult } from "@/lib/analysis-result";
 
-/** 결제 화면 — 분석 결과 화면과 분리된 별도 단계. 기존 PaywallOffer를
- * 그대로 재사용한다(독립적인 카드 컴포넌트라 구조 변경 불필요). 결제는
- * 여전히 준비 중 — PaywallOffer의 CTA는 실제 결제를 완료시키지 않는다.
- * 리포트 구성 항목은 analysis-result-card.tsx의 미리보기와 같은 목록을
- * 공유한다(report-contents.ts) — 두 화면 문구가 어긋나지 않게. 신뢰 신호
- * (TrustBadges)와 결제 소요시간·환불정책 안내를 이 화면에 배치한다. */
-export function PaymentScreen({ method, onBack }: { method: ManagementMethod | null; onBack: () => void }) {
+export function PaymentScreen({
+  question,
+  result,
+  onBack,
+}: {
+  question: FinanceQuestionId;
+  result: AnalysisResult;
+  onBack: () => void;
+}) {
+  const [showPaidPreview, setShowPaidPreview] = useState(false);
+  const selected = financeQuestion(question);
+
+  if (showPaidPreview) {
+    return (
+      <motion.div
+        initial={{ opacity: 0.5, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <p className="section-eyebrow">결제 후 첫 결과 화면 · 미리보기</p>
+        <h2 className="mt-3 text-2xl leading-snug font-semibold">{selected.paywallTitle}</h2>
+
+        <div className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
+          <p className="section-eyebrow">지금 가장 중요한 답</p>
+          <h3 className="mt-3 text-xl leading-snug font-semibold">{result.headline}</h3>
+          <p className="mt-3 text-base leading-7">{result.why}</p>
+        </div>
+
+        <div className="mt-5 rounded-2xl bg-accent p-5 text-accent-foreground">
+          <p className="text-sm font-semibold">지금 가장 먼저 할 것</p>
+          <p className="mt-2 text-base leading-7">{result.immediateDirection}</p>
+        </div>
+
+        <details className="mt-4 rounded-2xl border border-border bg-card p-4">
+          <summary className="cursor-pointer text-base font-medium">왜 이렇게 판단했는지 보기</summary>
+          <div className="mt-3 space-y-2 text-sm leading-7 text-muted-foreground">
+            {result.eventContext && <p>{result.eventContext}</p>}
+            {result.incomeContext && <p>{result.incomeContext}</p>}
+            {result.fundingContext && <p>{result.fundingContext}</p>}
+            <p>{result.gapStatement}</p>
+          </div>
+        </details>
+
+        <div className="mt-5 rounded-2xl border border-border bg-card p-5">
+          <p className="text-base font-semibold">이 다음에는</p>
+          <p className="mt-2 text-base leading-7 text-muted-foreground">
+            내 상황에서 선택할 수 있는 방향과 30일 실행계획을 이어서 보여줍니다.
+            정확한 판단에 꼭 필요한 정보가 더 있으면 최대 3가지만 추가로 확인합니다.
+          </p>
+        </div>
+
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          현재는 실제 결제 연동 전이라 결제 후 화면을 미리보기로 보여주고 있습니다.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => setShowPaidPreview(false)}
+          className="mt-6 min-h-11 w-full text-sm text-muted-foreground underline underline-offset-4"
+        >
+          결제 화면 다시 보기
+        </button>
+      </motion.div>
+    );
+  }
+
   return (
     <div>
       <JourneyScene scene="reality" compact />
-      <div className="mt-6"><CompanionHeading state="report-handoff" presence="regular">
-      <p className="section-eyebrow">맞춤 관리 리포트</p>
-      <h2 className="mt-3 text-2xl font-semibold">알게 된 나를,<br />지속할 수 있는 방법으로</h2>
-      </CompanionHeading></div>
-      <p className="mt-3 text-sm text-muted-foreground">현재 준비 중인 리포트의 구성입니다. 결제 기능과 리포트 제공은 아직 시작되지 않았어요.</p>
-      {method && <div className="mt-6 rounded-2xl border border-border p-5">
-        <p className="section-eyebrow">내 응답에서 찾은 실행 방향</p>
-        <h3 className="mt-2 text-base font-semibold">{method.title}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">{method.routine}</p>
-      </div>}
-      <PaywallOffer
-        title="나에게 맞는 실제 돈 관리방법"
-        includedItems={REPORT_CONTENTS}
-        ctaText="나에게 맞는 관리계획 받기"
-      />
+
+      <div className="mt-6">
+        <CompanionHeading state="report-handoff" presence="regular">
+          <p className="section-eyebrow">사주풀이로 끝나지 않습니다</p>
+          <h2 className="mt-3 text-2xl leading-snug font-semibold">{selected.paywallTitle}</h2>
+        </CompanionHeading>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
+        <p className="text-xl leading-8 font-semibold">
+          막연했던 돈 걱정을,
+          <br />
+          내가 지금 무엇을 해야 하는지 보이는 계획으로 바꿔드립니다.
+        </p>
+        <p className="mt-3 text-base leading-7 text-muted-foreground">
+          지금까지 입력한 내 상황을 바탕으로, 선택한 질문에 맞는 답과 앞으로의 방향을 이어서 보여드립니다.
+        </p>
+      </div>
+
       <TrustBadges />
+
+      <PaywallOffer
+        title={selected.paywallTitle}
+        includedItems={REPORT_CONTENTS}
+        ctaText="내 삶의 방향 이어보기 · 9,900원"
+        onRequest={() => setShowPaidPreview(true)}
+      />
+
       <p className="mt-3 text-center text-xs text-muted-foreground">{PAYMENT_TIMING_NOTICE}</p>
       <p className="mt-1 text-center text-xs text-muted-foreground">{REFUND_POLICY_NOTICE}</p>
-      <button type="button" onClick={onBack} className="mt-6 min-h-11 w-full text-xs text-muted-foreground underline underline-offset-4">무료 종합진단 다시 보기</button>
+
+      <button
+        type="button"
+        onClick={onBack}
+        className="mt-6 min-h-11 w-full text-sm text-muted-foreground underline underline-offset-4"
+      >
+        무료 결과 다시 보기
+      </button>
     </div>
   );
 }

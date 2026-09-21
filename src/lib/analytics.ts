@@ -14,6 +14,7 @@ export type ConversionEvent =
   | "free_report_completed"
   | "indirect_experience_started"
   | "indirect_experience_completed"
+  | "finance_bridge_started"
   | "survey_completed"
   | "analysis_result_viewed"
   | "payment_screen_viewed"

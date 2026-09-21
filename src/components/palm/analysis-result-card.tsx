@@ -1,89 +1,148 @@
 "use client";
-import { CompanionHeading } from "@/components/angel-companion";
+
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { RECOMMENDED_PRICE } from "@/lib/pricing";
+import { CompanionHeading } from "@/components/angel-companion";
 import { eunNeun } from "@/lib/korean-particle";
+import { FINANCE_QUESTIONS, type FinanceQuestionId } from "@/lib/finance-question";
 import type { AnalysisResult } from "@/lib/analysis-result";
-import type { ManagementMethod } from "@/lib/management-method";
-export function AnalysisResultCard({ result, innateSummary, choiceSummary, method, onProceed, onRevise }: {
-  result: AnalysisResult; innateSummary: string; choiceSummary: string | null;
-  method: ManagementMethod | null;
-  onProceed: () => void; onRevise: () => void;
+
+export function AnalysisResultCard({
+  result,
+  onProceed,
+  onRevise,
+}: {
+  result: AnalysisResult;
+  onProceed: (question: FinanceQuestionId) => void;
+  onRevise: () => void;
 }) {
+  const [selectedQuestion, setSelectedQuestion] = useState<FinanceQuestionId | null>(null);
   const insufficient = result.bottleneck === "insufficient_data";
-  return <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-    <CompanionHeading state="diagnosis-reveal" presence="regular">
-    <p className="section-eyebrow">현실 재무진단</p>
-    <h2 className="mt-3 text-2xl leading-snug font-semibold tracking-tight">타고난 나, 선택한 나,<br />그리고 지금의 돈</h2>
-    </CompanionHeading>
 
-    {result.userConcern && <p className="mt-3 text-base text-muted-foreground">내가 적은 고민 · “{result.userConcern}”</p>}
-    <div className="diagnosis-layers mt-7">
-      <div><p className="section-eyebrow">01 · 타고난 재물성향</p><p className="mt-2 text-base leading-7">{innateSummary}</p><p className="mt-1 text-sm text-muted-foreground">사주에서 읽은 성향이며 실제 재무상태는 아래 숫자로 판단해요</p></div>
-      <div><p className="section-eyebrow">02 · 실제로 고른 선택</p><p className="mt-2 text-base leading-7">{choiceSummary ?? "선택 기록이 없어 비교하지 않았습니다."}</p></div>
-      <div><p className="section-eyebrow">03 · 현재 돈의 구조</p><p className="mt-2 text-base leading-7">{result.lifeMeaning}</p>
-        {result.surplusKrw !== null && <div className="my-4"><p className="text-sm text-muted-foreground">저축까지 배분한 뒤 남는 돈</p><p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{result.surplusKrw.toLocaleString("ko-KR")}원 <span className="text-sm font-normal">/ 월</span></p></div>}
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">소득 − 고정지출(대출상환 포함) − 생활비 − 저축·투자. 재무 우선순위는 설문 답변만으로 판단해요.</p>
+  return (
+    <motion.div
+      initial={{ opacity: 0.5, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <CompanionHeading state="diagnosis-reveal" presence="regular">
+        <p className="section-eyebrow">현실 재무진단</p>
+        <h2 className="mt-3 text-2xl leading-snug font-semibold tracking-tight">
+          지금 내 삶에서
+          <br />
+          무엇이 중요한지 볼게요
+        </h2>
+      </CompanionHeading>
 
+      <p className="mt-3 text-base leading-7 text-muted-foreground">
+        사주와 손금은 나를 이해하는 데 쓰고, 아래 판단은 실제로 입력한 생활 정보만 기준으로 합니다.
+      </p>
 
+      {result.userConcern && (
+        <div className="mt-5 rounded-2xl border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">내가 적은 이야기</p>
+          <p className="mt-2 text-base leading-7">“{result.userConcern}”</p>
+        </div>
+      )}
 
+      <div className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
+        <p className="section-eyebrow">지금의 흐름</p>
+        <p className="mt-2 text-base leading-7">{result.lifeMeaning}</p>
+        {result.surplusKrw !== null && (
+          <div className="mt-4">
+            <p className="text-sm text-muted-foreground">저축·투자까지 배분한 뒤 남는 금액</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
+              {result.surplusKrw.toLocaleString("ko-KR")}원
+              <span className="text-sm font-normal"> / 월</span>
+            </p>
+          </div>
+        )}
       </div>
-    </div>
-    <section className="diagnosis-priority mt-8">
-      <p className="section-eyebrow">{insufficient || result.bottleneck === "purpose_fund_confirmation" ? "먼저 확인할 정보" : result.bottleneck === "no_priority_bottleneck" ? "현재의 우선순위" : "지금 가장 먼저 풀 부분"}</p>
-      <h3 className="mt-3 text-2xl leading-snug font-semibold">{result.headline}</h3>
-      <p className="mt-4 text-base">{result.why}</p>
-    </section>
-    {result.alsoCheck.length > 0 && (
-      <div className="mt-4 rounded-2xl border border-border bg-card p-4">
-        <p className="text-base font-semibold">같이 확인할 부분</p>
-        <ul className="mt-2 space-y-1.5 text-base leading-7 text-muted-foreground">
-          {result.alsoCheck.map((item) => <li key={item}>· {item}</li>)}
-        </ul>
-        <p className="mt-2 text-sm text-muted-foreground">가장 먼저 볼 문제와 별개로, 입력값에서 함께 확인된 항목이에요.</p>
-      </div>
-    )}
-    <details className="mt-4 rounded-2xl border border-border bg-card p-4">
-      <summary className="cursor-pointer text-base font-medium">왜 이렇게 판단했는지 보기</summary>
-      <div className="mt-3 space-y-2 text-sm leading-7 text-muted-foreground">
-        {result.eventContext && <p>{result.eventContext}</p>}
-        {result.incomeContext && <p>{result.incomeContext}</p>}
-        {result.fundingContext && <p>{result.fundingContext}</p>}
-        <p>{result.answerContext}</p>
-        <p>{result.gapStatement}</p>
-      </div>
-    </details>
-    <div className="mt-6 rounded-2xl bg-accent p-5 text-accent-foreground">
-      <h3 className="text-base font-semibold">지금은 뒤로 둬도 괜찮아요</h3>
-      <p className="mt-2 text-base leading-7">{result.notUrgent}{eunNeun(result.notUrgent)} 우선순위가 아닙니다. {result.notUrgentReason}</p>
-    </div>
-    <div className="mt-6">
-      <h3 className="text-base font-semibold">오늘은 이것 하나부터</h3>
-      <p className="mt-2 text-base">{result.immediateDirection}</p>
-    </div>
-    {method && <div className="mt-6 border-l-2 border-(--gold-soft) pl-4">
-      <p className="section-eyebrow">이 행동을 이어가는 나만의 방식</p>
-      <h3 className="mt-2 text-base font-semibold">{method.title}</h3>
-      <p className="mt-2 text-base leading-7 text-muted-foreground">{method.reason} {method.routine}</p>
-      {method.whatToDo && <dl className="mt-3 space-y-3 text-base">
-        <div><dt className="font-medium">할 일</dt><dd>{method.whatToDo}</dd></div>
-        <div><dt className="font-medium">기록할 것</dt><dd>{method.whatToRecord}</dd></div>
-        <div><dt className="font-medium">언제 하면 되나요</dt><dd>{method.whenToCheck}</dd></div>
-        <div><dt className="font-medium">끝났다고 볼 기준</dt><dd>{method.doneWhen}</dd></div>
-      </dl>}
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">이번 응답을 바탕으로 한 제안이에요. 편한 방식으로 조정해도 괜찮아요.</p>
-    </div>}
-    {insufficient ? <Button size="lg" onClick={onRevise} className="mt-6 h-14 w-full rounded-full">답변 확인하고 다시 진단하기</Button> :
-      <div className="transition-panel mt-8">
-        <p className="section-eyebrow">내 상황에 맞는 다음 단계</p>
-        <h3 className="mt-2 text-xl font-semibold">방향을 알았다면,<br />이제 나에게 맞는 관리방법</h3>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">내 돈의 구조에 맞춘 우선순위, 30일 실행계획과 90일 관리 루틴. 무엇을 할지에서, 어떻게 이어갈지로 연결합니다.</p>
-        <p className="mt-4 text-base">맞춤 관리 리포트 · <strong>{RECOMMENDED_PRICE.label}</strong></p>
-        <Button size="lg" onClick={onProceed} className="mt-4 h-14 w-full rounded-full text-base">내 맞춤 관리방법 보기 <ArrowRight className="size-4" /></Button>
-        <p className="mt-2 text-center text-sm text-muted-foreground">리포트 구성 확인 · 결제 연결 준비 중</p>
-      </div>}
-    {!insufficient && <button type="button" onClick={onRevise} className="mt-5 min-h-11 w-full text-center text-sm text-muted-foreground underline underline-offset-4">재무 답변 수정하기</button>}
-  </motion.div>;
+
+      <section className="diagnosis-priority mt-7">
+        <p className="section-eyebrow">
+          {insufficient || result.bottleneck === "purpose_fund_confirmation"
+            ? "먼저 확인할 부분"
+            : result.bottleneck === "no_priority_bottleneck"
+              ? "현재의 우선순위"
+              : "지금 가장 먼저 볼 부분"}
+        </p>
+        <h3 className="mt-3 text-2xl leading-snug font-semibold">{result.headline}</h3>
+        <p className="mt-4 text-base leading-7">{result.why}</p>
+      </section>
+
+      {!insufficient && (
+        <div className="mt-5 rounded-2xl bg-accent p-5 text-accent-foreground">
+          <h3 className="text-base font-semibold">지금은 뒤로 둬도 괜찮아요</h3>
+          <p className="mt-2 text-base leading-7">
+            {result.notUrgent}{eunNeun(result.notUrgent)} 지금의 1순위가 아닙니다. {result.notUrgentReason}
+          </p>
+        </div>
+      )}
+
+      <details className="mt-4 rounded-2xl border border-border bg-card p-4">
+        <summary className="cursor-pointer text-base font-medium">왜 이렇게 봤는지 확인하기</summary>
+        <div className="mt-3 space-y-2 text-sm leading-7 text-muted-foreground">
+          {result.eventContext && <p>{result.eventContext}</p>}
+          {result.incomeContext && <p>{result.incomeContext}</p>}
+          {result.fundingContext && <p>{result.fundingContext}</p>}
+          <p>{result.gapStatement}</p>
+        </div>
+      </details>
+
+      {insufficient ? (
+        <Button size="lg" onClick={onRevise} className="mt-6 h-14 w-full rounded-full text-base">
+          답변 확인하고 다시 보기
+        </Button>
+      ) : (
+        <section className="transition-panel mt-8">
+          <p className="section-eyebrow">여기서부터는 내가 궁금한 것</p>
+          <h3 className="mt-2 text-xl font-semibold">지금 가장 알고 싶은 것은 무엇인가요?</h3>
+          <p className="mt-2 text-base leading-7 text-muted-foreground">
+            하나를 고르면, 그 질문을 중심으로 다음 결과를 이어갑니다.
+          </p>
+
+          <div className="mt-5 space-y-2.5">
+            {FINANCE_QUESTIONS.map((question) => (
+              <button
+                key={question.id}
+                type="button"
+                onClick={() => setSelectedQuestion(question.id)}
+                aria-pressed={selectedQuestion === question.id}
+                className={
+                  "min-h-14 w-full rounded-2xl border p-4 text-left text-base leading-6 transition-colors " +
+                  (selectedQuestion === question.id
+                    ? "border-(--gold) bg-(--gold-soft) text-foreground"
+                    : "border-border bg-card text-foreground/85")
+                }
+              >
+                {question.label}
+              </button>
+            ))}
+          </div>
+
+          <Button
+            size="lg"
+            disabled={!selectedQuestion}
+            onClick={() => selectedQuestion && onProceed(selectedQuestion)}
+            className="mt-5 h-14 w-full rounded-full text-base"
+          >
+            이 질문, 내 상황에 맞게 이어보기 <ArrowRight className="size-4" />
+          </Button>
+        </section>
+      )}
+
+      {!insufficient && (
+        <button
+          type="button"
+          onClick={onRevise}
+          className="mt-5 min-h-11 w-full text-center text-sm text-muted-foreground underline underline-offset-4"
+        >
+          재무 답변 수정하기
+        </button>
+      )}
+    </motion.div>
+  );
 }
