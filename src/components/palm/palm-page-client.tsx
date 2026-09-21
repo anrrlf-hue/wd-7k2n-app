@@ -176,6 +176,7 @@ function ConversionFunnel({
           concerns={surveyInput?.financeQuestionIds ?? []}
           sajuSummary={sajuSummary}
           result={analysisResult}
+          input={surveyInput!}
           onBack={() => {
             onChapterChange(4);
             setStage("analysis");
