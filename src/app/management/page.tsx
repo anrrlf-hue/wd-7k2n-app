@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarDays, CheckCircle2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  clearFinanceManagementState,
   loadFinanceManagement,
   saveFinanceRecheck,
   type FinanceBaselineSnapshot,
@@ -73,15 +74,12 @@ export default function ManagementPage() {
   const [accountConfigured, setAccountConfigured] = useState(false);
   const [accountAuthenticated, setAccountAuthenticated] = useState(false);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
+  const [syncing, setSyncing] = useState(true);
   const [syncError, setSyncError] = useState(false);
 
   useEffect(() => {
     const local = loadFinanceManagement();
-    setSnapshots(local.snapshots);
-    setLoaded(true);
 
-    setSyncing(true);
     syncFinanceManagementWithAccount()
       .then((account) => {
         setAccountConfigured(account.configured);
@@ -90,8 +88,16 @@ export default function ManagementPage() {
         setSnapshots(account.state.snapshots);
         setSyncError(false);
       })
-      .catch(() => setSyncError(true))
-      .finally(() => setSyncing(false));
+      .catch(() => {
+        // 계정 귀속이 없는 로컬 기록만 안전하게 보여준다.
+        // 특정 계정 소유 기록은 인증 확인 실패 시 다른 사람에게 노출하지 않는다.
+        setSnapshots(local.ownerUserId ? [] : local.snapshots);
+        setSyncError(true);
+      })
+      .finally(() => {
+        setSyncing(false);
+        setLoaded(true);
+      });
   }, []);
 
   const latest = snapshots[0] ?? null;
@@ -127,6 +133,8 @@ export default function ManagementPage() {
       const supabase = createSupabaseBrowserClient();
       await supabase.auth.signOut();
     } finally {
+      clearFinanceManagementState();
+      setSnapshots([]);
       setAccountAuthenticated(false);
       setAccountEmail(null);
       setSyncError(false);
@@ -199,9 +207,24 @@ export default function ManagementPage() {
           <p className="mt-3 text-base leading-7 text-muted-foreground">
             사주·손금과 현실 재무질문을 완료한 뒤 맞춤 재무 방향을 저장하면 여기서 계속 관리할 수 있어요.
           </p>
-          <Button asChild size="lg" className="mt-6 h-14 w-full rounded-full text-base">
+          {accountConfigured && !accountAuthenticated && (
+            <Button asChild size="lg" className="mt-6 h-14 w-full rounded-full text-base">
+              <Link href="/login?next=/management">로그인해서 내 기록 불러오기</Link>
+            </Button>
+          )}
+          <Button
+            asChild
+            size="lg"
+            variant={accountConfigured && !accountAuthenticated ? "outline" : "default"}
+            className={(accountConfigured && !accountAuthenticated ? "mt-3" : "mt-6") + " h-14 w-full rounded-full text-base"}
+          >
             <Link href="/diagnosis">사주부터 시작하기</Link>
           </Button>
+          {syncError && (
+            <p className="mt-3 text-xs leading-5 text-destructive">
+              계정 확인이 잠시 되지 않았습니다. 다른 계정의 기록을 잘못 보여주지 않기 위해 저장기록을 숨겼습니다.
+            </p>
+          )}
         </div>
       </main>
     );

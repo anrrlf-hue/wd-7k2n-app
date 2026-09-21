@@ -30,11 +30,13 @@ export interface FinanceBaselineSnapshot {
 
 export interface FinanceManagementState {
   version: 1;
+  /** null/undefined = 아직 특정 계정에 귀속되지 않은 로컬 기록. */
+  ownerUserId?: string | null;
   snapshots: FinanceBaselineSnapshot[];
 }
 
 function emptyState(): FinanceManagementState {
-  return { version: 1, snapshots: [] };
+  return { version: 1, ownerUserId: null, snapshots: [] };
 }
 
 function makeId(): string {
@@ -64,8 +66,17 @@ export function saveFinanceManagementState(state: FinanceManagementState): void 
   if (typeof window === "undefined") return;
   localStorage.setItem(
     FINANCE_MANAGEMENT_STORAGE_KEY,
-    JSON.stringify({ version: 1, snapshots: state.snapshots.slice(0, 24) }),
+    JSON.stringify({
+      version: 1,
+      ownerUserId: state.ownerUserId ?? null,
+      snapshots: state.snapshots.slice(0, 24),
+    }),
   );
+}
+
+export function clearFinanceManagementState(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(FINANCE_MANAGEMENT_STORAGE_KEY);
 }
 
 export function saveFinanceBaseline(input: {
@@ -96,6 +107,7 @@ export function saveFinanceBaseline(input: {
   const state = loadFinanceManagement();
   const next: FinanceManagementState = {
     version: 1,
+    ownerUserId: state.ownerUserId ?? null,
     snapshots: [snapshot, ...state.snapshots].slice(0, 24),
   };
   localStorage.setItem(FINANCE_MANAGEMENT_STORAGE_KEY, JSON.stringify(next));

@@ -6,6 +6,7 @@ import { detectBottleneck, type BottleneckCode } from "@/lib/bottleneck-engine";
 import { BOTTLENECK_COPY } from "@/lib/analysis-result-copy";
 import { futureEventPlan, futureEventNeedsClarification, LIVING_BUFFER_OPTIONS } from "@/lib/future-event";
 import { purposeFunding, freelancerEvidence, knownMoney, validDate } from "@/lib/financial-evidence";
+import { counselingReferences } from "@/lib/counseling-evidence";
 
 export interface AnalysisResult {
   bottleneck: BottleneckCode;
@@ -23,6 +24,8 @@ export interface AnalysisResult {
   fundingContext?: string;
   answerContext: string;
   alsoCheck: string[];
+  /** 어떤 익명 상담 패턴이 질문·판단 순서의 참고 근거였는지 추적용. 사용자 효능 주장 아님. */
+  evidencePatternIds?: string[];
 }
 
 // 구간 응답을 실제 계산에 쓸 수 있는 근사 숫자로 바꾸는 고정 환산표(코드가
@@ -122,6 +125,25 @@ function buildAlsoCheck(input: SurveyInput, primary: BottleneckCode): string[] {
     .map(([code]) => BOTTLENECK_COPY[code].title);
 }
 
+function evidencePatternIds(bottleneck: BottleneckCode): string[] {
+  const questionIds: Array<keyof SurveyInput> =
+    bottleneck === "cash_flow_deficit" || bottleneck === "no_expense_awareness"
+      ? ["monthlyIncomeKrw", "monthlyFixedCostKrw", "monthlyLivingCostKrw", "monthlySavingsKrw", "expenseAwareness"]
+      : bottleneck === "income_interruption_risk" || bottleneck === "income_variability_risk"
+        ? ["jobType", "futureEventTiming", "futureIncomeChange", "futureLivingBuffer", "emergencyFund"]
+        : bottleneck === "maturity_preparation" || bottleneck === "high_interest_debt"
+          ? ["hasDebt", "debtInterestRate", "debtMonthlyPayment", "debtMaturity", "debtRepaymentType", "debtRemainingKrw", "debtPreparedKrw", "emergencyFund"]
+          : bottleneck === "purpose_fund_confirmation" || bottleneck === "near_future_funds_shortfall" || bottleneck === "long_term_goal_pace_short"
+            ? ["futureEventTiming", "goalRequiredKrw", "goalPreparedKrw", "goalMonthlyAllocationKrw", "goalDeadline"]
+            : bottleneck === "card_installment_dependence" || bottleneck === "no_savings_system"
+              ? ["monthlyLivingCostKrw", "monthlySavingsKrw", "spendingPatterns", "expenseAwareness"]
+              : [];
+
+  return [...new Set(
+    questionIds.flatMap((id) => counselingReferences(id).map((pattern) => pattern.id)),
+  )];
+}
+
 export function buildAnalysisResult(input: SurveyInput): AnalysisResult {
   const bottleneck = detectBottleneck(input);
   const copy = BOTTLENECK_COPY[bottleneck];
@@ -150,6 +172,7 @@ export function buildAnalysisResult(input: SurveyInput): AnalysisResult {
     incomeContext: income ? `직접 입력한 낮은 달 ${fmt(income.low)}·평균 ${fmt(income.average)}·높은 달 ${fmt(income.high)}로 소득 폭은 ${fmt(income.range)}입니다. 평균에서 고정지출·생활비를 빼면 ${fmt(income.averageRemaining)}, 낮은 달에는 ${income.lowGap > 0 ? `${fmt(income.lowGap)} 부족` : "이 지출을 감당할 수 있는 범위"}입니다. 높은 달은 반복 소득으로 가정하지 않았어요.` : input.jobType === "freelancer" ? "낮은 달·평균·높은 달 소득을 0 이상의 만원 단위로, 낮은 달 ≤ 평균 ≤ 높은 달 순서로 확인해 주세요." : undefined,
     fundingContext: event?.kind === "purpose" ? describeFunding(input) : undefined,
     alsoCheck: buildAlsoCheck(input, bottleneck),
+    evidencePatternIds: evidencePatternIds(bottleneck),
   };
 }
 

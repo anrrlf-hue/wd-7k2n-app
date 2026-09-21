@@ -39,6 +39,71 @@ function snapshotPayload(snapshot: FinanceBaselineSnapshot): FinanceBaselineSnap
   return { ...snapshot, checks: [] };
 }
 
+function snapshotActivity(snapshot: FinanceBaselineSnapshot): number {
+  const candidates = [
+    Date.parse(snapshot.createdAt),
+    ...(snapshot.checks ?? []).map((check) => Date.parse(check.checkedAt)),
+  ].filter(Number.isFinite);
+
+  const due = Date.parse(snapshot.checkDueAt);
+  // checkDueAt은 마지막 저장/점검 시점 + 30일이므로, 최근 활동시각의 보조 근거로만 쓴다.
+  if (Number.isFinite(due)) candidates.push(due - 30 * 86400000);
+
+  return Math.max(...candidates, 0);
+}
+
+function mergeChecks(
+  remote: FinanceRecheckRecord[] = [],
+  local: FinanceRecheckRecord[] = [],
+): FinanceRecheckRecord[] {
+  const byId = new Map<string, FinanceRecheckRecord>();
+  for (const check of [...remote, ...local]) {
+    const previous = byId.get(check.id);
+    if (!previous || Date.parse(check.checkedAt) > Date.parse(previous.checkedAt)) {
+      byId.set(check.id, check);
+    }
+  }
+  return [...byId.values()]
+    .sort((a, b) => Date.parse(b.checkedAt) - Date.parse(a.checkedAt))
+    .slice(0, 24);
+}
+
+function mergeAccountState(
+  userId: string,
+  remote: FinanceManagementState,
+  local: FinanceManagementState,
+): FinanceManagementState {
+  // 다른 계정에 귀속된 브라우저 기록은 현재 로그인 계정으로 절대 복사하지 않는다.
+  const localSnapshots =
+    local.ownerUserId && local.ownerUserId !== userId ? [] : local.snapshots;
+
+  const byId = new Map<string, FinanceBaselineSnapshot>();
+  for (const snapshot of remote.snapshots) byId.set(snapshot.id, snapshot);
+
+  for (const localSnapshot of localSnapshots) {
+    const remoteSnapshot = byId.get(localSnapshot.id);
+    if (!remoteSnapshot) {
+      byId.set(localSnapshot.id, localSnapshot);
+      continue;
+    }
+
+    const localIsNewer = snapshotActivity(localSnapshot) > snapshotActivity(remoteSnapshot);
+    const preferred = localIsNewer ? localSnapshot : remoteSnapshot;
+    byId.set(localSnapshot.id, {
+      ...preferred,
+      checks: mergeChecks(remoteSnapshot.checks, localSnapshot.checks),
+    });
+  }
+
+  return {
+    version: 1,
+    ownerUserId: userId,
+    snapshots: [...byId.values()]
+      .sort((a, b) => snapshotActivity(b) - snapshotActivity(a))
+      .slice(0, 24),
+  };
+}
+
 async function uploadLocalState(user: User, local: FinanceManagementState): Promise<void> {
   const supabase = createSupabaseBrowserClient();
 
@@ -133,7 +198,7 @@ async function downloadAccountState(user: User): Promise<FinanceManagementState>
     } satisfies FinanceBaselineSnapshot;
   });
 
-  return { version: 1, snapshots };
+  return { version: 1, ownerUserId: user.id, snapshots };
 }
 
 export async function syncFinanceManagementWithAccount(): Promise<FinanceAccountSyncResult> {
@@ -147,17 +212,24 @@ export async function syncFinanceManagementWithAccount(): Promise<FinanceAccount
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
-    return { configured: true, authenticated: false, user: null, state: local };
+    const safeLocal = local.ownerUserId
+      ? { ...local, snapshots: [] }
+      : local;
+    return { configured: true, authenticated: false, user: null, state: safeLocal };
   }
 
-  await uploadLocalState(data.user, local);
+  // 서버를 먼저 읽는다. 오래된 로컬 기록이 최신 서버 기록을 먼저 덮어쓰지 않게 한다.
   const remote = await downloadAccountState(data.user);
-  saveFinanceManagementState(remote);
+  const merged = mergeAccountState(data.user.id, remote, local);
+
+  await uploadLocalState(data.user, merged);
+  const finalState = await downloadAccountState(data.user);
+  saveFinanceManagementState(finalState);
 
   return {
     configured: true,
     authenticated: true,
     user: data.user,
-    state: remote,
+    state: finalState,
   };
 }

@@ -2,6 +2,7 @@ import type { AnalysisResult } from "@/lib/analysis-result";
 import { financeQuestion, type FinanceQuestionId } from "@/lib/finance-question";
 import type { SurveyInput } from "@/lib/survey-input";
 import { surplusKrw } from "@/lib/survey-input";
+import { purposeFunding, validDate } from "@/lib/financial-evidence";
 
 export interface PaidExtraOption {
   value: string;
@@ -31,6 +32,8 @@ export interface PaidFinanceResult {
   directions: PaidDirection[];
   firstAction: string;
   details: string[];
+  /** 선택한 다른 고민도 함께 검토했다는 짧은 결과. 주 결론과 혼동하지 않는다. */
+  concernSummary?: PaidDirection[];
   check30: {
     action: string;
     checkpoints: string[];
@@ -52,17 +55,60 @@ function moneyAnswerKrw(answers: PaidExtraAnswers, key: string): number | undefi
   return value === undefined ? undefined : value * 10000;
 }
 
+function isFutureDate(dateValue?: string): boolean {
+  if (!validDate(dateValue)) return false;
+  const today = new Date();
+  const todayIso = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+  return dateValue! > todayIso;
+}
+
 function monthsUntil(dateValue?: string): number | null {
-  if (!dateValue) return null;
+  if (!isFutureDate(dateValue)) return null;
   const date = new Date(`${dateValue}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return null;
   const days = (date.getTime() - Date.now()) / 86400000;
-  if (days <= 0) return 1;
   return Math.max(1, Math.ceil(days / 30.44));
 }
 
 function hasNearEvent(input: SurveyInput): boolean {
-  return input.futureEvents.length > 0 && !input.futureEvents.includes("none");
+  return (
+    input.futureEvents.length > 0 &&
+    !input.futureEvents.includes("none") &&
+    input.futureEventTiming !== "over_1y"
+  );
+}
+
+function pushUrgentDebtQuestions(
+  questions: PaidExtraQuestion[],
+  input: SurveyInput,
+): void {
+  if (!Number.isFinite(input.debtRemainingKrw)) {
+    questions.push({
+      id: "debtBalanceManwon",
+      label: "가장 가까운 만기에 남아 있을 대출 잔액은 대략 얼마인가요?",
+      type: "number",
+      unit: "만원",
+    });
+  }
+  if (!Number.isFinite(input.debtPreparedKrw)) {
+    questions.push({
+      id: "debtPreparedManwon",
+      label: "그 만기를 위해 따로 준비한 상환자금은 얼마인가요?",
+      type: "number",
+      unit: "만원",
+    });
+  }
+  if (!isFutureDate(input.debtMaturityDate)) {
+    questions.push({
+      id: "debtMaturityDate",
+      label: "가장 가까운 대출의 정확한 만기일은 언제인가요?",
+      helper: "오늘 이후의 날짜를 입력해주세요.",
+      type: "date",
+    });
+  }
 }
 
 export function buildPaidExtraQuestions(
@@ -72,20 +118,24 @@ export function buildPaidExtraQuestions(
   const questions: PaidExtraQuestion[] = [];
 
   if (question === "status" && input.hasDebt) {
-    if (!Number.isFinite(input.debtRemainingKrw)) {
+    if (input.debtMaturity === "under_3m") {
+      pushUrgentDebtQuestions(questions, input);
+    } else {
+      if (!Number.isFinite(input.debtRemainingKrw)) {
+        questions.push({
+          id: "debtBalanceManwon",
+          label: "현재 남아 있는 대출·부채는 대략 얼마인가요?",
+          type: "number",
+          unit: "만원",
+        });
+      }
       questions.push({
-        id: "debtBalanceManwon",
-        label: "현재 남아 있는 대출·부채는 대략 얼마인가요?",
+        id: "debtRate",
+        label: "가장 높은 대출 금리는 어느 정도인가요?",
         type: "number",
-        unit: "만원",
+        unit: "%",
       });
     }
-    questions.push({
-      id: "debtRate",
-      label: "가장 높은 대출 금리는 어느 정도인가요?",
-      type: "number",
-      unit: "%",
-    });
   }
 
   if (question === "goal") {
@@ -105,10 +155,20 @@ export function buildPaidExtraQuestions(
         unit: "만원",
       });
     }
-    if (!input.goalDeadline) {
+    if (!Number.isFinite(input.goalMonthlyAllocationKrw)) {
+      questions.push({
+        id: "goalMonthlyAllocationManwon",
+        label: "현재 이 목표에 따로 배정하고 있는 월 금액은 얼마인가요?",
+        helper: "전체 저축·투자액이 아니라 이 목표에 실제로 넣는 금액만 적어주세요.",
+        type: "number",
+        unit: "만원",
+      });
+    }
+    if (!isFutureDate(input.goalDeadline)) {
       questions.push({
         id: "goalDeadline",
         label: "언제까지 준비하고 싶나요?",
+        helper: "오늘 이후의 날짜를 입력해주세요.",
         type: "date",
       });
     }
@@ -116,12 +176,16 @@ export function buildPaidExtraQuestions(
 
   if (question === "priority") {
     if (input.hasDebt) {
-      questions.push({
-        id: "debtRate",
-        label: "가장 높은 대출 금리는 어느 정도인가요?",
-        type: "number",
-        unit: "%",
-      });
+      if (input.debtMaturity === "under_3m") {
+        pushUrgentDebtQuestions(questions, input);
+      } else {
+        questions.push({
+          id: "debtRate",
+          label: "가장 높은 대출 금리는 어느 정도인가요?",
+          type: "number",
+          unit: "%",
+        });
+      }
     }
     if (hasNearEvent(input) && !Number.isFinite(input.goalRequiredKrw)) {
       questions.push({
@@ -170,20 +234,24 @@ export function buildPaidExtraQuestions(
 
   if (question === "order") {
     if (input.hasDebt) {
-      if (!Number.isFinite(input.debtRemainingKrw)) {
+      if (input.debtMaturity === "under_3m") {
+        pushUrgentDebtQuestions(questions, input);
+      } else {
+        if (!Number.isFinite(input.debtRemainingKrw)) {
+          questions.push({
+            id: "debtBalanceManwon",
+            label: "현재 남아 있는 대출·부채는 대략 얼마인가요?",
+            type: "number",
+            unit: "만원",
+          });
+        }
         questions.push({
-          id: "debtBalanceManwon",
-          label: "현재 남아 있는 대출·부채는 대략 얼마인가요?",
+          id: "debtRate",
+          label: "가장 높은 대출 금리는 어느 정도인가요?",
           type: "number",
-          unit: "만원",
+          unit: "%",
         });
       }
-      questions.push({
-        id: "debtRate",
-        label: "가장 높은 대출 금리는 어느 정도인가요?",
-        type: "number",
-        unit: "%",
-      });
     }
     questions.push({
       id: "useHorizon",
@@ -198,7 +266,7 @@ export function buildPaidExtraQuestions(
     });
   }
 
-  return questions.slice(0, 3);
+  return questions.slice(0, 4);
 }
 
 export function paidQuestionsComplete(
@@ -208,6 +276,7 @@ export function paidQuestionsComplete(
   return questions.every((question) => {
     const value = answers[question.id];
     if (question.type === "number") return typeof value === "number" && Number.isFinite(value) && value >= 0;
+    if (question.type === "date") return typeof value === "string" && isFutureDate(value);
     return typeof value === "string" && value.trim().length > 0;
   });
 }
@@ -216,8 +285,8 @@ function baseReasons(input: SurveyInput, result: AnalysisResult): string[] {
   const surplus = surplusKrw(input);
   const reasons = [
     surplus >= 0
-      ? `현재 입력한 흐름에서는 저축·투자 후 월 ${manwonFromKrw(surplus)}가 남습니다.`
-      : `현재 입력한 흐름에서는 저축·투자까지 포함하면 월 ${manwonFromKrw(Math.abs(surplus))}가 부족합니다.`,
+      ? `현재 입력한 흐름에서는 저축·투자 후 월 ${manwonFromKrw(surplus)} 정도가 남습니다.`
+      : `현재 입력한 흐름에서는 저축·투자까지 포함하면 월 ${manwonFromKrw(Math.abs(surplus))} 정도가 부족합니다.`,
     result.why,
   ];
 
@@ -234,21 +303,77 @@ function statusResult(
   answers: PaidExtraAnswers,
 ): PaidFinanceResult {
   const surplus = surplusKrw(input);
-  const debtRate = answerNumber(answers, "debtRate");
+  const exactDebtRate = answerNumber(answers, "debtRate");
+  const highRate = (exactDebtRate ?? 0) >= 15 || input.debtInterestRate === "over_15";
+  const urgentMaturity = input.hasDebt === true && input.debtMaturity === "under_3m";
   const debtBalance = moneyAnswerKrw(answers, "debtBalanceManwon") ?? input.debtRemainingKrw;
-  const reasons = baseReasons(input, result);
+  const debtPrepared = moneyAnswerKrw(answers, "debtPreparedManwon") ?? input.debtPreparedKrw;
+  const debtMaturityDate =
+    (typeof answers.debtMaturityDate === "string" ? answers.debtMaturityDate : undefined) ??
+    input.debtMaturityDate;
+  const maturityGap =
+    debtBalance !== undefined && debtPrepared !== undefined
+      ? Math.max(0, debtBalance - debtPrepared)
+      : null;
 
-  let conclusion = "현재 방향은 크게 흔들리지 않습니다. 새로운 계획을 늘리기보다 지금의 좋은 흐름을 유지하는 편이 좋습니다.";
+  let conclusion = "현재 확인한 범위에서는 급하게 순서를 바꿔야 할 문제는 없습니다. 지금의 흐름을 유지하면서 다음 목표를 붙여도 됩니다.";
+  let firstAction = "현재 저축·지출 흐름을 한 달 더 유지하고, 다음 목표의 금액과 날짜를 정해보세요.";
+  let decisionReason = "현재 입력한 소득·지출·비상자금·부채 조건에서 우선순위를 바꿀 신호가 확인되지 않았습니다.";
+
   if (surplus < 0) {
     conclusion = "지금은 잘하고 있는지를 평가하기보다, 매달 부족해지는 흐름부터 바로잡는 것이 먼저입니다.";
+    firstAction = "이번 달 고정지출·생활비·저축 배분을 한 줄로 적고, 월소득 안에서 다시 나눠보세요.";
+    decisionReason = "저축·투자까지 포함한 현재 월 배분이 소득을 넘어섭니다.";
+  } else if (urgentMaturity) {
+    if (
+      debtBalance !== undefined &&
+      debtPrepared !== undefined &&
+      debtMaturityDate &&
+      isFutureDate(debtMaturityDate)
+    ) {
+      if ((maturityGap ?? 0) > 0) {
+        conclusion = `가장 가까운 대출 만기까지 현재 준비금만으로는 약 ${manwonFromKrw(maturityGap!)}이 부족합니다. 지금은 다른 계획보다 이 차이를 어떻게 메울지 먼저 정해야 합니다.`;
+        firstAction = `${debtMaturityDate} 만기 전에 부족분 약 ${manwonFromKrw(maturityGap!)}을 어떤 현금흐름으로 준비할지 먼저 정해보세요.`;
+        decisionReason = `만기 잔액 약 ${manwonFromKrw(debtBalance)} 중 현재 따로 준비한 상환자금은 약 ${manwonFromKrw(debtPrepared)}입니다.`;
+      } else {
+        conclusion = "가장 가까운 대출 만기 잔액만큼의 상환자금은 현재 입력 기준으로 준비되어 있습니다. 이제 이 돈이 다른 목표와 겹치지 않는지만 확인하면 됩니다.";
+        firstAction = `${debtMaturityDate} 만기에 쓸 상환자금이 다른 생활비·목적자금과 중복되지 않았는지 한 번 확인해보세요.`;
+        decisionReason = `만기 잔액 약 ${manwonFromKrw(debtBalance)}와 같거나 더 많은 상환자금을 따로 준비했다고 입력했습니다.`;
+      }
+    } else {
+      conclusion = "지금은 새로운 계획보다 가까운 대출 만기에 실제로 필요한 상환자금부터 확인해야 합니다.";
+      firstAction = "가장 가까운 대출의 정확한 만기일·만기 잔액·이미 준비한 상환자금을 한곳에 적어보세요.";
+      decisionReason = "가장 가까운 대출 만기가 3개월 이내라고 답했습니다. 금리와 별개로 만기 준비 여부를 먼저 확인해야 합니다.";
+    }
+  } else if (highRate) {
+    conclusion = "전체 월 흐름이 유지되더라도, 현재는 새로운 재무계획보다 높은 금리의 부채 부담을 먼저 점검해야 합니다.";
+    firstAction = "대출별 잔액·정확한 금리·월 상환액·만기를 한곳에 모아 가장 부담이 큰 부채부터 확인해보세요.";
+    decisionReason = exactDebtRate !== undefined
+      ? `추가 확인한 가장 높은 대출 금리는 ${exactDebtRate.toLocaleString("ko-KR")}%입니다.`
+      : "가장 높은 대출 금리가 15% 이상 구간이라고 답했습니다.";
   } else if (input.emergencyFund === "none" || input.emergencyFund === "under_1m") {
     conclusion = "기본 흐름은 무너지지 않았지만, 바로 사용할 수 있는 여유가 얇아 아직 안정적이라고 보기는 어렵습니다.";
-  } else if ((debtRate ?? 0) >= 15) {
-    conclusion = "전체 흐름은 유지되고 있지만, 현재는 새로운 재무계획보다 부채 부담을 먼저 점검할 필요가 있습니다.";
+    firstAction = "투자자산과 구분해서 지금 바로 쓸 수 있는 비상자금 잔액부터 확인해보세요.";
+    decisionReason = "바로 사용할 수 있는 여유자금이 1개월 미만이라고 답했습니다.";
+  } else if (result.bottleneck !== "no_priority_bottleneck") {
+    conclusion = result.headline;
+    firstAction = result.immediateDirection;
+    decisionReason = result.why;
   }
 
-  if (debtBalance && debtBalance > 0) {
-    reasons.push(`현재 확인한 부채 잔액은 약 ${manwonFromKrw(debtBalance)}입니다.`);
+  const reasons = [
+    surplus >= 0
+      ? `현재 입력한 흐름에서는 저축·투자 후 월 ${manwonFromKrw(surplus)} 정도가 남습니다.`
+      : `현재 입력한 흐름에서는 저축·투자까지 포함하면 월 ${manwonFromKrw(Math.abs(surplus))} 정도가 부족합니다.`,
+    decisionReason,
+  ];
+
+  if (debtBalance !== undefined && debtBalance > 0) {
+    reasons.push(
+      debtPrepared !== undefined && urgentMaturity
+        ? `확인한 부채 잔액은 약 ${manwonFromKrw(debtBalance)}, 준비한 상환자금은 약 ${manwonFromKrw(debtPrepared)}입니다.`
+        : `현재 확인한 부채 잔액은 약 ${manwonFromKrw(debtBalance)}입니다.`,
+    );
   }
 
   return {
@@ -256,15 +381,15 @@ function statusResult(
     conclusion,
     reasons: reasons.slice(0, 3),
     directions: [
-      { title: "유지할 것", detail: "이미 잘 되고 있는 저축·지출 흐름은 불필요하게 바꾸지 않습니다." },
-      { title: "먼저 보완할 것", detail: result.immediateDirection },
-      { title: "그다음", detail: "한 달 뒤 실제 변화가 확인되면 다음 목표를 붙입니다." },
+      { title: "지금 유지할 것", detail: surplus >= 0 ? "현재 생활비와 저축의 큰 틀은 불필요하게 모두 바꾸지 않습니다." : "필수 생활비 기준은 유지합니다." },
+      { title: "먼저 보완할 것", detail: firstAction },
+      { title: "그다음", detail: "첫 번째 문제가 정리된 뒤 다음 목표나 장기 계획을 붙입니다." },
     ],
-    firstAction: result.immediateDirection,
+    firstAction,
     details: [result.gapStatement, result.answerContext],
     check30: {
-      action: result.immediateDirection,
-      checkpoints: ["이번 행동을 실제로 했는지", "월 잉여금이 달라졌는지", "여유자금·부채 부담이 달라졌는지"],
+      action: firstAction,
+      checkpoints: ["이번 행동을 실제로 했는지", "월 현금흐름이 달라졌는지", input.hasDebt ? "부채 잔액·만기 준비가 달라졌는지" : "바로 쓸 수 있는 여유자금이 달라졌는지"],
     },
   };
 }
@@ -277,40 +402,78 @@ function goalResult(
   const required = moneyAnswerKrw(answers, "goalAmountManwon") ?? input.goalRequiredKrw ?? 0;
   const prepared = moneyAnswerKrw(answers, "goalPreparedManwon") ?? input.goalPreparedKrw ?? 0;
   const deadline = (answers.goalDeadline as string | undefined) ?? input.goalDeadline;
-  const months = monthsUntil(deadline) ?? 1;
+  const cycles = monthsUntil(deadline);
   const shortfall = Math.max(0, required - prepared);
-  const neededMonthly = shortfall / months;
-  const currentMonthly = Math.max(0, input.monthlySavingsKrw);
+  const neededMonthly = cycles && shortfall > 0 ? shortfall / cycles : 0;
+  const totalMonthlySavings = Math.max(0, input.monthlySavingsKrw);
+  const paidMonthlyAllocation = moneyAnswerKrw(answers, "goalMonthlyAllocationManwon");
+  const plannedMonthly =
+    paidMonthlyAllocation ??
+    (typeof input.goalMonthlyAllocationKrw === "number" &&
+    Number.isFinite(input.goalMonthlyAllocationKrw) &&
+    input.goalMonthlyAllocationKrw >= 0
+      ? input.goalMonthlyAllocationKrw
+      : undefined);
 
-  let conclusion = "현재 준비만으로 목표가 이미 채워져 있습니다. 이제는 이 자금을 다른 용도와 섞지 않고 유지하는 것이 중요합니다.";
-  if (shortfall > 0 && neededMonthly > currentMonthly) {
-    conclusion = `현재 저축 흐름을 그대로 유지하면 목표 시점을 맞추기 어렵습니다. 목표 시점이나 월 준비액 중 하나는 조정이 필요합니다.`;
-  } else if (shortfall > 0 && neededMonthly > currentMonthly * 0.7) {
-    conclusion = "목표에 가까이 갈 수는 있지만, 현재 저축의 상당 부분을 이 목표에 써야 할 수 있어 다른 목표와의 충돌을 확인해야 합니다.";
-  } else if (shortfall > 0) {
-    conclusion = "현재 저축 흐름 안에서 목표를 준비할 여지가 있습니다. 다만 이 목표에 실제로 얼마를 따로 배분할지 정해야 합니다.";
+  let conclusion: string;
+  let firstAction: string;
+
+  if (!cycles && shortfall > 0) {
+    conclusion = "목표금액과 준비금은 확인했지만 목표일이 유효하지 않아 현재 속도로 가능한지 아직 판단할 수 없습니다.";
+    firstAction = "목표일을 오늘 이후 날짜로 다시 정한 뒤, 그 날짜까지의 월 준비액을 계산해보세요.";
+  } else if (shortfall === 0) {
+    conclusion = "현재 준비금으로 입력한 목표금액은 이미 채워져 있습니다. 이제는 이 돈을 다른 목적과 섞지 않고 유지하는 것이 중요합니다.";
+    firstAction = "이미 준비된 목표자금을 별도 잔액으로 구분해 다른 지출과 섞이지 않는지 확인해보세요.";
+  } else if (plannedMonthly === undefined) {
+    conclusion = "목표일까지 필요한 속도는 계산할 수 있지만, 현재 전체 저축 중 이 목표에 실제로 얼마를 배정하는지는 아직 확인되지 않았습니다.";
+    firstAction = `전체 저축과 별개로 이 목표에 월 얼마를 배정할지 정해보세요. 목표 시점을 유지하려면 약 ${manwonFromKrw(neededMonthly)}가 필요합니다.`;
+  } else if (plannedMonthly + 1 < neededMonthly) {
+    conclusion = "현재 목표 전용 배정액을 그대로 유지하면 입력한 목표 시점을 맞추기 어렵습니다. 전체 저축액이 아니라 이 목표에 실제 배정한 금액을 기준으로 봤습니다.";
+    firstAction = `현재 목표 전용 월 ${manwonFromKrw(plannedMonthly)}를 유지할지, 필요한 월 약 ${manwonFromKrw(neededMonthly)}에 가깝게 조정할지, 또는 목표 금액·시점 중 하나를 다시 정해보세요.`;
+  } else {
+    conclusion = "현재 목표 전용 배정액을 유지하면 입력한 목표 시점에 맞춰 준비할 수 있는 범위입니다. 다른 목표나 생활비를 흔들지 않는지가 다음 확인점입니다.";
+    firstAction = `현재 목표 전용 월 ${manwonFromKrw(plannedMonthly)} 배정을 한 달 더 유지하고 실제 입금 여부를 확인해보세요.`;
   }
 
-  const monthsAtCurrent = currentMonthly > 0 ? Math.ceil(shortfall / currentMonthly) : null;
   const directions: PaidDirection[] = [
     {
       title: "목표 시점을 유지한다면",
       detail: shortfall === 0
-        ? "추가 준비보다 현재 준비금을 목적에 맞게 유지합니다."
-        : `앞으로 월 약 ${manwonFromKrw(neededMonthly)}를 이 목표에 배분해야 합니다.`,
+        ? "추가 적립보다 현재 준비금을 목적에 맞게 유지합니다."
+        : cycles
+          ? `남은 ${manwonFromKrw(shortfall)}를 위해 월 약 ${manwonFromKrw(neededMonthly)}가 필요합니다.`
+          : "유효한 목표일을 먼저 확인해야 필요한 월 준비액을 계산할 수 있습니다.",
     },
   ];
 
-  if (shortfall > 0 && monthsAtCurrent) {
+  if (plannedMonthly !== undefined) {
+    const monthsAtPlan = plannedMonthly > 0 && shortfall > 0 ? Math.ceil(shortfall / plannedMonthly) : null;
     directions.push({
-      title: "현재 저축 흐름을 유지한다면",
-      detail: `현재 월 저축·투자액 전체를 최대치로 본 경우 약 ${monthsAtCurrent}개월이 필요합니다. 다른 목표에 쓰는 금액이 있다면 더 길어질 수 있습니다.`,
+      title: "현재 목표 전용 배정",
+      detail: shortfall === 0
+        ? `현재 월 ${manwonFromKrw(plannedMonthly)} 배정은 추가 목표가 생기기 전까지 재확인할 수 있습니다.`
+        : monthsAtPlan
+          ? `현재 월 ${manwonFromKrw(plannedMonthly)}만 이 목표에 계속 넣는다면 단순 계산으로 약 ${monthsAtPlan}개월이 필요합니다.`
+          : "현재 이 목표에 따로 배정한 금액이 0원이어서, 목표 시점을 맞추려면 배정액이나 목표 조건을 바꿔야 합니다.",
+    });
+  } else {
+    directions.push({
+      title: "현재 계획에서 빠진 것",
+      detail: "전체 저축·투자액과 별개로 이 목표에 실제 배정할 월 금액을 정해야 합니다.",
     });
   }
 
   directions.push({
-    title: "부담을 줄인다면",
-    detail: "목표 금액·시점·월 배분액 중 현실적으로 바꿀 수 있는 한 가지를 조정합니다.",
+    title: "전체 저축을 재배분한다면",
+    detail: `현재 월 저축·투자액 ${manwonFromKrw(totalMonthlySavings)}는 가능한 최대 범위를 보는 참고값일 뿐, 전부 이 목표에 쓰는 현재 계획으로 가정하지 않습니다.`,
+  });
+
+  const effectiveFunding = purposeFunding({
+    ...input,
+    goalRequiredKrw: required,
+    goalPreparedKrw: prepared,
+    goalMonthlyAllocationKrw: plannedMonthly,
+    goalDeadline: deadline,
   });
 
   return {
@@ -318,15 +481,26 @@ function goalResult(
     conclusion,
     reasons: [
       `필요금액 ${manwonFromKrw(required)}, 현재 준비금 ${manwonFromKrw(prepared)}, 남은 금액은 ${manwonFromKrw(shortfall)}입니다.`,
-      shortfall > 0 ? `목표일까지 필요한 월 준비액은 약 ${manwonFromKrw(neededMonthly)}입니다.` : "현재 준비금이 입력한 목표금액에 도달해 있습니다.",
-      `현재 월 저축·투자액은 ${manwonFromKrw(currentMonthly)}입니다. 이 전체가 목표자금이라는 뜻은 아닙니다.`,
+      shortfall > 0 && cycles
+        ? `목표일까지 필요한 월 준비액은 약 ${manwonFromKrw(neededMonthly)}입니다.`
+        : shortfall === 0
+          ? "현재 준비금이 입력한 목표금액에 도달해 있습니다."
+          : "유효한 목표일이 확인되기 전에는 필요한 월 준비액을 확정하지 않습니다.",
+      plannedMonthly !== undefined
+        ? `현재 이 목표에 따로 배정한 금액은 월 ${manwonFromKrw(plannedMonthly)}입니다. 전체 저축·투자액 ${manwonFromKrw(totalMonthlySavings)}와 구분해 판단했습니다.`
+        : `현재 월 저축·투자액은 ${manwonFromKrw(totalMonthlySavings)}이지만 이 전체가 목표자금이라는 뜻은 아닙니다.`,
     ],
     directions: directions.slice(0, 3),
-    firstAction: "이번 달부터 이 목표에 실제로 따로 배분할 금액을 하나 정해 분리해보세요.",
-    details: [result.gapStatement, "목표자금과 다른 저축·투자 목적이 섞여 있다면 실제 가능성은 달라질 수 있습니다."],
+    firstAction,
+    details: [
+      effectiveFunding.state === "SHORTFALL" || effectiveFunding.state === "ON_PLAN"
+        ? result.gapStatement
+        : "목표별 월 배정액·목표일·준비금이 모두 확인되어야 현재 계획의 속도를 확정할 수 있습니다.",
+      "가까운 목적자금과 장기 저축·투자는 같은 돈으로 중복 계산하지 않습니다.",
+    ],
     check30: {
-      action: "이번 달 목표 전용 배분액을 정하고 실제로 한 번 분리해보세요.",
-      checkpoints: ["실제로 분리한 금액", "목표 준비금이 얼마나 늘었는지", "생활비나 다른 목표가 흔들리지 않았는지"],
+      action: firstAction,
+      checkpoints: ["목표 전용 금액이 실제로 분리됐는지", "목표 준비금이 얼마나 늘었는지", "생활비나 다른 목표가 흔들리지 않았는지"],
     },
   };
 }
@@ -337,26 +511,48 @@ function priorityResult(
   answers: PaidExtraAnswers,
 ): PaidFinanceResult {
   const surplus = surplusKrw(input);
-  const debtRate = answerNumber(answers, "debtRate") ?? 0;
-  const goalAmount = moneyAnswerKrw(answers, "goalAmountManwon");
-  const goalPrepared = moneyAnswerKrw(answers, "goalPreparedManwon") ?? 0;
-  const goalGap = goalAmount === undefined ? null : Math.max(0, goalAmount - goalPrepared);
+  const exactDebtRate = answerNumber(answers, "debtRate");
+  const highRate = (exactDebtRate ?? 0) >= 15 || input.debtInterestRate === "over_15";
+  const urgentMaturity = input.hasDebt === true && input.debtMaturity === "under_3m";
+  const goalAmount = moneyAnswerKrw(answers, "goalAmountManwon") ?? input.goalRequiredKrw;
+  const goalPrepared = moneyAnswerKrw(answers, "goalPreparedManwon") ?? input.goalPreparedKrw;
+  const goalGap =
+    goalAmount !== undefined && goalPrepared !== undefined
+      ? Math.max(0, goalAmount - goalPrepared)
+      : null;
+  const funding = purposeFunding({
+    ...input,
+    goalRequiredKrw: goalAmount,
+    goalPreparedKrw: goalPrepared,
+  });
 
   let conclusion = result.headline;
   let firstAction = result.immediateDirection;
 
   if (surplus < 0) {
     conclusion = "지금의 1순위는 투자나 추가 저축이 아니라 매달 부족해지는 흐름을 멈추는 것입니다.";
+    firstAction = "이번 달 실제 지출과 저축 배분을 소득 안에서 다시 맞춰보세요.";
   } else if (input.jobType === "transitioning") {
     conclusion = "지금의 1순위는 소득이 바뀌는 시기를 버틸 수 있도록 생활자금과 현금 여유를 먼저 확인하는 것입니다.";
-  } else if (debtRate >= 15) {
-    conclusion = "현재 확인된 조건에서는 다른 계획을 늘리기 전에 부채 부담을 먼저 점검하는 것이 1순위입니다.";
-    firstAction = "대출별 잔액·금리·월 상환액·만기를 한곳에 모아 실제 부담을 확인해보세요.";
+    firstAction = "소득이 달라지는 시점과 그 기간에 필요한 생활비, 바로 쓸 수 있는 현금을 나란히 적어보세요.";
+  } else if (urgentMaturity) {
+    conclusion = "지금의 1순위는 금리와 별개로 가까운 대출 만기에 필요한 상환자금을 확인하는 것입니다.";
+    firstAction = "가장 가까운 대출의 정확한 만기일·만기 잔액·준비한 상환자금을 먼저 확인해보세요.";
+  } else if (highRate) {
+    conclusion = "현재 확인된 조건에서는 다른 계획을 늘리기 전에 높은 금리의 부채 부담을 먼저 점검하는 것이 1순위입니다.";
+    firstAction = "대출별 잔액·정확한 금리·월 상환액·만기를 한곳에 모아 실제 부담을 확인해보세요.";
+  } else if (funding.state === "SHORTFALL" && hasNearEvent(input)) {
+    conclusion = "가장 가까운 미래 목표의 현재 배정 속도로는 부족분이 남아, 그 목적자금의 조건을 먼저 조정하는 것이 1순위입니다.";
+    firstAction = "가장 가까운 목표의 필요액·준비액·월 배정액·목표일을 놓고 무엇을 조정할지 하나 정해보세요.";
+  } else if (funding.state === "NEEDS_CONFIRMATION" && hasNearEvent(input)) {
+    conclusion = "가까운 미래 목표가 있지만 필요한 숫자가 덜 확인되어, 다른 계획보다 목적자금의 실제 필요액과 준비상태부터 확인해야 합니다.";
+    firstAction = "가장 가까운 목표의 실제 필요금액·현재 준비금·월 배정액·목표일을 먼저 확인해보세요.";
   } else if (goalGap !== null && goalGap > 0 && hasNearEvent(input)) {
     conclusion = "가장 가까운 미래 목표에 아직 준비되지 않은 금액이 있어, 지금은 그 목적자금을 먼저 확정하는 것이 1순위입니다.";
-    firstAction = "가장 가까운 목표의 필요금액과 현재 준비금을 따로 적고 이번 달 배분액을 정해보세요.";
+    firstAction = "가장 가까운 목표의 필요금액과 현재 준비금을 따로 적고 이번 달 배분액을 확인해보세요.";
   } else if (input.emergencyFund === "none" || input.emergencyFund === "under_1m") {
     conclusion = "지금은 새로운 계획보다 바로 사용할 수 있는 여유자금을 먼저 만드는 것이 1순위입니다.";
+    firstAction = "투자자산과 구분해서 바로 사용할 수 있는 비상자금 잔액부터 확인해보세요.";
   }
 
   return {
@@ -429,7 +625,9 @@ function orderResult(
   answers: PaidExtraAnswers,
 ): PaidFinanceResult {
   const surplus = surplusKrw(input);
-  const debtRate = answerNumber(answers, "debtRate") ?? 0;
+  const exactDebtRate = answerNumber(answers, "debtRate");
+  const highRate = (exactDebtRate ?? 0) >= 15 || input.debtInterestRate === "over_15";
+  const urgentMaturity = input.hasDebt === true && input.debtMaturity === "under_3m";
   const debtBalance = moneyAnswerKrw(answers, "debtBalanceManwon") ?? input.debtRemainingKrw ?? 0;
   const horizon = answers.useHorizon as string | undefined;
 
@@ -438,12 +636,16 @@ function orderResult(
 
   if (surplus < 0) {
     conclusion = "현재는 저축 확대나 투자보다 먼저 월 현금흐름을 안정시키는 것이 우선입니다.";
+    firstAction = "이번 달 실제 지출과 저축 배분을 소득 안에서 다시 맞춰보세요.";
+  } else if (urgentMaturity) {
+    conclusion = "현재는 저축·투자 순서를 정하기 전에 가까운 대출 만기의 상환 준비부터 확인하는 것이 우선입니다.";
+    firstAction = "가장 가까운 대출의 정확한 만기일·만기 잔액·준비한 상환자금을 먼저 확인해보세요.";
+  } else if (input.hasDebt && highRate) {
+    conclusion = "현재 확인한 부채 조건에서는 저축·투자 확대보다 높은 금리의 부채 부담을 먼저 점검하는 순서가 맞습니다.";
+    firstAction = "대출별 금리·잔액·월 상환액·만기를 확인하고 가장 부담이 큰 부채부터 점검해보세요.";
   } else if (input.emergencyFund === "none" || input.emergencyFund === "under_1m") {
     conclusion = "지금은 투자 확대보다 바로 쓸 수 있는 여유자금을 먼저 확보하는 순서가 맞습니다.";
     firstAction = "투자자산과 구분해서 바로 사용할 수 있는 현금성 여유자금부터 확인해보세요.";
-  } else if (input.hasDebt && debtRate >= 15) {
-    conclusion = "현재 확인한 부채 조건에서는 저축·투자 확대보다 부채 부담을 먼저 점검하는 순서가 맞습니다.";
-    firstAction = "대출별 금리·잔액·월 상환액·만기를 확인하고 상환 계획을 먼저 세워보세요.";
   } else if (horizon === "under_1y" || horizon === "1_3y") {
     conclusion = "가까운 시기에 사용할 가능성이 있는 돈은 투자 확대보다 사용 목적과 준비금액을 먼저 분리하는 것이 우선입니다.";
     firstAction = "1~3년 안에 쓸 돈과 장기간 두어도 되는 돈을 먼저 나눠보세요.";
@@ -453,7 +655,13 @@ function orderResult(
   }
 
   const reasons = baseReasons(input, result);
-  if (input.hasDebt) reasons.push(`확인한 부채 잔액은 약 ${manwonFromKrw(debtBalance)}, 가장 높은 금리는 ${debtRate.toLocaleString("ko-KR")}%입니다.`);
+  if (input.hasDebt) {
+    reasons.push(
+      exactDebtRate !== undefined
+        ? `확인한 부채 잔액은 약 ${manwonFromKrw(debtBalance)}, 추가 확인한 가장 높은 금리는 ${exactDebtRate.toLocaleString("ko-KR")}%입니다.`
+        : `확인한 부채 잔액은 약 ${manwonFromKrw(debtBalance)}, 금리 구간은 ${input.debtInterestRate === "over_15" ? "15% 이상" : input.debtInterestRate === "10_15" ? "10~15%" : "10% 미만"}입니다.`,
+    );
+  }
 
   return {
     question: financeQuestion("order").paywallTitle,
@@ -473,15 +681,91 @@ function orderResult(
   };
 }
 
+function summarizeConcern(
+  id: FinanceQuestionId,
+  input: SurveyInput,
+  result: AnalysisResult,
+  answers: PaidExtraAnswers,
+): PaidDirection {
+  const title = financeQuestion(id).label;
+  const surplus = surplusKrw(input);
+  const exactDebtRate = answerNumber(answers, "debtRate");
+  const highRate = (exactDebtRate ?? 0) >= 15 || input.debtInterestRate === "over_15";
+  const urgentMaturity = input.hasDebt === true && input.debtMaturity === "under_3m";
+
+  if (id === "status") {
+    return {
+      title,
+      detail:
+        result.bottleneck === "no_priority_bottleneck"
+          ? "현재 확인한 범위에서는 급하게 구조를 바꿔야 할 신호가 없습니다."
+          : `현재는 ‘${result.headline.replace(/^지금 가장 먼저 볼 부분은 |입니다\.$/g, "")}’을 먼저 정리한 뒤 전체 상태를 다시 보는 편이 맞습니다.`,
+    };
+  }
+
+  if (id === "goal") {
+    const effective = purposeFunding({
+      ...input,
+      goalRequiredKrw: moneyAnswerKrw(answers, "goalAmountManwon") ?? input.goalRequiredKrw,
+      goalPreparedKrw: moneyAnswerKrw(answers, "goalPreparedManwon") ?? input.goalPreparedKrw,
+      goalDeadline: (answers.goalDeadline as string | undefined) ?? input.goalDeadline,
+    });
+    if (effective.state === "SHORTFALL") {
+      return { title, detail: "가까운 목표는 현재 월 배정 속도 기준으로 부족분이 남습니다. 목표 금액·시점·월 배정액 중 조정 가능한 값을 확인해야 합니다." };
+    }
+    if (effective.state === "ON_PLAN" || effective.state === "PREPARED_SELF_REPORT") {
+      return { title, detail: "현재 확인한 목표 준비는 계획 범위 안에 있습니다. 다른 목표와 같은 돈을 중복 계산하지 않는지가 다음 확인점입니다." };
+    }
+    return { title, detail: "목표의 필요액·준비액·월 배정액·목표일이 모두 확인되지 않아 가능 여부는 아직 단정하지 않습니다." };
+  }
+
+  if (id === "priority") {
+    return { title, detail: `${result.headline} 먼저 할 일은 ‘${result.immediateDirection}’입니다.` };
+  }
+
+  if (id === "leakage") {
+    if (surplus < 0) return { title, detail: "작은 소비보다 현재 월 배분 자체가 소득을 넘는지부터 확인해야 합니다." };
+    if (input.spendingPatterns.includes("card_dependence")) return { title, detail: "생활비 부족을 다음 달 카드로 넘기는 흐름이 있어, 이 부분이 실제 잔액을 줄이는지 먼저 확인해야 합니다." };
+    if (input.expenseAwareness === "unknown") return { title, detail: "현재는 실제 지출이 확인되지 않아 어디서 새는지 단정하지 않습니다. 최근 거래내역 대조가 먼저입니다." };
+    const actual = moneyAnswerKrw(answers, "actualLeftoverManwon");
+    return {
+      title,
+      detail: actual === undefined
+        ? "계산상 잔액과 실제 월말 잔액을 비교해야 원인을 구분할 수 있습니다. 현재 정보만으로 특정 소비를 원인으로 단정하지 않습니다."
+        : `입력한 구조상 잔액과 실제 잔액의 차이를 기준으로 먼저 확인합니다.`,
+    };
+  }
+
+  if (surplus < 0) return { title, detail: "현재는 저축·대출·투자 선택보다 월 적자를 멈추는 것이 앞섭니다." };
+  if (urgentMaturity) return { title, detail: "가까운 대출 만기 준비를 확인한 뒤 저축·투자 순서를 정해야 합니다." };
+  if (highRate) return { title, detail: "높은 금리의 부채 부담을 확인한 뒤 추가 저축·투자 순서를 정하는 편이 맞습니다." };
+  if (input.emergencyFund === "none" || input.emergencyFund === "under_1m") {
+    return { title, detail: "투자 확대보다 바로 쓸 수 있는 여유자금을 먼저 확보하는 순서가 앞섭니다." };
+  }
+  return { title, detail: "가까운 사용시점과 목적자금을 분리한 뒤 장기자금의 순서를 정할 수 있습니다." };
+}
+
 export function buildPaidFinanceResult(
   question: FinanceQuestionId,
   input: SurveyInput,
   result: AnalysisResult,
   answers: PaidExtraAnswers,
+  concerns: FinanceQuestionId[] = [question],
 ): PaidFinanceResult {
-  if (question === "status") return statusResult(input, result, answers);
-  if (question === "goal") return goalResult(input, result, answers);
-  if (question === "priority") return priorityResult(input, result, answers);
-  if (question === "leakage") return leakageResult(input, result, answers);
-  return orderResult(input, result, answers);
+  const base =
+    question === "status"
+      ? statusResult(input, result, answers)
+      : question === "goal"
+        ? goalResult(input, result, answers)
+        : question === "priority"
+          ? priorityResult(input, result, answers)
+          : question === "leakage"
+            ? leakageResult(input, result, answers)
+            : orderResult(input, result, answers);
+
+  const concernSummary = concerns
+    .filter((id, index, all) => id !== question && all.indexOf(id) === index)
+    .map((id) => summarizeConcern(id, input, result, answers));
+
+  return concernSummary.length > 0 ? { ...base, concernSummary } : base;
 }

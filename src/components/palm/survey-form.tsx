@@ -5,19 +5,29 @@ import { Button } from "@/components/ui/button";
 import { CompanionHeading } from "@/components/angel-companion";
 import { FINANCE_QUESTIONS, type FinanceQuestionId } from "@/lib/finance-question";
 import {
+  futureEventAnswersComplete,
   futureEventPlan,
+  INCOME_CHANGE_OPTIONS,
+  LIVING_BUFFER_OPTIONS,
   primaryFutureEvent,
   selectFutureEvents,
   selectPrimaryFutureEvent,
 } from "@/lib/future-event";
 import {
+  DEBT_INTEREST_OPTIONS,
+  DEBT_MATURITY_OPTIONS,
+  DEBT_PAYMENT_OPTIONS,
   EMERGENCY_FUND_OPTIONS,
   EXPENSE_AWARENESS_OPTIONS,
+  FUTURE_EVENT_AMOUNT_OPTIONS,
   FUTURE_EVENT_OPTIONS,
+  FUTURE_EVENT_PREPARED_OPTIONS,
   FUTURE_EVENT_TIMING_OPTIONS,
   JOB_TYPE_OPTIONS,
   MONEY_MANAGEMENT_UNIT_OPTIONS,
   PRIVACY_NOTICE,
+  REPAYMENT_TYPE_OPTIONS,
+  SPENDING_PATTERN_OPTIONS,
   type SurveyInput,
   type SurveyOption,
 } from "@/lib/survey-input";
@@ -143,6 +153,37 @@ function NumberField({
   );
 }
 
+function MoneyStringField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value?: string;
+  onChange: (value: string) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="survey-field">
+      <label htmlFor={id} className="text-base font-medium">{label}</label>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          id={id}
+          min={0}
+          step="0.1"
+          type="number"
+          inputMode="decimal"
+          value={value ?? ""}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="예: 250"
+          className="min-h-11 min-w-0 flex-1 border-none bg-transparent p-0 text-xl font-semibold tabular-nums outline-none"
+        />
+        <span className="text-sm text-muted-foreground">만원</span>
+      </div>
+    </div>
+  );
+}
+
 const initialInput: SurveyInput = {
   biggestConcern: "",
   financeQuestionIds: [],
@@ -196,14 +237,36 @@ export function SurveyForm({
     input.moneyManagementUnit !== "" &&
     input.futureEvents.length > 0 &&
     (!hasFutureEvent || Boolean(primaryEvent)) &&
-    (!eventPlan || Boolean(input.futureEventTiming));
+    futureEventAnswersComplete(input);
+
+  const freelancerComplete =
+    input.jobType !== "freelancer" ||
+    [input.freelancerIncomeLow, input.freelancerIncomeAvg, input.freelancerIncomeHigh]
+      .every((value) => Boolean(value?.trim()));
+
+  const debtComplete =
+    input.hasDebt !== true ||
+    Boolean(
+      input.debtInterestRate &&
+      input.debtMonthlyPayment &&
+      input.debtMaturity &&
+      input.debtRepaymentType,
+    );
+
+  const businessComplete =
+    input.jobType !== "business_owner" && input.moneyManagementUnit !== "mixed_biz_personal"
+      ? true
+      : input.businessSeparatesFinance !== undefined;
 
   const step2Complete =
     [input.monthlyIncomeKrw, input.monthlyFixedCostKrw, input.monthlyLivingCostKrw, input.monthlySavingsKrw]
       .every((value) => Number.isFinite(value) && value >= 0) &&
     input.expenseAwareness !== "" &&
     input.emergencyFund !== "" &&
-    input.hasDebt !== undefined;
+    input.hasDebt !== undefined &&
+    debtComplete &&
+    freelancerComplete &&
+    businessComplete;
 
   return (
     <div ref={topRef} className="survey-form flex flex-1 flex-col scroll-mt-6">
@@ -287,6 +350,40 @@ export function SurveyForm({
               onChange={(value) => set("futureEventTiming", value)}
             />
           )}
+
+          {eventPlan?.kind === "purpose" && (
+            <>
+              <SingleSelectField
+                label={eventPlan.amount}
+                options={FUTURE_EVENT_AMOUNT_OPTIONS}
+                value={input.futureEventAmount}
+                onChange={(value) => set("futureEventAmount", value)}
+              />
+              <SingleSelectField
+                label={eventPlan.prepared}
+                options={FUTURE_EVENT_PREPARED_OPTIONS}
+                value={input.futureEventPrepared}
+                onChange={(value) => set("futureEventPrepared", value)}
+              />
+            </>
+          )}
+
+          {eventPlan?.kind === "income" && (
+            <>
+              <SingleSelectField
+                label={eventPlan.income}
+                options={INCOME_CHANGE_OPTIONS}
+                value={input.futureIncomeChange}
+                onChange={(value) => set("futureIncomeChange", value)}
+              />
+              <SingleSelectField
+                label={eventPlan.buffer}
+                options={LIVING_BUFFER_OPTIONS}
+                value={input.futureLivingBuffer}
+                onChange={(value) => set("futureLivingBuffer", value)}
+              />
+            </>
+          )}
         </div>
       )}
 
@@ -343,6 +440,86 @@ export function SurveyForm({
               />
             </div>
           </div>
+
+          {input.hasDebt === true && (
+            <>
+              <p className="px-1 pt-2 text-sm leading-6 text-muted-foreground">
+                부채가 있다면 잔액만 보지 않고 금리·월 상환·만기·상환방식을 함께 확인합니다.
+              </p>
+              <SingleSelectField
+                label="가장 높은 대출 금리는 어느 구간인가요?"
+                options={DEBT_INTEREST_OPTIONS}
+                value={input.debtInterestRate}
+                onChange={(value) => set("debtInterestRate", value)}
+              />
+              <SingleSelectField
+                label="한 달에 실제로 갚는 금액은 어느 정도인가요?"
+                options={DEBT_PAYMENT_OPTIONS}
+                value={input.debtMonthlyPayment}
+                onChange={(value) => set("debtMonthlyPayment", value)}
+              />
+              <SingleSelectField
+                label="가장 가까운 대출 만기는 언제인가요?"
+                options={DEBT_MATURITY_OPTIONS}
+                value={input.debtMaturity}
+                onChange={(value) => set("debtMaturity", value)}
+              />
+              <SingleSelectField
+                label="현재 주된 상환 방식은 무엇인가요?"
+                options={REPAYMENT_TYPE_OPTIONS}
+                value={input.debtRepaymentType}
+                onChange={(value) => set("debtRepaymentType", value)}
+              />
+            </>
+          )}
+
+          {input.jobType === "freelancer" && (
+            <>
+              <p className="px-1 pt-2 text-sm leading-6 text-muted-foreground">
+                평균만 보면 놓치는 달이 있어 낮은 달·평균·높은 달을 나눠 봅니다.
+              </p>
+              <MoneyStringField
+                label="최근 낮은 달 소득"
+                value={input.freelancerIncomeLow}
+                onChange={(value) => set("freelancerIncomeLow", value)}
+              />
+              <MoneyStringField
+                label="평균적인 달 소득"
+                value={input.freelancerIncomeAvg}
+                onChange={(value) => set("freelancerIncomeAvg", value)}
+              />
+              <MoneyStringField
+                label="최근 높은 달 소득"
+                value={input.freelancerIncomeHigh}
+                onChange={(value) => set("freelancerIncomeHigh", value)}
+              />
+            </>
+          )}
+
+          {(input.jobType === "business_owner" || input.moneyManagementUnit === "mixed_biz_personal") && (
+            <div className="survey-field">
+              <p className="text-base font-medium">사업자금과 생활비를 실제로 분리해서 관리하고 있나요?</p>
+              <div className="mt-2.5 flex gap-2">
+                <TapOption
+                  selected={input.businessSeparatesFinance === true}
+                  onClick={() => set("businessSeparatesFinance", true)}
+                  label="분리하고 있음"
+                />
+                <TapOption
+                  selected={input.businessSeparatesFinance === false}
+                  onClick={() => set("businessSeparatesFinance", false)}
+                  label="섞여 있음"
+                />
+              </div>
+            </div>
+          )}
+
+          <MultiSelectField
+            label="돈 관리에서 반복되는 모습이 있다면 골라주세요"
+            options={SPENDING_PATTERN_OPTIONS}
+            values={input.spendingPatterns}
+            onChange={(values) => set("spendingPatterns", values)}
+          />
         </div>
       )}
 

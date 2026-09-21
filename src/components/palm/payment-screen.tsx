@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
@@ -24,6 +24,23 @@ import {
 } from "@/lib/paid-finance-engine";
 import { Button } from "@/components/ui/button";
 
+type PaymentStage = "offer" | "questions" | "result";
+
+interface PaymentResumeState {
+  stage: PaymentStage;
+  answers: PaidExtraAnswers;
+}
+
+function readPaymentResume(key: string): PaymentResumeState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as PaymentResumeState) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function PaymentScreen({
   question,
   concerns,
@@ -31,6 +48,7 @@ export function PaymentScreen({
   result,
   input,
   birthInput,
+  persistenceKey,
   onBack,
 }: {
   question: FinanceQuestionId;
@@ -39,18 +57,49 @@ export function PaymentScreen({
   result: AnalysisResult;
   input: SurveyInput;
   birthInput: BirthInput;
+  persistenceKey: string;
   onBack: () => void;
 }) {
   const router = useRouter();
-  const [stage, setStage] = useState<"offer" | "questions" | "result">("offer");
+  const [stage, setStage] = useState<PaymentStage>("offer");
   const [answers, setAnswers] = useState<PaidExtraAnswers>({});
+  const [restored, setRestored] = useState(false);
   const selected = financeQuestion(question);
   const selectedConcerns = FINANCE_QUESTIONS.filter((item) => concerns.includes(item.id));
   const extraQuestions = useMemo(() => buildPaidExtraQuestions(question, input), [question, input]);
   const paidResult = useMemo(
-    () => buildPaidFinanceResult(question, input, result, answers),
-    [question, input, result, answers],
+    () => buildPaidFinanceResult(question, input, result, answers, concerns),
+    [question, input, result, answers, concerns],
   );
+
+  useEffect(() => {
+    const stored = readPaymentResume(persistenceKey);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (stored) {
+        setStage(stored.stage);
+        setAnswers(stored.answers);
+      }
+      setRestored(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [persistenceKey]);
+
+  useEffect(() => {
+    if (!restored) return;
+    sessionStorage.setItem(
+      persistenceKey,
+      JSON.stringify({ stage, answers } satisfies PaymentResumeState),
+    );
+  }, [restored, persistenceKey, stage, answers]);
+
+  function clearAndBack() {
+    sessionStorage.removeItem(persistenceKey);
+    onBack();
+  }
 
   function startPaidResult() {
     if (extraQuestions.length > 0) setStage("questions");
@@ -201,6 +250,20 @@ export function PaymentScreen({
           </ul>
         </section>
 
+        {paidResult.concernSummary && paidResult.concernSummary.length > 0 && (
+          <section className="mt-6">
+            <h3 className="text-base font-semibold">함께 선택한 다른 고민도 봤어요</h3>
+            <div className="mt-3 space-y-3">
+              {paidResult.concernSummary.map((item) => (
+                <div key={item.title} className="rounded-2xl border border-border bg-card p-4">
+                  <p className="font-semibold">{item.title}</p>
+                  <p className="mt-1.5 text-base leading-7 text-muted-foreground">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="mt-6">
           <h3 className="text-base font-semibold">선택 가능한 방향</h3>
           <div className="mt-3 space-y-3">
@@ -308,7 +371,7 @@ export function PaymentScreen({
 
       <button
         type="button"
-        onClick={onBack}
+        onClick={clearAndBack}
         className="mt-6 min-h-11 w-full text-sm text-muted-foreground underline underline-offset-4"
       >
         바로 전 단계로 돌아가기

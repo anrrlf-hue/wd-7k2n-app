@@ -30,6 +30,41 @@ import { track } from "@/lib/analytics";
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
 
+function financeJourneyKey(birthInput: BirthInput | null): string | null {
+  if (!birthInput) return null;
+  return [
+    "saju-app:finance-journey:v1",
+    birthInput.year,
+    birthInput.month,
+    birthInput.day,
+    birthInput.hour ?? "x",
+    birthInput.minute ?? "x",
+    birthInput.gender,
+  ].join(":");
+}
+
+function readSessionJson<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+interface PalmResumeState {
+  stage: "result" | "saju_only";
+  palmFacts: PalmFacts | null;
+  finalReport: FreeSajuReport;
+  tripleCompare: CompareItem[];
+  verdict: ReportParagraph | null;
+  wealthType: WealthTypeResult | null;
+  funnelActive: boolean;
+  readingOpen: boolean;
+  chapter: 2 | 3 | 4 | 5;
+}
+
 const HAND_SHAPE_KO: Record<PalmFacts["handShape"], string> = {
   square: "사각형 손바닥 · 짧은 손가락",
   rectangular: "사각형 손바닥 · 긴 손가락",
@@ -86,21 +121,31 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
  * 9,900원 전환 화면으로 이어진다. */
 type FunnelStage = "intro" | "survey" | "analysis" | "payment";
 
+interface FunnelResumeState {
+  stage: FunnelStage;
+  analysisResult: AnalysisResult | null;
+  surveyInput?: SurveyInput;
+  selectedQuestion: FinanceQuestionId | null;
+}
+
 function ConversionFunnel({
   birthInput,
   sajuSummary,
+  resumeKey,
   onStart,
   onChapterChange,
 }: {
   birthInput: BirthInput;
   sajuSummary: string | null;
+  resumeKey: string;
   onStart: () => void;
   onChapterChange: (chapter: 3 | 4 | 5) => void;
 }) {
-  const [stage, setStage] = useState<FunnelStage>("intro");
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [surveyInput, setSurveyInput] = useState<SurveyInput | undefined>();
-  const [selectedQuestion, setSelectedQuestion] = useState<FinanceQuestionId | null>(null);
+  const stored = readSessionJson<FunnelResumeState>(`${resumeKey}:funnel`);
+  const [stage, setStage] = useState<FunnelStage>(stored?.stage ?? "intro");
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(stored?.analysisResult ?? null);
+  const [surveyInput, setSurveyInput] = useState<SurveyInput | undefined>(stored?.surveyInput);
+  const [selectedQuestion, setSelectedQuestion] = useState<FinanceQuestionId | null>(stored?.selectedQuestion ?? null);
   const funnelTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,6 +154,13 @@ function ConversionFunnel({
       funnelTopRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
     });
   }, [stage]);
+
+  useEffect(() => {
+    sessionStorage.setItem(
+      `${resumeKey}:funnel`,
+      JSON.stringify({ stage, analysisResult, surveyInput, selectedQuestion } satisfies FunnelResumeState),
+    );
+  }, [resumeKey, stage, analysisResult, surveyInput, selectedQuestion]);
 
   function handleSurveyComplete(input: SurveyInput) {
     track("survey_completed");
@@ -180,6 +232,7 @@ function ConversionFunnel({
           result={analysisResult}
           input={surveyInput!}
           birthInput={birthInput}
+          persistenceKey={`${resumeKey}:payment`}
           onBack={() => {
             onChapterChange(4);
             setStage("analysis");
@@ -197,6 +250,7 @@ export function PalmPageClient({
   birthInput: BirthInput | null;
   personalityInput?: PersonalityInputEcho;
 }) {
+  const resumeKey = financeJourneyKey(birthInput);
   const [stage, setStage] = useState<Stage>("upload");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
@@ -215,7 +269,55 @@ export function PalmPageClient({
 
   useEffect(() => {
     preloadHandLandmarker();
-  }, []);
+    if (!resumeKey) return;
+
+    const saved = readSessionJson<PalmResumeState>(`${resumeKey}:palm`);
+    if (!saved?.finalReport) return;
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setStage(saved.stage);
+      setPalmFacts(saved.palmFacts);
+      setFinalReport(saved.finalReport);
+      setTripleCompare(saved.tripleCompare ?? []);
+      setVerdict(saved.verdict ?? null);
+      setWealthType(saved.wealthType ?? null);
+      setFunnelActive(Boolean(saved.funnelActive));
+      setReadingOpen(saved.readingOpen ?? true);
+      setChapter(saved.chapter ?? 3);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeKey]);
+
+  useEffect(() => {
+    if (!resumeKey || !finalReport || (stage !== "result" && stage !== "saju_only")) return;
+    const saved: PalmResumeState = {
+      stage,
+      palmFacts,
+      finalReport,
+      tripleCompare,
+      verdict,
+      wealthType,
+      funnelActive,
+      readingOpen,
+      chapter,
+    };
+    sessionStorage.setItem(`${resumeKey}:palm`, JSON.stringify(saved));
+  }, [
+    resumeKey,
+    stage,
+    palmFacts,
+    finalReport,
+    tripleCompare,
+    verdict,
+    wealthType,
+    funnelActive,
+    readingOpen,
+    chapter,
+  ]);
 
   async function fetchReport(facts: PalmFacts | null) {
     if (!birthInput) {
@@ -295,6 +397,11 @@ export function PalmPageClient({
   }
 
   function reset() {
+    if (resumeKey) {
+      sessionStorage.removeItem(`${resumeKey}:palm`);
+      sessionStorage.removeItem(`${resumeKey}:funnel`);
+      sessionStorage.removeItem(`${resumeKey}:payment`);
+    }
     setFunnelActive(false);
     setReadingOpen(true);
     setChapter(2);
@@ -515,7 +622,15 @@ export function PalmPageClient({
       )}
 
       </div>
-      {(stage === "result" || stage === "saju_only") && birthInput && <ConversionFunnel birthInput={birthInput} sajuSummary={wealthType?.pieces.typeAndDiagnosis ?? null} onStart={() => { setFunnelActive(true); setReadingOpen(false); }} onChapterChange={setChapter} />}
+      {(stage === "result" || stage === "saju_only") && birthInput && resumeKey && (
+        <ConversionFunnel
+          birthInput={birthInput}
+          sajuSummary={wealthType?.pieces.typeAndDiagnosis ?? null}
+          resumeKey={resumeKey}
+          onStart={() => { setFunnelActive(true); setReadingOpen(false); }}
+          onChapterChange={setChapter}
+        />
+      )}
 
       {/* 무료 리포트 Peak와 다음 행동(운세지도) 사이에 고지 문구가 끼면
        * 몰입이 끊긴다(§O) — 필요한 고지는 여기, 진짜 페이지 최하단에만 둔다. */}
