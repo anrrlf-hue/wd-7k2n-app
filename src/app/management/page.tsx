@@ -18,6 +18,7 @@ import {
 import { FINANCE_QUESTIONS, financeQuestion } from "@/lib/finance-question";
 import { EMERGENCY_FUND_OPTIONS, surplusKrw } from "@/lib/survey-input";
 import { syncFinanceManagementWithAccount } from "@/lib/finance-account-sync";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Mode = "overview" | "check" | "result";
 type RecheckDraft = Omit<FinanceRecheckInput, "executionStatus"> & {
@@ -70,6 +71,7 @@ export default function ManagementPage() {
   const [draft, setDraft] = useState<RecheckDraft | null>(null);
   const [checkResult, setCheckResult] = useState<FinanceRecheckResult | null>(null);
   const [accountConfigured, setAccountConfigured] = useState(false);
+  const [accountAuthenticated, setAccountAuthenticated] = useState(false);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState(false);
@@ -83,6 +85,7 @@ export default function ManagementPage() {
     syncFinanceManagementWithAccount()
       .then((account) => {
         setAccountConfigured(account.configured);
+        setAccountAuthenticated(account.authenticated);
         setAccountEmail(account.user?.email ?? null);
         setSnapshots(account.state.snapshots);
         setSyncError(false);
@@ -108,6 +111,7 @@ export default function ManagementPage() {
     try {
       const account = await syncFinanceManagementWithAccount();
       setAccountConfigured(account.configured);
+      setAccountAuthenticated(account.authenticated);
       setAccountEmail(account.user?.email ?? null);
       setSnapshots(account.state.snapshots);
       setSyncError(false);
@@ -115,6 +119,17 @@ export default function ManagementPage() {
       setSyncError(true);
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function signOutAccount() {
+    try {
+      const supabase = createSupabaseBrowserClient();
+      await supabase.auth.signOut();
+    } finally {
+      setAccountAuthenticated(false);
+      setAccountEmail(null);
+      setSyncError(false);
     }
   }
 
@@ -426,19 +441,30 @@ export default function ManagementPage() {
 
         {accountConfigured && (
           <div className="mt-5 rounded-2xl border border-border bg-card p-4">
-            {accountEmail ? (
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">계정에 관리기록 저장 중</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{accountEmail}</p>
+            {accountAuthenticated ? (
+              <div>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">계정에 관리기록 저장 중</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {accountEmail ?? "로그인된 계정"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void syncAccountNow()}
+                    disabled={syncing}
+                    className="min-h-10 rounded-full border border-border px-3 text-xs"
+                  >
+                    {syncing ? "동기화 중" : "지금 동기화"}
+                  </button>
                 </div>
                 <button
                   type="button"
-                  onClick={() => void syncAccountNow()}
-                  disabled={syncing}
-                  className="min-h-10 rounded-full border border-border px-3 text-xs"
+                  onClick={() => void signOutAccount()}
+                  className="mt-3 min-h-10 text-xs text-muted-foreground underline underline-offset-4"
                 >
-                  {syncing ? "동기화 중" : "지금 동기화"}
+                  로그아웃
                 </button>
               </div>
             ) : (

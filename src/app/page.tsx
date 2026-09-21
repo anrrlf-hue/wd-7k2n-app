@@ -15,8 +15,14 @@ export default function Home() {
           <Link href="/diagnosis">내 재물사주 무료로 보기 <ArrowRight className="size-4" /></Link>
         </Button>
         <p className="mt-3 text-xs text-muted-foreground">약 1분 · 출생시간 몰라도 가능</p>
+        <Link
+          href="/management"
+          className="mt-4 inline-flex min-h-11 items-center justify-center text-sm text-muted-foreground underline decoration-dotted underline-offset-4"
+        >
+          기존 이용자 · 내 관리
+        </Link>
       </div>
-      <p className="mt-6 text-[11px] text-muted-foreground">사주·손금에서 시작해, 나의 돈 관리까지</p>
+      <p className="mt-4 text-[11px] text-muted-foreground">사주·손금에서 시작해, 나의 돈 관리까지</p>
       </div>
     </LandingReveal>
   </main>;
