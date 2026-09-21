@@ -1,9 +1,17 @@
 import type { BirthInput } from "@/lib/saju";
 import type { FinanceQuestionId } from "@/lib/finance-question";
 import type { SurveyInput } from "@/lib/survey-input";
-import type { PaidFinanceResult } from "@/lib/paid-finance-engine";
+import type { PaidExtraAnswers, PaidFinanceResult } from "@/lib/paid-finance-engine";
+import type { FinanceRecheckInput, FinanceRecheckResult } from "@/lib/finance-recheck";
 
 export const FINANCE_MANAGEMENT_STORAGE_KEY = "saju-app:finance-management:v1";
+
+export interface FinanceRecheckRecord {
+  id: string;
+  checkedAt: string;
+  input: FinanceRecheckInput;
+  result: FinanceRecheckResult;
+}
 
 export interface FinanceBaselineSnapshot {
   id: string;
@@ -14,8 +22,10 @@ export interface FinanceBaselineSnapshot {
   concerns: FinanceQuestionId[];
   focusedQuestion: FinanceQuestionId;
   financeInput: SurveyInput;
+  paidExtraAnswers?: PaidExtraAnswers;
   paidResult: PaidFinanceResult;
   status: "active" | "checked";
+  checks?: FinanceRecheckRecord[];
 }
 
 export interface FinanceManagementState {
@@ -56,6 +66,7 @@ export function saveFinanceBaseline(input: {
   concerns: FinanceQuestionId[];
   focusedQuestion: FinanceQuestionId;
   financeInput: SurveyInput;
+  paidExtraAnswers?: PaidExtraAnswers;
   paidResult: PaidFinanceResult;
 }): FinanceBaselineSnapshot {
   const now = new Date();
@@ -68,8 +79,10 @@ export function saveFinanceBaseline(input: {
     concerns: input.concerns,
     focusedQuestion: input.focusedQuestion,
     financeInput: input.financeInput,
+    paidExtraAnswers: input.paidExtraAnswers,
     paidResult: input.paidResult,
     status: "active",
+    checks: [],
   };
 
   const state = loadFinanceManagement();
@@ -83,6 +96,37 @@ export function saveFinanceBaseline(input: {
 
 export function latestFinanceBaseline(): FinanceBaselineSnapshot | null {
   return loadFinanceManagement().snapshots[0] ?? null;
+}
+
+export function saveFinanceRecheck(
+  snapshotId: string,
+  input: FinanceRecheckInput,
+  result: FinanceRecheckResult,
+): FinanceBaselineSnapshot | null {
+  const state = loadFinanceManagement();
+  const checkedAt = new Date();
+  let updated: FinanceBaselineSnapshot | null = null;
+
+  const snapshots = state.snapshots.map((snapshot) => {
+    if (snapshot.id !== snapshotId) return snapshot;
+    const record: FinanceRecheckRecord = {
+      id: makeId(),
+      checkedAt: checkedAt.toISOString(),
+      input,
+      result,
+    };
+    updated = {
+      ...snapshot,
+      status: "checked" as const,
+      checkDueAt: plus30DaysIso(checkedAt),
+      checks: [record, ...(snapshot.checks ?? [])].slice(0, 24),
+    };
+    return updated;
+  });
+
+  const next: FinanceManagementState = { ...state, snapshots };
+  localStorage.setItem(FINANCE_MANAGEMENT_STORAGE_KEY, JSON.stringify(next));
+  return updated;
 }
 
 export function markFinanceSnapshotChecked(id: string): void {

@@ -6,9 +6,22 @@ import { CalendarDays, CheckCircle2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   loadFinanceManagement,
+  saveFinanceRecheck,
   type FinanceBaselineSnapshot,
 } from "@/lib/finance-management";
+import {
+  buildFinanceRecheckResult,
+  type ExecutionStatus,
+  type FinanceRecheckInput,
+  type FinanceRecheckResult,
+} from "@/lib/finance-recheck";
 import { FINANCE_QUESTIONS, financeQuestion } from "@/lib/finance-question";
+import { EMERGENCY_FUND_OPTIONS, surplusKrw } from "@/lib/survey-input";
+
+type Mode = "overview" | "check" | "result";
+type RecheckDraft = Omit<FinanceRecheckInput, "executionStatus"> & {
+  executionStatus: ExecutionStatus | "";
+};
 
 function manwon(krw: number): string {
   const value = Math.round((krw / 10000) * 10) / 10;
@@ -31,9 +44,30 @@ function birthLabel(snapshot: FinanceBaselineSnapshot): string {
   return `${birth.year}년 ${birth.month}월 ${birth.day}일 · ${birth.gender} · ${time}`;
 }
 
+function optionLabel(options: Array<{ value: string; label: string }>, value?: string): string {
+  return options.find((item) => item.value === value)?.label ?? "미확인";
+}
+
+function paidMoney(snapshot: FinanceBaselineSnapshot, key: string): number | undefined {
+  const value = snapshot.paidExtraAnswers?.[key];
+  return typeof value === "number" ? value * 10000 : undefined;
+}
+
+function daysUntil(value: string): number {
+  return Math.ceil((new Date(value).getTime() - Date.now()) / 86400000);
+}
+
+function moneyInputValue(krw: number | undefined): string {
+  if (krw === undefined) return "";
+  return String(Math.round((krw / 10000) * 10) / 10);
+}
+
 export default function ManagementPage() {
   const [snapshots, setSnapshots] = useState<FinanceBaselineSnapshot[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [mode, setMode] = useState<Mode>("overview");
+  const [draft, setDraft] = useState<RecheckDraft | null>(null);
+  const [checkResult, setCheckResult] = useState<FinanceRecheckResult | null>(null);
 
   useEffect(() => {
     setSnapshots(loadFinanceManagement().snapshots);
@@ -47,6 +81,62 @@ export default function ManagementPage() {
       .filter((item) => latest.concerns.includes(item.id))
       .map((item) => item.label);
   }, [latest]);
+
+  function refresh() {
+    setSnapshots(loadFinanceManagement().snapshots);
+  }
+
+  function beginRecheck() {
+    if (!latest) return;
+    const goalPrepared =
+      latest.financeInput.goalPreparedKrw ??
+      paidMoney(latest, "goalPreparedManwon");
+    const debtRemaining =
+      latest.financeInput.debtRemainingKrw ??
+      paidMoney(latest, "debtBalanceManwon");
+
+    setDraft({
+      executionStatus: "",
+      monthlyIncomeKrw: latest.financeInput.monthlyIncomeKrw,
+      monthlyFixedCostKrw: latest.financeInput.monthlyFixedCostKrw,
+      monthlyLivingCostKrw: latest.financeInput.monthlyLivingCostKrw,
+      monthlySavingsKrw: latest.financeInput.monthlySavingsKrw,
+      emergencyFund: latest.financeInput.emergencyFund,
+      goalPreparedKrw: goalPrepared,
+      debtRemainingKrw: debtRemaining,
+      difficulty: "",
+    });
+    setMode("check");
+  }
+
+  function setMoney(
+    key: "monthlyIncomeKrw" | "monthlyFixedCostKrw" | "monthlyLivingCostKrw" | "monthlySavingsKrw" | "goalPreparedKrw" | "debtRemainingKrw",
+    raw: string,
+  ) {
+    if (!draft) return;
+    if (raw === "") {
+      if (key === "goalPreparedKrw" || key === "debtRemainingKrw") {
+        setDraft({ ...draft, [key]: undefined });
+      }
+      return;
+    }
+    const value = Math.max(0, Number(raw) * 10000);
+    if (!Number.isFinite(value)) return;
+    setDraft({ ...draft, [key]: value });
+  }
+
+  function submitRecheck() {
+    if (!latest || !draft || !draft.executionStatus) return;
+    const input: FinanceRecheckInput = {
+      ...draft,
+      executionStatus: draft.executionStatus,
+    };
+    const result = buildFinanceRecheckResult(latest, input);
+    saveFinanceRecheck(latest.id, input, result);
+    setCheckResult(result);
+    refresh();
+    setMode("result");
+  }
 
   if (!loaded) {
     return <main className="journey-surface min-h-screen"><div className="journey-shell py-12" /></main>;
@@ -71,6 +161,225 @@ export default function ManagementPage() {
 
   const input = latest.financeInput;
   const paid = latest.paidResult;
+  const lastCheck = latest.checks?.[0] ?? null;
+  const dueDays = daysUntil(latest.checkDueAt);
+
+  if (mode === "check" && draft) {
+    return (
+      <main className="journey-surface min-h-screen">
+        <div className="journey-shell py-8">
+          <p className="section-eyebrow">변화 체크</p>
+          <h1 className="mt-2 text-2xl leading-snug font-semibold">처음 정한 방향이 현실에서 어떻게 됐는지 볼게요</h1>
+          <p className="mt-3 text-base leading-7 text-muted-foreground">
+            처음부터 다시 묻지 않습니다. 기존 값을 넣어두었으니 달라진 부분만 수정해주세요.
+          </p>
+
+          <section className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
+            <p className="text-sm text-muted-foreground">이번에 하기로 했던 것</p>
+            <p className="mt-2 text-lg leading-8 font-semibold">{paid.check30.action}</p>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {([
+                ["done", "해봤어요"],
+                ["partial", "일부 했어요"],
+                ["not_done", "못 했어요"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setDraft({ ...draft, executionStatus: value })}
+                  className={
+                    "min-h-12 rounded-xl border px-2 text-sm " +
+                    (draft.executionStatus === value
+                      ? "border-(--gold) bg-(--gold-soft) font-semibold"
+                      : "border-border bg-background")
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-4 rounded-2xl border border-border bg-card p-5">
+            <p className="section-eyebrow">지금의 숫자</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              그대로라면 수정하지 않아도 됩니다.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {([
+                ["monthlyIncomeKrw", "월 소득"],
+                ["monthlyFixedCostKrw", "고정지출·상환"],
+                ["monthlyLivingCostKrw", "생활비"],
+                ["monthlySavingsKrw", "저축·투자"],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="rounded-xl bg-accent p-3">
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                  <div className="mt-1 flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.1"
+                      value={moneyInputValue(draft[key])}
+                      onChange={(event) => setMoney(key, event.target.value)}
+                      className="min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none"
+                    />
+                    <span className="text-xs text-muted-foreground">만원</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <label className="mt-4 block">
+              <span className="text-sm font-medium">바로 쓸 수 있는 여유자금</span>
+              <select
+                value={draft.emergencyFund}
+                onChange={(event) => setDraft({ ...draft, emergencyFund: event.target.value })}
+                className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-3"
+              >
+                {EMERGENCY_FUND_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+
+            {latest.focusedQuestion === "goal" && (
+              <label className="mt-4 block rounded-xl bg-accent p-3">
+                <span className="text-sm font-medium">현재 목표 준비금</span>
+                <div className="mt-1 flex items-center gap-1">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={moneyInputValue(draft.goalPreparedKrw)}
+                    onChange={(event) => setMoney("goalPreparedKrw", event.target.value)}
+                    className="min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none"
+                    placeholder="현재 금액"
+                  />
+                  <span className="text-xs text-muted-foreground">만원</span>
+                </div>
+              </label>
+            )}
+
+            {input.hasDebt && draft.debtRemainingKrw !== undefined && (
+              <label className="mt-4 block rounded-xl bg-accent p-3">
+                <span className="text-sm font-medium">현재 남은 부채</span>
+                <div className="mt-1 flex items-center gap-1">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={moneyInputValue(draft.debtRemainingKrw)}
+                    onChange={(event) => setMoney("debtRemainingKrw", event.target.value)}
+                    className="min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none"
+                  />
+                  <span className="text-xs text-muted-foreground">만원</span>
+                </div>
+              </label>
+            )}
+          </section>
+
+          <section className="mt-4 rounded-2xl border border-border bg-card p-5">
+            <label>
+              <span className="text-sm font-medium">실행하면서 가장 어려웠던 점이 있나요?</span>
+              <textarea
+                value={draft.difficulty ?? ""}
+                onChange={(event) => setDraft({ ...draft, difficulty: event.target.value })}
+                placeholder="없으면 비워두셔도 됩니다."
+                className="mt-2 min-h-24 w-full resize-none rounded-xl border border-border bg-background p-3 text-sm leading-6 outline-none"
+              />
+            </label>
+          </section>
+
+          <Button
+            size="lg"
+            disabled={!draft.executionStatus}
+            onClick={submitRecheck}
+            className="mt-6 h-14 w-full rounded-full text-base"
+          >
+            처음과 지금 비교하기
+          </Button>
+          <button
+            type="button"
+            onClick={() => setMode("overview")}
+            className="mt-4 min-h-11 w-full text-sm text-muted-foreground underline underline-offset-4"
+          >
+            관리페이지로 돌아가기
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (mode === "result" && draft && checkResult) {
+    const beforeSurplus = surplusKrw(input);
+    const nowSurplus = surplusKrw(draft);
+
+    return (
+      <main className="journey-surface min-h-screen">
+        <div className="journey-shell py-8">
+          <p className="section-eyebrow">변화 체크 결과</p>
+          <h1 className="mt-2 text-2xl leading-snug font-semibold">{checkResult.headline}</h1>
+          <p className="mt-3 text-base leading-7 text-muted-foreground">{checkResult.summary}</p>
+
+          <section className="mt-6 rounded-2xl border border-border bg-card p-5">
+            <p className="section-eyebrow">처음 vs 지금</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-accent p-4">
+                <p className="text-xs text-muted-foreground">처음 남는 월 금액</p>
+                <p className="mt-1 text-lg font-semibold">{manwon(beforeSurplus)}</p>
+              </div>
+              <div className="rounded-xl bg-accent p-4">
+                <p className="text-xs text-muted-foreground">지금 남는 월 금액</p>
+                <p className="mt-1 text-lg font-semibold">{manwon(nowSurplus)}</p>
+              </div>
+              <div className="rounded-xl bg-accent p-4">
+                <p className="text-xs text-muted-foreground">처음 저축·투자</p>
+                <p className="mt-1 text-lg font-semibold">{manwon(input.monthlySavingsKrw)}</p>
+              </div>
+              <div className="rounded-xl bg-accent p-4">
+                <p className="text-xs text-muted-foreground">지금 저축·투자</p>
+                <p className="mt-1 text-lg font-semibold">{manwon(draft.monthlySavingsKrw)}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="mt-4 rounded-2xl border border-(--gold-soft) bg-card p-5">
+            <p className="section-eyebrow">달라진 점</p>
+            <ul className="mt-3 space-y-2">
+              {checkResult.changed.map((item) => (
+                <li key={item} className="flex gap-2 text-base leading-7">
+                  <CheckCircle2 className="mt-1.5 size-4 shrink-0 text-(--gold)" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="mt-4 rounded-2xl border border-border bg-card p-5">
+            <p className="section-eyebrow">유지할 것</p>
+            <p className="mt-2 text-base leading-7">{checkResult.keep}</p>
+          </section>
+
+          <section className="mt-4 rounded-2xl bg-accent p-5 text-accent-foreground">
+            <p className="section-eyebrow">다음 30일 한 가지</p>
+            <p className="mt-2 text-lg leading-8 font-semibold">{checkResult.nextAction}</p>
+          </section>
+
+          <Button
+            size="lg"
+            onClick={() => {
+              setMode("overview");
+              setCheckResult(null);
+              setDraft(null);
+            }}
+            className="mt-6 h-14 w-full rounded-full text-base"
+          >
+            관리페이지에서 이어서 보기
+          </Button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="journey-surface min-h-screen">
@@ -122,42 +431,57 @@ export default function ManagementPage() {
             </div>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            여유자금: {input.emergencyFund === "none" ? "없음" : input.emergencyFund.replace("_", "~")} · 부채: {input.hasDebt ? "있음" : "없음"}
+            여유자금: {optionLabel(EMERGENCY_FUND_OPTIONS, input.emergencyFund)} · 부채: {input.hasDebt ? "있음" : "없음"}
           </p>
         </section>
 
         <section className="mt-4 rounded-2xl border border-(--gold-soft) bg-card p-5">
           <p className="section-eyebrow">지금의 방향</p>
-          <p className="mt-3 text-xl leading-8 font-semibold">{paid.conclusion}</p>
+          <p className="mt-3 text-xl leading-8 font-semibold">{lastCheck?.result.headline ?? paid.conclusion}</p>
+          {lastCheck && <p className="mt-3 text-sm leading-6 text-muted-foreground">{lastCheck.result.summary}</p>}
         </section>
 
         <section className="mt-4 rounded-2xl bg-accent p-5 text-accent-foreground">
           <p className="section-eyebrow">이번 30일에 할 것 하나</p>
-          <p className="mt-2 text-lg leading-8 font-semibold">{paid.check30.action}</p>
+          <p className="mt-2 text-lg leading-8 font-semibold">{lastCheck?.result.nextAction ?? paid.check30.action}</p>
         </section>
+
+        {lastCheck && (
+          <section className="mt-4 rounded-2xl border border-border bg-card p-5">
+            <p className="section-eyebrow">최근 변화 체크 · {dateLabel(lastCheck.checkedAt)}</p>
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+              {lastCheck.result.changed.slice(0, 3).map((item) => <li key={item}>· {item}</li>)}
+            </ul>
+          </section>
+        )}
 
         <section className="mt-4 rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center gap-2">
             <CalendarDays className="size-4 text-(--gold)" />
-            <p className="font-semibold">30일 후 변화 체크</p>
+            <p className="font-semibold">다음 변화 체크</p>
           </div>
-          <p className="mt-2 text-base">다음 확인일 · {dateLabel(latest.checkDueAt)}</p>
+          <p className="mt-2 text-base">
+            {dateLabel(latest.checkDueAt)}
+            <span className="ml-2 text-sm text-muted-foreground">
+              {dueDays > 0 ? `· ${dueDays}일 후` : "· 지금 확인할 때예요"}
+            </span>
+          </p>
           <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-            {paid.check30.checkpoints.map((item) => (
+            {(lastCheck?.result.nextCheckpoints ?? paid.check30.checkpoints).map((item) => (
               <li key={item} className="flex gap-2">
                 <CheckCircle2 className="mt-1 size-3.5 shrink-0" />
                 <span>{item}</span>
               </li>
             ))}
           </ul>
-          <div className="mt-4 rounded-xl border border-dashed border-border p-3 text-sm leading-6 text-muted-foreground">
-            30일이 지나면 이 기준과 현재 상태를 비교해, 다음에 무엇을 볼지 다시 정합니다.
-          </div>
+          <Button size="lg" onClick={beginRecheck} className="mt-5 h-13 w-full rounded-full text-base">
+            {lastCheck ? "다시 변화 체크하기" : "30일 변화 체크하기"}
+          </Button>
         </section>
 
         {snapshots.length > 1 && (
           <details className="mt-4 rounded-2xl border border-border bg-card p-4">
-            <summary className="cursor-pointer text-base font-medium">이전 관리기록 {snapshots.length - 1}건 보기</summary>
+            <summary className="cursor-pointer text-base font-medium">이전 상담기록 {snapshots.length - 1}건 보기</summary>
             <div className="mt-3 space-y-2">
               {snapshots.slice(1).map((snapshot) => (
                 <div key={snapshot.id} className="flex items-center justify-between rounded-xl bg-accent p-3">

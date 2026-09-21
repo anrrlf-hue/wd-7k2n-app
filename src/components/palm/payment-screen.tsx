@@ -63,6 +63,7 @@ export function PaymentScreen({
       concerns,
       focusedQuestion: question,
       financeInput: input,
+      paidExtraAnswers: answers,
       paidResult,
     });
     router.push("/management");
