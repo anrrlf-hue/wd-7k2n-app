@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "deploy:prod": "npx -y vercel@59.23.2 --prod --yes"
   },
   "dependencies": {
     "@fullstackfamily/manseryeok": "^1.0.8",
