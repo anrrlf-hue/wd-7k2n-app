@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
@@ -12,6 +13,8 @@ import { JourneyScene } from "@/components/journey-scene";
 import { financeQuestion, FINANCE_QUESTIONS, type FinanceQuestionId } from "@/lib/finance-question";
 import type { AnalysisResult } from "@/lib/analysis-result";
 import type { SurveyInput } from "@/lib/survey-input";
+import type { BirthInput } from "@/lib/saju";
+import { saveFinanceBaseline } from "@/lib/finance-management";
 import {
   buildPaidExtraQuestions,
   buildPaidFinanceResult,
@@ -26,6 +29,7 @@ export function PaymentScreen({
   sajuSummary,
   result,
   input,
+  birthInput,
   onBack,
 }: {
   question: FinanceQuestionId;
@@ -33,8 +37,10 @@ export function PaymentScreen({
   sajuSummary: string | null;
   result: AnalysisResult;
   input: SurveyInput;
+  birthInput: BirthInput;
   onBack: () => void;
 }) {
+  const router = useRouter();
   const [stage, setStage] = useState<"offer" | "questions" | "result">("offer");
   const [answers, setAnswers] = useState<PaidExtraAnswers>({});
   const selected = financeQuestion(question);
@@ -48,6 +54,18 @@ export function PaymentScreen({
   function startPaidResult() {
     if (extraQuestions.length > 0) setStage("questions");
     else setStage("result");
+  }
+
+  function saveAndOpenManagement() {
+    saveFinanceBaseline({
+      birthInput,
+      sajuSummary,
+      concerns,
+      focusedQuestion: question,
+      financeInput: input,
+      paidResult,
+    });
+    router.push("/management");
   }
 
   if (stage === "questions") {
@@ -205,8 +223,16 @@ export function PaymentScreen({
           </details>
         </section>
 
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          현재는 실제 결제 연동 전이라 결제 후 결과 흐름을 미리보기로 보여주고 있습니다.
+        <Button
+          size="lg"
+          onClick={saveAndOpenManagement}
+          className="mt-6 h-14 w-full rounded-full text-base"
+        >
+          내 관리페이지에 저장하고 계속 보기
+        </Button>
+
+        <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
+          현재는 실제 결제 연동 전이라 미리보기 결과를 이 브라우저에 저장합니다.
         </p>
 
         <button

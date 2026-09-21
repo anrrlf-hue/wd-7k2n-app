@@ -87,10 +87,12 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
 type FunnelStage = "intro" | "survey" | "analysis" | "payment";
 
 function ConversionFunnel({
+  birthInput,
   sajuSummary,
   onStart,
   onChapterChange,
 }: {
+  birthInput: BirthInput;
   sajuSummary: string | null;
   onStart: () => void;
   onChapterChange: (chapter: 3 | 4 | 5) => void;
@@ -177,6 +179,7 @@ function ConversionFunnel({
           sajuSummary={sajuSummary}
           result={analysisResult}
           input={surveyInput!}
+          birthInput={birthInput}
           onBack={() => {
             onChapterChange(4);
             setStage("analysis");
@@ -512,7 +515,7 @@ export function PalmPageClient({
       )}
 
       </div>
-      {(stage === "result" || stage === "saju_only") && <ConversionFunnel sajuSummary={wealthType?.pieces.typeAndDiagnosis ?? null} onStart={() => { setFunnelActive(true); setReadingOpen(false); }} onChapterChange={setChapter} />}
+      {(stage === "result" || stage === "saju_only") && birthInput && <ConversionFunnel birthInput={birthInput} sajuSummary={wealthType?.pieces.typeAndDiagnosis ?? null} onStart={() => { setFunnelActive(true); setReadingOpen(false); }} onChapterChange={setChapter} />}
 
       {/* 무료 리포트 Peak와 다음 행동(운세지도) 사이에 고지 문구가 끼면
        * 몰입이 끊긴다(§O) — 필요한 고지는 여기, 진짜 페이지 최하단에만 둔다. */}
