@@ -17,6 +17,7 @@ import {
 } from "@/lib/finance-recheck";
 import { FINANCE_QUESTIONS, financeQuestion } from "@/lib/finance-question";
 import { EMERGENCY_FUND_OPTIONS, surplusKrw } from "@/lib/survey-input";
+import { syncFinanceManagementWithAccount } from "@/lib/finance-account-sync";
 
 type Mode = "overview" | "check" | "result";
 type RecheckDraft = Omit<FinanceRecheckInput, "executionStatus"> & {
@@ -68,10 +69,26 @@ export default function ManagementPage() {
   const [mode, setMode] = useState<Mode>("overview");
   const [draft, setDraft] = useState<RecheckDraft | null>(null);
   const [checkResult, setCheckResult] = useState<FinanceRecheckResult | null>(null);
+  const [accountConfigured, setAccountConfigured] = useState(false);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState(false);
 
   useEffect(() => {
-    setSnapshots(loadFinanceManagement().snapshots);
+    const local = loadFinanceManagement();
+    setSnapshots(local.snapshots);
     setLoaded(true);
+
+    setSyncing(true);
+    syncFinanceManagementWithAccount()
+      .then((account) => {
+        setAccountConfigured(account.configured);
+        setAccountEmail(account.user?.email ?? null);
+        setSnapshots(account.state.snapshots);
+        setSyncError(false);
+      })
+      .catch(() => setSyncError(true))
+      .finally(() => setSyncing(false));
   }, []);
 
   const latest = snapshots[0] ?? null;
@@ -84,6 +101,21 @@ export default function ManagementPage() {
 
   function refresh() {
     setSnapshots(loadFinanceManagement().snapshots);
+  }
+
+  async function syncAccountNow() {
+    setSyncing(true);
+    try {
+      const account = await syncFinanceManagementWithAccount();
+      setAccountConfigured(account.configured);
+      setAccountEmail(account.user?.email ?? null);
+      setSnapshots(account.state.snapshots);
+      setSyncError(false);
+    } catch {
+      setSyncError(true);
+    } finally {
+      setSyncing(false);
+    }
   }
 
   function beginRecheck() {
@@ -135,6 +167,7 @@ export default function ManagementPage() {
     saveFinanceRecheck(latest.id, input, result);
     setCheckResult(result);
     refresh();
+    void syncAccountNow();
     setMode("result");
   }
 
@@ -390,6 +423,40 @@ export default function ManagementPage() {
           <br />
           지금의 변화를 이어갑니다
         </h1>
+
+        {accountConfigured && (
+          <div className="mt-5 rounded-2xl border border-border bg-card p-4">
+            {accountEmail ? (
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">계정에 관리기록 저장 중</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{accountEmail}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void syncAccountNow()}
+                  disabled={syncing}
+                  className="min-h-10 rounded-full border border-border px-3 text-xs"
+                >
+                  {syncing ? "동기화 중" : "지금 동기화"}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm font-semibold">다른 기기에서도 이어보려면 로그인하세요</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  로그인하면 현재 관리기록을 계정에 옮겨 휴대폰이나 다른 PC에서도 이어볼 수 있습니다.
+                </p>
+                <Button asChild size="lg" className="mt-3 h-12 w-full rounded-full text-sm">
+                  <Link href="/login?next=/management">로그인하고 관리기록 저장하기</Link>
+                </Button>
+              </div>
+            )}
+            {syncError && (
+              <p className="mt-2 text-xs text-destructive">계정 동기화가 잠시 되지 않았습니다. 현재 브라우저 기록은 그대로 유지됩니다.</p>
+            )}
+          </div>
+        )}
 
         <section className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
           <p className="section-eyebrow">내 기본정보</p>

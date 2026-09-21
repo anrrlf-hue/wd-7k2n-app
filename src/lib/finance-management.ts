@@ -60,6 +60,14 @@ export function loadFinanceManagement(): FinanceManagementState {
   }
 }
 
+export function saveFinanceManagementState(state: FinanceManagementState): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(
+    FINANCE_MANAGEMENT_STORAGE_KEY,
+    JSON.stringify({ version: 1, snapshots: state.snapshots.slice(0, 24) }),
+  );
+}
+
 export function saveFinanceBaseline(input: {
   birthInput: BirthInput;
   sajuSummary: string | null;

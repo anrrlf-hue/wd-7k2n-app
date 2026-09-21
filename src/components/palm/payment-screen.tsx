@@ -15,6 +15,7 @@ import type { AnalysisResult } from "@/lib/analysis-result";
 import type { SurveyInput } from "@/lib/survey-input";
 import type { BirthInput } from "@/lib/saju";
 import { saveFinanceBaseline } from "@/lib/finance-management";
+import { syncFinanceManagementWithAccount } from "@/lib/finance-account-sync";
 import {
   buildPaidExtraQuestions,
   buildPaidFinanceResult,
@@ -56,7 +57,7 @@ export function PaymentScreen({
     else setStage("result");
   }
 
-  function saveAndOpenManagement() {
+  async function saveAndOpenManagement() {
     saveFinanceBaseline({
       birthInput,
       sajuSummary,
@@ -66,6 +67,17 @@ export function PaymentScreen({
       paidExtraAnswers: answers,
       paidResult,
     });
+
+    try {
+      const account = await syncFinanceManagementWithAccount();
+      if (account.configured && !account.authenticated) {
+        router.push("/login?next=/management");
+        return;
+      }
+    } catch {
+      // 계정 동기화 실패가 현재 브라우저 기록을 막지는 않는다.
+    }
+
     router.push("/management");
   }
 
@@ -226,7 +238,7 @@ export function PaymentScreen({
 
         <Button
           size="lg"
-          onClick={saveAndOpenManagement}
+          onClick={() => void saveAndOpenManagement()}
           className="mt-6 h-14 w-full rounded-full text-base"
         >
           내 관리페이지에 저장하고 계속 보기
