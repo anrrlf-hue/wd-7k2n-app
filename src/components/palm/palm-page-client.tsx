@@ -25,6 +25,7 @@ import type { SurveyInput } from "@/lib/survey-input";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
+import type { WealthTypeResult } from "@/lib/wealth-type";
 import { track } from "@/lib/analytics";
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
@@ -82,15 +83,15 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
 
 /** 손금 완료 뒤에는 추가 성향게임을 강제하지 않는다.
  * 짧은 현실 연결 -> 2단계 재무질문 -> 무료 우선순위 -> 사용자가 고른 질문 ->
- * 9,900원 전환 화면으로 이어진다. 재무 판단은 현실 입력값만 사용한다. */
+ * 9,900원 전환 화면으로 이어진다. */
 type FunnelStage = "intro" | "survey" | "analysis" | "payment";
 
 function ConversionFunnel({
-  onReset,
+  sajuSummary,
   onStart,
   onChapterChange,
 }: {
-  onReset: () => void;
+  sajuSummary: string | null;
   onStart: () => void;
   onChapterChange: (chapter: 3 | 4 | 5) => void;
 }) {
@@ -119,14 +120,14 @@ function ConversionFunnel({
     <div id="conversion-funnel" ref={funnelTopRef} className="mt-8 scroll-mt-6">
       {stage === "intro" && (
         <div className="transition-panel">
-          <p className="section-eyebrow">사주풀이로 끝나지 않습니다</p>
+          <p className="section-eyebrow">사주풀이에서 끝나지 않고 현실로 이어집니다</p>
           <h2 className="mt-2 text-2xl leading-snug font-semibold">
-            이제, 지금 내 삶에서
+            사주에서 본 나를,
             <br />
-            무엇이 중요한지 이어서 볼게요
+            지금의 삶으로 이어서 볼게요
           </h2>
           <p className="mt-3 text-base leading-7 text-muted-foreground">
-            여기까지는 나를 이해하는 단계였습니다. 다음 판단은 사주가 아니라 실제 생활 정보를 기준으로 봅니다.
+            사주와 손금에서 본 성향에 지금의 생활과 재무상황을 더해, 앞으로 어떤 방향으로 가면 좋을지 이어서 살펴봅니다.
           </p>
           <Button
             size="lg"
@@ -143,11 +144,22 @@ function ConversionFunnel({
         </div>
       )}
 
-      {stage === "survey" && <SurveyForm initialValue={surveyInput} onComplete={handleSurveyComplete} />}
+      {stage === "survey" && (
+        <SurveyForm
+          initialValue={surveyInput}
+          onComplete={handleSurveyComplete}
+          onBack={() => {
+            onChapterChange(3);
+            setStage("intro");
+          }}
+        />
+      )}
 
       {stage === "analysis" && analysisResult && (
         <AnalysisResultCard
           result={analysisResult}
+          concerns={surveyInput?.financeQuestionIds ?? []}
+          sajuSummary={sajuSummary}
           onRevise={() => setStage("survey")}
           onProceed={(question) => {
             setSelectedQuestion(question);
@@ -161,6 +173,8 @@ function ConversionFunnel({
       {stage === "payment" && analysisResult && selectedQuestion && (
         <PaymentScreen
           question={selectedQuestion}
+          concerns={surveyInput?.financeQuestionIds ?? []}
+          sajuSummary={sajuSummary}
           result={analysisResult}
           onBack={() => {
             onChapterChange(4);
@@ -168,15 +182,6 @@ function ConversionFunnel({
           }}
         />
       )}
-
-      <button
-        type="button"
-        onClick={onReset}
-        className="mt-6 flex w-full items-center justify-center gap-1.5 text-center text-xs text-muted-foreground"
-      >
-        <RotateCcw className="size-3.5" />
-        손금부터 다시 보기
-      </button>
     </div>
   );
 }
@@ -194,6 +199,7 @@ export function PalmPageClient({
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
   const [tripleCompare, setTripleCompare] = useState<CompareItem[]>([]);
   const [verdict, setVerdict] = useState<ReportParagraph | null>(null);
+  const [wealthType, setWealthType] = useState<WealthTypeResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retakeAttempts, setRetakeAttempts] = useState(0);
   const [funnelActive, setFunnelActive] = useState(false);
@@ -236,6 +242,7 @@ export function PalmPageClient({
     setFinalReport(data.freeReport?.report ?? null);
     setTripleCompare(data.tripleCompare ?? []);
     setVerdict(data.verdict ?? null);
+    setWealthType(data.wealthType ?? null);
     track("free_report_completed", { palmSkipped: Boolean(data.palmSkipped) });
     setStage(data.palmSkipped ? "saju_only" : "result");
   }
@@ -292,6 +299,7 @@ export function PalmPageClient({
     setFinalReport(null);
     setTripleCompare([]);
     setVerdict(null);
+    setWealthType(null);
     setErrorMsg(null);
     setRetakeAttempts(0);
   }
@@ -503,12 +511,12 @@ export function PalmPageClient({
       )}
 
       </div>
-      {(stage === "result" || stage === "saju_only") && <ConversionFunnel onReset={reset} onStart={() => { setFunnelActive(true); setReadingOpen(false); }} onChapterChange={setChapter} />}
+      {(stage === "result" || stage === "saju_only") && <ConversionFunnel sajuSummary={wealthType?.pieces.typeAndDiagnosis ?? null} onStart={() => { setFunnelActive(true); setReadingOpen(false); }} onChapterChange={setChapter} />}
 
       {/* 무료 리포트 Peak와 다음 행동(운세지도) 사이에 고지 문구가 끼면
        * 몰입이 끊긴다(§O) — 필요한 고지는 여기, 진짜 페이지 최하단에만 둔다. */}
       {(stage === "result" || stage === "saju_only") && (
-        <p className="mt-8 text-center text-sm leading-relaxed text-muted-foreground">사주·손금은 자신을 돌아보는 전통 해석입니다. 실제 재무 판단은 소득·지출 등 확인된 정보를 기준으로 해요.</p>
+        <p className="mt-8 text-center text-sm leading-relaxed text-muted-foreground">사주·손금 해석과 재무 방향은 삶의 선택을 돕기 위한 참고자료입니다.</p>
       )}
       </div>
     </div>

@@ -4,7 +4,8 @@ export interface QuestionUsage { question: string; fact: string; usedBy: string;
 const usageEntry = (question: string, fact: string, usedBy: string, resultEffect: string, actionEffect: string): QuestionUsage => ({ question, fact, usedBy, resultEffect, actionEffect });
 /** Audit map only, not a second diagnosis engine. */
 export const SURVEY_USAGE = {
-  biggestConcern: usageEntry("돈 고민", "걱정, 검증 사실 아님", "buildAnalysisResult/suggestManagementMethod", "별도 인용; 진단 변경 안 함", "고민과 숫자를 나눠 기록"),
+  biggestConcern: usageEntry("추가 고민", "사용자가 직접 적은 맥락", "buildAnalysisResult", "보조 맥락으로 표시", "선택한 고민과 함께 참고"),
+  financeQuestionIds: usageEntry("관심 고민", "복수 선택", "AnalysisResultCard/PaymentScreen", "더 자세히 볼 고민 후보", "선택한 고민들을 함께 연결"),
   jobType: usageEntry("근무 형태", "자기보고", "detectBottleneck/freelancerEvidence/suggestManagementMethod", "소득중단·변동·사업분리 적용", "고정급은 실제 급여 입금일, 나머지는 실제 입금 때"),
   futureEvents: usageEntry("예정 변화", "선택 일정", "futureEventPlan/buildAnalysisResult", "진단 범위", "해당 일정 자료 준비"),
   primaryFutureEvent: usageEntry("우선 일정", "사용자 지정", "primaryFutureEvent/selectPrimaryFutureEvent", "오래된 다른 일정 답변 제외", "한 일정부터 확인"),

@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CompanionHeading } from "@/components/angel-companion";
+import { FINANCE_QUESTIONS, type FinanceQuestionId } from "@/lib/finance-question";
 import {
   futureEventPlan,
   primaryFutureEvent,
@@ -133,9 +134,9 @@ function NumberField({
         min={0}
         type="number"
         inputMode="numeric"
-        value={Number.isFinite(value) ? value : ""}
-        onChange={(event) => onChange(event.target.value === "" ? NaN : Number(event.target.value))}
-        placeholder="금액 입력"
+        value={Number.isFinite(value) ? value / 10000 : ""}
+        onChange={(event) => onChange(event.target.value === "" ? NaN : Number(event.target.value) * 10000)}
+        placeholder="예: 300"
         className="mt-2 min-h-11 w-full border-none bg-transparent p-0 text-xl font-semibold tabular-nums outline-none"
       />
     </div>
@@ -144,6 +145,7 @@ function NumberField({
 
 const initialInput: SurveyInput = {
   biggestConcern: "",
+  financeQuestionIds: [],
   jobType: "",
   futureEvents: [],
   monthlyIncomeKrw: NaN,
@@ -158,9 +160,11 @@ const initialInput: SurveyInput = {
 
 export function SurveyForm({
   onComplete,
+  onBack,
   initialValue,
 }: {
   onComplete: (input: SurveyInput) => void;
+  onBack: () => void;
   initialValue?: SurveyInput;
 }) {
   const [step, setStep] = useState(1);
@@ -187,6 +191,7 @@ export function SurveyForm({
   const hasFutureEvent = input.futureEvents.length > 0 && !input.futureEvents.includes("none");
 
   const step1Complete =
+    (input.financeQuestionIds ?? []).length > 0 &&
     input.jobType !== "" &&
     input.moneyManagementUnit !== "" &&
     input.futureEvents.length > 0 &&
@@ -211,22 +216,29 @@ export function SurveyForm({
 
       <p className="mt-2 text-base leading-relaxed text-muted-foreground">
         {step === 1
-          ? "긴 설문 대신, 지금 판단에 필요한 내용만 묻습니다."
-          : "정확한 재무 판단은 사주가 아니라 아래 실제 정보만 기준으로 합니다."}
+          ? "사주에서 본 나를 실제 삶으로 이어보기 위해, 지금의 상황을 조금만 더 알려주세요."
+          : "사주에서 본 성향과 지금의 생활을 함께 놓고, 앞으로의 방향을 더 구체적으로 이어봅니다."}
       </p>
       {step === 1 && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{PRIVACY_NOTICE}</p>}
 
       {step === 1 && (
         <div className="mt-4 space-y-4">
+          <MultiSelectField
+            label="지금 신경 쓰이는 고민을 모두 골라주세요"
+            options={FINANCE_QUESTIONS.map((question) => ({ value: question.id, label: question.label }))}
+            values={input.financeQuestionIds ?? []}
+            onChange={(values) => set("financeQuestionIds", values as FinanceQuestionId[])}
+          />
+
           <div className="survey-field">
             <label htmlFor="money-concern" className="text-base font-medium">
-              지금 가장 신경 쓰이는 재무 고민 <span className="text-sm text-muted-foreground">· 선택</span>
+              추가로 적고 싶은 내용 <span className="text-sm text-muted-foreground">· 선택</span>
             </label>
             <textarea
               id="money-concern"
               value={input.biggestConcern}
               onChange={(event) => set("biggestConcern", event.target.value)}
-              placeholder="예: 결혼 준비를 하면서 저축과 투자를 어떻게 해야 할지 모르겠어요"
+              placeholder="예: 2년 안에 결혼도 준비하고 싶은데 대출도 있어서 무엇부터 해야 할지 고민돼요"
               rows={3}
               className="mt-1.5 w-full resize-none border-none bg-transparent p-0 text-base outline-none"
             />
@@ -239,12 +251,17 @@ export function SurveyForm({
             onChange={(value) => set("jobType", value)}
           />
 
-          <SingleSelectField
-            label="아래 금액은 누구 기준으로 입력할까요?"
-            options={MONEY_MANAGEMENT_UNIT_OPTIONS}
-            value={input.moneyManagementUnit}
-            onChange={(value) => set("moneyManagementUnit", value)}
-          />
+          <div>
+            <SingleSelectField
+              label="앞으로 입력할 소득·지출은 어디까지 포함할까요?"
+              options={MONEY_MANAGEMENT_UNIT_OPTIONS}
+              value={input.moneyManagementUnit}
+              onChange={(value) => set("moneyManagementUnit", value)}
+            />
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              예: 부모님이 생활비나 주거비를 계속 지원하고 있다면 ‘부모·가족의 지원까지 포함’을 선택해주세요.
+            </p>
+          </div>
 
           <MultiSelectField
             label="1년 안팎으로 예정된 큰 변화가 있나요?"
@@ -276,23 +293,23 @@ export function SurveyForm({
       {step === 2 && (
         <div className="mt-4 space-y-4">
           <NumberField
-            label="월 실수령 또는 월 평균 소득(원)"
+            label="월 실수령 또는 월 평균 소득(만원)"
             value={input.monthlyIncomeKrw}
             onChange={(value) => set("monthlyIncomeKrw", value)}
           />
           <NumberField
-            label="월 고정지출·대출상환액(원)"
+            label="월 고정지출·대출상환액(만원)"
             value={input.monthlyFixedCostKrw}
             onChange={(value) => set("monthlyFixedCostKrw", value)}
             helper="월세·보험·정기결제·대출 원리금처럼 반복해서 나가는 돈을 합쳐주세요."
           />
           <NumberField
-            label="월 생활비·변동지출(원)"
+            label="월 생활비·변동지출(만원)"
             value={input.monthlyLivingCostKrw}
             onChange={(value) => set("monthlyLivingCostKrw", value)}
           />
           <NumberField
-            label="월 저축·투자액(원)"
+            label="월 저축·투자액(만원)"
             value={input.monthlySavingsKrw}
             onChange={(value) => set("monthlySavingsKrw", value)}
           />
@@ -330,16 +347,17 @@ export function SurveyForm({
       )}
 
       <div className="mt-auto flex gap-2 pt-8">
-        {step > 1 && (
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => setStep(1)}
-            className="h-13 rounded-full"
-          >
-            이전
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => {
+            if (step > 1) setStep(1);
+            else onBack();
+          }}
+          className="h-13 rounded-full"
+        >
+          이전
+        </Button>
         <Button
           size="lg"
           disabled={step === 1 ? !step1Complete : !step2Complete}

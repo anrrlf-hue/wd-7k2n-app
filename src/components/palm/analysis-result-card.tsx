@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,14 +11,24 @@ import type { AnalysisResult } from "@/lib/analysis-result";
 
 export function AnalysisResultCard({
   result,
+  concerns,
+  sajuSummary,
   onProceed,
   onRevise,
 }: {
   result: AnalysisResult;
+  concerns: FinanceQuestionId[];
+  sajuSummary: string | null;
   onProceed: (question: FinanceQuestionId) => void;
   onRevise: () => void;
 }) {
-  const [selectedQuestion, setSelectedQuestion] = useState<FinanceQuestionId | null>(null);
+  const availableQuestions = useMemo(
+    () => FINANCE_QUESTIONS.filter((question) => concerns.includes(question.id)),
+    [concerns],
+  );
+  const [selectedQuestion, setSelectedQuestion] = useState<FinanceQuestionId | null>(
+    availableQuestions.length === 1 ? availableQuestions[0].id : null,
+  );
   const insufficient = result.bottleneck === "insufficient_data";
 
   return (
@@ -28,33 +38,36 @@ export function AnalysisResultCard({
       transition={{ duration: 0.4 }}
     >
       <CompanionHeading state="diagnosis-reveal" presence="regular">
-        <p className="section-eyebrow">현실 재무진단</p>
+        <p className="section-eyebrow">사주에서 현실로</p>
         <h2 className="mt-3 text-2xl leading-snug font-semibold tracking-tight">
-          지금 내 삶에서
+          사주에서 본 나를,
           <br />
-          무엇이 중요한지 볼게요
+          지금의 삶으로 이어봅니다
         </h2>
       </CompanionHeading>
 
-      <p className="mt-3 text-base leading-7 text-muted-foreground">
-        사주와 손금은 나를 이해하는 데 쓰고, 아래 판단은 실제로 입력한 생활 정보만 기준으로 합니다.
-      </p>
+      {sajuSummary && (
+        <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
+          <p className="section-eyebrow">사주에서 본 나</p>
+          <p className="mt-2 text-base leading-7">{sajuSummary}</p>
+        </div>
+      )}
 
       {result.userConcern && (
-        <div className="mt-5 rounded-2xl border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">내가 적은 이야기</p>
+        <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">내가 추가로 적은 이야기</p>
           <p className="mt-2 text-base leading-7">“{result.userConcern}”</p>
         </div>
       )}
 
-      <div className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
-        <p className="section-eyebrow">지금의 흐름</p>
+      <div className="mt-5 rounded-2xl border border-border bg-card p-5">
+        <p className="section-eyebrow">지금의 현실</p>
         <p className="mt-2 text-base leading-7">{result.lifeMeaning}</p>
         {result.surplusKrw !== null && (
           <div className="mt-4">
             <p className="text-sm text-muted-foreground">저축·투자까지 배분한 뒤 남는 금액</p>
             <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
-              {result.surplusKrw.toLocaleString("ko-KR")}원
+              {(Math.round((result.surplusKrw / 10000) * 10) / 10).toLocaleString("ko-KR")}만원
               <span className="text-sm font-normal"> / 월</span>
             </p>
           </div>
@@ -66,7 +79,7 @@ export function AnalysisResultCard({
           {insufficient || result.bottleneck === "purpose_fund_confirmation"
             ? "먼저 확인할 부분"
             : result.bottleneck === "no_priority_bottleneck"
-              ? "현재의 우선순위"
+              ? "지금의 방향"
               : "지금 가장 먼저 볼 부분"}
         </p>
         <h3 className="mt-3 text-2xl leading-snug font-semibold">{result.headline}</h3>
@@ -83,7 +96,7 @@ export function AnalysisResultCard({
       )}
 
       <details className="mt-4 rounded-2xl border border-border bg-card p-4">
-        <summary className="cursor-pointer text-base font-medium">왜 이렇게 봤는지 확인하기</summary>
+        <summary className="cursor-pointer text-base font-medium">왜 이런 흐름으로 봤는지 보기</summary>
         <div className="mt-3 space-y-2 text-sm leading-7 text-muted-foreground">
           {result.eventContext && <p>{result.eventContext}</p>}
           {result.incomeContext && <p>{result.incomeContext}</p>}
@@ -98,14 +111,16 @@ export function AnalysisResultCard({
         </Button>
       ) : (
         <section className="transition-panel mt-8">
-          <p className="section-eyebrow">여기서부터는 내가 궁금한 것</p>
-          <h3 className="mt-2 text-xl font-semibold">지금 가장 알고 싶은 것은 무엇인가요?</h3>
+          <p className="section-eyebrow">내가 처음 고른 고민</p>
+          <h3 className="mt-2 text-xl font-semibold">
+            이 중 무엇을 먼저 더 자세히 보고 싶나요?
+          </h3>
           <p className="mt-2 text-base leading-7 text-muted-foreground">
-            하나를 고르면, 그 질문을 중심으로 다음 결과를 이어갑니다.
+            여러 고민은 함께 가져가되, 먼저 깊이 볼 하나를 골라주세요.
           </p>
 
           <div className="mt-5 space-y-2.5">
-            {FINANCE_QUESTIONS.map((question) => (
+            {(availableQuestions.length ? availableQuestions : FINANCE_QUESTIONS).map((question) => (
               <button
                 key={question.id}
                 type="button"
@@ -129,7 +144,7 @@ export function AnalysisResultCard({
             onClick={() => selectedQuestion && onProceed(selectedQuestion)}
             className="mt-5 h-14 w-full rounded-full text-base"
           >
-            이 질문, 내 상황에 맞게 이어보기 <ArrowRight className="size-4" />
+            내 고민을 더 자세히 보기 <ArrowRight className="size-4" />
           </Button>
         </section>
       )}
@@ -140,7 +155,7 @@ export function AnalysisResultCard({
           onClick={onRevise}
           className="mt-5 min-h-11 w-full text-center text-sm text-muted-foreground underline underline-offset-4"
         >
-          재무 답변 수정하기
+          바로 전 단계로 돌아가기
         </button>
       )}
     </motion.div>

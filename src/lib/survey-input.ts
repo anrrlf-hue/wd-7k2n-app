@@ -1,5 +1,7 @@
-// 간접체험 다음 재무 설문 — 3스텝. 기본 4금액과 해당 일정/만기의 선택 상세.
-// 빈 상세는 미확인으로 남긴다. 사주 요소는 개입하지 않는다.
+import type { FinanceQuestionId } from "@/lib/finance-question";
+
+// 사주·손금에서 본 나를 실제 생활과 연결하기 위한 2단계 재무 질문.
+// 금액은 내부 계산에서는 원(KRW)으로 유지하고 화면 입력은 만원 단위로 받는다.
 
 export interface SurveyOption {
   value: string;
@@ -90,10 +92,10 @@ export const FUTURE_EVENT_PREPARED_OPTIONS: SurveyOption[] = [
 ];
 
 export const MONEY_MANAGEMENT_UNIT_OPTIONS: SurveyOption[] = [
-  { value: "individual", label: "개인" },
-  { value: "couple", label: "부부공동" },
-  { value: "family_support", label: "가족지원포함" },
-  { value: "mixed_biz_personal", label: "사업자금-생활비 혼합" },
+  { value: "individual", label: "내 소득·지출만" },
+  { value: "couple", label: "배우자·연인과 함께" },
+  { value: "family_support", label: "부모·가족의 지원까지 포함" },
+  { value: "mixed_biz_personal", label: "사업자금과 생활비가 함께 움직임" },
 ];
 
 export const SPENDING_PATTERN_OPTIONS: SurveyOption[] = [
@@ -119,6 +121,7 @@ export interface SurveyInput {
   debtRemainingKrw?: number;
   debtPreparedKrw?: number;
   biggestConcern: string;
+  financeQuestionIds?: FinanceQuestionId[];
   jobType: string;
   futureEvents: string[];
   primaryFutureEvent?: string;

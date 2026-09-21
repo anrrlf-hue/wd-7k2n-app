@@ -15,7 +15,7 @@ export function TrustBadges() {
     <div className="mystic-card mt-4 p-4">
       <p className="flex items-center gap-1.5 text-xs font-semibold text-(--gold)">
         <ShieldCheck className="size-3.5" />
-        이렇게 설계했습니다
+        이런 경험을 바탕으로 방향을 함께 잡습니다
       </p>
       <ul className="mt-2 space-y-1.5">
         {badges.map((b) => (
