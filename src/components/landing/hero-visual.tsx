@@ -4,12 +4,12 @@ export function HeroVisual() {
   return (
     <div aria-hidden="true" className="hero-scene pointer-events-none select-none">
       <Image
-        src="/images/undon-hero-reference.png"
+        src="/images/undon-woman-cat-scene.png"
         alt=""
-        width={340}
-        height={690}
-        sizes="(max-width: 480px) 72vw, 340px"
-        preload
+        width={600}
+        height={760}
+        sizes="(max-width: 480px) 72vw, 360px"
+        priority
         className="hero-background"
       />
     </div>

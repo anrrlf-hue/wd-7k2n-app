@@ -957,3 +957,250 @@ fieldset.survey-field { padding-top: 8px; }
   cursor: pointer;
   pointer-events: auto !important;
 }
+
+/* 2026-09-22 — actual saju·finance homepage, based on the approved mobile composition.
+   No phone mockup. No screenshot-as-page. */
+.landing-screen {
+  min-height: 100svh;
+  background: #07172d;
+  color: #fff;
+}
+.landing-shell {
+  width: min(100%, 480px);
+  margin: 0 auto;
+  overflow: hidden;
+  background: #07172d;
+}
+.landing-hero {
+  position: relative;
+  min-height: 720px;
+  padding: 26px 24px 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 80% 20%, rgba(250,214,135,.17), transparent 20%),
+    radial-gradient(circle at 50% 0%, rgba(40,76,119,.55), transparent 48%),
+    linear-gradient(180deg, #08203f 0%, #0a1d37 57%, #10233c 100%);
+}
+.landing-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .55;
+  background-image:
+    radial-gradient(circle at 9% 13%, #fff8cf 0 1px, transparent 1.5px),
+    radial-gradient(circle at 73% 16%, #ffd98c 0 1px, transparent 1.5px),
+    radial-gradient(circle at 86% 30%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 18% 46%, #ffd98c 0 1px, transparent 1.5px);
+}
+.landing-topbar {
+  position: relative;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.landing-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff8e7;
+  font-family: serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -.04em;
+}
+.landing-logo svg { color: #f7d173; }
+.landing-management {
+  height: 44px !important;
+  padding-inline: 18px !important;
+  border: 1px solid rgba(255,239,191,.75) !important;
+  background: linear-gradient(180deg,#ffe8a6,#e8b953) !important;
+  color: #0b2342 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 8px 28px rgba(0,0,0,.18);
+}
+.landing-hero-copy {
+  position: relative;
+  z-index: 3;
+  min-height: 625px;
+}
+.landing-copy-stack {
+  position: relative;
+  z-index: 5;
+  max-width: 320px;
+  padding-top: 62px;
+}
+.landing-kicker {
+  margin: 0 0 26px;
+  color: rgba(255,255,255,.78);
+  font-size: 15px;
+  line-height: 1.65;
+  letter-spacing: .08em;
+}
+.landing-headline {
+  margin: 0;
+  font-family: serif;
+  font-size: clamp(39px, 10.8vw, 52px);
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -.045em;
+  text-shadow: 0 2px 18px rgba(0,0,0,.18);
+}
+.landing-headline span { color: #f2c766; }
+.landing-subcopy {
+  margin: 24px 0 0;
+  color: rgba(255,255,255,.86);
+  font-size: 16px;
+  line-height: 1.78;
+}
+.landing-main-cta {
+  position: relative;
+  z-index: 9;
+  width: 238px;
+  margin-top: 26px;
+  border: 1px solid rgba(255,235,183,.85) !important;
+  background: linear-gradient(180deg,#ffe5a2 0%,#e8b64a 100%) !important;
+  color: #0b2342 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 13px 30px rgba(0,0,0,.25);
+}
+.hero-scene {
+  position: absolute;
+  z-index: 2;
+  right: -108px;
+  bottom: -6px;
+  width: 430px;
+  height: 545px;
+  overflow: hidden;
+  border-radius: 180px 0 0 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 11%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 11%, #000 88%, transparent 100%);
+}
+.hero-background {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 52% 50%;
+  filter: saturate(.96) contrast(1.02);
+}
+.landing-how {
+  position: relative;
+  z-index: 5;
+  margin-top: -34px;
+  padding: 46px 20px 30px;
+  border-radius: 38px 38px 0 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,.95), transparent 32%),
+    linear-gradient(180deg,#fffdfa 0%,#f8f0e5 100%);
+  color: #0c2445;
+}
+.landing-how h2 {
+  margin: 0;
+  text-align: center;
+  font-family: serif;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+}
+.landing-how h2::after {
+  content: "◡";
+  display: block;
+  margin-top: 3px;
+  color: #c99838;
+  font-size: 22px;
+  line-height: 1;
+}
+.landing-how-subcopy {
+  margin: 10px 0 22px;
+  text-align: center;
+  color: #687b95;
+  font-size: 14px;
+}
+.landing-steps {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.landing-step-card {
+  min-height: 0;
+  padding: 18px 16px;
+  border: 1px solid #efe4d2;
+  border-radius: 22px;
+  background: rgba(255,255,255,.82);
+  text-align: center;
+  box-shadow: 0 10px 26px rgba(59,45,22,.045);
+}
+.landing-step-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 10px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff1d6;
+  color: #875d20;
+}
+.landing-step-card h3 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+  font-weight: 900;
+}
+.landing-step-card p {
+  margin: 7px 0 0;
+  color: #687b95;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.landing-returning {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 15px 16px;
+  border-radius: 18px;
+  background: #fff7eb;
+  color: #17345a;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.landing-returning-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f6d98d;
+  color: #6f4917;
+}
+.landing-footer {
+  display: block !important;
+  min-height: 132px;
+  padding: 28px 20px 38px !important;
+  background: #f8f0e5 !important;
+  color: #637892 !important;
+  text-align: center !important;
+  overflow: visible !important;
+}
+.landing-footer span {
+  display: block;
+  color: #536b8d;
+  font-family: serif;
+  font-size: 27px;
+  font-weight: 800;
+}
+.landing-footer p {
+  display: block;
+  margin: 6px 0 0 !important;
+  color: #71839a !important;
+  font-size: 14px;
+}
+@media (min-width: 520px) {
+  .landing-shell {
+    margin-block: 20px;
+    border-radius: 34px;
+    box-shadow: 0 26px 80px rgba(0,0,0,.35);
+  }
+}
