@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { BrandCompanion } from "@/components/brand-companion";
 
 export function HeroVisual() {
   return (
@@ -7,18 +6,15 @@ export function HeroVisual() {
       <div className="hero-moon" />
       <div className="hero-world">
         <Image
-          src="/images/wealth-study-background.webp"
+          src="/images/undon-hero-woman-cat.jpg"
           alt=""
-          width={960}
-          height={1200}
+          width={500}
+          height={500}
           sizes="(max-width: 480px) 100vw, 480px"
           preload
           className="hero-background"
         />
         <div className="hero-vignette" />
-        <div className="hero-companion">
-          <BrandCompanion state="welcome" presence="scene" />
-        </div>
       </div>
     </div>
   );

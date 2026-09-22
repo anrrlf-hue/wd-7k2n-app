@@ -519,3 +519,29 @@ fieldset.survey-field { padding-top: 8px; }
   .landing-shell { border-radius: 32px; box-shadow: 0 24px 80px #02091466; }
   .hero-scene { height: 290px; }
 }
+
+/* Hero artwork must visibly use the approved 04 woman + cat reference. */
+.hero-scene { height: 340px; margin-top: 10px; }
+.hero-world {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: radial-gradient(circle at 70% 18%, #2b4664 0, #102942 55%, #0a1b31 100%);
+}
+.hero-background {
+  position: relative;
+  z-index: 1;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  opacity: 1;
+  filter: none;
+  animation: world-settle 1600ms ease-out both;
+}
+.hero-vignette {
+  z-index: 2;
+  background: linear-gradient(90deg, #0b20354d 0%, transparent 18%, transparent 82%, #0b20354d 100%), linear-gradient(180deg, transparent 72%, #0b203580 100%);
+}
+.hero-moon { z-index: 0; opacity: .55; }
