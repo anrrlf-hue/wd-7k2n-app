@@ -1,0 +1,56 @@
+.home {
+  min-height: 100svh;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #081a31;
+}
+.screen {
+  position: relative;
+  width: min(100%, 480px);
+  overflow: hidden;
+  background: #f8f2e8;
+}
+.master {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.hotspot {
+  position: absolute;
+  z-index: 10;
+  display: block;
+  background: transparent;
+  border-radius: 999px;
+}
+.management {
+  top: 2.25%;
+  right: 4.7%;
+  width: 24.5%;
+  height: 4.2%;
+}
+.diagnosis {
+  top: 33.85%;
+  left: 5.8%;
+  width: 45.5%;
+  height: 5.3%;
+}
+.returning {
+  top: 81.7%;
+  left: 3.2%;
+  width: 93.5%;
+  height: 6.8%;
+  border-radius: 18px;
+}
+.hotspot:focus-visible {
+  outline: 3px solid #fff0b8;
+  outline-offset: 2px;
+}
+@media (min-width: 520px) {
+  .screen {
+    margin-block: 20px;
+    border-radius: 28px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.35);
+  }
+}
