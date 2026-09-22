@@ -1233,11 +1233,11 @@ fieldset.survey-field { padding-top: 8px; }
   width: min(100%, 480px) !important;
   margin: 0 auto !important;
   overflow: hidden !important;
-  background: #071b38 !important;
+  background: #f8f1e7 !important;
 }
 .landing-hero {
   position: relative !important;
-  min-height: 374px !important;
+  min-height: 355px !important;
   padding: 0 !important;
   overflow: hidden !important;
   background:
@@ -1273,7 +1273,7 @@ fieldset.survey-field { padding-top: 8px; }
   position: relative !important;
   z-index: 3 !important;
   min-height: 0 !important;
-  padding: 30px 27px 20px !important;
+  padding: 18px 27px 20px !important;
 }
 .landing-copy-stack {
   position: relative !important;
@@ -1306,10 +1306,10 @@ fieldset.survey-field { padding-top: 8px; }
   line-height: 1.58 !important;
 }
 .landing-main-cta {
-  width: 190px !important;
+  width: 174px !important;
   min-width: 0 !important;
-  height: 43px !important;
-  margin-top: 17px !important;
+  height: 40px !important;
+  margin-top: 15px !important;
   padding-inline: 17px !important;
   justify-content: center !important;
   border: 1px solid rgba(255,235,183,.86) !important;
