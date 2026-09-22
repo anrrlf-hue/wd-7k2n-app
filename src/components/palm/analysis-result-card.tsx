@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CompanionHeading } from "@/components/angel-companion";
+import { CompanionHeading } from "@/components/brand-companion";
 import { eunNeun } from "@/lib/korean-particle";
 import { FINANCE_QUESTIONS, type FinanceQuestionId } from "@/lib/finance-question";
 import type { AnalysisResult } from "@/lib/analysis-result";

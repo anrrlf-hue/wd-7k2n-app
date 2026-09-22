@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { CompanionHeading } from "@/components/angel-companion";
+import { CompanionHeading } from "@/components/brand-companion";
 import { JourneyScene } from "@/components/journey-scene";
 import { Button } from "@/components/ui/button";
 import { getExperienceScenes, computeExperienceOutcome } from "@/lib/indirect-experience";

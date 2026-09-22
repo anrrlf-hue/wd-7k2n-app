@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AngelCompanion } from "@/components/angel-companion";
+import { BrandCompanion } from "@/components/brand-companion";
 
 // 실제 파이프라인 4단계(사주 계산 -> 구조 분석 -> 재물/직업 흐름 분석 ->
 // 개인 해석 생성)에 맞춘 문구. 딥 해석 호출이 오래 걸리면 마지막 문구에서
@@ -31,7 +31,7 @@ export function LoadingStep() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
-      <AngelCompanion state="analyzing" presence="transition" />
+      <BrandCompanion state="analyzing" presence="transition" />
       <AnimatePresence mode="wait" initial={false}>
         <motion.p
           key={statusIndex}

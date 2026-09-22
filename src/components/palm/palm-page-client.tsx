@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Camera, ImagePlus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CompanionHeading } from "@/components/angel-companion";
+import { CompanionHeading } from "@/components/brand-companion";
 import { JourneyHeader } from "@/components/journey-header";
 import { JourneyScene } from "@/components/journey-scene";
 import type { FinanceQuestionId } from "@/lib/finance-question";

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CompanionHeading } from "@/components/angel-companion";
+import { CompanionHeading } from "@/components/brand-companion";
 import { FINANCE_QUESTIONS, type FinanceQuestionId } from "@/lib/finance-question";
 import {
   futureEventAnswersComplete,

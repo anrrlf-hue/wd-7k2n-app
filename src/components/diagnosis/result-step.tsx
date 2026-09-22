@@ -1,6 +1,6 @@
 "use client";
 
-import { CompanionHeading } from "@/components/angel-companion";
+import { CompanionHeading } from "@/components/brand-companion";
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";

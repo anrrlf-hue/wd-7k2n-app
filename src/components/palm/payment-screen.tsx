@@ -8,7 +8,7 @@ import { PaywallOffer } from "@/components/diagnosis/paywall-offer";
 import { TrustBadges } from "@/components/palm/trust-badges";
 import { REPORT_CONTENTS } from "@/lib/report-contents";
 import { PAYMENT_TIMING_NOTICE, REFUND_POLICY_NOTICE } from "@/lib/payment-notices";
-import { CompanionHeading } from "@/components/angel-companion";
+import { CompanionHeading } from "@/components/brand-companion";
 import { JourneyScene } from "@/components/journey-scene";
 import { financeQuestion, FINANCE_QUESTIONS, type FinanceQuestionId } from "@/lib/finance-question";
 import type { AnalysisResult } from "@/lib/analysis-result";
