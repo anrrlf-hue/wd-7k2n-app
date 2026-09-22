@@ -947,3 +947,13 @@ fieldset.survey-field { padding-top: 8px; }
     box-shadow: 0 28px 90px #02081470;
   }
 }
+
+/* CTA hotspot correction: align click target to the visible gold button in the locked reference image. */
+.reference-hotspot-cta {
+  top: 36.6% !important;
+  left: 4.8% !important;
+  width: 53% !important;
+  height: 7.2% !important;
+  cursor: pointer;
+  pointer-events: auto !important;
+}
