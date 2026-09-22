@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Hand, MoonStar, Sparkles, TrendingUp, UserRound } from "lucide-react";
+import { ArrowRight, ChevronRight, Hand, MoonStar, Sparkles, TrendingUp, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LandingReveal } from "@/components/landing/landing-reveal";
 import { HeroVisual } from "@/components/landing/hero-visual";
@@ -27,40 +27,45 @@ export default function Home() {
     <main className="landing-screen">
       <LandingReveal>
         <div className="landing-shell">
-          <header className="landing-topbar">
-            <Link href="/" className="landing-logo" aria-label="운돈 홈">
-              <Sparkles className="size-5" />
-              <span>운·돈</span>
-            </Link>
-            <Button asChild size="sm" className="landing-management rounded-full">
-              <Link href="/login?next=/management">
-                <UserRound className="size-4" />
-                내 관리
+          <section className="landing-hero">
+            <header className="landing-topbar">
+              <Link href="/" className="landing-logo" aria-label="운돈 홈">
+                <Sparkles className="size-5" />
+                <span>운·돈</span>
               </Link>
-            </Button>
-          </header>
-          <section className="landing-hero-copy">
-            <p className="landing-kicker">운이 흐르면, 오늘이 달라집니다.</p>
-            <h1 className="landing-headline">
-              사주풀이의 운이
-              <br />
-              <span>현실로 이어진다</span>
-            </h1>
-            <p className="landing-subcopy">
-              타고난 흐름을 읽고,
-              <br />
-              지금의 선택과 돈의 방향까지 연결합니다.
-            </p>
+              <Button asChild size="sm" className="landing-management rounded-full">
+                <Link href="/login?next=/management">
+                  <UserRound className="size-4" />
+                  내 관리
+                </Link>
+              </Button>
+            </header>
+            <div className="landing-hero-copy">
+              <div className="landing-copy-stack">
+                <p className="landing-kicker">운이 흐르면,<br />오늘이 달라집니다.</p>
+                <h1 className="landing-headline">
+                  사주풀이의 운이
+                  <br />
+                  <span>현실로 이어진다</span>
+                </h1>
+                <p className="landing-subcopy">
+                  타고난 흐름을 읽고,
+                  <br />
+                  지금의 선택과 돈의 방향까지
+                  <br />
+                  연결합니다.
+                </p>
 
-            <HeroVisual />
+                <Button asChild size="lg" className="primary-cta landing-main-cta h-14 rounded-full text-base">
+                  <Link href="/diagnosis">
+                    내 재물운 무료 보기
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
 
-            <Button asChild size="lg" className="primary-cta landing-main-cta h-14 w-full rounded-full text-base">
-              <Link href="/diagnosis">
-                내 재물운 무료 보기
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <p className="landing-note">무료 · 약 1분 · 출생시간을 몰라도 시작할 수 있어요</p>
+              <HeroVisual />
+            </div>
           </section>
 
           <section className="landing-how" aria-label="운돈이 특별한 이유">
@@ -75,6 +80,12 @@ export default function Home() {
                 </article>
               ))}
             </div>
+
+            <Link href="/login?next=/management" className="landing-returning">
+              <span className="landing-returning-icon"><UserRound className="size-5" /></span>
+              <span>기존 이용자는 ‘내 관리’에서<br />로그인 후 이어서 볼 수 있어요.</span>
+              <ChevronRight className="ml-auto size-5" />
+            </Link>
           </section>
 
           <footer className="landing-footer">
