@@ -12,7 +12,7 @@ export default function Home() {
       <h1 className="landing-headline font-semibold tracking-tight">타고난 운세로 끝내지 않고,<br /><span>현실로 연결합니다.</span></h1>
       <div className="mx-auto mt-7 w-full max-w-sm">
         <Button asChild size="lg" className="primary-cta h-14 w-full rounded-full text-base">
-          <Link href="/diagnosis">내 재물사주 무료로 보기 <ArrowRight className="size-4" /></Link>
+          <Link href="/diagnosis">내 재물운 무료 보기 <ArrowRight className="size-4" /></Link>
         </Button>
         <p className="mt-3 text-xs text-muted-foreground">약 1분 · 출생시간 몰라도 가능</p>
         <Link
