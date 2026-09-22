@@ -1204,3 +1204,21 @@ fieldset.survey-field { padding-top: 8px; }
     box-shadow: 0 26px 80px rgba(0,0,0,.35);
   }
 }
+
+/* hero asset correction — use the existing approved woman+cat artwork as an artwork, not a screenshot crop */
+.hero-scene {
+  right: -34px !important;
+  bottom: 6px !important;
+  width: 350px !important;
+  height: 364px !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 10%, #000 88%, transparent 100%) !important;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 10%, #000 88%, transparent 100%) !important;
+}
+.hero-background {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: right bottom !important;
+}
