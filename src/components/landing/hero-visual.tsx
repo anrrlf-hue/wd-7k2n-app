@@ -8,8 +8,8 @@ export function HeroVisual() {
         <Image
           src="/images/undon-hero-woman-cat.jpg"
           alt=""
-          width={500}
-          height={500}
+          width={390}
+          height={405}
           sizes="(max-width: 480px) 100vw, 480px"
           preload
           className="hero-background"

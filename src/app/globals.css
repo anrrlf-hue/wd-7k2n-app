@@ -545,3 +545,96 @@ fieldset.survey-field { padding-top: 8px; }
   background: linear-gradient(90deg, #0b20354d 0%, transparent 18%, transparent 82%, #0b20354d 100%), linear-gradient(180deg, transparent 72%, #0b203580 100%);
 }
 .hero-moon { z-index: 0; opacity: .55; }
+
+/* FINAL 2026-09-22: approved woman + white moon-cat visual, existing product copy flow preserved. */
+.brand-companion {
+  overflow: hidden;
+  border-radius: 38% 38% 44% 44%;
+  background: #142842;
+  box-shadow: 0 7px 20px #07111f30, 0 0 0 1px #e7c78b2e;
+}
+.brand-portrait {
+  object-fit: cover;
+  object-position: 68% 52%;
+  border-radius: inherit;
+}
+.brand-light { z-index: 1; opacity: .42; }
+.brand-shadow { display: none; }
+.brand-portrait { z-index: 2; }
+
+.landing-hero-copy { padding-top: 46px; }
+.landing-kicker { letter-spacing: .08em; }
+.landing-headline { max-width: 420px; }
+.landing-headline span { color: #f3cc7c; }
+.landing-subcopy { max-width: 380px; color: #e2e9f1; }
+
+.hero-scene {
+  height: 340px;
+  margin: 12px -24px 14px;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 90%, transparent 100%);
+}
+.hero-world {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding-right: 10px;
+  background:
+    radial-gradient(circle at 74% 28%, #2d4a6a 0%, #173453 30%, #0b2038 68%, #09192e 100%);
+}
+.hero-background {
+  width: min(90%, 390px);
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: right bottom;
+  opacity: 1;
+  filter: none;
+  border-radius: 28px 0 0 0;
+  box-shadow: -18px 10px 40px #050b1428;
+}
+.hero-vignette {
+  z-index: 2;
+  background:
+    linear-gradient(90deg, #0a1d3400 58%, #0a1d3420 100%),
+    linear-gradient(180deg, transparent 72%, #0a1d3490 100%);
+}
+.hero-moon {
+  z-index: 0;
+  top: 28px;
+  right: 28px;
+  width: 92px;
+  height: 92px;
+  opacity: .9;
+}
+
+.landing-how {
+  margin-top: 0;
+  padding: 34px 18px 28px;
+}
+.landing-how h2 {
+  font-size: 25px;
+  color: #142a46;
+}
+.landing-how-subcopy {
+  margin-top: 8px;
+  color: #6f7f92;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.landing-steps { margin-top: 22px; gap: 8px; }
+.landing-step-card { padding: 16px 8px 18px; }
+.landing-step-card h3 {
+  min-height: 42px;
+  font-size: 12px;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+.landing-step-card p {
+  font-size: 10.5px;
+  line-height: 1.58;
+}
+@media (max-width: 370px) {
+  .landing-steps { grid-template-columns: 1fr; }
+  .landing-step-card h3 { min-height: 0; font-size: 14px; }
+  .landing-step-card p { font-size: 12px; }
+}
