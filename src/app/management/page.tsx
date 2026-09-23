@@ -207,7 +207,7 @@ export default function ManagementPage() {
           <p className="mt-3 text-base leading-7 text-muted-foreground">
             사주·손금과 현실 재무질문을 완료한 뒤 맞춤 재무 방향을 저장하면 여기서 계속 관리할 수 있어요.
           </p>
-          {accountConfigured && !accountAuthenticated && (
+          {false && (
             <Button asChild size="lg" className="mt-6 h-14 w-full rounded-full text-base">
               <Link href="/login?next=/management">로그인해서 내 기록 불러오기</Link>
             </Button>
@@ -462,7 +462,7 @@ export default function ManagementPage() {
           지금의 변화를 이어갑니다
         </h1>
 
-        {accountConfigured && (
+        {accountConfigured && accountAuthenticated && (
           <div className="mt-5 rounded-2xl border border-border bg-card p-4">
             {accountAuthenticated ? (
               <div>
