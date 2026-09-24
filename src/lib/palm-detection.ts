@@ -8,7 +8,7 @@ import {
   HandLandmarker,
   type NormalizedLandmark,
 } from "@mediapipe/tasks-vision";
-import { analyzeEdgeBand, analyzeVerticalEdgeBand } from "@/lib/palm-line-features";
+import { analyzeEdgeBand, analyzeVerticalCreaseBand } from "@/lib/palm-line-features";
 import { runPalmLineOnnx, preloadPalmLineModel, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
 import type {
   HandShape,
@@ -207,6 +207,36 @@ function cropAndRotatePalm(
   return flipped;
 }
 
+function landmarksInPalmCrop(
+  landmarksPx: { x: number; y: number }[],
+  isLeftHanded: boolean,
+  margin = 100,
+): { x: number; y: number }[] {
+  const wrist = landmarksPx[0];
+  const middleMcp = landmarksPx[9];
+  const v = { x: middleMcp.x - wrist.x, y: middleMcp.y - wrist.y };
+  const angle = Math.atan2(-v.x, -v.y);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const cx = landmarksPx.reduce((sum, p) => sum + p.x, 0) / landmarksPx.length;
+  const cy = landmarksPx.reduce((sum, p) => sum + p.y, 0) / landmarksPx.length;
+  const rotated = landmarksPx.map((p) => {
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    return { x: dx * cos - dy * sin, y: dx * sin + dy * cos };
+  });
+  const minX = Math.min(...rotated.map((p) => p.x)) - margin;
+  const minY = Math.min(...rotated.map((p) => p.y)) - margin;
+  const maxX = Math.max(...rotated.map((p) => p.x)) + margin;
+  const outW = Math.max(1, Math.round(maxX - minX));
+
+  return rotated.map((p) => {
+    const x = p.x - minX;
+    const y = p.y - minY;
+    return { x: isLeftHanded ? x : outW - x, y };
+  });
+}
+
 const ONNX_CLASS_TO_LINE_NAME: Record<OnnxLineClass, LineName> = {
   heart_line: "감정선",
   head_line: "두뇌선",
@@ -224,48 +254,66 @@ function secondaryLineSignal(
   roi: Rect,
   label: string,
 ): NonNullable<PalmFacts["secondaryLines"]>["fate"] {
-  const signal = analyzeVerticalEdgeBand(imageData, roi);
-  const strength = Math.min(1, signal.density);
-  const clear = strength >= 0.14 && signal.span >= 0.42;
-  const faint = !clear && strength >= 0.08 && signal.span >= 0.26;
+  const signal = analyzeVerticalCreaseBand(imageData, roi);
+  const strength = Math.min(1, signal.contrast * 0.55 + signal.density * 0.45);
+  const clear =
+    signal.continuity >= 0.38 &&
+    signal.contrast >= 0.25 &&
+    signal.density >= 0.08;
+  const faint =
+    !clear &&
+    signal.continuity >= 0.22 &&
+    signal.contrast >= 0.18 &&
+    signal.density >= 0.04;
 
   return {
     status: clear ? "clear" : faint ? "faint" : "not_seen",
     strength,
-    span: signal.span,
+    span: signal.continuity,
     note: clear
-      ? `${label} 후보가 해당 영역에서 비교적 선명하게 이어집니다.`
+      ? `${label} 후보 영역에서 연결된 어두운 주름 신호가 비교적 길게 이어집니다.`
       : faint
-        ? `${label} 후보가 희미하게 보이지만 단정하기에는 약합니다.`
-        : `${label} 후보가 이번 사진에서는 충분히 선명하게 확인되지 않습니다.`,
+        ? `${label} 후보 영역에 일부 주름 신호가 있지만 연속성이 충분하지 않습니다.`
+        : `${label} 후보 영역에서 연속된 주름 신호가 충분히 확인되지 않습니다.`,
   };
 }
 
-function detectSecondaryPalmLines(crop: HTMLCanvasElement): NonNullable<PalmFacts["secondaryLines"]> | undefined {
+function detectSecondaryPalmLines(
+  crop: HTMLCanvasElement,
+  landmarks: { x: number; y: number }[],
+): NonNullable<PalmFacts["secondaryLines"]> | undefined {
   const ctx = crop.getContext("2d");
-  if (!ctx || crop.width < 10 || crop.height < 10) return undefined;
+  if (!ctx || crop.width < 10 || crop.height < 10 || landmarks.length < 18) return undefined;
   const imageData = ctx.getImageData(0, 0, crop.width, crop.height);
-  const w = crop.width;
-  const h = crop.height;
+  const wrist = landmarks[0];
+  const indexMcp = landmarks[5];
+  const middleMcp = landmarks[9];
+  const ringMcp = landmarks[13];
+  const pinkyMcp = landmarks[17];
 
-  // cropAndRotatePalm 이후 손목은 아래, 손가락은 위를 향하도록 정규화된다.
-  // 세 영역은 전통적으로 보는 위치를 넓게 잡은 "후보 영역"이며 확정 판정이 아니다.
+  const palmWidth = Math.max(12, Math.abs(indexMcp.x - pinkyMcp.x));
+  const palmTopY = (indexMcp.y + middleMcp.y + ringMcp.y + pinkyMcp.y) / 4;
+  const palmHeight = Math.max(20, wrist.y - palmTopY);
+  const lowerY = Math.min(crop.height - 1, wrist.y - palmHeight * 0.08);
+
+  const roi = (centerX: number, widthRatio: number, startRatio: number, endRatio: number): Rect => {
+    const width = palmWidth * widthRatio;
+    const y = palmTopY + palmHeight * startRatio;
+    const endY = Math.min(lowerY, palmTopY + palmHeight * endRatio);
+    return {
+      x: Math.max(0, Math.min(crop.width - width, centerX - width / 2)),
+      y: Math.max(0, y),
+      width: Math.max(6, Math.min(width, crop.width)),
+      height: Math.max(10, endY - y),
+    };
+  };
+
+  // 손가락 MCP와 손목을 기준으로 잡은 후보 영역이다.
+  // 선의 존재/종류를 확정하는 분류기가 아니라 후속 검증용 관측 신호다.
   return {
-    fate: secondaryLineSignal(
-      imageData,
-      { x: w * 0.40, y: h * 0.46, width: w * 0.20, height: h * 0.40 },
-      "운명선",
-    ),
-    sun: secondaryLineSignal(
-      imageData,
-      { x: w * 0.55, y: h * 0.34, width: w * 0.18, height: h * 0.35 },
-      "태양선",
-    ),
-    wealth: secondaryLineSignal(
-      imageData,
-      { x: w * 0.70, y: h * 0.36, width: w * 0.18, height: h * 0.30 },
-      "재물선",
-    ),
+    fate: secondaryLineSignal(imageData, roi(middleMcp.x, 0.26, 0.14, 0.92), "운명선"),
+    sun: secondaryLineSignal(imageData, roi(ringMcp.x, 0.22, 0.10, 0.70), "태양선"),
+    wealth: secondaryLineSignal(imageData, roi(pinkyMcp.x, 0.24, 0.10, 0.58), "재물선"),
   };
 }
 
@@ -387,7 +435,8 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   // 향하도록 회전 + 고정 마진 크롭 + 좌우손 통일(미러링)한 뒤 넣는다.
   // 실패해도(모델 로드 실패, 추론 오류) null만 반환하고 Sobel 결과로 계속 진행한다.
   const palmCrop = cropAndRotatePalm(canvas, landmarksPx, handSide === "left");
-  const secondaryLines = detectSecondaryPalmLines(palmCrop);
+  const palmCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left");
+  const secondaryLines = detectSecondaryPalmLines(palmCrop, palmCropLandmarks);
   const onnxRaw = await runPalmLineOnnx(palmCrop);
   const onnxLines: PalmFacts["onnxLines"] = onnxRaw
     ? {
