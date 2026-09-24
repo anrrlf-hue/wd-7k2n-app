@@ -1,4 +1,4 @@
-import { EvidenceToggle, ReportSection } from "@/components/diagnosis/report-section";
+import { ReportSection } from "@/components/diagnosis/report-section";
 import { buildPalmReadingSections, buildTraditionalReadingText } from "@/lib/palm-observation-text";
 import type { PalmFacts } from "@/lib/palm-facts";
 import type { CompareItem } from "@/lib/triple-compare";
@@ -12,7 +12,6 @@ export function PalmReadingSections({ facts }: { facts: PalmFacts }) {
           <div key={section.key} className={section.key === "wealth" ? "rounded-2xl border border-(--gold-soft) bg-card p-4" : ""}>
             <h3 className="text-base font-semibold text-foreground">{section.title}</h3>
             <p className="mt-2 text-base leading-7 text-muted-foreground">{section.text}</p>
-            <EvidenceToggle evidence={section.observation} title={section.title} text={section.text} />
           </div>
         ))}
         {sections.length === 0 && <p>{buildTraditionalReadingText(facts)}</p>}

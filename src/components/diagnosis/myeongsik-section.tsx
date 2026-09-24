@@ -1,6 +1,6 @@
 "use client";
 
-import { ReportSection } from "@/components/diagnosis/report-section";
+import { EvidenceToggle, ReportSection } from "@/components/diagnosis/report-section";
 import { pillarLifeAreaLabel } from "@/lib/saju-labels";
 import type { MyeongsikView } from "@/lib/myeongsik-view";
 
@@ -34,6 +34,13 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
   if (!view) return null;
   const advice = elementAdvice(view);
   const missing = FIVE_ELEMENT_ORDER.filter((el) => (view.fiveElements[el] ?? 0) === 0);
+  const minimum = Math.min(...FIVE_ELEMENT_ORDER.map((el) => view.fiveElements[el] ?? 0));
+  const low = FIVE_ELEMENT_ORDER.filter((el) => (view.fiveElements[el] ?? 0) === minimum);
+  const elementEvidence =
+    `오행 분포는 ${FIVE_ELEMENT_ORDER.map((el) => `${el} ${view.fiveElements[el] ?? 0}`).join(" · ")}입니다. ` +
+    (missing.length > 0
+      ? `이 중 ${missing.join("·")}가 없어 부족한 오행으로 봤어요.`
+      : `가장 적은 오행은 ${low.join("·")}라서 이 부분을 상대적으로 약한 쪽으로 봤어요.`);
 
   return (
     <ReportSection title="명식(命式) — 내 사주의 기본 구조">
@@ -80,6 +87,11 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
           </div>
         ))}
       </div>
+      <EvidenceToggle
+        evidence={elementEvidence}
+        title="오행 부족과 균형"
+        adviceOverride={advice.join(" ")}
+      />
 
       <p className="mt-4 text-sm">
         격국 <span className="font-semibold">{view.geukguk}</span> · 신강신약{" "}

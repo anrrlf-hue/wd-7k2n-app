@@ -100,25 +100,42 @@ export function EvidenceToggle({
   evidence,
   title,
   text,
+  adviceOverride,
 }: {
   evidence: string;
   title?: string;
   text?: string;
+  adviceOverride?: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const advice = buildAdvice({ title, text, evidence });
+  const [open, setOpen] = useState<"why" | "how" | null>(null);
+  const advice = adviceOverride ?? buildAdvice({ title, text, evidence });
 
   return (
     <div className="mt-2">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="text-sm text-muted-foreground underline decoration-dotted underline-offset-2"
-      >
-        어떻게 할까요?
-      </button>
-      {open && (
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => (value === "why" ? null : "why"))}
+          aria-expanded={open === "why"}
+          className="text-sm text-muted-foreground underline decoration-dotted underline-offset-2"
+        >
+          왜 이렇게 봤나요?
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => (value === "how" ? null : "how"))}
+          aria-expanded={open === "how"}
+          className="text-sm text-muted-foreground underline decoration-dotted underline-offset-2"
+        >
+          어떻게 할까요?
+        </button>
+      </div>
+      {open === "why" && (
+        <p className="mt-2 rounded-xl bg-muted p-3.5 text-[15px] leading-7 text-muted-foreground">
+          {evidence}
+        </p>
+      )}
+      {open === "how" && (
         <p className="mt-2 rounded-xl bg-accent p-3.5 text-[15px] leading-7 text-accent-foreground">
           {advice}
         </p>
@@ -132,11 +149,13 @@ export function ParagraphSection({
   step,
   paragraph,
   boxed,
+  showGuidance = false,
 }: {
   title: string;
   step?: string;
   paragraph: { text: string; evidence: string };
   boxed?: boolean;
+  showGuidance?: boolean;
 }) {
   return (
     <ReportSection title={title} step={step}>
@@ -145,7 +164,9 @@ export function ParagraphSection({
       ) : (
         <p>{paragraph.text}</p>
       )}
-      <EvidenceToggle evidence={paragraph.evidence} title={title} text={paragraph.text} />
+      {showGuidance && (
+        <EvidenceToggle evidence={paragraph.evidence} title={title} text={paragraph.text} />
+      )}
     </ReportSection>
   );
 }
@@ -167,7 +188,6 @@ export function EvidenceItemCard({
         {index}. {title}
       </p>
       <p className="mt-1.5 text-[15px] leading-7 text-muted-foreground">{detail}</p>
-      <EvidenceToggle evidence={evidence} title={title} text={detail} />
     </div>
   );
 }

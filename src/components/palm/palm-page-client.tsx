@@ -10,7 +10,7 @@ import { JourneyHeader } from "@/components/journey-header";
 import { JourneyScene } from "@/components/journey-scene";
 import type { FinanceQuestionId } from "@/lib/finance-question";
 import { VerdictCard } from "@/components/diagnosis/verdict-card";
-import { ReportSection, ParagraphSection, EvidenceItemCard, EvidenceToggle } from "@/components/diagnosis/report-section";
+import { ReportSection, ParagraphSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
 import { SurveyForm } from "@/components/palm/survey-form";
 import { AnalysisResultCard } from "@/components/palm/analysis-result-card";
 import { PaymentScreen } from "@/components/palm/payment-screen";
@@ -109,9 +109,7 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
           ))}
         </div>
       </ReportSection>
-      <div className="mt-7 px-2 sm:px-0">
-        <EvidenceToggle evidence={report.evidenceExplainer} />
-      </div>
+
     </div>
   );
 }
