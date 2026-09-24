@@ -1,8 +1,14 @@
-// 실제 사진에서 확인된 선의 모양을 바탕으로 생활 언어로 풀이한다.
-// 선을 공부시키는 설명보다 "내 손금이 나에게 무엇을 말하는지"를 우선한다.
-// 모델이 직접 검출하지 못하는 재물선/운명선은 있다고 가정하지 않는다.
+// 손금 사진에서 확인된 주요 선과 보조 선 후보를 생활 언어로 풀이한다.
+// 학습 모델이 직접 분류하는 것은 감정선·두뇌선·생명선이며,
+// 운명선·태양선·재물선은 지정 영역의 실제 영상 신호를 보조적으로 본다.
+// 보조 선은 "선명 / 희미 / 확인 안 됨"으로만 사용하며, 없는 선을 있다고 단정하지 않는다.
 
-import type { PalmFacts, OnnxLineDetail, OnnxPalmLines } from "@/lib/palm-facts";
+import type {
+  PalmFacts,
+  OnnxLineDetail,
+  OnnxPalmLines,
+  SecondaryPalmLineSignal,
+} from "@/lib/palm-facts";
 
 const LINE_LABEL = { heartLine: "감정선", headLine: "두뇌선", lifeLine: "생명선" } as const;
 const LENGTH = { 김: "길게 뻗은", 보통: "중간 길이의", 짧음: "짧게 이어진" } as const;
@@ -64,38 +70,92 @@ function lifeReading(d: OnnxLineDetail): string {
   return parts.join(" ");
 }
 
-function wealthReading(lines: OnnxPalmLines): string {
+function secondaryPhrase(
+  label: "재물선" | "운명선" | "태양선",
+  signal: SecondaryPalmLineSignal | undefined,
+): string | null {
+  if (!signal) return null;
+
+  if (signal.status === "clear") {
+    if (label === "재물선") return "재물선 후보가 비교적 선명하게 이어져 있어, 돈과 기회를 실제 결과로 연결하려는 성향이 눈에 띄는 편으로 볼 수 있습니다.";
+    if (label === "운명선") return "운명선 후보가 비교적 선명해, 일이나 역할에서 자기 방향을 오래 끌고 가려는 힘이 있는 편으로 읽힙니다.";
+    return "태양선 후보가 비교적 선명해, 내가 만든 결과를 밖으로 보여주고 인정받는 흐름이 재물과 연결되기 쉬운 편으로 볼 수 있습니다.";
+  }
+
+  if (signal.status === "faint") {
+    if (label === "재물선") return "재물선 후보가 희미하게 보여, 재물 흐름이 한 가지 방식으로 고정되기보다 시기와 선택에 따라 달라질 가능성이 있습니다.";
+    if (label === "운명선") return "운명선 후보가 희미해, 정해진 한 길을 오래 가기보다 상황에 따라 일의 방향을 바꾸는 편일 수 있습니다.";
+    return "태양선 후보가 희미해, 인정이나 성과가 바로 드러나기보다 시간이 지나면서 쌓이는 방식에 가까울 수 있습니다.";
+  }
+
+  return null;
+}
+
+function wealthReading(
+  lines: OnnxPalmLines,
+  secondary?: PalmFacts["secondaryLines"],
+): string {
   const head = lines.headLine;
   const life = lines.lifeLine;
   const heart = lines.heartLine;
   const parts: string[] = [];
 
+  const wealth = secondaryPhrase("재물선", secondary?.wealth);
+  const fate = secondaryPhrase("운명선", secondary?.fate);
+  const sun = secondaryPhrase("태양선", secondary?.sun);
+
+  if (wealth) parts.push(wealth);
+  if (fate) parts.push(fate);
+  if (sun) parts.push(sun);
+
   if (head.detected) {
     if (head.curve === "직선에 가까움") {
-      parts.push("돈과 관련된 선택에서는 감보다 기준을 세우고 비교한 뒤 움직일 때 강점이 살아나는 편으로 읽힙니다.");
+      parts.push("돈과 관련된 판단에서는 감보다 기준을 세우고 비교한 뒤 움직일 때 강점이 살아나는 편입니다.");
     } else if (head.curve === "완만한 곡선") {
       parts.push("정해진 한 가지 방식보다 아이디어·사람·기회를 연결하면서 돈의 가능성을 찾는 쪽에 더 가까울 수 있습니다.");
     }
-    if (head.length === "김") parts.push("큰 결정을 하기 전 충분히 알아보려는 성향이 있어, 성급한 선택보다 준비된 기회에서 힘을 쓰는 편입니다.");
-    if (head.length === "짧음") parts.push("기회를 보면 빠르게 움직일 수 있는 대신, 금액이 큰 선택일수록 한 번 더 확인하는 습관이 필요합니다.");
+
+    if (head.length === "김") {
+      parts.push("큰 결정을 하기 전 충분히 알아보려는 성향이 있어, 준비된 기회에서 힘을 쓰는 편입니다.");
+    }
+    if (head.length === "짧음") {
+      parts.push("기회를 보면 빠르게 움직일 수 있는 대신, 금액이 큰 선택일수록 한 번 더 확인하는 습관이 필요합니다.");
+    }
   }
 
   if (life.detected) {
-    if (life.length === "김") parts.push("재물은 한 번에 크게 움직이기보다 오래 유지할 수 있는 일이나 반복 수입 구조와 궁합이 좋은 편으로 볼 수 있습니다.");
-    if (life.length === "짧음") parts.push("환경 변화에 맞춰 수입 방식도 바꾸는 편일 수 있어, 한 가지 수입원에만 기대지 않는 방식이 더 편할 수 있습니다.");
+    if (life.length === "김") {
+      parts.push("재물은 오래 유지할 수 있는 일이나 반복 수입 구조와 궁합이 좋은 편으로 볼 수 있습니다.");
+    }
+    if (life.length === "짧음") {
+      parts.push("환경 변화에 맞춰 수입 방식도 바꾸는 편일 수 있어, 한 가지 수입원에만 기대지 않는 방식이 더 편할 수 있습니다.");
+    }
   }
 
   if (heart.detected) {
-    if (heart.curve === "완만한 곡선") parts.push("사람과의 관계가 일이나 기회로 이어질 가능성을 중요하게 보는 편이라, 혼자 판단하는 것보다 좋은 관계를 오래 쌓는 것이 재물 흐름에도 도움이 될 수 있습니다.");
-    if (heart.curve === "직선에 가까움") parts.push("사람 때문에 돈의 기준이 흔들리기보다 약속과 조건을 분명히 할 때 재물을 지키는 힘이 더 살아나는 편입니다.");
+    if (heart.curve === "완만한 곡선") {
+      parts.push("사람과의 관계가 일이나 기회로 이어질 가능성을 중요하게 보는 편이라, 좋은 관계를 오래 쌓는 것이 재물 흐름에도 도움이 될 수 있습니다.");
+    }
+    if (heart.curve === "직선에 가까움") {
+      parts.push("사람 때문에 돈의 기준이 흔들리기보다 약속과 조건을 분명히 할 때 재물을 지키는 힘이 더 살아나는 편입니다.");
+    }
   }
 
-  parts.push("재물선 자체는 현재 사진 분석 모델이 독립적으로 검출하지 않기 때문에 있다고 단정하지 않습니다. 이번 재물운은 실제로 확인된 주요 손금의 결을 함께 읽은 결과입니다.");
+  if (!wealth && !fate && !sun) {
+    parts.push("이번 사진에서는 재물선·운명선·태양선 후보가 충분히 선명하지 않아, 확인된 주요 손금의 결을 중심으로 재물 흐름을 읽었습니다.");
+  } else {
+    parts.push("재물선·운명선·태양선은 별도 학습 모델의 확정 분류가 아니라 해당 위치의 실제 영상 신호를 보조적으로 본 결과입니다.");
+  }
+
   return parts.join(" ");
 }
 
-export function buildPalmReadingSections(lines: OnnxPalmLines | null | undefined): PalmReadingSection[] {
+export function buildPalmReadingSections(
+  lines: OnnxPalmLines | null | undefined,
+  secondary?: PalmFacts["secondaryLines"],
+): PalmReadingSection[] {
   if (!lines?.modelExecuted) return [];
+
   const sections: PalmReadingSection[] = [];
   const heart = lines.heartLine;
   const head = lines.headLine;
@@ -103,15 +163,35 @@ export function buildPalmReadingSections(lines: OnnxPalmLines | null | undefined
 
   if (heart.detected && (heart.length || heart.curve)) {
     const text = heartReading(heart);
-    sections.push({ key: "heartLine", title: "관계와 감정 — 나는 마음을 어떻게 주는 사람인가", observation: observation("감정선", heart), summary: text, text });
+    sections.push({
+      key: "heartLine",
+      title: "관계와 감정 — 나는 마음을 어떻게 주는 사람인가",
+      observation: observation("감정선", heart),
+      summary: text,
+      text,
+    });
   }
+
   if (head.detected && (head.length || head.curve)) {
     const text = headReading(head);
-    sections.push({ key: "headLine", title: "생각과 결정 — 나는 어떤 방식으로 판단하는가", observation: observation("두뇌선", head), summary: text, text });
+    sections.push({
+      key: "headLine",
+      title: "생각과 결정 — 나는 어떤 방식으로 판단하는가",
+      observation: observation("두뇌선", head),
+      summary: text,
+      text,
+    });
   }
+
   if (life.detected && (life.length || life.curve)) {
     const text = lifeReading(life);
-    sections.push({ key: "lifeLine", title: "생활의 흐름 — 나는 에너지를 어떻게 쓰는가", observation: observation("생명선", life), summary: text, text });
+    sections.push({
+      key: "lifeLine",
+      title: "생활의 흐름 — 나는 에너지를 어떻게 쓰는가",
+      observation: observation("생명선", life),
+      summary: text,
+      text,
+    });
   }
 
   if (heart.detected && head.detected) {
@@ -119,14 +199,26 @@ export function buildPalmReadingSections(lines: OnnxPalmLines | null | undefined
       heart.curve === head.curve
         ? "마음을 표현하는 방식과 생각을 정리하는 방식의 결이 비슷한 편입니다. 그래서 내가 느끼는 것과 실제 선택이 비교적 한 방향으로 움직일 수 있습니다. 반대로 확신이 생기면 다른 시각을 늦게 받아들일 수도 있으니 큰 결정에서는 한 사람의 다른 의견을 들어보는 것이 좋습니다."
         : "마음을 쓰는 방식과 판단하는 방식이 서로 다른 결을 보입니다. 관계에서는 감정적으로 반응하면서도 중요한 결정에서는 냉정해지거나, 반대로 마음은 조심스럽지만 생각은 자유롭게 펼치는 모습이 함께 나타날 수 있습니다. 이 차이는 모순이라기보다 상황에 따라 다른 강점을 쓰는 방식에 가깝습니다.";
-    sections.push({ key: "together", title: "세 선을 함께 보면 — 내 안의 균형", observation: `${observation("감정선", heart)} ${observation("두뇌선", head)}`, summary: text, text });
+
+    sections.push({
+      key: "together",
+      title: "세 선을 함께 보면 — 내 안의 균형",
+      observation: `${observation("감정선", heart)} ${observation("두뇌선", head)}`,
+      summary: text,
+      text,
+    });
   }
 
-  const wealthText = wealthReading(lines);
+  const wealthText = wealthReading(lines, secondary);
   sections.push({
     key: "wealth",
     title: "재물운 — 돈을 벌고 지키는 나의 방식",
-    observation: "현재 확인된 감정선·두뇌선·생명선을 함께 읽었습니다.",
+    observation: [
+      "현재 확인된 감정선·두뇌선·생명선을 함께 읽었습니다.",
+      secondary?.wealth?.note,
+      secondary?.fate?.note,
+      secondary?.sun?.note,
+    ].filter(Boolean).join(" "),
     summary: wealthText,
     text: wealthText,
   });
@@ -135,7 +227,7 @@ export function buildPalmReadingSections(lines: OnnxPalmLines | null | undefined
 }
 
 export function buildTraditionalReadingText(facts: PalmFacts): string {
-  const sections = buildPalmReadingSections(facts.onnxLines);
+  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines);
   return sections.length
     ? sections.map((s) => s.text).join(" ")
     : "손의 주요 선이 보이도록 밝은 곳에서 손바닥 전체를 다시 촬영해 주세요.";

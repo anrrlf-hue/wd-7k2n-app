@@ -115,3 +115,67 @@ export function analyzeEdgeBand(
 
   return { density: Math.min(1, density * 25), span, curved };
 }
+
+
+/**
+ * 세로 방향으로 이어지는 선 후보를 보는 보조 신호.
+ * 학습 모델의 분류 결과가 아니라 지정한 손바닥 영역의 실제 영상 에지 신호다.
+ * 운명선·태양선·재물선 후보를 "있다"고 단정하는 용도가 아니라,
+ * 후보가 충분히 선명한지/희미한지/보이지 않는지 구분하는 데만 쓴다.
+ */
+export function analyzeVerticalEdgeBand(
+  imageData: ImageData,
+  roi: { x: number; y: number; width: number; height: number },
+): EdgeBandSignal {
+  const { width: imgW, height: imgH, data } = imageData;
+  const x0 = Math.max(0, Math.floor(roi.x));
+  const y0 = Math.max(0, Math.floor(roi.y));
+  const x1 = Math.min(imgW, Math.floor(roi.x + roi.width));
+  const y1 = Math.min(imgH, Math.floor(roi.y + roi.height));
+  const w = Math.max(1, x1 - x0);
+  const h = Math.max(1, y1 - y0);
+
+  if (w < 4 || h < 4) return { density: 0, span: 0, curved: false };
+
+  const cropped = new Uint8ClampedArray(w * h * 4);
+  for (let yy = 0; yy < h; yy++) {
+    const srcStart = ((y0 + yy) * imgW + x0) * 4;
+    const dstStart = yy * w * 4;
+    cropped.set(data.subarray(srcStart, srcStart + w * 4), dstStart);
+  }
+
+  const gray = toGrayscale(cropped, w, h);
+  const { magnitude, angle } = sobel(gray, w, h);
+  const threshold = 40;
+  let verticalStrongCount = 0;
+  const rowHasEdge = new Array<boolean>(h).fill(false);
+  const angles: number[] = [];
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (magnitude[i] <= threshold) continue;
+      const a = angle[i];
+      // 세로선의 경계는 gradient가 가로 방향에 가까워진다.
+      const isVerticalEdge = Math.abs(Math.sin(a)) < 0.6;
+      if (!isVerticalEdge) continue;
+      verticalStrongCount++;
+      rowHasEdge[y] = true;
+      angles.push(a);
+    }
+  }
+
+  const totalPixels = w * h;
+  const density = totalPixels > 0 ? verticalStrongCount / totalPixels : 0;
+  const spanRows = rowHasEdge.filter(Boolean).length;
+  const span = h > 0 ? spanRows / h : 0;
+
+  let curved = false;
+  if (angles.length > 4) {
+    const mean = angles.reduce((a, b) => a + b, 0) / angles.length;
+    const variance = angles.reduce((a, b) => a + (b - mean) ** 2, 0) / angles.length;
+    curved = variance > 0.15;
+  }
+
+  return { density: Math.min(1, density * 25), span, curved };
+}

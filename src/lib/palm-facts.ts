@@ -69,6 +69,15 @@ export interface OnnxPalmLines {
   marks: "unknown";
 }
 
+export type SecondaryLineStatus = "clear" | "faint" | "not_seen";
+
+export interface SecondaryPalmLineSignal {
+  status: SecondaryLineStatus;
+  strength: number;
+  span: number;
+  note: string;
+}
+
 export interface PalmFacts {
   handSide: HandSide;
   imageQuality: ImageQuality;
@@ -79,6 +88,12 @@ export interface PalmFacts {
   lineFeatures: LineFeature[];
   /** 실제 ONNX 모델 추론 결과. 모델 로드/추론이 실패하면 null. */
   onnxLines: OnnxPalmLines | null;
+  /** 운명선·태양선·재물선 후보 영역의 실제 영상 신호. 학습 모델 분류가 아니라 보조 관측값이다. */
+  secondaryLines?: {
+    fate: SecondaryPalmLineSignal;
+    sun: SecondaryPalmLineSignal;
+    wealth: SecondaryPalmLineSignal;
+  };
   /** 0~1, MediaPipe 손 검출 확률과 Sobel 엣지 밀도를 섞은 내부 임계값용
    * 수치일 뿐 검증된 정확도가 아니다 — isPalmFactsUsable()의 재촬영 판단에만
    * 쓰고, 사용자에게 "신뢰도/정확도 %"로 노출하지 않는다. */

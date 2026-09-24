@@ -46,6 +46,13 @@ const onnxPalmLinesSchema = z.object({
   marks: z.literal("unknown"),
 });
 
+const secondaryLineSignalSchema = z.object({
+  status: z.enum(["clear", "faint", "not_seen"]),
+  strength: z.number().min(0).max(1),
+  span: z.number().min(0).max(1),
+  note: z.string(),
+});
+
 const palmFactsSchema = z.object({
   handSide: z.enum(["left", "right", "unknown"]),
   imageQuality: z.enum(["good", "no_hand_detected", "too_dark", "hand_cropped"]),
@@ -63,6 +70,11 @@ const palmFactsSchema = z.object({
   /** 실제 ONNX 모델(samuelwbarber/palm-line-reader) 추론 결과. 클라이언트에서
    * 추론이 실패했으면 null — 서버는 그 값을 그대로 통과시킨다(억지로 채우지 않음). */
   onnxLines: onnxPalmLinesSchema.nullable(),
+  secondaryLines: z.object({
+    fate: secondaryLineSignalSchema,
+    sun: secondaryLineSignalSchema,
+    wealth: secondaryLineSignalSchema,
+  }).optional(),
   confidence: z.number().min(0).max(1),
   warnings: z.array(z.string()),
 });

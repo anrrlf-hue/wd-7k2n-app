@@ -4,7 +4,7 @@ import type { PalmFacts } from "@/lib/palm-facts";
 import type { CompareItem } from "@/lib/triple-compare";
 
 export function PalmReadingSections({ facts }: { facts: PalmFacts }) {
-  const sections = buildPalmReadingSections(facts.onnxLines);
+  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines);
   return (
     <ReportSection step="2" title="손금에서 보이는 나의 모습">
       <div className="space-y-6">

@@ -8,7 +8,7 @@ import {
   HandLandmarker,
   type NormalizedLandmark,
 } from "@mediapipe/tasks-vision";
-import { analyzeEdgeBand } from "@/lib/palm-line-features";
+import { analyzeEdgeBand, analyzeVerticalEdgeBand } from "@/lib/palm-line-features";
 import { runPalmLineOnnx, preloadPalmLineModel, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
 import type {
   HandShape,
@@ -219,6 +219,56 @@ const ONNX_CLASS_TO_LINE_NAME: Record<OnnxLineClass, LineName> = {
  * 이전에는 여기서 Math.min(1, obs.coverage * 40)을 "confidence"로 반환했는데,
  * 40이라는 배율에 근거가 없어 검증된 정확도처럼 보이는 가짜 수치였다 —
  * 제거하고 detected(참/거짓)와 실제 관측 라벨만 반환한다. */
+function secondaryLineSignal(
+  imageData: ImageData,
+  roi: Rect,
+  label: string,
+): NonNullable<PalmFacts["secondaryLines"]>["fate"] {
+  const signal = analyzeVerticalEdgeBand(imageData, roi);
+  const strength = Math.min(1, signal.density);
+  const clear = strength >= 0.14 && signal.span >= 0.42;
+  const faint = !clear && strength >= 0.08 && signal.span >= 0.26;
+
+  return {
+    status: clear ? "clear" : faint ? "faint" : "not_seen",
+    strength,
+    span: signal.span,
+    note: clear
+      ? `${label} 후보가 해당 영역에서 비교적 선명하게 이어집니다.`
+      : faint
+        ? `${label} 후보가 희미하게 보이지만 단정하기에는 약합니다.`
+        : `${label} 후보가 이번 사진에서는 충분히 선명하게 확인되지 않습니다.`,
+  };
+}
+
+function detectSecondaryPalmLines(crop: HTMLCanvasElement): NonNullable<PalmFacts["secondaryLines"]> | undefined {
+  const ctx = crop.getContext("2d");
+  if (!ctx || crop.width < 10 || crop.height < 10) return undefined;
+  const imageData = ctx.getImageData(0, 0, crop.width, crop.height);
+  const w = crop.width;
+  const h = crop.height;
+
+  // cropAndRotatePalm 이후 손목은 아래, 손가락은 위를 향하도록 정규화된다.
+  // 세 영역은 전통적으로 보는 위치를 넓게 잡은 "후보 영역"이며 확정 판정이 아니다.
+  return {
+    fate: secondaryLineSignal(
+      imageData,
+      { x: w * 0.40, y: h * 0.46, width: w * 0.20, height: h * 0.40 },
+      "운명선",
+    ),
+    sun: secondaryLineSignal(
+      imageData,
+      { x: w * 0.55, y: h * 0.34, width: w * 0.18, height: h * 0.35 },
+      "태양선",
+    ),
+    wealth: secondaryLineSignal(
+      imageData,
+      { x: w * 0.70, y: h * 0.36, width: w * 0.18, height: h * 0.30 },
+      "재물선",
+    ),
+  };
+}
+
 function mapOnnxObservation(obs: OnnxLineObservation): OnnxLineDetail {
   if (!obs.detected) {
     return {
@@ -337,6 +387,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   // 향하도록 회전 + 고정 마진 크롭 + 좌우손 통일(미러링)한 뒤 넣는다.
   // 실패해도(모델 로드 실패, 추론 오류) null만 반환하고 Sobel 결과로 계속 진행한다.
   const palmCrop = cropAndRotatePalm(canvas, landmarksPx, handSide === "left");
+  const secondaryLines = detectSecondaryPalmLines(palmCrop);
   const onnxRaw = await runPalmLineOnnx(palmCrop);
   const onnxLines: PalmFacts["onnxLines"] = onnxRaw
     ? {
@@ -376,6 +427,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
     majorLines,
     lineFeatures,
     onnxLines,
+    secondaryLines,
     confidence,
     warnings,
   };
