@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RECOMMENDED_PRICE } from "@/lib/pricing";
+import { PAID_PRODUCT } from "@/lib/paid-product";
 import { track } from "@/lib/analytics";
 
 export function PaywallOffer({
@@ -18,8 +18,6 @@ export function PaywallOffer({
   ctaText: string;
   onRequest?: () => void;
 }) {
-  const [requested, setRequested] = useState(false);
-
   return (
     <motion.div
       initial={{ opacity: 0.5, y: 8 }}
@@ -34,8 +32,11 @@ export function PaywallOffer({
         style={{ background: "var(--gold)" }}
       />
 
-      <p className="relative text-xs text-muted-foreground">나를 위한 맞춤 재무 방향</p>
+      <p className="relative text-xs text-muted-foreground">첫 유료 파일럿 상품</p>
       <p className="relative mt-1 text-lg leading-snug font-semibold">{title}</p>
+      <p className="relative mt-2 text-sm leading-6 text-muted-foreground">
+        {PAID_PRODUCT.promise}
+      </p>
 
       <ul className="relative mt-4 space-y-2 text-base">
         {includedItems.map((item) => (
@@ -48,14 +49,12 @@ export function PaywallOffer({
 
       <div className="relative mt-5 flex items-baseline gap-1.5">
         <span className="text-2xl font-bold text-(--gold)">{RECOMMENDED_PRICE.label}</span>
-        <span className="text-sm text-muted-foreground">· 1회 결제</span>
+        <span className="text-sm text-muted-foreground">· 1회 상품</span>
       </div>
-
       <Button
         size="lg"
         onClick={() => {
-          track("payment_cta_clicked");
-          setRequested(true);
+          track("payment_cta_clicked", { sku: PAID_PRODUCT.sku, mode: PAID_PRODUCT.status });
           onRequest?.();
         }}
         className="relative mt-4 h-14 w-full rounded-full text-base shadow-[0_0_24px_var(--gold-soft)]"
@@ -64,18 +63,8 @@ export function PaywallOffer({
       </Button>
 
       <p className="relative mt-2 text-center text-sm text-muted-foreground">
-        전체 맞춤 결과 + 30일 후 재점검 1회 포함
+        현실판정 + 선택지 2개 + 첫 행동 + 30일 재점검 1회
       </p>
-
-      {requested && !onRequest && (
-        <motion.p
-          initial={{ opacity: 0.6, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="relative mt-2 text-center text-xs text-(--gold)"
-        >
-          결제 연결은 아직 준비 중이에요.
-        </motion.p>
-      )}
     </motion.div>
   );
 }

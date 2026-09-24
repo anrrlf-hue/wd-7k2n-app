@@ -1,3 +1,5 @@
+import { PAID_PRODUCT } from "@/lib/paid-product";
+
 export interface PriceCandidate {
   amountKrw: number;
   label: string;
@@ -6,9 +8,10 @@ export interface PriceCandidate {
 
 export const PRICE_CANDIDATES: PriceCandidate[] = [
   {
-    amountKrw: 9900,
+    amountKrw: PAID_PRODUCT.priceKrw,
     label: "9,900원",
-    hypothesis: "첫 유료 현실판정 기준 가격. 무료와 다른 개인 답변·선택지·30일 재점검까지 포함한다.",
+    hypothesis:
+      "한 가지 현실 재무 질문을 숫자로 판단하고 선택지 2개·첫 행동·30일 재점검 1회까지 제공하는 파일럿 가격입니다.",
   },
 ];
 

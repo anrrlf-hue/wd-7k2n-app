@@ -1,7 +1,3 @@
-export const REPORT_CONTENTS: string[] = [
-  "내가 선택한 고민들을 함께 놓고 정리한 맞춤 재무 방향",
-  "지금 가장 먼저 바꿔야 할 것과 뒤로 둬도 되는 것",
-  "내 상황에서 선택할 수 있는 방향 2~3가지",
-  "오늘부터 시작할 첫 행동",
-  "이번 30일에 할 것 하나와 30일 후 변화 체크 1회",
-];
+import { PAID_PRODUCT_INCLUDED } from "@/lib/paid-product";
+
+export const REPORT_CONTENTS: string[] = [...PAID_PRODUCT_INCLUDED];

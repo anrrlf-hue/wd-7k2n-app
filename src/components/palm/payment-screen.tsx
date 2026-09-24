@@ -10,7 +10,7 @@ import { REPORT_CONTENTS } from "@/lib/report-contents";
 import { PAYMENT_TIMING_NOTICE, REFUND_POLICY_NOTICE } from "@/lib/payment-notices";
 import { CompanionHeading } from "@/components/brand-companion";
 import { JourneyScene } from "@/components/journey-scene";
-import { financeQuestion, FINANCE_QUESTIONS, type FinanceQuestionId } from "@/lib/finance-question";
+import { financeQuestion, type FinanceQuestionId } from "@/lib/finance-question";
 import type { AnalysisResult } from "@/lib/analysis-result";
 import type { SurveyInput } from "@/lib/survey-input";
 import type { BirthInput } from "@/lib/saju";
@@ -23,6 +23,7 @@ import {
   type PaidExtraAnswers,
 } from "@/lib/paid-finance-engine";
 import { Button } from "@/components/ui/button";
+import { PAID_PRODUCT } from "@/lib/paid-product";
 
 type PaymentStage = "offer" | "questions" | "result";
 
@@ -65,7 +66,6 @@ export function PaymentScreen({
   const [answers, setAnswers] = useState<PaidExtraAnswers>({});
   const [restored, setRestored] = useState(false);
   const selected = financeQuestion(question);
-  const selectedConcerns = FINANCE_QUESTIONS.filter((item) => concerns.includes(item.id));
   const extraQuestions = useMemo(() => buildPaidExtraQuestions(question, input), [question, input]);
   const paidResult = useMemo(
     () => buildPaidFinanceResult(question, input, result, answers, concerns),
@@ -219,15 +219,11 @@ export function PaymentScreen({
   if (stage === "result") {
     return (
       <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="section-eyebrow">결제 후 맞춤 재무 방향 · 미리보기</p>
+        <p className="section-eyebrow">한 질문 현실판정 · 상품 구성 미리보기</p>
         <h2 className="mt-3 text-2xl leading-snug font-semibold">{paidResult.question}</h2>
-
-        {sajuSummary && (
-          <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
-            <p className="section-eyebrow">사주에서 본 나</p>
-            <p className="mt-2 text-base leading-7">{sajuSummary}</p>
-          </div>
-        )}
+        <p className="mt-3 text-base leading-7 text-muted-foreground">
+          사주·손금이 아니라 지금 확인한 금액과 날짜를 기준으로 판단합니다.
+        </p>
 
         <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
           <p className="section-eyebrow">결론</p>
@@ -235,7 +231,7 @@ export function PaymentScreen({
         </section>
 
         <section className="mt-5">
-          <h3 className="text-base font-semibold">왜 이렇게 봤나요?</h3>
+          <h3 className="text-base font-semibold">확인한 숫자와 판단 이유</h3>
           <ul className="mt-3 space-y-2">
             {paidResult.reasons.map((reason) => (
               <li key={reason} className="flex gap-2 text-base leading-7">
@@ -246,24 +242,12 @@ export function PaymentScreen({
           </ul>
         </section>
 
-        {paidResult.concernSummary && paidResult.concernSummary.length > 0 && (
-          <section className="mt-6">
-            <h3 className="text-base font-semibold">함께 선택한 다른 고민도 봤어요</h3>
-            <div className="mt-3 space-y-3">
-              {paidResult.concernSummary.map((item) => (
-                <div key={item.title} className="rounded-2xl border border-border bg-card p-4">
-                  <p className="font-semibold">{item.title}</p>
-                  <p className="mt-1.5 text-base leading-7 text-muted-foreground">{item.detail}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+
 
         <section className="mt-6">
-          <h3 className="text-base font-semibold">선택 가능한 방향</h3>
+          <h3 className="text-base font-semibold">지금 선택할 수 있는 두 방향</h3>
           <div className="mt-3 space-y-3">
-            {paidResult.directions.map((direction) => (
+            {paidResult.directions.slice(0, 2).map((direction) => (
               <div key={direction.title} className="rounded-2xl border border-border bg-card p-4">
                 <p className="font-semibold">{direction.title}</p>
                 <p className="mt-1.5 text-base leading-7 text-muted-foreground">{direction.detail}</p>
@@ -329,36 +313,33 @@ export function PaymentScreen({
         </CompanionHeading>
       </div>
 
-      {selectedConcerns.length > 0 && (
-        <div className="mt-5 rounded-2xl border border-border bg-card p-4">
-          <p className="text-sm font-medium">내가 처음 선택한 고민</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {selectedConcerns.map((item) => (
-              <span key={item.id} className="rounded-full border border-border px-3 py-1.5 text-sm">
-                {item.label}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="mt-5 rounded-2xl border border-border bg-card p-4">
+        <p className="text-sm font-medium">이번에 답할 질문</p>
+        <p className="mt-2 text-base leading-7 font-semibold">{selected.label}</p>
+        {concerns.length > 1 && (
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            다른 고민은 참고로 남겨두고, 이번 유료 결과는 이 질문 하나에 집중합니다.
+          </p>
+        )}
+      </div>
 
       <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
         <p className="text-xl leading-8 font-semibold">
-          사주에서 본 나와 지금의 현실을 함께 보고,
+          돈 고민 하나를 숫자로 확인하고,
           <br />
-          앞으로 무엇부터 바꿔야 하는지 보여드립니다.
+          이번에 무엇을 할지까지 정리합니다.
         </p>
         <p className="mt-3 text-base leading-7 text-muted-foreground">
-          여러 고민을 함께 놓고 우선순위를 정한 뒤, 이번에 실제로 해볼 한 가지까지 이어드립니다.
+          {PAID_PRODUCT.promise}
         </p>
       </div>
 
       <TrustBadges />
 
       <PaywallOffer
-        title="선택한 고민을 함께 풀어가는 맞춤 재무 방향"
+        title={PAID_PRODUCT.name}
         includedItems={REPORT_CONTENTS}
-        ctaText="내 재무 방향 자세히 보기 · 9,900원"
+        ctaText="9,900원 상품 구성 미리보기"
         onRequest={startPaidResult}
       />
 
