@@ -308,6 +308,105 @@ assert(
 );
 pass("B12_signed_out_privacy", "owned local record hidden while signed out");
 
+
+// Astra 2026-09-24 regressions: same facts must not produce a safer paid conclusion.
+const astraGoal = {
+  ...base,
+  financeQuestionIds: ["goal"],
+  futureEvents: ["marriage"],
+  primaryFutureEvent: "marriage",
+  futureEventTiming: "under_3m",
+  futureEventAmount: "under_500",
+  futureEventPrepared: "none",
+  goalRequiredKrw: 2_000_000,
+  goalPreparedKrw: 0,
+  goalMonthlyAllocationKrw: 1_000_000,
+  goalDeadline: "2026-10-25",
+  monthlyIncomeKrw: 3_000_000,
+  monthlyFixedCostKrw: 1_000_000,
+  monthlyLivingCostKrw: 1_000_000,
+  monthlySavingsKrw: 500_000,
+};
+const astraGoalFree = analysis.buildAnalysisResult(astraGoal);
+const astraGoalPaid = paid.buildPaidFinanceResult("goal", astraGoal, astraGoalFree, {}, ["goal"]);
+assert(
+  astraGoalPaid.conclusion.includes("부족"),
+  "B13/F01: paid goal conclusion contradicted common shortfall decision",
+);
+pass("B13_astra_goal_consistency", astraGoalPaid.conclusion);
+
+const astraOverAllocated = {
+  ...astraGoal,
+  monthlyIncomeKrw: 2_500_000,
+  monthlyFixedCostKrw: 1_000_000,
+  monthlyLivingCostKrw: 1_000_000,
+  goalMonthlyAllocationKrw: 1_000_000,
+};
+const astraOverFree = analysis.buildAnalysisResult(astraOverAllocated);
+const astraOverPaid = paid.buildPaidFinanceResult("goal", astraOverAllocated, astraOverFree, {}, ["goal"]);
+assert(
+  astraOverPaid.conclusion.includes("확정하기 어렵") && !astraOverPaid.conclusion.includes("준비할 수 있는 범위"),
+  "B14/F02: unaffordable allocation was promoted to an on-plan paid conclusion",
+);
+pass("B14_astra_allocation_guard", astraOverPaid.conclusion);
+
+const astraDeficit = {
+  ...astraGoal,
+  monthlyIncomeKrw: 1_500_000,
+  monthlyFixedCostKrw: 1_000_000,
+  monthlyLivingCostKrw: 1_000_000,
+  monthlySavingsKrw: 1_000_000,
+  goalMonthlyAllocationKrw: 100_000,
+};
+const astraDeficitFree = analysis.buildAnalysisResult(astraDeficit);
+const astraDeficitPaid = paid.buildPaidFinanceResult("goal", astraDeficit, astraDeficitFree, {}, ["goal"]);
+assert(
+  astraDeficitFree.bottleneck === "cash_flow_deficit" &&
+  astraDeficitPaid.conclusion.includes("재무 위험"),
+  "B15/F03: selected goal question hid a more urgent cash-flow deficit",
+);
+pass("B15_astra_priority_guard", astraDeficitPaid.conclusion);
+
+const latestAction = "이번 주 10분만 써서 새 행동을 확인한다.";
+const adaptiveSnapshot = {
+  ...snapshot,
+  checks: [{
+    id: "previous-check",
+    checkedAt: "2026-09-20T00:00:00Z",
+    input: {
+      executionStatus: "not_done",
+      monthlyIncomeKrw: 4_000_000,
+      monthlyFixedCostKrw: 1_000_000,
+      monthlyLivingCostKrw: 1_500_000,
+      monthlySavingsKrw: 1_000_000,
+      emergencyFund: "3_6m",
+      difficulty: "시간이 없었음",
+    },
+    result: {
+      headline: "previous",
+      summary: "previous",
+      changed: [],
+      keep: "previous",
+      nextAction: latestAction,
+      nextCheckpoints: [],
+    },
+  }],
+};
+const adaptiveCurrent = {
+  executionStatus: "done",
+  monthlyIncomeKrw: 4_000_000,
+  monthlyFixedCostKrw: 1_000_000,
+  monthlyLivingCostKrw: 1_500_000,
+  monthlySavingsKrw: 1_000_000,
+  emergencyFund: "3_6m",
+};
+const adaptiveNext = recheck.buildFinanceRecheckResult(adaptiveSnapshot, adaptiveCurrent);
+assert(
+  adaptiveNext.nextAction === latestAction,
+  "B16/R02: recheck reset to the original action instead of continuing the latest active action",
+);
+pass("B16_latest_action_continuity", adaptiveNext.nextAction);
+
 hooks.deregister?.();
 stubs.deregister?.();
 

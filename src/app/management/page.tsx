@@ -143,20 +143,23 @@ export default function ManagementPage() {
 
   function beginRecheck() {
     if (!latest) return;
+    const previous = latest.checks?.[0]?.input;
     const goalPrepared =
+      previous?.goalPreparedKrw ??
       latest.financeInput.goalPreparedKrw ??
       paidMoney(latest, "goalPreparedManwon");
     const debtRemaining =
+      previous?.debtRemainingKrw ??
       latest.financeInput.debtRemainingKrw ??
       paidMoney(latest, "debtBalanceManwon");
 
     setDraft({
       executionStatus: "",
-      monthlyIncomeKrw: latest.financeInput.monthlyIncomeKrw,
-      monthlyFixedCostKrw: latest.financeInput.monthlyFixedCostKrw,
-      monthlyLivingCostKrw: latest.financeInput.monthlyLivingCostKrw,
-      monthlySavingsKrw: latest.financeInput.monthlySavingsKrw,
-      emergencyFund: latest.financeInput.emergencyFund,
+      monthlyIncomeKrw: previous?.monthlyIncomeKrw ?? latest.financeInput.monthlyIncomeKrw,
+      monthlyFixedCostKrw: previous?.monthlyFixedCostKrw ?? latest.financeInput.monthlyFixedCostKrw,
+      monthlyLivingCostKrw: previous?.monthlyLivingCostKrw ?? latest.financeInput.monthlyLivingCostKrw,
+      monthlySavingsKrw: previous?.monthlySavingsKrw ?? latest.financeInput.monthlySavingsKrw,
+      emergencyFund: previous?.emergencyFund ?? latest.financeInput.emergencyFund,
       goalPreparedKrw: goalPrepared,
       debtRemainingKrw: debtRemaining,
       difficulty: "",
@@ -247,7 +250,7 @@ export default function ManagementPage() {
 
           <section className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
             <p className="text-sm text-muted-foreground">이번에 하기로 했던 것</p>
-            <p className="mt-2 text-lg leading-8 font-semibold">{paid.check30.action}</p>
+            <p className="mt-2 text-lg leading-8 font-semibold">{lastCheck?.result.nextAction ?? paid.check30.action}</p>
             <div className="mt-4 grid grid-cols-3 gap-2">
               {([
                 ["done", "해봤어요"],

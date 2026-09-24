@@ -53,37 +53,40 @@ export function buildFinanceRecheckResult(
   current: FinanceRecheckInput,
 ): FinanceRecheckResult {
   const before = snapshot.financeInput;
-  const beforeSurplus = surplusKrw(before);
+  const previous = snapshot.checks?.[0]?.input;
+  const compare = previous ?? before;
+  const comparisonLabel = previous ? "직전 점검보다" : "처음보다";
+  const beforeSurplus = surplusKrw(compare);
   const currentSurplus = surplusKrw(current);
   const surplusDelta = currentSurplus - beforeSurplus;
-  const savingsDelta = current.monthlySavingsKrw - before.monthlySavingsKrw;
+  const savingsDelta = current.monthlySavingsKrw - compare.monthlySavingsKrw;
   const emergencyDelta =
     (EMERGENCY_RANK[current.emergencyFund] ?? 0) -
-    (EMERGENCY_RANK[before.emergencyFund] ?? 0);
+    (EMERGENCY_RANK[compare.emergencyFund] ?? 0);
 
   const changed: string[] = [executionText(current.executionStatus)];
 
   if (surplusDelta !== 0) {
     changed.push(
-      `저축·투자까지 배분한 뒤 남는 월 금액은 처음보다 ${signedManwon(surplusDelta)} 달라졌습니다.`,
+      `저축·투자까지 배분한 뒤 남는 월 금액은 ${comparisonLabel} ${signedManwon(surplusDelta)} 달라졌습니다.`,
     );
   } else {
     changed.push("저축·투자까지 배분한 뒤 남는 월 금액은 처음과 비슷합니다.");
   }
 
   if (savingsDelta !== 0) {
-    changed.push(`월 저축·투자액은 처음보다 ${signedManwon(savingsDelta)} 달라졌습니다.`);
+    changed.push(`월 저축·투자액은 ${comparisonLabel} ${signedManwon(savingsDelta)} 달라졌습니다.`);
   }
 
   if (emergencyDelta > 0) {
-    changed.push("바로 사용할 수 있는 여유자금 구간이 처음보다 좋아졌습니다.");
+    changed.push(`바로 사용할 수 있는 여유자금 구간이 ${comparisonLabel} 좋아졌습니다.`);
   } else if (emergencyDelta < 0) {
-    changed.push("바로 사용할 수 있는 여유자금 구간은 처음보다 줄었습니다.");
+    changed.push(`바로 사용할 수 있는 여유자금 구간은 ${comparisonLabel} 줄었습니다.`);
   }
 
   const paidGoalPrepared = snapshot.paidExtraAnswers?.goalPreparedManwon;
   const beforeGoal =
-    before.goalPreparedKrw ??
+    compare.goalPreparedKrw ??
     (typeof paidGoalPrepared === "number" ? paidGoalPrepared * 10000 : undefined);
   const goalDelta =
     snapshot.focusedQuestion === "goal" &&
@@ -92,13 +95,13 @@ export function buildFinanceRecheckResult(
       ? current.goalPreparedKrw - beforeGoal
       : null;
   if (goalDelta !== null) {
-    if (goalDelta > 0) changed.push(`목표 준비금은 처음보다 ${manwon(goalDelta)} 늘었습니다.`);
-    else if (goalDelta < 0) changed.push(`목표 준비금은 처음보다 ${manwon(Math.abs(goalDelta))} 줄었습니다.`);
+    if (goalDelta > 0) changed.push(`목표 준비금은 ${comparisonLabel} ${manwon(goalDelta)} 늘었습니다.`);
+    else if (goalDelta < 0) changed.push(`목표 준비금은 ${comparisonLabel} ${manwon(Math.abs(goalDelta))} 줄었습니다.`);
   }
 
   const paidDebtBalance = snapshot.paidExtraAnswers?.debtBalanceManwon;
   const beforeDebt =
-    before.debtRemainingKrw ??
+    compare.debtRemainingKrw ??
     (typeof paidDebtBalance === "number" ? paidDebtBalance * 10000 : undefined);
   const debtDelta =
     before.hasDebt &&
@@ -107,14 +110,14 @@ export function buildFinanceRecheckResult(
       ? current.debtRemainingKrw - beforeDebt
       : null;
   if (debtDelta !== null) {
-    if (debtDelta < 0) changed.push(`확인한 부채 잔액은 처음보다 ${manwon(Math.abs(debtDelta))} 줄었습니다.`);
-    else if (debtDelta > 0) changed.push(`확인한 부채 잔액은 처음보다 ${manwon(debtDelta)} 늘었습니다.`);
+    if (debtDelta < 0) changed.push(`확인한 부채 잔액은 ${comparisonLabel} ${manwon(Math.abs(debtDelta))} 줄었습니다.`);
+    else if (debtDelta > 0) changed.push(`확인한 부채 잔액은 ${comparisonLabel} ${manwon(debtDelta)} 늘었습니다.`);
   }
 
   // 저축을 줄이면 '남는 돈'은 자동으로 늘 수 있으므로 이를 개선으로 보지 않는다.
   // 생활 자체에서 남는 돈(저축 배분 전)과 안전판·목표·부채가 좋아졌는지 따로 본다.
   const beforeCoreCash =
-    before.monthlyIncomeKrw - before.monthlyFixedCostKrw - before.monthlyLivingCostKrw;
+    compare.monthlyIncomeKrw - compare.monthlyFixedCostKrw - compare.monthlyLivingCostKrw;
   const currentCoreCash =
     current.monthlyIncomeKrw - current.monthlyFixedCostKrw - current.monthlyLivingCostKrw;
   const coreCashDelta = currentCoreCash - beforeCoreCash;
@@ -146,13 +149,14 @@ export function buildFinanceRecheckResult(
   let headline = "아직 방향을 바꿀 단계는 아닙니다.";
   let summary = "이번 30일은 결과보다 실제 실행 여부와 현실 숫자가 같은 방향으로 움직였는지 확인하는 단계입니다.";
   let keep = "처음 정한 우선순위는 유지하되, 실제 숫자가 악화되면 같은 행동을 자동 반복하지 않습니다.";
-  let nextAction = snapshot.paidResult.check30.action;
+  const activeAction = snapshot.checks?.[0]?.result.nextAction ?? snapshot.paidResult.check30.action;
+  let nextAction = activeAction;
 
   if (worseningMovement) {
     headline = "실행 여부와 별개로, 지금은 숫자가 나빠진 원인부터 다시 봐야 합니다.";
     summary = becameDeficit || currentCoreCash < 0
       ? "현재 소득으로 고정지출과 생활비, 기존 배분을 감당하기 어려운 신호가 생겼습니다. 기존 계획을 그대로 유지하지 않고 현재 숫자에 맞춰 우선순위를 다시 잡습니다."
-      : "처음보다 안전판·목표 준비금·부채 중 하나가 나빠졌습니다. 같은 행동을 반복하기보다 무엇이 달라졌는지 먼저 확인합니다.";
+      : `${comparisonLabel} 안전판·목표 준비금·부채 중 하나가 나빠졌습니다. 같은 행동을 반복하기보다 무엇이 달라졌는지 먼저 확인합니다.`;
     keep = "효과가 확인된 생활습관만 유지하고, 악화된 숫자와 충돌하는 기존 계획은 그대로 반복하지 않습니다.";
 
     if (currentCoreCash < 0 || becameDeficit) {
@@ -173,17 +177,17 @@ export function buildFinanceRecheckResult(
     headline = "정한 방향이 실제 변화로 이어지고 있습니다.";
     summary = "실행과 핵심 숫자의 개선이 함께 확인됩니다. 새로운 일을 늘리기보다 효과가 있었던 흐름을 한 번 더 이어가는 편이 좋습니다.";
     keep = "이번에 실제로 효과가 있었던 행동은 다음 30일에도 유지합니다.";
-    nextAction = snapshot.paidResult.firstAction;
+    nextAction = activeAction;
   } else if (current.executionStatus === "done") {
     headline = "실행은 완료했습니다. 아직 효과를 단정할 숫자 변화는 없습니다.";
     summary = "한 달 안에 모든 숫자가 바로 달라지지는 않습니다. 다만 악화 신호도 확인되지 않았으므로 같은 기준으로 한 번 더 관찰할 수 있습니다.";
     keep = "이미 실행한 행동은 유지하되, 다음 점검에서도 변화가 없다면 방법 자체를 다시 검토합니다.";
-    nextAction = snapshot.paidResult.check30.action;
+    nextAction = activeAction;
   } else if (current.executionStatus === "partial") {
     headline = "일부 실행은 했지만, 아직 결과를 평가할 단계는 아닙니다.";
     summary = "새로운 계획을 추가하기보다 끝내지 못한 이유 하나를 줄이고, 이번 행동을 실제 생활에서 한 번 완성하는 것이 먼저입니다.";
     keep = "이미 시작한 부분은 유지하고, 남은 단계를 더 작게 나눕니다.";
-    nextAction = snapshot.paidResult.check30.action;
+    nextAction = activeAction;
   } else {
     const blocker = current.difficulty?.trim() ?? "";
     headline = "이번에는 실행을 막은 이유부터 줄이는 게 먼저입니다.";
@@ -199,7 +203,7 @@ export function buildFinanceRecheckResult(
     } else if (/시간|바빠|바쁨/.test(blocker)) {
       nextAction = "이번 주 10분만 정해 기존 행동의 첫 단계 하나만 끝내보세요.";
     } else {
-      nextAction = `기존 행동을 더 작게 나눠 첫 단계 하나만 실행해보세요: ${snapshot.paidResult.firstAction}`;
+      nextAction = `기존 행동을 더 작게 나눠 첫 단계 하나만 실행해보세요: ${activeAction}`;
     }
   }
 
@@ -211,7 +215,7 @@ export function buildFinanceRecheckResult(
     nextAction,
     nextCheckpoints: [
       "이번 행동을 실제로 이어갔는지",
-      "월 현금흐름이 처음보다 나아졌는지",
+      `월 현금흐름이 ${comparisonLabel} 나아졌는지`,
       snapshot.focusedQuestion === "goal"
         ? "목표 준비금이 실제로 늘었는지"
         : before.hasDebt

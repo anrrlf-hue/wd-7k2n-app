@@ -7,7 +7,6 @@ import type {
   PalmFacts,
   OnnxLineDetail,
   OnnxPalmLines,
-  SecondaryPalmLineSignal,
 } from "@/lib/palm-facts";
 
 const LINE_LABEL = { heartLine: "감정선", headLine: "두뇌선", lifeLine: "생명선" } as const;
@@ -70,43 +69,11 @@ function lifeReading(d: OnnxLineDetail): string {
   return parts.join(" ");
 }
 
-function secondaryPhrase(
-  label: "재물선" | "운명선" | "태양선",
-  signal: SecondaryPalmLineSignal | undefined,
-): string | null {
-  if (!signal) return null;
-
-  if (signal.status === "clear") {
-    if (label === "재물선") return "재물선 후보가 비교적 선명하게 이어져 있어, 돈과 기회를 실제 결과로 연결하려는 성향이 눈에 띄는 편으로 볼 수 있습니다.";
-    if (label === "운명선") return "운명선 후보가 비교적 선명해, 일이나 역할에서 자기 방향을 오래 끌고 가려는 힘이 있는 편으로 읽힙니다.";
-    return "태양선 후보가 비교적 선명해, 내가 만든 결과를 밖으로 보여주고 인정받는 흐름이 재물과 연결되기 쉬운 편으로 볼 수 있습니다.";
-  }
-
-  if (signal.status === "faint") {
-    if (label === "재물선") return "재물선 후보가 희미하게 보여, 재물 흐름이 한 가지 방식으로 고정되기보다 시기와 선택에 따라 달라질 가능성이 있습니다.";
-    if (label === "운명선") return "운명선 후보가 희미해, 정해진 한 길을 오래 가기보다 상황에 따라 일의 방향을 바꾸는 편일 수 있습니다.";
-    return "태양선 후보가 희미해, 인정이나 성과가 바로 드러나기보다 시간이 지나면서 쌓이는 방식에 가까울 수 있습니다.";
-  }
-
-  return null;
-}
-
-function wealthReading(
-  lines: OnnxPalmLines,
-  secondary?: PalmFacts["secondaryLines"],
-): string {
+function wealthReading(lines: OnnxPalmLines): string {
   const head = lines.headLine;
   const life = lines.lifeLine;
   const heart = lines.heartLine;
   const parts: string[] = [];
-
-  const wealth = secondaryPhrase("재물선", secondary?.wealth);
-  const fate = secondaryPhrase("운명선", secondary?.fate);
-  const sun = secondaryPhrase("태양선", secondary?.sun);
-
-  if (wealth) parts.push(wealth);
-  if (fate) parts.push(fate);
-  if (sun) parts.push(sun);
 
   if (head.detected) {
     if (head.curve === "직선에 가까움") {
@@ -140,20 +107,12 @@ function wealthReading(
       parts.push("사람 때문에 돈의 기준이 흔들리기보다 약속과 조건을 분명히 할 때 재물을 지키는 힘이 더 살아나는 편입니다.");
     }
   }
-
-  if (!wealth && !fate && !sun) {
-    parts.push("이번 사진에서는 재물선·운명선·태양선 후보가 충분히 선명하지 않아, 확인된 주요 손금의 결을 중심으로 재물 흐름을 읽었습니다.");
-  } else {
-    parts.push("재물선·운명선·태양선은 별도 학습 모델의 확정 분류가 아니라 해당 위치의 실제 영상 신호를 보조적으로 본 결과입니다.");
-  }
+  parts.push("현재 재물운 해석은 실제로 확인된 감정선·두뇌선·생명선의 전통적 해석만 사용합니다. 재물선·운명선·태양선 후보 신호는 검증 전이라 고객 해석에 사용하지 않습니다.");
 
   return parts.join(" ");
 }
 
-export function buildPalmReadingSections(
-  lines: OnnxPalmLines | null | undefined,
-  secondary?: PalmFacts["secondaryLines"],
-): PalmReadingSection[] {
+export function buildPalmReadingSections(lines: OnnxPalmLines | null | undefined): PalmReadingSection[] {
   if (!lines?.modelExecuted) return [];
 
   const sections: PalmReadingSection[] = [];
@@ -209,16 +168,11 @@ export function buildPalmReadingSections(
     });
   }
 
-  const wealthText = wealthReading(lines, secondary);
+  const wealthText = wealthReading(lines);
   sections.push({
     key: "wealth",
     title: "재물운 — 돈을 벌고 지키는 나의 방식",
-    observation: [
-      "현재 확인된 감정선·두뇌선·생명선을 함께 읽었습니다.",
-      secondary?.wealth?.note,
-      secondary?.fate?.note,
-      secondary?.sun?.note,
-    ].filter(Boolean).join(" "),
+    observation: "현재 확인된 감정선·두뇌선·생명선만 해석 근거로 사용했습니다.",
     summary: wealthText,
     text: wealthText,
   });
@@ -227,7 +181,7 @@ export function buildPalmReadingSections(
 }
 
 export function buildTraditionalReadingText(facts: PalmFacts): string {
-  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines);
+  const sections = buildPalmReadingSections(facts.onnxLines);
   return sections.length
     ? sections.map((s) => s.text).join(" ")
     : "손의 주요 선이 보이도록 밝은 곳에서 손바닥 전체를 다시 촬영해 주세요.";

@@ -476,26 +476,92 @@ function goalResult(
     goalDeadline: deadline,
   });
 
+  // 무료·유료가 같은 현실 사실을 서로 다르게 판정하지 않도록
+  // 유료 목표 결론도 공통 purposeFunding 판정을 최종 권위로 사용한다.
+  if (effectiveFunding.state === "SHORTFALL") {
+    conclusion = `현재 목표 전용 배정액과 준비금 기준으로는 목표일까지 약 ${manwonFromKrw(effectiveFunding.gapKrw)}이 부족합니다.`;
+    firstAction = `목표 전용 월 배정액 ${manwonFromKrw(effectiveFunding.monthly)}을 유지할 수 있는지 확인하고, 부족분을 줄이려면 목표 금액·시점·월 배정액 중 하나를 조정해보세요.`;
+    directions.splice(0, directions.length,
+      { title: "현재 계획을 유지한다면", detail: `현재 월 배정액을 기준으로는 목표일까지 약 ${manwonFromKrw(effectiveFunding.gapKrw)}이 부족합니다.` },
+      { title: "바꿀 수 있는 것", detail: "목표 금액, 목표 시점, 목표 전용 월 배정액 중 현실적으로 바꿀 수 있는 한 가지를 먼저 정해보세요." },
+    );
+  } else if (effectiveFunding.state === "ON_PLAN") {
+    conclusion = "현재 확인된 목표 전용 계획은 목표일까지 필요한 금액을 준비할 수 있는 범위입니다.";
+    firstAction = `목표 전용 월 배정액 ${manwonFromKrw(effectiveFunding.monthly)}이 실제로 분리되어 입금되는지 다음 입금일에 확인해보세요.`;
+    directions.splice(0, directions.length,
+      { title: "유지할 것", detail: "목표 전용 월 배정액을 다른 생활비·목표와 섞지 않고 실제 입금 여부를 확인합니다." },
+      { title: "다시 볼 조건", detail: "소득·생활비·목표 금액이나 날짜가 바뀌면 같은 계산을 다시 해야 합니다." },
+    );
+  } else if (effectiveFunding.state === "NEEDS_CONFIRMATION") {
+    conclusion = "현재 입력만으로는 목표 계획이 가능한지 확정하기 어렵습니다. 확인되지 않은 값을 가능하다고 처리하지 않았습니다.";
+    firstAction = "목표 필요금액, 현재 준비금, 목표 전용 월 배정액, 목표 날짜를 실제 값으로 확인해보세요.";
+    directions.splice(0, directions.length,
+      { title: "먼저 확인할 것", detail: "필요금액·준비금·목표 전용 월 배정액·목표 날짜 네 가지를 같은 시점 기준으로 맞춰보세요." },
+      { title: "지금은 단정하지 않는 것", detail: "확인 전에는 가능/불가능 어느 쪽으로도 확정하지 않습니다." },
+    );
+  }
+
+  const blocksGoalPlan = [
+    "cash_flow_deficit",
+    "maturity_preparation",
+    "income_interruption_risk",
+    "high_interest_debt",
+  ].includes(result.bottleneck);
+  if (blocksGoalPlan) {
+    conclusion = `목표 계획보다 먼저 현재 재무 위험을 확인해야 합니다. ${result.headline}`;
+    firstAction = result.immediateDirection;
+    directions.splice(0, directions.length,
+      { title: "먼저 볼 것", detail: result.gapStatement },
+      { title: "그다음 목표 계획", detail: "현재 위험을 정리한 뒤 남는 현금흐름을 기준으로 목표 전용 배정액을 다시 계산합니다." },
+    );
+  }
+
+  let fundingReasons: string[];
+  let fundingDetail: string;
+
+  if (blocksGoalPlan) {
+    fundingReasons = [
+      result.why,
+      result.gapStatement,
+      "현재 위험을 먼저 정리한 뒤 목표 전용 배정액을 다시 계산합니다.",
+    ];
+    fundingDetail = result.gapStatement;
+  } else if (effectiveFunding.state === "SHORTFALL") {
+    fundingReasons = [
+      `필요금액 ${manwonFromKrw(effectiveFunding.required)}, 현재 준비금 ${manwonFromKrw(effectiveFunding.prepared)}, 목표 전용 월 배정액 ${manwonFromKrw(effectiveFunding.monthly)}을 같은 기준으로 계산했습니다.`,
+      `${effectiveFunding.deadline}까지 현재 계산 기준으로 ${effectiveFunding.savingCycles}회의 적립 기회를 반영해도 약 ${manwonFromKrw(effectiveFunding.gapKrw)}이 부족합니다.`,
+      `전체 월 저축·투자액 ${manwonFromKrw(totalMonthlySavings)}을 이 목표 전용 자금으로 중복 계산하지 않았습니다.`,
+    ];
+    fundingDetail = `${effectiveFunding.deadline}까지 필요금액 ${manwonFromKrw(effectiveFunding.required)}, 준비금 ${manwonFromKrw(effectiveFunding.prepared)}, 월 배정액 ${manwonFromKrw(effectiveFunding.monthly)} 기준으로 약 ${manwonFromKrw(effectiveFunding.gapKrw)}이 부족합니다.`;
+  } else if (effectiveFunding.state === "ON_PLAN") {
+    fundingReasons = [
+      `필요금액 ${manwonFromKrw(effectiveFunding.required)}, 현재 준비금 ${manwonFromKrw(effectiveFunding.prepared)}, 목표 전용 월 배정액 ${manwonFromKrw(effectiveFunding.monthly)}을 같은 기준으로 계산했습니다.`,
+      `${effectiveFunding.deadline}까지 현재 계산 기준으로 ${effectiveFunding.savingCycles}회의 적립 기회를 반영했습니다.`,
+      `전체 월 저축·투자액 ${manwonFromKrw(totalMonthlySavings)}을 이 목표 전용 자금으로 중복 계산하지 않았습니다.`,
+    ];
+    fundingDetail = `${effectiveFunding.deadline}까지 필요금액 ${manwonFromKrw(effectiveFunding.required)}, 준비금 ${manwonFromKrw(effectiveFunding.prepared)}, 월 배정액 ${manwonFromKrw(effectiveFunding.monthly)} 기준으로 현재 계획 범위 안입니다.`;
+  } else if (effectiveFunding.state === "PREPARED_SELF_REPORT") {
+    fundingReasons = [
+      "목표자금은 충분히 준비했다고 답했지만 실제 사용 가능한 금액과 지급일은 아직 숫자로 확인하지 않았습니다.",
+      "확인되지 않은 세부 금액을 임의로 계산하지 않았습니다.",
+    ];
+    fundingDetail = "실제 사용 가능한 목표자금과 지급일을 확인하면 다음 판단이 가능합니다.";
+  } else {
+    fundingReasons = [
+      "목표 필요금액·준비금·목표 전용 월 배정액·목표 날짜 중 일부가 빠졌거나 현재 현금흐름과 맞지 않아 추가 확인이 필요합니다.",
+      `전체 월 저축·투자액 ${manwonFromKrw(totalMonthlySavings)}을 목표 전용 자금으로 임의 전환하지 않았습니다.`,
+    ];
+    fundingDetail = "목표 필요금액·준비금·목표 전용 월 배정액·목표 날짜를 같은 시점 기준으로 확인해야 계획 가능 여부를 판단할 수 있습니다.";
+  }
+
   return {
     question: financeQuestion("goal").paywallTitle,
     conclusion,
-    reasons: [
-      `필요금액 ${manwonFromKrw(required)}, 현재 준비금 ${manwonFromKrw(prepared)}, 남은 금액은 ${manwonFromKrw(shortfall)}입니다.`,
-      shortfall > 0 && cycles
-        ? `목표일까지 필요한 월 준비액은 약 ${manwonFromKrw(neededMonthly)}입니다.`
-        : shortfall === 0
-          ? "현재 준비금이 입력한 목표금액에 도달해 있습니다."
-          : "유효한 목표일이 확인되기 전에는 필요한 월 준비액을 확정하지 않습니다.",
-      plannedMonthly !== undefined
-        ? `현재 이 목표에 따로 배정한 금액은 월 ${manwonFromKrw(plannedMonthly)}입니다. 전체 저축·투자액 ${manwonFromKrw(totalMonthlySavings)}와 구분해 판단했습니다.`
-        : `현재 월 저축·투자액은 ${manwonFromKrw(totalMonthlySavings)}이지만 이 전체가 목표자금이라는 뜻은 아닙니다.`,
-    ],
+    reasons: fundingReasons,
     directions: directions.slice(0, 3),
     firstAction,
     details: [
-      effectiveFunding.state === "SHORTFALL" || effectiveFunding.state === "ON_PLAN"
-        ? result.gapStatement
-        : "목표별 월 배정액·목표일·준비금이 모두 확인되어야 현재 계획의 속도를 확정할 수 있습니다.",
+      fundingDetail,
       "가까운 목적자금과 장기 저축·투자는 같은 돈으로 중복 계산하지 않습니다.",
     ],
     check30: {

@@ -118,11 +118,7 @@ export function PaymentScreen({
     });
 
     try {
-      const account = await syncFinanceManagementWithAccount();
-      if (account.configured && !account.authenticated) {
-        router.push("/login?next=/management");
-        return;
-      }
+      await syncFinanceManagementWithAccount();
     } catch {
       // 계정 동기화 실패가 현재 브라우저 기록을 막지는 않는다.
     }

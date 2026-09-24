@@ -105,10 +105,11 @@ export function saveFinanceBaseline(input: {
   };
 
   const state = loadFinanceManagement();
+  const anonymousState = state.ownerUserId ? emptyState() : state;
   const next: FinanceManagementState = {
     version: 1,
-    ownerUserId: state.ownerUserId ?? null,
-    snapshots: [snapshot, ...state.snapshots].slice(0, 24),
+    ownerUserId: null,
+    snapshots: [snapshot, ...anonymousState.snapshots].slice(0, 24),
   };
   localStorage.setItem(FINANCE_MANAGEMENT_STORAGE_KEY, JSON.stringify(next));
   return snapshot;

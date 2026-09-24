@@ -212,7 +212,10 @@ export async function syncFinanceManagementWithAccount(): Promise<FinanceAccount
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
-    return { configured: true, authenticated: false, user: null, state: local };
+    const safeLocal: FinanceManagementState = local.ownerUserId
+      ? { version: 1, ownerUserId: null, snapshots: [] }
+      : local;
+    return { configured: true, authenticated: false, user: null, state: safeLocal };
   }
 
   // 서버를 먼저 읽는다. 오래된 로컬 기록이 최신 서버 기록을 먼저 덮어쓰지 않게 한다.
