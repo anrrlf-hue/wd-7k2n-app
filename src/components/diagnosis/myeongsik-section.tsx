@@ -81,25 +81,6 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
         ))}
       </div>
 
-      <details className="mt-4 rounded-xl border border-(--gold-soft) bg-card p-4">
-        <summary className="cursor-pointer list-none text-base font-semibold text-(--gold)">
-          어떻게 할까요?
-        </summary>
-        <div className="mt-3 space-y-3 text-[15px] leading-7 text-foreground/85">
-          <p>
-            {missing.length > 0
-              ? `${missing.join("·")} 기운이 비어 있어요. 거창하게 바꾸기보다 생활 가까이에서 조금씩 채워보세요.`
-              : "오행이 모두 있지만 상대적으로 약한 기운은 생활 습관과 환경에서 조금씩 보완해볼 수 있어요."}
-          </p>
-          {advice.map((text, index) => (
-            <p key={index}>{text}</p>
-          ))}
-          <p className="text-sm text-muted-foreground">
-            전통 오행 해석을 생활에 적용한 보완법이며, 특정 물건이나 행동이 실제 운을 보장한다는 뜻은 아닙니다.
-          </p>
-        </div>
-      </details>
-
       <p className="mt-4 text-sm">
         격국 <span className="font-semibold">{view.geukguk}</span> · 신강신약{" "}
         <span className="font-semibold">{view.dayStrengthGrade}</span>({view.dayStrengthScore})
