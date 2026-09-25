@@ -562,34 +562,76 @@ export function PalmPageClient({
 
       {stage === "upload" && (
         <div className="mt-6 flex flex-1 flex-col">
-          <JourneyScene scene="palm" companion="palm-guide" />
-          <div className="mt-5">
-            <p className="text-base leading-7 text-muted-foreground">
-              밝은 곳에서 손바닥 전체를 담아주세요.
-              <br />
-              손가락을 살짝 펴고, 손금선에 초점을 맞춰요.
-            </p>
-          </div>
+          {cameraOpen ? (
+            <div>
+              <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-3xl border border-(--gold-soft) bg-black">
+                <video
+                  ref={cameraVideoRef}
+                  playsInline
+                  muted
+                  className="h-full w-full object-cover"
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-[7%] rounded-[2rem] border-2 border-dashed border-white/70"
+                />
+              </div>
+              <canvas ref={cameraProbeCanvasRef} className="hidden" />
+              <div className="mystic-card mt-4 p-4 text-center">
+                <p className="text-base leading-7 text-foreground">{cameraMessage}</p>
+              </div>
+              <div className="mt-4 flex flex-col gap-3">
+                <Button
+                  size="lg"
+                  disabled={!cameraReady}
+                  onClick={captureLiveCamera}
+                  className="primary-cta h-14 w-full rounded-full text-base"
+                >
+                  <Camera className="size-4" />
+                  {cameraReady ? "지금 촬영하기" : "손바닥을 맞추는 중"}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={stopLiveCamera}
+                  className="h-13 w-full rounded-full text-base"
+                >
+                  취소
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <JourneyScene scene="palm" companion="palm-guide" />
+              <div className="mt-5">
+                <p className="text-base leading-7 text-muted-foreground">
+                  밝은 곳에서 손바닥 전체를 담아주세요.
+                  <br />
+                  손가락을 살짝 펴면 촬영 전에 선명도를 먼저 확인해요.
+                </p>
+              </div>
 
-          <div className="mt-6 flex flex-col gap-3">
-            <Button
-              size="lg"
-              onClick={() => cameraInputRef.current?.click()}
-              className="primary-cta h-14 w-full rounded-full text-base"
-            >
-              <Camera className="size-4" />
-              카메라로 촬영하기
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => galleryInputRef.current?.click()}
-              className="h-13 w-full rounded-full text-base"
-            >
-              <ImagePlus className="size-4" />
-              사진 선택하기
-            </Button>
-          </div>
+              <div className="mt-6 flex flex-col gap-3">
+                <Button
+                  size="lg"
+                  onClick={openLiveCamera}
+                  className="primary-cta h-14 w-full rounded-full text-base"
+                >
+                  <Camera className="size-4" />
+                  카메라로 촬영하기
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="h-13 w-full rounded-full text-base"
+                >
+                  <ImagePlus className="size-4" />
+                  사진 선택하기
+                </Button>
+              </div>
+            </>
+          )}
 
           <input
             ref={cameraInputRef}
