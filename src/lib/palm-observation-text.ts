@@ -29,7 +29,7 @@ export function buildRealObservationText(facts: PalmFacts): string {
 }
 
 export interface PalmReadingSection {
-  key: "heartLine" | "headLine" | "lifeLine" | "together" | "wealth";
+  key: "heartLine" | "headLine" | "lifeLine" | "fate" | "together" | "wealth";
   title: string;
   observation: string;
   summary: string;
@@ -66,6 +66,18 @@ function lifeReading(d: OnnxLineDetail): string {
   if (d.curve === "완만한 곡선") parts.push("익숙한 환경 안에서도 활동 반경을 넓히거나 새로운 경험을 받아들이는 편으로 볼 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("에너지를 여러 곳에 흩기보다 필요한 곳에 집중해서 쓰는 편으로 볼 수 있습니다.");
   parts.push("생활 리듬에서는 한 가지 흐름을 오래 이어가는 편인지, 변화에 맞춰 빠르게 전환하는 편인지가 함께 드러납니다.");
+  return parts.join(" ");
+}
+
+function fateReading(signal: NonNullable<PalmFacts["secondaryLines"]>["fate"]): string {
+  const parts: string[] = [];
+  if (signal.span >= 0.65) {
+    parts.push("손바닥 중앙을 따라 운명선이 비교적 길게 이어지는 모습입니다.");
+  } else {
+    parts.push("손바닥 중앙에서 운명선이 비교적 또렷하게 이어지는 구간이 보입니다.");
+  }
+  parts.push("손금에서는 이런 선을 일과 진로의 흐름을 스스로 이어가려는 힘과 연결해 보는 편입니다.");
+  parts.push("한 방향을 오래 붙드는 힘이 장점이 될 수 있지만, 방향을 바꿔야 할 때도 기존 흐름을 너무 오래 끌고 가지 않는지가 중요할 수 있습니다.");
   return parts.join(" ");
 }
 
@@ -112,7 +124,10 @@ function wealthReading(lines: OnnxPalmLines): string {
   return parts.join(" ");
 }
 
-export function buildPalmReadingSections(lines: OnnxPalmLines | null | undefined): PalmReadingSection[] {
+export function buildPalmReadingSections(
+  lines: OnnxPalmLines | null | undefined,
+  secondaryLines?: PalmFacts["secondaryLines"],
+): PalmReadingSection[] {
   if (!lines?.modelExecuted) return [];
 
   const sections: PalmReadingSection[] = [];
@@ -153,6 +168,17 @@ export function buildPalmReadingSections(lines: OnnxPalmLines | null | undefined
     });
   }
 
+  if (secondaryLines?.fate.status === "clear" && secondaryLines.fate.corroborated) {
+    const text = fateReading(secondaryLines.fate);
+    sections.push({
+      key: "fate",
+      title: "운명선 — 일과 진로의 흐름",
+      observation: "손바닥 중앙의 세로 흐름이 영상 신호와 별도 운명선 모델에서 함께 확인됐습니다.",
+      summary: text,
+      text,
+    });
+  }
+
   if (heart.detected && head.detected) {
     const text =
       heart.curve === head.curve
@@ -181,7 +207,7 @@ export function buildPalmReadingSections(lines: OnnxPalmLines | null | undefined
 }
 
 export function buildTraditionalReadingText(facts: PalmFacts): string {
-  const sections = buildPalmReadingSections(facts.onnxLines);
+  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines);
   return sections.length
     ? sections.map((s) => s.text).join(" ")
     : "손의 주요 선이 보이도록 밝은 곳에서 손바닥 전체를 다시 촬영해 주세요.";
