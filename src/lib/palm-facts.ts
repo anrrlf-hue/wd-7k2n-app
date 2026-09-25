@@ -87,8 +87,14 @@ export interface PalmPipelineDiagnostics {
   sharpness: number;
   highlightRatio: number;
   adaptiveMargin: number;
+  rawCropWidth: number;
+  rawCropHeight: number;
+  enhancedCropWidth: number;
+  enhancedCropHeight: number;
   rawDetectedLineCount: number;
   enhancedDetectedLineCount: number;
+  rawPixelCount: { heartLine: number; headLine: number; lifeLine: number };
+  enhancedPixelCount: { heartLine: number; headLine: number; lifeLine: number };
   chosenVariant: {
     heartLine: "raw" | "enhanced";
     headLine: "raw" | "enhanced";
