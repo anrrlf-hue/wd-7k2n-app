@@ -92,6 +92,7 @@ export interface PalmPipelineDiagnostics {
   enhancedCropWidth: number;
   enhancedCropHeight: number;
   rawDetectedLineCount: number;
+  enhancedAttempted: boolean;
   enhancedDetectedLineCount: number;
   rawPixelCount: { heartLine: number; headLine: number; lifeLine: number };
   enhancedPixelCount: { heartLine: number; headLine: number; lifeLine: number };
