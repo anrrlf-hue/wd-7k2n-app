@@ -577,6 +577,8 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
 
   const rawDetectedLineCount = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
   const enhancedDetectedLineCount = onnxEnhanced?.observations.filter((o) => o.detected).length ?? 0;
+  const pixelCount = (result: typeof onnxRaw, cls: OnnxLineClass) =>
+    result?.observations.find((o) => o.class === cls)?.pixelCount ?? 0;
   const pipelineDiagnostics = {
     sourceWidth: canvas.width,
     sourceHeight: canvas.height,
@@ -584,8 +586,22 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
     sharpness,
     highlightRatio: highlights,
     adaptiveMargin,
+    rawCropWidth: rawPalmCrop.width,
+    rawCropHeight: rawPalmCrop.height,
+    enhancedCropWidth: enhancedPalmCrop.width,
+    enhancedCropHeight: enhancedPalmCrop.height,
     rawDetectedLineCount,
     enhancedDetectedLineCount,
+    rawPixelCount: {
+      heartLine: pixelCount(onnxRaw, "heart_line"),
+      headLine: pixelCount(onnxRaw, "head_line"),
+      lifeLine: pixelCount(onnxRaw, "life_line"),
+    },
+    enhancedPixelCount: {
+      heartLine: pixelCount(onnxEnhanced, "heart_line"),
+      headLine: pixelCount(onnxEnhanced, "head_line"),
+      lifeLine: pixelCount(onnxEnhanced, "life_line"),
+    },
     chosenVariant: {
       heartLine: heartChoice.variant,
       headLine: headChoice.variant,
