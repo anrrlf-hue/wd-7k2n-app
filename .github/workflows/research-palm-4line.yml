@@ -3,6 +3,8 @@ name: research-palm-4line
 on:
   push:
     branches: [research/palm-4line-model]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
