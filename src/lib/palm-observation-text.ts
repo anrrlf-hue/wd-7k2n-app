@@ -65,7 +65,7 @@ function lifeReading(d: OnnxLineDetail): string {
   if (d.length === "짧음") parts.push("한 가지 생활 패턴을 오래 유지하기보다 변화가 생길 때 빠르게 맞춰가는 쪽에 가까울 수 있습니다.");
   if (d.curve === "완만한 곡선") parts.push("익숙한 환경 안에서도 활동 반경을 넓히거나 새로운 경험을 받아들이는 편으로 볼 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("에너지를 여러 곳에 흩기보다 필요한 곳에 집중해서 쓰는 편으로 볼 수 있습니다.");
-  parts.push("생명선은 수명이나 건강을 예측하는 선으로 단정하지 않고, 생활 리듬과 활동 방식의 전통적 해석으로만 봅니다.");
+  parts.push("생활 리듬에서는 한 가지 흐름을 오래 이어가는 편인지, 변화에 맞춰 빠르게 전환하는 편인지가 함께 드러납니다.");
   return parts.join(" ");
 }
 
@@ -107,7 +107,7 @@ function wealthReading(lines: OnnxPalmLines): string {
       parts.push("사람 때문에 돈의 기준이 흔들리기보다 약속과 조건을 분명히 할 때 재물을 지키는 힘이 더 살아나는 편입니다.");
     }
   }
-  parts.push("현재 재물운 해석은 실제로 확인된 감정선·두뇌선·생명선의 전통적 해석만 사용합니다. 재물선·운명선·태양선 후보 신호는 검증 전이라 고객 해석에 사용하지 않습니다.");
+
 
   return parts.join(" ");
 }

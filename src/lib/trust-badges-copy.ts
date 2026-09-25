@@ -12,8 +12,5 @@ export const TRUST_BADGES: TrustBadge[] = [
     text: "사주에서 본 성향과 지금의 생활을 함께 살펴, 내 삶에 맞는 다음 방향으로 이어갑니다.",
     enabled: true,
   },
-  {
-    text: "특정 금융상품 판매를 목적으로 하지 않습니다.",
-    enabled: true,
-  },
+
 ];

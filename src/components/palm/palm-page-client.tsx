@@ -570,7 +570,7 @@ export function PalmPageClient({
 
       {funnelActive && <button type="button" className="reading-toggle" aria-expanded={readingOpen} aria-controls="previous-reading" onClick={() => setReadingOpen(!readingOpen)}>{readingOpen ? "이전 결과 접기" : "이전 사주·손금 결과 다시 보기"}<span aria-hidden="true">{readingOpen ? "−" : "+"}</span></button>}
       <div id="previous-reading" hidden={!readingOpen}>
-      {stage === "result" && palmFacts && finalReport && (
+      {stage === "result" && palmFacts && (
         <div className="mt-6 flex flex-1 flex-col">
           <motion.div
             initial={{ opacity: 0.6, y: 8 }}
@@ -603,7 +603,7 @@ export function PalmPageClient({
             <TripleCompareSection items={tripleCompare} />
           </div>
 
-          <FinalReportSections report={finalReport} />
+          {finalReport && <FinalReportSections report={finalReport} />}
           {verdict && <VerdictCard verdict={verdict} />}
         </div>
       )}
@@ -632,9 +632,7 @@ export function PalmPageClient({
 
       {/* 무료 리포트 Peak와 다음 행동(운세지도) 사이에 고지 문구가 끼면
        * 몰입이 끊긴다(§O) — 필요한 고지는 여기, 진짜 페이지 최하단에만 둔다. */}
-      {(stage === "result" || stage === "saju_only") && (
-        <p className="mt-8 text-center text-sm leading-relaxed text-muted-foreground">사주·손금 해석과 재무 방향은 삶의 선택을 돕기 위한 참고자료입니다.</p>
-      )}
+
       </div>
     </div>
   );

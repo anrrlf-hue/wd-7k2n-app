@@ -221,9 +221,7 @@ export function PaymentScreen({
       <motion.div initial={{ opacity: 0.5, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <p className="section-eyebrow">한 질문 현실판정 · 상품 구성 미리보기</p>
         <h2 className="mt-3 text-2xl leading-snug font-semibold">{paidResult.question}</h2>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">
-          사주·손금이 아니라 지금 확인한 금액과 날짜를 기준으로 판단합니다.
-        </p>
+
 
         <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
           <p className="section-eyebrow">결론</p>

@@ -120,7 +120,9 @@ export function onnxDetectedLineCount(facts: PalmFacts): number {
 export function isPalmFactsUsable(facts: PalmFacts): boolean {
   if (facts.imageQuality !== "good") return false;
   if (!facts.onnxLines || !facts.onnxLines.modelExecuted) return false;
-  if (onnxDetectedLineCount(facts) < 2) return false;
+  // 한 선이라도 실제 모델이 확인했다면 확인된 내용부터 보여준다.
+  // 나머지 선이 안 보인다는 이유로 전체 손금 결과를 버리지 않는다.
+  if (onnxDetectedLineCount(facts) < 1) return false;
   return true;
 }
 
