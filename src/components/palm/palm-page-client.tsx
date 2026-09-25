@@ -653,7 +653,7 @@ export function PalmPageClient({
                   className="primary-cta h-14 w-full rounded-full text-base"
                 >
                   <Camera className="size-4" />
-                  카메라로 촬영하기
+                  지금 촬영하기
                 </Button>
                 <Button
                   size="lg"
