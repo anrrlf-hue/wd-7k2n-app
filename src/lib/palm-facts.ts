@@ -105,6 +105,9 @@ export interface PalmPipelineDiagnostics {
   fateModelConfidence?: number | null;
   fateModelVerticalSpan?: number | null;
   fateModelCorroborated?: boolean;
+  threeLineElapsedMs?: number;
+  fateModelElapsedMs?: number;
+  totalModelElapsedMs?: number;
   chosenVariant: {
     heartLine: "raw" | "enhanced";
     headLine: "raw" | "enhanced";

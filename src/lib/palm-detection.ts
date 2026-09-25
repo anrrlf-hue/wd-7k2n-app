@@ -802,10 +802,22 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   const palmCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left", adaptiveMargin);
   const secondaryLinesBase = detectSecondaryPalmLines(adaptivePalmCrop, enhancedPalmCrop, palmCropLandmarks);
 
+  // 3선 모델과 운명선 보조 모델은 서로 독립이므로 동시에 시작한다.
+  // 4선 모델의 네트워크 로드/초기화가 3선 추론 뒤에 직렬로 붙어 대기시간을
+  // 늘리지 않도록 하되, 기존 3선 판정 우선순위는 그대로 유지한다.
+  const totalModelStartedAt = performance.now();
+  const fateModelStartedAt = performance.now();
+  const fourLinePromise = runPalmFourLineOnnx(enhancedPalmCrop, 0.08).then((result) => ({
+    result,
+    elapsedMs: performance.now() - fateModelStartedAt,
+  }));
+
+  const threeLineStartedAt = performance.now();
   const onnxRaw = await runPalmLineOnnx(rawPalmCrop);
   const rawDetectedBeforeFallback = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
   const enhancedAttempted = rawDetectedBeforeFallback < 3;
   const onnxEnhanced = enhancedAttempted ? await runPalmLineOnnx(enhancedPalmCrop) : null;
+  const threeLineElapsedMs = performance.now() - threeLineStartedAt;
 
   const chooseObservation = (cls: OnnxLineClass): { observation: OnnxLineObservation | null; variant: "raw" | "enhanced" } => {
     const raw = onnxRaw?.observations.find((o) => o.class === cls) ?? null;
@@ -845,7 +857,10 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
       }
     : null;
 
-  const fourLine = await runPalmFourLineOnnx(enhancedPalmCrop, 0.08);
+  const fourLineTimed = await fourLinePromise;
+  const fourLine = fourLineTimed.result;
+  const fateModelElapsedMs = fourLineTimed.elapsedMs;
+  const totalModelElapsedMs = performance.now() - totalModelStartedAt;
   const fateModel = fourLine?.fate ?? null;
   const secondaryLines = secondaryLinesBase
     ? {
@@ -885,6 +900,9 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
     fateModelConfidence: fateModel?.confidence ?? null,
     fateModelVerticalSpan: fateModel?.verticalSpan ?? null,
     fateModelCorroborated: secondaryLines?.fate.corroborated ?? false,
+    threeLineElapsedMs: Math.round(threeLineElapsedMs),
+    fateModelElapsedMs: Math.round(fateModelElapsedMs),
+    totalModelElapsedMs: Math.round(totalModelElapsedMs),
     chosenVariant: {
       heartLine: heartChoice.variant,
       headLine: headChoice.variant,
