@@ -69,6 +69,37 @@ function averageBrightness(imageData: ImageData): number {
   return count > 0 ? sum / count : 0;
 }
 
+function imageSharpness(imageData: ImageData): number {
+  const { data, width, height } = imageData;
+  let sum = 0;
+  let count = 0;
+  const gray = (x: number, y: number) => {
+    const i = (y * width + x) * 4;
+    return 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+  };
+  for (let y = 1; y < height - 1; y += 3) {
+    for (let x = 1; x < width - 1; x += 3) {
+      const gx = Math.abs(gray(x + 1, y) - gray(x - 1, y));
+      const gy = Math.abs(gray(x, y + 1) - gray(x, y - 1));
+      sum += gx + gy;
+      count++;
+    }
+  }
+  return count > 0 ? sum / count : 0;
+}
+
+function highlightRatio(imageData: ImageData): number {
+  const { data } = imageData;
+  let highlights = 0;
+  let count = 0;
+  for (let i = 0; i < data.length; i += 4 * 8) {
+    const y = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    if (y >= 245) highlights++;
+    count++;
+  }
+  return count > 0 ? highlights / count : 0;
+}
+
 function isNearEdge(p: { x: number; y: number }, w: number, h: number, margin = 0.02) {
   return p.x < w * margin || p.x > w * (1 - margin) || p.y < h * margin || p.y > h * (1 - margin);
 }
@@ -110,6 +141,64 @@ function palmBoundingBox(landmarksPx: { x: number; y: number }[]): Rect {
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+function adaptivePalmMargin(landmarksPx: { x: number; y: number }[]): number {
+  const box = palmBoundingBox(landmarksPx);
+  const palmScale = Math.max(box.width, box.height);
+  return Math.round(Math.max(70, Math.min(135, palmScale * 0.28)));
+}
+
+function enhancePalmContrast(source: HTMLCanvasElement): HTMLCanvasElement {
+  const out = document.createElement("canvas");
+  out.width = source.width;
+  out.height = source.height;
+  const ctx = out.getContext("2d");
+  if (!ctx) return source;
+  ctx.drawImage(source, 0, 0);
+
+  const image = ctx.getImageData(0, 0, out.width, out.height);
+  const { data, width, height } = image;
+  const gray = new Float32Array(width * height);
+  for (let p = 0, i = 0; p < gray.length; p++, i += 4) {
+    gray[p] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+  }
+
+  const stride = width + 1;
+  const integral = new Float64Array((width + 1) * (height + 1));
+  for (let y = 1; y <= height; y++) {
+    let rowSum = 0;
+    for (let x = 1; x <= width; x++) {
+      rowSum += gray[(y - 1) * width + (x - 1)];
+      integral[y * stride + x] = integral[(y - 1) * stride + x] + rowSum;
+    }
+  }
+
+  const radius = Math.max(6, Math.round(Math.min(width, height) * 0.025));
+  const clamp = (v: number) => Math.max(0, Math.min(255, v));
+  for (let y = 0; y < height; y++) {
+    const y0 = Math.max(0, y - radius);
+    const y1 = Math.min(height - 1, y + radius);
+    for (let x = 0; x < width; x++) {
+      const x0 = Math.max(0, x - radius);
+      const x1 = Math.min(width - 1, x + radius);
+      const area = (x1 - x0 + 1) * (y1 - y0 + 1);
+      const sum =
+        integral[(y1 + 1) * stride + (x1 + 1)] -
+        integral[y0 * stride + (x1 + 1)] -
+        integral[(y1 + 1) * stride + x0] +
+        integral[y0 * stride + x0];
+      const localMean = sum / area;
+      const p = y * width + x;
+      const delta = (gray[p] - localMean) * 0.55;
+      const i = p * 4;
+      data[i] = clamp((data[i] - 128) * 1.06 + 128 + delta);
+      data[i + 1] = clamp((data[i + 1] - 128) * 1.06 + 128 + delta);
+      data[i + 2] = clamp((data[i + 2] - 128) * 1.06 + 128 + delta);
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  return out;
 }
 
 function extractLineFeatures(imageData: ImageData, landmarksPx: { x: number; y: number }[]): LineFeature[] {
@@ -371,6 +460,8 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
 
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const brightness = averageBrightness(imageData);
+  const sharpness = imageSharpness(imageData);
+  const highlights = highlightRatio(imageData);
 
   if (brightness < 45) {
     return {
@@ -431,24 +522,77 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   const handShape = classifyHandShape(landmarksPx);
   const lineFeatures = extractLineFeatures(imageData, landmarksPx);
 
-  // 실제 ONNX 모델 추론 — upstream 학습 전처리와 동일하게 손가락이 위로
-  // 향하도록 회전 + 고정 마진 크롭 + 좌우손 통일(미러링)한 뒤 넣는다.
-  // 실패해도(모델 로드 실패, 추론 오류) null만 반환하고 Sobel 결과로 계속 진행한다.
-  const palmCrop = cropAndRotatePalm(canvas, landmarksPx, handSide === "left");
-  const palmCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left");
-  const secondaryLines = detectSecondaryPalmLines(palmCrop, palmCropLandmarks);
-  const onnxRaw = await runPalmLineOnnx(palmCrop);
-  const onnxLines: PalmFacts["onnxLines"] = onnxRaw
+  // 1차는 upstream과 같은 fixed 100px crop을 그대로 둔다.
+  // 2차는 손 크기에 맞춘 crop + 국소 대비 보정본을 사용한다.
+  // 기존 원본에서 잡힌 선은 절대 덮어쓰지 않고, 원본이 놓친 선만 2차 결과로 보완한다.
+  const rawPalmCrop = cropAndRotatePalm(canvas, landmarksPx, handSide === "left", 100);
+  const adaptiveMargin = adaptivePalmMargin(landmarksPx);
+  const adaptivePalmCrop = cropAndRotatePalm(canvas, landmarksPx, handSide === "left", adaptiveMargin);
+  const enhancedPalmCrop = enhancePalmContrast(adaptivePalmCrop);
+  const palmCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left", adaptiveMargin);
+  const secondaryLines = detectSecondaryPalmLines(adaptivePalmCrop, palmCropLandmarks);
+
+  const [onnxRaw, onnxEnhanced] = await Promise.all([
+    runPalmLineOnnx(rawPalmCrop),
+    runPalmLineOnnx(enhancedPalmCrop),
+  ]);
+
+  const chooseObservation = (cls: OnnxLineClass): { observation: OnnxLineObservation | null; variant: "raw" | "enhanced" } => {
+    const raw = onnxRaw?.observations.find((o) => o.class === cls) ?? null;
+    const enhanced = onnxEnhanced?.observations.find((o) => o.class === cls) ?? null;
+    if (raw?.detected) return { observation: raw, variant: "raw" };
+    if (enhanced?.detected) return { observation: enhanced, variant: "enhanced" };
+    return { observation: raw ?? enhanced, variant: raw ? "raw" : "enhanced" };
+  };
+
+  const heartChoice = chooseObservation("heart_line");
+  const headChoice = chooseObservation("head_line");
+  const lifeChoice = chooseObservation("life_line");
+  const modelExecuted = Boolean(onnxRaw || onnxEnhanced);
+
+  const missingObservation = (cls: OnnxLineClass): OnnxLineObservation => ({
+    class: cls,
+    detected: false,
+    pixelCount: 0,
+    coverage: 0,
+    boundingBox: null,
+    start: null,
+    end: null,
+    curveScore: 0,
+    lineLength: 0,
+    avgThickness: 0,
+  });
+
+  const onnxLines: PalmFacts["onnxLines"] = modelExecuted
     ? {
         modelExecuted: true,
-        heartLine: mapOnnxObservation(onnxRaw.observations.find((o) => o.class === "heart_line")!),
-        headLine: mapOnnxObservation(onnxRaw.observations.find((o) => o.class === "head_line")!),
-        lifeLine: mapOnnxObservation(onnxRaw.observations.find((o) => o.class === "life_line")!),
-        fateLine: { presence: "unknown", note: "이 모델은 재물선(fate line)을 분할하지 않아 확인할 수 없어요." },
+        heartLine: mapOnnxObservation(heartChoice.observation ?? missingObservation("heart_line")),
+        headLine: mapOnnxObservation(headChoice.observation ?? missingObservation("head_line")),
+        lifeLine: mapOnnxObservation(lifeChoice.observation ?? missingObservation("life_line")),
+        fateLine: { presence: "unknown", note: "현재 3선 모델은 운명선(fate line)을 분할하지 않아 별도 검증이 필요합니다." },
         mounts: "unknown",
         marks: "unknown",
       }
     : null;
+
+  const rawDetectedLineCount = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
+  const enhancedDetectedLineCount = onnxEnhanced?.observations.filter((o) => o.detected).length ?? 0;
+  const pipelineDiagnostics = {
+    sourceWidth: canvas.width,
+    sourceHeight: canvas.height,
+    averageBrightness: brightness,
+    sharpness,
+    highlightRatio: highlights,
+    adaptiveMargin,
+    rawDetectedLineCount,
+    enhancedDetectedLineCount,
+    chosenVariant: {
+      heartLine: heartChoice.variant,
+      headLine: headChoice.variant,
+      lifeLine: lifeChoice.variant,
+    },
+  } as const;
+  console.debug("[palm-pipeline]", pipelineDiagnostics);
 
   const onnxDetectedNames: LineName[] = onnxLines
     ? (["heart_line", "head_line", "life_line"] as const)
@@ -465,6 +609,12 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
 
   const warnings: string[] = [];
   const imageQuality: ImageQuality = "good";
+  if (highlights > 0.35) {
+    warnings.push("손바닥에 빛 반사가 강해 일부 얇은 선이 약하게 보일 수 있어요.");
+  }
+  if (sharpness < 8) {
+    warnings.push("사진 초점이 약해 얇은 손금선이 덜 잡힐 수 있어요.");
+  }
   if (majorLines.length === 0) {
     warnings.push("주요 선이 뚜렷하게 보이지 않았어요. 손바닥을 펴고 조명이 잘 드는 곳에서 다시 찍어보세요.");
   }
@@ -478,6 +628,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
     onnxLines,
     secondaryLines,
     confidence,
+    pipelineDiagnostics,
     warnings,
   };
 }
