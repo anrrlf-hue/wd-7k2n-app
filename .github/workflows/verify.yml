@@ -39,6 +39,9 @@ jobs:
       - name: Palm secondary export regression
         run: node scripts/test-palm-secondary-export.mjs
 
+      - name: Palm Roboflow import regression
+        run: node scripts/test-palm-roboflow-import.mjs
+
       - name: Saju engine identity regression
         run: node scripts/test-saju-engine-identity.mjs
 

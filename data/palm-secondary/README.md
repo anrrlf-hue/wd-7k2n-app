@@ -54,3 +54,21 @@ Required sequence:
 6. only then add a customer-facing reading.
 
 The existing main 3-line segmentation model remains the primary detector for heart/head/life. The four-line pose model is currently used only as a corroborating fate-line detector.
+
+
+## Public sun-line bootstrap
+
+A separate importer exists for authorized Roboflow YOLO segmentation exports that contain `solar_line` or `sun_line`:
+
+```bash
+node scripts/import-roboflow-palm-secondary.mjs <datasetRoot> <outputRoot>
+```
+
+It converts thin segmentation polygons into 10-point centerlines compatible with this project's secondary-line label/export format.
+
+Important:
+
+- `solar_line` / `sun_line` is imported as `sun`.
+- `mercury_line` is **not** silently imported as `wealth`.
+- Public labels are bootstrap data, not production evidence.
+- Before customer-facing use, retrain/evaluate on representative smartphone photos and measure false positives against ordinary wrinkles.
