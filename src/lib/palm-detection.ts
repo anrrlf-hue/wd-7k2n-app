@@ -710,11 +710,9 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   }
 
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const brightness = averageBrightness(imageData);
-  const sharpness = imageSharpness(imageData);
-  const highlights = highlightRatio(imageData);
+  const frameBrightness = averageBrightness(imageData);
 
-  if (brightness < 45) {
+  if (frameBrightness < 25) {
     return {
       handSide: "unknown",
       imageQuality: "too_dark",
@@ -745,6 +743,25 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
 
   const landmarks = result.landmarks[0];
   const landmarksPx = landmarks.map((l) => px(l, canvas.width, canvas.height));
+
+  const palmQualityRect = paddedRect(palmBoundingBox(landmarksPx), canvas.width, canvas.height, 0.22);
+  const palmImageData = imageDataForRect(ctx, palmQualityRect);
+  const brightness = averageBrightness(palmImageData);
+  const sharpness = imageSharpness(palmImageData);
+  const highlights = highlightRatio(palmImageData);
+
+  if (brightness < 45) {
+    return {
+      handSide: "unknown",
+      imageQuality: "too_dark",
+      handShape: "unknown",
+      majorLines: [],
+      lineFeatures: [],
+      onnxLines: null,
+      confidence: 0,
+      warnings: ["손바닥이 어두워 손금선이 잘 보이지 않아요. 손바닥 쪽에 빛이 오게 다시 찍어주세요."],
+    };
+  }
 
   const keyIndices = [0, 1, 4, 5, 8, 9, 12, 13, 16, 17, 20];
   const cropped = keyIndices.some((i) => isNearEdge(landmarksPx[i], canvas.width, canvas.height));
