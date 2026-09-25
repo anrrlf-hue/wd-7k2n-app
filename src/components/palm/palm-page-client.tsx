@@ -57,7 +57,7 @@ function readSessionJson<T>(key: string): T | null {
 interface PalmResumeState {
   stage: "result" | "saju_only";
   palmFacts: PalmFacts | null;
-  finalReport: FreeSajuReport;
+  finalReport: FreeSajuReport | null;
   tripleCompare: CompareItem[];
   verdict: ReportParagraph | null;
   wealthType: WealthTypeResult | null;
@@ -279,14 +279,14 @@ export function PalmPageClient({
     if (!resumeKey) return;
 
     const saved = readSessionJson<PalmResumeState>(`${resumeKey}:palm`);
-    if (!saved?.finalReport) return;
+    if (!saved) return;
 
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
       setStage(saved.stage);
       setPalmFacts(saved.palmFacts);
-      setFinalReport(saved.finalReport);
+      setFinalReport(saved.finalReport ?? null);
       setTripleCompare(saved.tripleCompare ?? []);
       setVerdict(saved.verdict ?? null);
       setWealthType(saved.wealthType ?? null);
@@ -361,7 +361,7 @@ export function PalmPageClient({
   }, []);
 
   useEffect(() => {
-    if (!resumeKey || !finalReport || (stage !== "result" && stage !== "saju_only")) return;
+    if (!resumeKey || (stage !== "result" && stage !== "saju_only")) return;
     const saved: PalmResumeState = {
       stage,
       palmFacts,
