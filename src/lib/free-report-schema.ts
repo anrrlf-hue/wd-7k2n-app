@@ -138,6 +138,10 @@ export function validateFreeSajuReport(raw: unknown): ValidationResult & { data?
   const jargonViolations = JARGON_IN_TEXT_PATTERNS.filter((re) => re.test(fullText)).map(
     (re) => `jargon leaked into plain text: ${re.source}`,
   );
-  const violations = [...bannedViolations, ...jargonViolations];
+  const cautionDepthViolations = d.cautions
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.detail.trim().length < 70)
+    .map(({ index }) => `cautions.${index}.detail too short for a useful explanation`);
+  const violations = [...bannedViolations, ...jargonViolations, ...cautionDepthViolations];
   return { ok: violations.length === 0, violations, data: parsed.data };
 }
