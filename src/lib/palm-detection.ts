@@ -500,6 +500,7 @@ export interface PalmCaptureAssessment {
   brightness: number;
   sharpness: number;
   highlightRatio: number;
+  handSpanRatio: number;
 }
 
 /**
@@ -517,6 +518,7 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
       brightness: 0,
       sharpness: 0,
       highlightRatio: 0,
+      handSpanRatio: 0,
     };
   }
 
@@ -534,6 +536,7 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
       brightness,
       sharpness,
       highlightRatio: highlights,
+      handSpanRatio: 0,
     };
   }
 
@@ -548,10 +551,16 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
       brightness,
       sharpness,
       highlightRatio: highlights,
+      handSpanRatio: 0,
     };
   }
 
   const landmarksPx = result.landmarks[0].map((l) => px(l, canvas.width, canvas.height));
+  const allXs = landmarksPx.map((p) => p.x);
+  const allYs = landmarksPx.map((p) => p.y);
+  const handWidthRatio = (Math.max(...allXs) - Math.min(...allXs)) / canvas.width;
+  const handHeightRatio = (Math.max(...allYs) - Math.min(...allYs)) / canvas.height;
+  const handSpanRatio = Math.max(handWidthRatio, handHeightRatio);
   const keyIndices = [0, 1, 4, 5, 8, 9, 12, 13, 16, 17, 20];
   const cropped = keyIndices.some((i) => isNearEdge(landmarksPx[i], canvas.width, canvas.height, 0.035));
   if (cropped) {
@@ -563,6 +572,20 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
       brightness,
       sharpness,
       highlightRatio: highlights,
+      handSpanRatio,
+    };
+  }
+
+  if (handSpanRatio < 0.52) {
+    return {
+      ready: false,
+      message: "손금선이 더 선명하게 보이도록 손을 조금만 가까이 가져와주세요.",
+      handDetected: true,
+      cropped: false,
+      brightness,
+      sharpness,
+      highlightRatio: highlights,
+      handSpanRatio,
     };
   }
 
@@ -575,6 +598,7 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
       brightness,
       sharpness,
       highlightRatio: highlights,
+      handSpanRatio,
     };
   }
 
@@ -587,6 +611,7 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
       brightness,
       sharpness,
       highlightRatio: highlights,
+      handSpanRatio,
     };
   }
 
@@ -598,6 +623,7 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
     brightness,
     sharpness,
     highlightRatio: highlights,
+    handSpanRatio,
   };
 }
 
