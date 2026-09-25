@@ -102,6 +102,9 @@ export interface PalmPipelineDiagnostics {
   enhancedDetectedLineCount: number;
   rawPixelCount: { heartLine: number; headLine: number; lifeLine: number };
   enhancedPixelCount: { heartLine: number; headLine: number; lifeLine: number };
+  fateModelConfidence?: number | null;
+  fateModelVerticalSpan?: number | null;
+  fateModelCorroborated?: boolean;
   chosenVariant: {
     heartLine: "raw" | "enhanced";
     headLine: "raw" | "enhanced";
