@@ -628,8 +628,8 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   if (highlights > 0.35) {
     warnings.push("손바닥에 빛 반사가 강해 일부 얇은 선이 약하게 보일 수 있어요.");
   }
-  if (sharpness < 8) {
-    warnings.push("사진 초점이 약해 얇은 손금선이 덜 잡힐 수 있어요.");
+  if (sharpness < 4) {
+    warnings.push("사진 초점이 많이 흐려 얇은 손금선이 덜 잡힐 수 있어요.");
   }
   if (majorLines.length === 0) {
     warnings.push("주요 선이 뚜렷하게 보이지 않았어요. 손바닥을 펴고 조명이 잘 드는 곳에서 다시 찍어보세요.");
