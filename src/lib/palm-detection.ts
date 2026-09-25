@@ -143,6 +143,29 @@ function palmBoundingBox(landmarksPx: { x: number; y: number }[]): Rect {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+function paddedRect(rect: Rect, imageWidth: number, imageHeight: number, padRatio = 0.18): Rect {
+  const padX = rect.width * padRatio;
+  const padY = rect.height * padRatio;
+  const x = Math.max(0, rect.x - padX);
+  const y = Math.max(0, rect.y - padY);
+  const right = Math.min(imageWidth, rect.x + rect.width + padX);
+  const bottom = Math.min(imageHeight, rect.y + rect.height + padY);
+  return {
+    x,
+    y,
+    width: Math.max(1, right - x),
+    height: Math.max(1, bottom - y),
+  };
+}
+
+function imageDataForRect(ctx: CanvasRenderingContext2D, rect: Rect): ImageData {
+  const x = Math.max(0, Math.floor(rect.x));
+  const y = Math.max(0, Math.floor(rect.y));
+  const width = Math.max(1, Math.min(ctx.canvas.width - x, Math.ceil(rect.width)));
+  const height = Math.max(1, Math.min(ctx.canvas.height - y, Math.ceil(rect.height)));
+  return ctx.getImageData(x, y, width, height);
+}
+
 function adaptivePalmMargin(landmarksPx: { x: number; y: number }[]): number {
   const box = palmBoundingBox(landmarksPx);
   const palmScale = Math.max(box.width, box.height);
