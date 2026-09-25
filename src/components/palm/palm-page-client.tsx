@@ -272,6 +272,7 @@ export function PalmPageClient({
   const cameraProbeCanvasRef = useRef<HTMLCanvasElement>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraProbeBusyRef = useRef(false);
+  const cameraStableFramesRef = useRef(0);
 
   useEffect(() => {
     preloadHandLandmarker();
@@ -325,8 +326,20 @@ export function PalmPageClient({
       try {
         const assessment = await assessPalmCaptureFrame(probe);
         if (!cancelled) {
-          setCameraReady(assessment.ready);
-          setCameraMessage(assessment.message);
+          if (assessment.ready) {
+            cameraStableFramesRef.current += 1;
+          } else {
+            cameraStableFramesRef.current = 0;
+          }
+          const stableReady = assessment.ready && cameraStableFramesRef.current >= 2;
+          setCameraReady(stableReady);
+          setCameraMessage(
+            stableReady
+              ? assessment.message
+              : assessment.ready
+                ? "좋아요. 초점이 안정되도록 잠깐만 그대로 있어주세요."
+                : assessment.message,
+          );
         }
       } finally {
         cameraProbeBusyRef.current = false;
@@ -420,6 +433,7 @@ export function PalmPageClient({
     cameraStreamRef.current = null;
     setCameraOpen(false);
     setCameraReady(false);
+    cameraStableFramesRef.current = 0;
     setCameraMessage("손바닥 전체를 화면 안에 맞춰주세요.");
   }
 
