@@ -107,7 +107,19 @@ export async function POST(request: Request) {
   const palmSkipped = palmFacts === null;
 
   if (palmFacts?.pipelineDiagnostics) {
-    console.info("[palm-pipeline-client]", JSON.stringify(palmFacts.pipelineDiagnostics));
+    console.info(
+      "[palm-pipeline-client]",
+      JSON.stringify({
+        ...palmFacts.pipelineDiagnostics,
+        secondaryLines: palmFacts.secondaryLines
+          ? {
+              fate: palmFacts.secondaryLines.fate,
+              sun: palmFacts.secondaryLines.sun,
+              wealth: palmFacts.secondaryLines.wealth,
+            }
+          : null,
+      }),
+    );
   }
 
   if (palmFacts && !isPalmFactsUsable(palmFacts)) {
