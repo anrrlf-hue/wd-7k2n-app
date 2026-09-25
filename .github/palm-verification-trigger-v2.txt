@@ -1,2 +1,2 @@
 Temporary trigger for validating current palm camera and preprocessing pipeline.
-Run after live distance/stability gating changes.
+Run after live distance/stability gating and secondary-line geometry guard changes.
