@@ -93,6 +93,7 @@ jobs:
           python -m pip install --quiet onnx onnxruntime
           python - <<'PY'
           import os
+          import shutil
           import onnx
           from ultralytics import YOLO
 
@@ -124,6 +125,7 @@ jobs:
           print("ONNX_PATH", exported)
           print("ONNX_SIZE_BYTES", os.path.getsize(exported))
           print("ONNX_NMS_EMBEDDED", nms_mode)
+          shutil.copy2(exported, "/tmp/palm_4line.onnx")
 
           graph = onnx.load(exported)
           def shape_of(value):
@@ -154,3 +156,11 @@ jobs:
           if not required.issubset(detected):
               raise SystemExit(f"ONNX candidate lost classes: {sorted(required - detected)}")
           PY
+
+      - name: Upload ONNX candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: palm-4line-onnx
+          path: /tmp/palm_4line.onnx
+          if-no-files-found: error
+          retention-days: 3
