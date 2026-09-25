@@ -10,7 +10,8 @@ import {
 } from "@mediapipe/tasks-vision";
 import { analyzeEdgeBand, analyzeVerticalCreaseBand } from "@/lib/palm-line-features";
 import { runPalmLineOnnx, preloadPalmLineModel, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
-import { runPalmFourLineOnnx, type FourLinePoseObservation } from "@/lib/palm-4line-onnx";
+import { runPalmFourLineOnnx } from "@/lib/palm-4line-onnx";
+import { fuseFateSignal } from "@/lib/palm-fate-fusion";
 import type {
   HandShape,
   HandSide,
@@ -423,51 +424,6 @@ function bestSecondaryLineSignal(
         : status === "faint"
           ? `${label} 후보가 일부 보이지만 아직 고객 해석에 쓰기엔 확인이 더 필요합니다.`
           : `${label} 후보의 연속된 주름 신호가 충분히 확인되지 않습니다.`,
-  };
-}
-
-function fuseFateSignal(
-  base: NonNullable<PalmFacts["secondaryLines"]>["fate"],
-  model: FourLinePoseObservation | null,
-): NonNullable<PalmFacts["secondaryLines"]>["fate"] {
-  const modelConfidence = model?.confidence ?? 0;
-  const modelVerticalSpan = model?.verticalSpan ?? 0;
-  const modelHorizontalSpan = model?.horizontalSpan ?? 0;
-  const modelLineLike =
-    Boolean(model) &&
-    modelVerticalSpan >= 0.18 &&
-    modelVerticalSpan >= Math.max(0.12, modelHorizontalSpan * 2);
-
-  const heuristicSupports = base.status === "faint" || base.status === "clear";
-  const strongModel = modelLineLike && modelConfidence >= 0.25;
-  const mediumModel = modelLineLike && modelConfidence >= 0.12;
-  const corroborated = heuristicSupports && mediumModel;
-
-  let status: NonNullable<PalmFacts["secondaryLines"]>["fate"]["status"] = "not_seen";
-  if ((base.status === "clear" && mediumModel) || (base.status === "faint" && strongModel)) {
-    status = "clear";
-  } else if (corroborated || strongModel || base.status === "clear") {
-    status = "faint";
-  }
-
-  const strength = Math.max(base.strength, strongModel ? modelConfidence : modelConfidence * 0.7);
-  const span = Math.max(base.span, modelLineLike ? modelVerticalSpan : 0);
-
-  return {
-    status,
-    strength: Math.min(1, strength),
-    span,
-    modelConfidence: model ? modelConfidence : null,
-    modelVerticalSpan: model ? modelVerticalSpan : null,
-    corroborated,
-    note:
-      status === "clear"
-        ? "운명선 후보가 영상 주름 신호와 별도 4선 모델에서 함께 확인됩니다."
-        : status === "faint"
-          ? model
-            ? "운명선 후보가 일부 보이지만 두 검출 경로의 일치가 충분하지 않아 아직 선명 판정으로 올리지 않았습니다."
-            : base.note
-          : "운명선 후보가 두 검출 경로에서 충분히 확인되지 않았습니다.",
   };
 }
 
