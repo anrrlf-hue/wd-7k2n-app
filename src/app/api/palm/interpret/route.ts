@@ -126,23 +126,6 @@ export async function POST(request: Request) {
     const deepFacts: SajuFacts =
       parsed.data.hour === null ? shallowFacts : enrichSajuFacts(shallowFacts, parsed.data);
 
-    if (parsed.data.hour === null) {
-      return NextResponse.json({
-        usable: true,
-        palmSkipped,
-        palmFacts,
-        freeReport: null,
-        fortuneCandidates: [],
-        tripleCompare: [],
-        lifetimeStory: null,
-        verdict: null,
-        primaryCandidateId: null,
-        wealthType,
-        precisionLimited: true,
-        warnings: ["출생시간이 없어 사주와 손금을 합친 정밀 해석은 만들지 않았습니다."],
-      });
-    }
-
     const personalityCheck = parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null;
     const mbti = parsed.data.mbti ?? null;
 

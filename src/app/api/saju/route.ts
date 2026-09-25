@@ -81,28 +81,12 @@ export async function POST(request: Request) {
       check: parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null,
     };
 
-    // 출생시간 미상에서는 임시 시주가 섞일 수 있는 강약·격국·용신·대운 기반
-    // 심층 문장을 생성하지 않는다. 3주/오행/십성 기반의 부분 결과만 보여준다.
-    if (parsed.data.hour === null) {
-      lifetimeStory = null;
-      return NextResponse.json({
-        ...shallow,
-        resultSource: "fallback",
-        deep: null,
-        freeReport: null,
-        birthInput: parsed.data,
-        personalityInput: {
-          personalityAnswers: parsed.data.personalityAnswers ?? null,
-          mbti: parsed.data.mbti ?? null,
-        },
-        daeunAnalysis: null,
-        lifetimeStory: null,
-        myeongsik,
-        wealthType,
-      } satisfies FullSajuDiagnosis);
-    }
-
-    lifetimeStory = buildLifetimeStory(facts, personality, null);
+    // 출생시간 미상이어도 연·월·일 3주와 오행·십성 등 확인 가능한 내용은
+    // 그대로 제공한다. 용신·정밀 대운처럼 시주 의존성이 큰 값만 facts 단계에서
+    // 비워 두고, 결과 전체를 없애지는 않는다.
+    lifetimeStory = parsed.data.hour === null
+      ? null
+      : buildLifetimeStory(facts, personality, null);
 
     const [interpretationResult, freeReportResult] = await Promise.all([
       getInterpretation(facts, { timeoutMs: 9000 }).catch((err) => {
