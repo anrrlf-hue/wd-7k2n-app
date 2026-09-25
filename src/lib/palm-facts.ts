@@ -132,11 +132,9 @@ export function onnxDetectedLineCount(facts: PalmFacts): number {
 }
 
 /** 해석 단계로 넘어가도 되는지 판단하는 기준. 성공 판정은 오직 실제 ONNX
- * 결과로만 한다 — imageQuality 통과 + 모델이 실제로 실행됐고(modelExecuted)
- * + 3개 선 중 최소 2개를 실제로 검출했을 때만 usable이다. Sobel 휴리스틱
- * (lineFeatures/confidence)은 여기서 절대 성공 기준에 넣지 않는다: Sobel은
- * 촬영 품질 보조/디버그 신호일 뿐, ONNX가 못 본 선을 있다고 우겨서 손금
- * 리포트가 만들어지게 해서는 안 된다. 실패 시 재촬영을 요청한다. */
+ * 결과로만 한다. 한 선이라도 실제 모델이 읽었다면 그 선부터 보여주고,
+ * 못 읽은 선 때문에 확인된 결과까지 버리지 않는다. Sobel 휴리스틱
+ * (lineFeatures/confidence)은 촬영 품질 보조/디버그 신호로만 유지한다. */
 export function isPalmFactsUsable(facts: PalmFacts): boolean {
   if (facts.imageQuality !== "good") return false;
   if (!facts.onnxLines || !facts.onnxLines.modelExecuted) return false;
@@ -164,7 +162,16 @@ export function describePalmFailureReasons(facts: PalmFacts, attempt: number): s
     reasons.push("손금선 분석 모델이 이번 사진을 처리하지 못했어요.");
   } else {
     const n = onnxDetectedLineCount(facts);
-    reasons.push(`손금선이 ${n}개만 뚜렷하게 읽혀서 결과를 만들기엔 부족해요.`);
+    const d = facts.pipelineDiagnostics;
+    if (d && d.highlightRatio > 0.35) {
+      reasons.push("손바닥 반사가 강해 얇은 선이 사라졌어요. 빛이 정면으로 반사되지 않게 각도만 조금 바꿔주세요.");
+    } else if (d && d.sharpness < 8) {
+      reasons.push("사진 초점이 약해 얇은 선이 뭉개졌어요. 손바닥에 초점을 맞춘 뒤 다시 찍어주세요.");
+    } else if (d && d.rawDetectedLineCount === 0 && d.enhancedDetectedLineCount === 0) {
+      reasons.push("사진 상태는 크게 나쁘지 않지만 현재 분석 모델이 주요 선을 충분히 읽지 못했어요.");
+    } else {
+      reasons.push(`이번 사진에서는 주요 선이 ${n}개만 확인됐어요.`);
+    }
   }
 
   if (attempt >= 2) {
