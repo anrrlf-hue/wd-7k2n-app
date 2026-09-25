@@ -85,3 +85,72 @@ jobs:
           detected = {str(r[0]).lower().replace("_"," ").replace("-"," ").replace(" line","").strip() for r in rows}
           print("DETECTED_CLASSES", sorted(detected))
           PY
+
+      - name: Export and validate ONNX candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet onnx onnxruntime
+          python - <<'PY'
+          import os
+          import onnx
+          from ultralytics import YOLO
+
+          source = YOLO("/tmp/palm_yolo_best.pt")
+          nms_mode = True
+          try:
+              exported = source.export(
+                  format="onnx",
+                  imgsz=640,
+                  opset=17,
+                  simplify=False,
+                  dynamic=False,
+                  nms=True,
+                  device="cpu",
+              )
+          except Exception as exc:
+              print("ONNX_NMS_EXPORT_FAILED", repr(exc))
+              nms_mode = False
+              exported = source.export(
+                  format="onnx",
+                  imgsz=640,
+                  opset=17,
+                  simplify=False,
+                  dynamic=False,
+                  nms=False,
+                  device="cpu",
+              )
+
+          print("ONNX_PATH", exported)
+          print("ONNX_SIZE_BYTES", os.path.getsize(exported))
+          print("ONNX_NMS_EMBEDDED", nms_mode)
+
+          graph = onnx.load(exported)
+          def shape_of(value):
+              dims = []
+              for d in value.type.tensor_type.shape.dim:
+                  dims.append(d.dim_value if d.dim_value else d.dim_param or "?")
+              return dims
+          print("ONNX_INPUTS", [(x.name, shape_of(x)) for x in graph.graph.input])
+          print("ONNX_OUTPUTS", [(x.name, shape_of(x)) for x in graph.graph.output])
+
+          runtime = YOLO(exported, task="pose")
+          result = runtime.predict("/tmp/palm_sample.png", conf=0.10, imgsz=640, verbose=False)[0]
+          rows = []
+          if result.boxes is not None:
+              for i in range(len(result.boxes)):
+                  cls_id = int(result.boxes.cls[i].item())
+                  conf = float(result.boxes.conf[i].item())
+                  name = result.names[cls_id]
+                  kp_count = 0
+                  if result.keypoints is not None and len(result.keypoints) > i:
+                      kp_count = len(result.keypoints.xy[i])
+                  rows.append((name, round(conf, 4), kp_count))
+          rows.sort(key=lambda x: x[1], reverse=True)
+          print("ONNX_DETECTIONS", rows)
+          detected = {str(r[0]).lower().replace("_"," ").replace("-"," ").replace(" line","").strip() for r in rows}
+          print("ONNX_DETECTED_CLASSES", sorted(detected))
+          required = {"life", "heart", "head", "fate"}
+          if not required.issubset(detected):
+              raise SystemExit(f"ONNX candidate lost classes: {sorted(required - detected)}")
+          PY
