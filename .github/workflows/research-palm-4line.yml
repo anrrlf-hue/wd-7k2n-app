@@ -1,0 +1,85 @@
+name: research-palm-4line
+
+on:
+  push:
+    branches: [research/palm-4line-model]
+  workflow_dispatch:
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch public four-line model candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git lfs install
+          git clone https://huggingface.co/spaces/lsh8458/palm-lines-api /tmp/palm-lines-api
+          echo "=== candidate files ==="
+          find /tmp/palm-lines-api -maxdepth 1 -type f -printf "%f %s bytes\n" | sort
+          test -f /tmp/palm-lines-api/palm_yolo_best.pt
+          cp /tmp/palm-lines-api/palm_yolo_best.pt /tmp/palm_yolo_best.pt
+          ls -lh /tmp/palm_yolo_best.pt
+
+      - name: Install model runtime
+        run: python -m pip install --quiet ultralytics pillow
+
+      - name: Inspect four-line model
+        shell: bash
+        run: |
+          python - <<'PY'
+          from ultralytics import YOLO
+          model = YOLO("/tmp/palm_yolo_best.pt")
+          print("MODEL_TASK", model.task)
+          print("MODEL_NAMES", model.names)
+          print("MODEL_COUNT", len(model.names))
+          required = {"life", "heart", "head", "fate"}
+          normalized = {str(v).strip().lower().replace("_"," ").replace("-"," ") for v in model.names.values()}
+          normalized = {x.replace(" line","").strip() for x in normalized}
+          print("NORMALIZED_NAMES", sorted(normalized))
+          missing = required - normalized
+          if missing:
+              raise SystemExit(f"Missing expected line classes: {sorted(missing)}")
+          PY
+
+      - name: Run public sample inference
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 \
+            https://raw.githubusercontent.com/samuelwbarber/palm-line-reader/main/docs/example2_input.png \
+            -o /tmp/palm_sample.png
+          python - <<'PY'
+          from ultralytics import YOLO
+          model = YOLO("/tmp/palm_yolo_best.pt")
+          result = model.predict("/tmp/palm_sample.png", conf=0.10, imgsz=640, verbose=False)[0]
+          print("SAMPLE_SHAPE", result.orig_shape)
+          print("DETECTION_COUNT", 0 if result.boxes is None else len(result.boxes))
+          if result.boxes is None:
+              raise SystemExit("No detections object returned")
+          rows = []
+          for i in range(len(result.boxes)):
+              cls_id = int(result.boxes.cls[i].item())
+              conf = float(result.boxes.conf[i].item())
+              name = result.names[cls_id]
+              box = [round(float(x), 1) for x in result.boxes.xyxy[i].tolist()]
+              kp_count = 0
+              if result.keypoints is not None and len(result.keypoints) > i:
+                  kp_count = len(result.keypoints.xy[i])
+              rows.append((name, round(conf, 4), kp_count, box))
+          rows.sort(key=lambda x: x[1], reverse=True)
+          print("DETECTIONS")
+          for row in rows:
+              print(row)
+          detected = {str(r[0]).lower().replace("_"," ").replace("-"," ").replace(" line","").strip() for r in rows}
+          print("DETECTED_CLASSES", sorted(detected))
+          PY
