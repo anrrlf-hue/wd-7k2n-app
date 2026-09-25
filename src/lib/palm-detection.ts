@@ -338,42 +338,80 @@ const ONNX_CLASS_TO_LINE_NAME: Record<OnnxLineClass, LineName> = {
  * 이전에는 여기서 Math.min(1, obs.coverage * 40)을 "confidence"로 반환했는데,
  * 40이라는 배율에 근거가 없어 검증된 정확도처럼 보이는 가짜 수치였다 —
  * 제거하고 detected(참/거짓)와 실제 관측 라벨만 반환한다. */
-function secondaryLineSignal(
-  imageData: ImageData,
-  roi: Rect,
+function classifySecondarySignal(
+  signal: ReturnType<typeof analyzeVerticalCreaseBand>,
+): "clear" | "faint" | "not_seen" {
+  if (signal.continuity >= 0.38 && signal.contrast >= 0.25 && signal.density >= 0.08) return "clear";
+  if (signal.continuity >= 0.22 && signal.contrast >= 0.18 && signal.density >= 0.04) return "faint";
+  return "not_seen";
+}
+
+function secondarySignalScore(signal: ReturnType<typeof analyzeVerticalCreaseBand>): number {
+  return signal.continuity * 0.55 + signal.contrast * 0.3 + signal.density * 0.15;
+}
+
+function bestSecondaryLineSignal(
+  rawImage: ImageData,
+  enhancedImage: ImageData,
+  rois: Rect[],
   label: string,
 ): NonNullable<PalmFacts["secondaryLines"]>["fate"] {
-  const signal = analyzeVerticalCreaseBand(imageData, roi);
-  const strength = Math.min(1, signal.contrast * 0.55 + signal.density * 0.45);
-  const clear =
-    signal.continuity >= 0.38 &&
-    signal.contrast >= 0.25 &&
-    signal.density >= 0.08;
-  const faint =
-    !clear &&
-    signal.continuity >= 0.22 &&
-    signal.contrast >= 0.18 &&
-    signal.density >= 0.04;
+  const bestFor = (image: ImageData) =>
+    rois
+      .map((roi) => analyzeVerticalCreaseBand(image, roi))
+      .sort((a, b) => secondarySignalScore(b) - secondarySignalScore(a))[0];
+
+  const raw = bestFor(rawImage);
+  const enhanced = bestFor(enhancedImage);
+  const rawStatus = classifySecondarySignal(raw);
+  const enhancedStatus = classifySecondarySignal(enhanced);
+
+  // 보정본 하나만 clear라고 해서 고객용 확정 신호로 승격하지 않는다.
+  // 원본 clear 또는 원본 faint + 보정 clear처럼 두 경로가 함께 지지할 때만 clear.
+  const status =
+    rawStatus === "clear" || (rawStatus === "faint" && enhancedStatus === "clear")
+      ? "clear"
+      : rawStatus !== "not_seen" || enhancedStatus !== "not_seen"
+        ? "faint"
+        : "not_seen";
+
+  const best = secondarySignalScore(enhanced) > secondarySignalScore(raw) ? enhanced : raw;
+  const strength = Math.min(1, best.contrast * 0.55 + best.density * 0.45);
 
   return {
-    status: clear ? "clear" : faint ? "faint" : "not_seen",
+    status,
     strength,
-    span: signal.continuity,
-    note: clear
-      ? `${label} 후보 영역에서 연결된 어두운 주름 신호가 비교적 길게 이어집니다.`
-      : faint
-        ? `${label} 후보 영역에 일부 주름 신호가 있지만 연속성이 충분하지 않습니다.`
-        : `${label} 후보 영역에서 연속된 주름 신호가 충분히 확인되지 않습니다.`,
+    span: best.continuity,
+    note:
+      status === "clear"
+        ? `${label} 후보가 원본과 보정 신호에서 함께 이어집니다.`
+        : status === "faint"
+          ? `${label} 후보가 일부 보이지만 아직 고객 해석에 쓰기엔 확인이 더 필요합니다.`
+          : `${label} 후보의 연속된 주름 신호가 충분히 확인되지 않습니다.`,
   };
 }
 
 function detectSecondaryPalmLines(
-  crop: HTMLCanvasElement,
+  rawCrop: HTMLCanvasElement,
+  enhancedCrop: HTMLCanvasElement,
   landmarks: { x: number; y: number }[],
 ): NonNullable<PalmFacts["secondaryLines"]> | undefined {
-  const ctx = crop.getContext("2d");
-  if (!ctx || crop.width < 10 || crop.height < 10 || landmarks.length < 18) return undefined;
-  const imageData = ctx.getImageData(0, 0, crop.width, crop.height);
+  const rawCtx = rawCrop.getContext("2d");
+  const enhancedCtx = enhancedCrop.getContext("2d");
+  if (
+    !rawCtx ||
+    !enhancedCtx ||
+    rawCrop.width < 10 ||
+    rawCrop.height < 10 ||
+    landmarks.length < 18 ||
+    rawCrop.width !== enhancedCrop.width ||
+    rawCrop.height !== enhancedCrop.height
+  ) {
+    return undefined;
+  }
+
+  const rawImage = rawCtx.getImageData(0, 0, rawCrop.width, rawCrop.height);
+  const enhancedImage = enhancedCtx.getImageData(0, 0, enhancedCrop.width, enhancedCrop.height);
   const wrist = landmarks[0];
   const indexMcp = landmarks[5];
   const middleMcp = landmarks[9];
@@ -383,26 +421,47 @@ function detectSecondaryPalmLines(
   const palmWidth = Math.max(12, Math.abs(indexMcp.x - pinkyMcp.x));
   const palmTopY = (indexMcp.y + middleMcp.y + ringMcp.y + pinkyMcp.y) / 4;
   const palmHeight = Math.max(20, wrist.y - palmTopY);
-  const lowerY = Math.min(crop.height - 1, wrist.y - palmHeight * 0.08);
+  const lowerY = Math.min(rawCrop.height - 1, wrist.y - palmHeight * 0.08);
 
   const roi = (centerX: number, widthRatio: number, startRatio: number, endRatio: number): Rect => {
     const width = palmWidth * widthRatio;
     const y = palmTopY + palmHeight * startRatio;
     const endY = Math.min(lowerY, palmTopY + palmHeight * endRatio);
     return {
-      x: Math.max(0, Math.min(crop.width - width, centerX - width / 2)),
+      x: Math.max(0, Math.min(rawCrop.width - width, centerX - width / 2)),
       y: Math.max(0, y),
-      width: Math.max(6, Math.min(width, crop.width)),
+      width: Math.max(6, Math.min(width, rawCrop.width)),
       height: Math.max(10, endY - y),
     };
   };
 
-  // 손가락 MCP와 손목을 기준으로 잡은 후보 영역이다.
-  // 선의 존재/종류를 확정하는 분류기가 아니라 후속 검증용 관측 신호다.
+  const shifted = (
+    centerX: number,
+    offsets: number[],
+    widthRatio: number,
+    startRatio: number,
+    endRatio: number,
+  ) => offsets.map((offset) => roi(centerX + palmWidth * offset, widthRatio, startRatio, endRatio));
+
   return {
-    fate: secondaryLineSignal(imageData, roi(middleMcp.x, 0.26, 0.14, 0.92), "운명선"),
-    sun: secondaryLineSignal(imageData, roi(ringMcp.x, 0.22, 0.10, 0.70), "태양선"),
-    wealth: secondaryLineSignal(imageData, roi(pinkyMcp.x, 0.24, 0.10, 0.58), "재물선"),
+    fate: bestSecondaryLineSignal(
+      rawImage,
+      enhancedImage,
+      shifted(middleMcp.x, [-0.1, 0, 0.1], 0.24, 0.14, 0.92),
+      "운명선",
+    ),
+    sun: bestSecondaryLineSignal(
+      rawImage,
+      enhancedImage,
+      shifted(ringMcp.x, [-0.08, 0, 0.08], 0.22, 0.1, 0.7),
+      "태양선",
+    ),
+    wealth: bestSecondaryLineSignal(
+      rawImage,
+      enhancedImage,
+      shifted(pinkyMcp.x, [-0.08, 0, 0.08], 0.26, 0.08, 0.58),
+      "재물선",
+    ),
   };
 }
 
@@ -530,7 +589,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   const adaptivePalmCrop = cropAndRotatePalm(canvas, landmarksPx, handSide === "left", adaptiveMargin);
   const enhancedPalmCrop = enhancePalmContrast(adaptivePalmCrop);
   const palmCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left", adaptiveMargin);
-  const secondaryLines = detectSecondaryPalmLines(adaptivePalmCrop, palmCropLandmarks);
+  const secondaryLines = detectSecondaryPalmLines(adaptivePalmCrop, enhancedPalmCrop, palmCropLandmarks);
 
   const onnxRaw = await runPalmLineOnnx(rawPalmCrop);
   const rawDetectedBeforeFallback = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
