@@ -17,6 +17,9 @@ export interface EdgeBandSignal {
 export interface VerticalCreaseSignal extends EdgeBandSignal {
   /** 0~1. 가장 긴 실제 연결 성분이 ROI 높이를 얼마나 이어지는지 */
   continuity: number;
+  /** 0~1. 가장 긴 연결 성분이 ROI 가로폭을 얼마나 차지하는지.
+   * 한 개의 세로 주름보다 너무 넓으면 여러 잔주름/텍스처가 붙은 신호일 가능성이 높다. */
+  widthSpan: number;
   /** 0~1. 연결 성분의 평균 명암 대비. 확률/정확도가 아니다. */
   contrast: number;
 }
@@ -138,7 +141,7 @@ export function analyzeVerticalCreaseBand(
   const y1 = Math.min(imgH, Math.floor(roi.y + roi.height));
   const w = Math.max(1, x1 - x0);
   const h = Math.max(1, y1 - y0);
-  if (w < 7 || h < 12) return { density: 0, span: 0, curved: false, continuity: 0, contrast: 0 };
+  if (w < 7 || h < 12) return { density: 0, span: 0, curved: false, continuity: 0, widthSpan: 0, contrast: 0 };
 
   const cropped = new Uint8ClampedArray(w * h * 4);
   for (let yy = 0; yy < h; yy++) {
@@ -169,6 +172,7 @@ export function analyzeVerticalCreaseBand(
   const seen = new Uint8Array(w * h);
   const maxDrift = Math.max(1, Math.round(w * 0.025));
   let bestRows = 0;
+  let bestCols = 0;
   let bestCount = 0;
   let bestContrast = 0;
 
@@ -178,6 +182,8 @@ export function analyzeVerticalCreaseBand(
     seen[start] = 1;
     let minY = h;
     let maxY = -1;
+    let minX = w;
+    let maxX = -1;
     let count = 0;
     let contrastSum = 0;
 
@@ -187,6 +193,8 @@ export function analyzeVerticalCreaseBand(
       const x = i - y * w;
       minY = Math.min(minY, y);
       maxY = Math.max(maxY, y);
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
       count++;
       contrastSum += contrast[i];
 
@@ -207,14 +215,17 @@ export function analyzeVerticalCreaseBand(
     }
 
     const rows = maxY >= minY ? maxY - minY + 1 : 0;
+    const cols = maxX >= minX ? maxX - minX + 1 : 0;
     if (rows > bestRows || (rows === bestRows && count > bestCount)) {
       bestRows = rows;
+      bestCols = cols;
       bestCount = count;
       bestContrast = count ? contrastSum / count : 0;
     }
   }
 
   const continuity = bestRows / h;
+  const widthSpan = bestCols / w;
   const density = bestCount / (w * h);
   const contrastScore = Math.min(1, bestContrast / 40);
   return {
@@ -222,6 +233,7 @@ export function analyzeVerticalCreaseBand(
     span: continuity,
     curved: false,
     continuity,
+    widthSpan,
     contrast: contrastScore,
   };
 }
