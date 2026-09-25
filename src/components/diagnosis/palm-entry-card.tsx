@@ -48,8 +48,11 @@ export function PalmEntryCard({
           손금에서는 어떤 내가 보일까요?
         </p>
         <p className="mt-1 text-xs opacity-80">
-          손금 무료로 보기 · 사진 한 장으로 독립된 두 번째 분석
+          사진 한 장으로 독립된 두 번째 분석
         </p>
+        <span className="mt-2 inline-flex rounded-full bg-background/20 px-3 py-1 text-sm font-semibold">
+          손금 사진 찍기
+        </span>
       </div>
       <ArrowRight className="size-4 shrink-0 text-current" />
     </Link>
