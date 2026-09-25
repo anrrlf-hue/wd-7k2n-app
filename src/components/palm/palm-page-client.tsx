@@ -649,6 +649,9 @@ export function PalmPageClient({
                   <br />
                   손가락을 살짝 펴면 촬영 전에 선명도를 먼저 확인해요.
                 </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  처음 촬영할 때만 카메라 사용 권한이 뜹니다. <span className="font-medium text-foreground">허용</span>을 눌러주세요.
+                </p>
               </div>
 
               <div className="mt-6 flex flex-col gap-3">
