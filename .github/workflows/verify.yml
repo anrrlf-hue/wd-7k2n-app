@@ -33,6 +33,9 @@ jobs:
       - name: Palm secondary regression
         run: node scripts/test-palm-secondary-regressions.mjs
 
+      - name: Palm fate fusion regression
+        run: node scripts/test-palm-fate-fusion.mjs
+
       - name: Saju engine identity regression
         run: node scripts/test-saju-engine-identity.mjs
 
