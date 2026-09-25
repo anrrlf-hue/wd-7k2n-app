@@ -142,7 +142,7 @@ export function ResultStep({
             <ParagraphSection step="③" title="돈과 기회를 다루는 방식" paragraph={report.bigMoneyAffinity} />
             <ParagraphSection step="④" title="왜 돈이 잘 모이거나 안 모이는가" paragraph={report.wealthStructure} showGuidance />
             <ParagraphSection step="⑤" title="돈을 지키는 방식" paragraph={report.keepingStyle} />
-            <ParagraphSection step="⑥" title="돈을 놓치는 반복 패턴" paragraph={report.leakPattern} boxed showGuidance />
+            <ParagraphSection step="⑥" title="돈을 놓치는 반복 패턴" paragraph={report.leakPattern} showGuidance />
             <ParagraphSection step="⑦" title="어떤 방식으로 벌 때 유리한가" paragraph={report.earningStyle} />
             <ParagraphSection step="⑧" title="직장형일까, 사업형일까" paragraph={report.jobOrientation} showGuidance />
             <ParagraphSection step="⑨" title="지금 무엇을 해야 하는가" paragraph={report.nextMove} />
