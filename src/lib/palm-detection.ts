@@ -341,13 +341,24 @@ const ONNX_CLASS_TO_LINE_NAME: Record<OnnxLineClass, LineName> = {
 function classifySecondarySignal(
   signal: ReturnType<typeof analyzeVerticalCreaseBand>,
 ): "clear" | "faint" | "not_seen" {
-  if (signal.continuity >= 0.38 && signal.contrast >= 0.25 && signal.density >= 0.08) return "clear";
-  if (signal.continuity >= 0.22 && signal.contrast >= 0.18 && signal.density >= 0.04) return "faint";
+  if (
+    signal.continuity >= 0.38 &&
+    signal.contrast >= 0.25 &&
+    signal.density >= 0.08 &&
+    signal.widthSpan <= 0.42
+  ) return "clear";
+  if (
+    signal.continuity >= 0.22 &&
+    signal.contrast >= 0.18 &&
+    signal.density >= 0.04 &&
+    signal.widthSpan <= 0.55
+  ) return "faint";
   return "not_seen";
 }
 
 function secondarySignalScore(signal: ReturnType<typeof analyzeVerticalCreaseBand>): number {
-  return signal.continuity * 0.55 + signal.contrast * 0.3 + signal.density * 0.15;
+  const lineShape = Math.max(0, 1 - signal.widthSpan / 0.6);
+  return signal.continuity * 0.45 + signal.contrast * 0.25 + signal.density * 0.1 + lineShape * 0.2;
 }
 
 function bestSecondaryLineSignal(
