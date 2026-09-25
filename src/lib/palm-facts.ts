@@ -78,6 +78,12 @@ export interface SecondaryPalmLineSignal {
   strength: number;
   span: number;
   note: string;
+  /** 별도 4선 포즈 모델이 같은 선을 찾았을 때의 모델 점수. 없으면 null. */
+  modelConfidence?: number | null;
+  /** 포즈 모델 키포인트가 세로로 이어진 비율. 없으면 null. */
+  modelVerticalSpan?: number | null;
+  /** 휴리스틱과 포즈 모델이 같은 후보를 함께 지지했는지 여부. */
+  corroborated?: boolean;
 }
 
 export interface PalmPipelineDiagnostics {
@@ -96,6 +102,9 @@ export interface PalmPipelineDiagnostics {
   enhancedDetectedLineCount: number;
   rawPixelCount: { heartLine: number; headLine: number; lifeLine: number };
   enhancedPixelCount: { heartLine: number; headLine: number; lifeLine: number };
+  fateModelConfidence?: number | null;
+  fateModelVerticalSpan?: number | null;
+  fateModelCorroborated?: boolean;
   chosenVariant: {
     heartLine: "raw" | "enhanced";
     headLine: "raw" | "enhanced";

@@ -1,0 +1,6 @@
+Palm 4-line pose model
+Source: https://huggingface.co/spaces/lsh8458/palm-lines-api
+Model classes: fate, head, heart, life
+License declared by the source Space: CC BY 4.0
+Related dataset benchmark: https://universe.roboflow.com/palm-3q4ws/palm-lines-recognition-full
+Attribution retained for model reuse in this project.

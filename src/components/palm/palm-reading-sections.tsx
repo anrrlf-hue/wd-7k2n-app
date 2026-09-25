@@ -4,14 +4,14 @@ import type { PalmFacts } from "@/lib/palm-facts";
 import type { CompareItem } from "@/lib/triple-compare";
 
 export function PalmReadingSections({ facts }: { facts: PalmFacts }) {
-  const sections = buildPalmReadingSections(facts.onnxLines);
+  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines);
   return (
     <ReportSection step="2" title="손금에서 보이는 나의 모습">
       <div className="space-y-6">
         {sections.map((section) => (
           <div key={section.key} className={section.key === "wealth" ? "rounded-2xl border border-(--gold-soft) bg-card p-4" : ""}>
             <h3 className="text-base font-semibold text-foreground">{section.title}</h3>
-            {(section.key === "heartLine" || section.key === "headLine" || section.key === "lifeLine") && (
+            {(section.key === "heartLine" || section.key === "headLine" || section.key === "lifeLine" || section.key === "fate") && (
               <p className="mt-2 text-sm leading-6 text-(--gold)">{section.observation}</p>
             )}
             <p className="mt-2 text-base leading-7 text-muted-foreground">{section.text}</p>
