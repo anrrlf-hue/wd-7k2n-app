@@ -54,8 +54,18 @@ function signal(img) {
 }
 
 function classify(s) {
-  if (s.continuity >= 0.38 && s.contrast >= 0.25 && s.density >= 0.08) return "clear";
-  if (s.continuity >= 0.22 && s.contrast >= 0.18 && s.density >= 0.04) return "faint";
+  if (
+    s.continuity >= 0.38 &&
+    s.contrast >= 0.25 &&
+    s.density >= 0.08 &&
+    s.widthSpan <= 0.42
+  ) return "clear";
+  if (
+    s.continuity >= 0.22 &&
+    s.contrast >= 0.18 &&
+    s.density >= 0.04 &&
+    s.widthSpan <= 0.55
+  ) return "faint";
   return "not_seen";
 }
 const cases = [];
@@ -69,6 +79,14 @@ for (let y = 8; y < 120; y++) {
   setGray(crease, 64, y, 70);
 }
 cases.push(["continuous_crease", classify(signal(crease)), signal(crease)]);
+
+const wideTexture = image();
+for (let y = 8; y < 120; y++) {
+  const x = 28 + Math.round((y - 8) * 0.62);
+  setGray(wideTexture, x, y, 70);
+  setGray(wideTexture, x + 1, y, 70);
+}
+cases.push(["wide_vertical_texture", classify(signal(wideTexture)), signal(wideTexture)]);
 
 const shadow = image();
 for (let y = 0; y < shadow.height; y++) {
@@ -102,13 +120,19 @@ for (let i = 0; i < 420; i++) {
 }
 cases.push(["salt_noise", classify(signal(noise)), signal(noise)]);
 
-const byName = Object.fromEntries(cases.map(([name, status, s]) => [name, { status, continuity: s.continuity, contrast: s.contrast, density: s.density }]));
+const byName = Object.fromEntries(cases.map(([name, status, s]) => [name, {
+  status,
+  continuity: s.continuity,
+  widthSpan: s.widthSpan,
+  contrast: s.contrast,
+  density: s.density,
+}]));
 if (byName.continuous_crease.status !== "clear") throw new Error("continuous crease was not clear");
-for (const name of ["blank", "shadow_boundary", "horizontal_line", "disconnected_fragments", "salt_noise"]) {
+for (const name of ["blank", "wide_vertical_texture", "shadow_boundary", "horizontal_line", "disconnected_fragments", "salt_noise"]) {
   if (byName[name].status === "clear") throw new Error(`${name} incorrectly classified clear`);
 }
 
 console.log("PALM SECONDARY REGRESSION RESULTS");
 for (const [name, result] of Object.entries(byName)) console.log(name, result);
-console.log("PASS 6/6");
+console.log("PASS 7/7");
 hooks.deregister?.();
