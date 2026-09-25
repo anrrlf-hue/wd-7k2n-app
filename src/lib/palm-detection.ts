@@ -556,20 +556,22 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
     };
   }
 
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const brightness = averageBrightness(imageData);
-  const sharpness = imageSharpness(imageData);
-  const highlights = highlightRatio(imageData);
+  const fullImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const frameBrightness = averageBrightness(fullImageData);
+  const frameSharpness = imageSharpness(fullImageData);
+  const frameHighlights = highlightRatio(fullImageData);
 
-  if (brightness < 45) {
+  // 화면 전체가 거의 암전된 수준일 때만 손 검출 전에 빠르게 막는다.
+  // 정상적인 어두운 배경 때문에 손바닥 자체가 괜찮은 사진을 탈락시키지는 않는다.
+  if (frameBrightness < 25) {
     return {
       ready: false,
       message: "조금 더 밝은 곳으로 이동해주세요.",
       handDetected: false,
       cropped: false,
-      brightness,
-      sharpness,
-      highlightRatio: highlights,
+      brightness: frameBrightness,
+      sharpness: frameSharpness,
+      highlightRatio: frameHighlights,
       handSpanRatio: 0,
     };
   }
@@ -582,9 +584,9 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
       message: "손바닥 전체를 화면 가운데에 보여주세요.",
       handDetected: false,
       cropped: false,
-      brightness,
-      sharpness,
-      highlightRatio: highlights,
+      brightness: frameBrightness,
+      sharpness: frameSharpness,
+      highlightRatio: frameHighlights,
       handSpanRatio: 0,
     };
   }
@@ -595,6 +597,14 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
   const handWidthRatio = (Math.max(...allXs) - Math.min(...allXs)) / canvas.width;
   const handHeightRatio = (Math.max(...allYs) - Math.min(...allYs)) / canvas.height;
   const handSpanRatio = Math.max(handWidthRatio, handHeightRatio);
+
+  // 이후 품질 판정은 배경이 아니라 실제 손바닥 ROI만 본다.
+  const palmQualityRect = paddedRect(palmBoundingBox(landmarksPx), canvas.width, canvas.height, 0.22);
+  const palmImageData = imageDataForRect(ctx, palmQualityRect);
+  const brightness = averageBrightness(palmImageData);
+  const sharpness = imageSharpness(palmImageData);
+  const highlights = highlightRatio(palmImageData);
+
   const keyIndices = [0, 1, 4, 5, 8, 9, 12, 13, 16, 17, 20];
   const cropped = keyIndices.some((i) => isNearEdge(landmarksPx[i], canvas.width, canvas.height, 0.035));
   if (cropped) {
@@ -614,6 +624,19 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
     return {
       ready: false,
       message: "손금선이 더 선명하게 보이도록 손을 조금만 가까이 가져와주세요.",
+      handDetected: true,
+      cropped: false,
+      brightness,
+      sharpness,
+      highlightRatio: highlights,
+      handSpanRatio,
+    };
+  }
+
+  if (brightness < 45) {
+    return {
+      ready: false,
+      message: "손바닥이 조금 어두워요. 손바닥 쪽에 빛이 오게 해주세요.",
       handDetected: true,
       cropped: false,
       brightness,
