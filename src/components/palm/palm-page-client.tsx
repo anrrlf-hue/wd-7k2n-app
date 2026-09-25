@@ -16,6 +16,7 @@ import { AnalysisResultCard } from "@/components/palm/analysis-result-card";
 import { PaymentScreen } from "@/components/palm/payment-screen";
 import {
   analyzePalmFromCanvas,
+  assessPalmCaptureFrame,
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
 import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
@@ -261,9 +262,16 @@ export function PalmPageClient({
   const [funnelActive, setFunnelActive] = useState(false);
   const [readingOpen, setReadingOpen] = useState(true);
   const [chapter, setChapter] = useState<2 | 3 | 4 | 5>(2);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraMessage, setCameraMessage] = useState("손바닥 전체를 화면 안에 맞춰주세요.");
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraProbeCanvasRef = useRef<HTMLCanvasElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraProbeBusyRef = useRef(false);
 
   useEffect(() => {
     preloadHandLandmarker();
