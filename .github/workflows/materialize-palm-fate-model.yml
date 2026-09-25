@@ -3,6 +3,8 @@ name: materialize-palm-fate-model
 on:
   push:
     branches: [feature/palm-fate-model]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
