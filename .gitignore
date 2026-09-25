@@ -45,3 +45,7 @@ next-env.d.ts
 
 # Local Netlify folder
 .netlify
+
+# local palm research images (never commit personal hand photos)
+/data/palm-secondary/images/
+/data/palm-secondary/raw/
