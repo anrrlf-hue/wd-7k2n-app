@@ -1,2 +1,2 @@
 Temporary trigger for validating current palm camera and preprocessing pipeline.
-Run after palm-ROI quality checks, live distance/stability gating, and secondary-line geometry guards.
+Run after palm-ROI quality checks, live distance/stability gating, secondary-line geometry guards, and palm result persistence.
