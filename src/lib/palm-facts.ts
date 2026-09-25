@@ -18,6 +18,8 @@ export type ImageQuality =
   | "good"
   | "no_hand_detected"
   | "too_dark"
+  | "too_blurry"
+  | "overexposed"
   | "hand_cropped";
 
 export type HandShape =
@@ -78,6 +80,22 @@ export interface SecondaryPalmLineSignal {
   note: string;
 }
 
+export interface PalmPipelineDiagnostics {
+  sourceWidth: number;
+  sourceHeight: number;
+  averageBrightness: number;
+  sharpness: number;
+  highlightRatio: number;
+  adaptiveMargin: number;
+  rawDetectedLineCount: number;
+  enhancedDetectedLineCount: number;
+  chosenVariant: {
+    heartLine: "raw" | "enhanced";
+    headLine: "raw" | "enhanced";
+    lifeLine: "raw" | "enhanced";
+  };
+}
+
 export interface PalmFacts {
   handSide: HandSide;
   imageQuality: ImageQuality;
@@ -98,6 +116,8 @@ export interface PalmFacts {
    * 수치일 뿐 검증된 정확도가 아니다 — isPalmFactsUsable()의 재촬영 판단에만
    * 쓰고, 사용자에게 "신뢰도/정확도 %"로 노출하지 않는다. */
   confidence: number;
+  /** 촬영→정렬→전처리→ONNX 병목을 추적하기 위한 내부 진단값. 고객 화면에는 노출하지 않는다. */
+  pipelineDiagnostics?: PalmPipelineDiagnostics;
   /** 사용자에게 보여줄 경고/재촬영 사유 */
   warnings: string[];
 }
@@ -134,6 +154,10 @@ export function describePalmFailureReasons(facts: PalmFacts, attempt: number): s
     reasons.push("사진에서 손을 찾지 못했어요.");
   } else if (facts.imageQuality === "too_dark") {
     reasons.push("사진이 너무 어두워서 선이 잘 안 보여요.");
+  } else if (facts.imageQuality === "too_blurry") {
+    reasons.push("초점이 흐려 손금선이 뭉개졌어요.");
+  } else if (facts.imageQuality === "overexposed") {
+    reasons.push("빛 반사가 강해 손금선 일부가 날아갔어요.");
   } else if (facts.imageQuality === "hand_cropped") {
     reasons.push("손 일부가 사진 밖으로 잘렸어요.");
   } else if (!facts.onnxLines || !facts.onnxLines.modelExecuted) {
