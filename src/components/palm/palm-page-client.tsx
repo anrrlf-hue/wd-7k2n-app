@@ -87,6 +87,20 @@ async function fileToCanvas(file: File, maxDim = 1280): Promise<HTMLCanvasElemen
   return canvas;
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /** 최종 통합 리포트(finalReport)를 렌더링한다. 손금이 있을 때(withPalm)와
  * 없을 때(saju-only) 양쪽에서 재사용한다. NO_DUPLICATION: 1차 무료 결과
  * (result-step.tsx)에서 이미 보여준 필드는 여기서 다시 보여주지 않는다 —
@@ -393,16 +407,20 @@ export function PalmPageClient({
       setStage("error");
       return;
     }
-    const res = await fetch("/api/palm/interpret", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...birthInput,
-        palmFacts: facts,
-        personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
-        mbti: personalityInput?.mbti ?? undefined,
+    const res = await withTimeout(
+      fetch("/api/palm/interpret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...birthInput,
+          palmFacts: facts,
+          personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
+          mbti: personalityInput?.mbti ?? undefined,
+        }),
       }),
-    });
+      30000,
+      "리포트 생성이 오래 걸리고 있어요. 다시 시도해주세요.",
+    );
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "요청 실패");
 
@@ -467,7 +485,11 @@ export function PalmPageClient({
     replacePreview(preview);
 
     try {
-      const facts = await analyzePalmFromCanvas(canvas);
+      const facts = await withTimeout(
+        analyzePalmFromCanvas(canvas),
+        30000,
+        "손금 분석이 오래 걸리고 있어요. 사진을 다시 촬영하거나 선택해주세요.",
+      );
       setPalmFacts(facts);
 
       if (!isPalmFactsUsable(facts)) {
@@ -478,8 +500,8 @@ export function PalmPageClient({
 
       setStage("loading");
       await fetchReport(facts);
-    } catch {
-      setErrorMsg("분석 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "분석 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
       setStage("error");
     }
   }
@@ -597,12 +619,11 @@ export function PalmPageClient({
               <div className="mt-4 flex flex-col gap-3">
                 <Button
                   size="lg"
-                  disabled={!cameraReady}
                   onClick={captureLiveCamera}
                   className="primary-cta h-14 w-full rounded-full text-base"
                 >
                   <Camera className="size-4" />
-                  {cameraReady ? "지금 촬영하기" : "손바닥을 맞추는 중"}
+                  지금 촬영하기
                 </Button>
                 <Button
                   size="lg"
