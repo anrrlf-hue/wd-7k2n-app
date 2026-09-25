@@ -492,6 +492,115 @@ function mapOnnxObservation(obs: OnnxLineObservation): OnnxLineDetail {
   };
 }
 
+export interface PalmCaptureAssessment {
+  ready: boolean;
+  message: string;
+  handDetected: boolean;
+  cropped: boolean;
+  brightness: number;
+  sharpness: number;
+  highlightRatio: number;
+}
+
+/**
+ * 라이브 카메라 프리뷰용 가벼운 품질 검사.
+ * ONNX 손금 모델은 실행하지 않고 MediaPipe 손 검출 + 촬영 품질만 확인한다.
+ */
+export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise<PalmCaptureAssessment> {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return {
+      ready: false,
+      message: "카메라 화면을 확인할 수 없어요.",
+      handDetected: false,
+      cropped: false,
+      brightness: 0,
+      sharpness: 0,
+      highlightRatio: 0,
+    };
+  }
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const brightness = averageBrightness(imageData);
+  const sharpness = imageSharpness(imageData);
+  const highlights = highlightRatio(imageData);
+
+  if (brightness < 45) {
+    return {
+      ready: false,
+      message: "조금 더 밝은 곳으로 이동해주세요.",
+      handDetected: false,
+      cropped: false,
+      brightness,
+      sharpness,
+      highlightRatio: highlights,
+    };
+  }
+
+  const landmarker = await getHandLandmarker();
+  const result = landmarker.detect(canvas);
+  if (!result.landmarks?.length) {
+    return {
+      ready: false,
+      message: "손바닥 전체를 화면 가운데에 보여주세요.",
+      handDetected: false,
+      cropped: false,
+      brightness,
+      sharpness,
+      highlightRatio: highlights,
+    };
+  }
+
+  const landmarksPx = result.landmarks[0].map((l) => px(l, canvas.width, canvas.height));
+  const keyIndices = [0, 1, 4, 5, 8, 9, 12, 13, 16, 17, 20];
+  const cropped = keyIndices.some((i) => isNearEdge(landmarksPx[i], canvas.width, canvas.height, 0.035));
+  if (cropped) {
+    return {
+      ready: false,
+      message: "손끝부터 손목까지 화면 안에 들어오게 조금만 멀리해주세요.",
+      handDetected: true,
+      cropped: true,
+      brightness,
+      sharpness,
+      highlightRatio: highlights,
+    };
+  }
+
+  if (highlights > 0.35) {
+    return {
+      ready: false,
+      message: "손바닥 반사가 강해요. 빛이 비스듬히 오도록 손 각도를 조금 바꿔주세요.",
+      handDetected: true,
+      cropped: false,
+      brightness,
+      sharpness,
+      highlightRatio: highlights,
+    };
+  }
+
+  if (sharpness < 4) {
+    return {
+      ready: false,
+      message: "초점을 손바닥에 맞추고 잠깐 멈춰주세요.",
+      handDetected: true,
+      cropped: false,
+      brightness,
+      sharpness,
+      highlightRatio: highlights,
+    };
+  }
+
+  return {
+    ready: true,
+    message: "좋아요. 이 상태로 촬영하면 됩니다.",
+    handDetected: true,
+    cropped: false,
+    brightness,
+    sharpness,
+    highlightRatio: highlights,
+  };
+}
+
 export interface PalmAnalysisSource {
   image: CanvasImageSource & { width: number; height: number };
   canvas: HTMLCanvasElement;
