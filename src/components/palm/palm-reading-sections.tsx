@@ -11,6 +11,9 @@ export function PalmReadingSections({ facts }: { facts: PalmFacts }) {
         {sections.map((section) => (
           <div key={section.key} className={section.key === "wealth" ? "rounded-2xl border border-(--gold-soft) bg-card p-4" : ""}>
             <h3 className="text-base font-semibold text-foreground">{section.title}</h3>
+            {(section.key === "heartLine" || section.key === "headLine" || section.key === "lifeLine") && (
+              <p className="mt-2 text-sm leading-6 text-(--gold)">{section.observation}</p>
+            )}
             <p className="mt-2 text-base leading-7 text-muted-foreground">{section.text}</p>
           </div>
         ))}
