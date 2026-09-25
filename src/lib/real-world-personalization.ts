@@ -151,32 +151,32 @@ function sn(mbti: MbtiType): string {
 /** plan/speed 6문항 응답 → "구조화 선호" 서술. 6문항이 없으면 null(MBTI로 대체). */
 function structureFromCheck(check: PersonalityInput["check"]): string | null {
   if (!check) return null;
-  if (check.levels.plan === "중간" || check.levels.speed === "중간") return "계획 또는 결정속도 응답이 중간이어서 양극 중 하나로 묶지 않은 상태";
-  if (!["왼쪽", "오른쪽"].includes(check.levels.plan) || !["왼쪽", "오른쪽"].includes(check.levels.speed)) return "계획 또는 결정속도 응답이 미확인인 상태";
+  if (check.levels.plan === "중간" || check.levels.speed === "중간") return "상황에 따라 계획적으로 움직일 때와 즉흥적으로 움직일 때가 갈리는 편";
+  if (!["왼쪽", "오른쪽"].includes(check.levels.plan) || !["왼쪽", "오른쪽"].includes(check.levels.speed)) return null;
   const planned = check.levels.plan === "왼쪽";
   const fast = check.levels.speed === "왼쪽";
-  if (planned && fast) return "미리 계획을 세우고 빠르게 결정을 닫는 사람";
-  if (planned && !fast) return "계획은 세워두되 결정은 충분히 생각하고 내리는 사람";
-  if (!planned && fast) return "즉흥적으로 움직이면서도 결정만큼은 빠르게 내리는 사람";
-  return "즉흥적으로 움직이면서 결정도 천천히 여지를 두는 사람";
+  if (planned && fast) return "미리 계획을 세우고 빠르게 결정을 닫는 편";
+  if (planned && !fast) return "계획은 세워두되 결정은 충분히 생각하고 내리는 편";
+  if (!planned && fast) return "상황에 맞춰 움직이면서 결정은 빠르게 내리는 편";
+  return "상황을 열어두고 결정도 천천히 여지를 두는 편";
 }
 
 function structureFromMbti(mbti: MbtiType): string {
-  return mbti[3] === "J" ? "미리 구조를 짜고 계획대로 움직이는 사람" : "열어두고 상황에 맞춰 움직이는 사람";
+  return mbti[3] === "J" ? "미리 구조를 짜고 계획대로 움직이는 편" : "여지를 남겨두고 상황에 맞춰 움직이는 편";
 }
 
 /** autonomy 6문항 응답 → "관계 영향" 서술. 6문항이 없으면 null(MBTI로 대체). */
 function relationFromCheck(check: PersonalityInput["check"]): string | null {
   if (!check) return null;
-  if (check.levels.autonomy === "중간") return "관계·의견 영향 응답이 중간이어서 혼자 또는 타인 중심으로 정하지 않은 상태";
-  if (!["왼쪽", "오른쪽"].includes(check.levels.autonomy)) return "관계·의견 영향 응답이 미확인인 상태";
+  if (check.levels.autonomy === "중간") return "상황에 따라 스스로 판단할 때와 주변 의견을 참고할 때가 갈리는 편";
+  if (!["왼쪽", "오른쪽"].includes(check.levels.autonomy)) return null;
   return check.levels.autonomy === "오른쪽"
-    ? "결정을 내릴 때 주변 의견에 실제로 영향받는 사람"
-    : "결정을 내릴 때 주변 의견보다 스스로 판단을 우선하는 사람";
+    ? "결정을 내릴 때 주변 사람의 의견과 관계를 함께 고려하는 편"
+    : "결정을 내릴 때 주변 의견보다 자신의 기준을 우선하는 편";
 }
 
 function relationFromMbti(mbti: MbtiType): string {
-  return mbti[2] === "F" ? "관계와 그 결정이 미칠 영향을 먼저 헤아리는 사람" : "원칙과 논리를 먼저 따지는 사람";
+  return mbti[2] === "F" ? "관계와 그 결정이 미칠 영향을 먼저 헤아리는 편" : "원칙과 논리를 먼저 따지는 편";
 }
 
 /** 사주 영역(재물/일/관계)마다 이 성향이 다르게 나타나는 실제 장면.
@@ -209,13 +209,13 @@ function realLifeScene(structured: boolean | null, relational: boolean | null, d
     ],
   };
   const idx = structured ? (relational ? 0 : 1) : relational ? 2 : 3;
-  return `응답을 바탕으로 떠올려 볼 장면: “${scenes[domain][idx]}” 실제 경험과 맞는지 확인해 보세요.`;
+  return scenes[domain][idx];
 }
 
 /** 강점이 약점으로 뒤집히는 지점 — structured/relational 조합별로 다른
  * 문장을 준다(모든 조합에 "과유불급"이 있다는 걸 보여주기 위함). */
 function strengthFlip(structured: boolean | null, relational: boolean | null): string {
-  if (structured === null || relational === null) return "중립·미확인 응답으로 강점이나 약점을 만들어내지 않았습니다.";
+  if (structured === null || relational === null) return "상황에 따라 판단 방식이 달라질 수 있어 한 가지 성향으로만 단정하기는 어렵습니다.";
   if (structured && relational) return "다만 계획도 관계도 다 챙기려다 정작 자기 결정을 뒤로 미루는 순간을 조심해야 합니다.";
   if (structured && !relational) return "다만 계획이 틀어지는 상황에서 유독 완고해져, 주변 도움을 놓치기 쉽습니다.";
   if (!structured && relational) return "다만 상황과 사람에 맞추다 보면 정작 자기 기준이 흐려질 때가 있습니다.";
@@ -248,53 +248,45 @@ export function buildRealWorldPersonalization(
   const sentences: string[] = [];
   const evidenceParts: string[] = [];
 
-  if (mbti) {
-    sentences.push(`입력한 MBTI의 설명으로는 ${ei(mbti)}이고, ${sn(mbti)}에 가깝습니다. 실제 행동을 확인한 정보는 아닙니다.`);
-    evidenceParts.push(`MBTI ${mbti}`);
-  }
-
   const structuredText = structureFromCheck(check) ?? (mbti ? structureFromMbti(mbti) : null);
   const relationText = relationFromCheck(check) ?? (mbti ? relationFromMbti(mbti) : null);
 
-  if (structuredText) {
-    const fromCheck = structureFromCheck(check) !== null;
-    sentences.push(`${fromCheck ? "직접 응답에서는" : "입력한 MBTI 설명에서는"} ${structuredText}입니다.`);
-    if (fromCheck && mbti && ["왼쪽", "오른쪽"].includes(check!.levels.plan)) {
-      const mbtiStructured = mbti[3] === "J";
-      const checkStructured = check!.levels.plan === "왼쪽";
-      if (mbtiStructured !== checkStructured) {
-        sentences.push("MBTI의 계획 선호 설명과 이번 직접 응답은 다릅니다. 어느 상황을 떠올렸는지 확인해 보세요.");
-      }
+  if (structuredText) sentences.push(`${structuredText}입니다.`);
+  if (relationText) sentences.push(`${relationText}입니다.`);
+
+  if (check) {
+    evidenceParts.push("6문항 speed/plan/autonomy/risk/spendAwareness/savingConsistency");
+
+    const risk = check.levels.risk;
+    if (risk === "왼쪽") {
+      sentences.push("새로운 기회가 보이면 안정성만 지키기보다 가능성을 먼저 살펴보는 편이라, 좋은 기회를 빠르게 잡을 수 있지만 조건 확인이 짧아지지 않도록 주의가 필요합니다.");
+    } else if (risk === "오른쪽") {
+      sentences.push("기회보다 손실 가능성을 먼저 살피는 편이라 큰 실수를 줄이는 데 강점이 있지만, 충분히 감당할 수 있는 기회까지 너무 일찍 닫지는 않는지 확인할 필요가 있습니다.");
+    } else if (risk === "중간") {
+      sentences.push("기회와 안정 사이에서 어느 한쪽으로 치우치기보다 상황을 보고 판단하는 편입니다.");
     }
-    evidenceParts.push(fromCheck ? "6문항 speed/plan" : `MBTI ${mbti![3]}`);
+
+    const spend = check.levels.spendAwareness;
+    if (spend === "왼쪽") {
+      sentences.push("돈이 어디로 나가는지 비교적 잘 파악하려는 편이라, 지출 흐름이 흐트러졌을 때도 원인을 찾기 쉬운 편입니다.");
+    } else if (spend === "오른쪽") {
+      sentences.push("큰 지출보다 작은 지출이 여러 번 쌓일 때 전체 흐름을 놓치기 쉬워, 돈이 새는 느낌이 생기면 먼저 사용처를 묶어서 보는 것이 도움이 됩니다.");
+    }
+
+    const saving = check.levels.savingConsistency;
+    if (saving === "왼쪽") {
+      sentences.push("저축이나 남겨두는 돈을 일정하게 유지하려는 힘이 있어, 한 번 만든 기준을 오래 가져가는 방식이 잘 맞습니다.");
+    } else if (saving === "오른쪽") {
+      sentences.push("저축의 폭이 상황에 따라 달라지는 편이라, 의지보다 자동이체나 고정 금액처럼 흔들리지 않는 장치를 두는 편이 더 안정적입니다.");
+    }
   }
 
-  if (relationText) {
-    const fromCheck = relationFromCheck(check) !== null;
-    sentences.push(`${fromCheck ? "직접 응답에서는" : "입력한 MBTI의 판단 기준 설명에서는"} ${relationText}입니다.`);
-    evidenceParts.push(fromCheck ? "6문항 autonomy" : `MBTI ${mbti![2]}`);
-  }
+  if (mbti) evidenceParts.push(`MBTI ${mbti}`);
 
-  // 두 축(구조화/관계) 조합으로 재물·일·관계 장면을 각각 다르게 만든다 —
-  // "사주 본문"에 실제로 personalization이 반영되는 지점.
   const { structured, relational } = derivePersonalityAxes(facts, personality);
-
   sentences.push(realLifeScene(structured, relational, "money"));
   sentences.push(realLifeScene(structured, relational, "work"));
   sentences.push(strengthFlip(structured, relational));
-  if (check) {
-    for (const id of ["risk", "spendAwareness", "savingConsistency"]) {
-      const item = PERSONALITY_CHECK_ITEMS.find(item => item.id === id)!;
-      const level = check.levels[id];
-      const response = level === "왼쪽" ? item.leftLabel : level === "오른쪽" ? item.rightLabel : level === "중간" ? "중간" : "미확인";
-      sentences.push(`“${item.leftLabel} / ${item.rightLabel}” 문항의 직접 응답은 ${response}입니다.`);
-    }
-    sentences.push("체감 응답이므로 실제 지출·저축 내역이나 감당 가능한 위험과 구분해 확인하세요.");
-  }
-
-  // 대운(지금/다음 시기) 이야기는 nextMove/timingShift 두 필드가 전담한다 —
-  // 여기서 같은 사실을 또 말하면 "세 군데서 반복 설명"이 되므로, 이 문단은
-  // MBTI/6문항 자체의 특성·장면에만 집중한다.
 
   return {
     text: sentences.join(" "),

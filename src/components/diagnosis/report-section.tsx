@@ -101,11 +101,13 @@ export function EvidenceToggle({
   title,
   text,
   adviceOverride,
+  showWhy = true,
 }: {
   evidence: string;
   title?: string;
   text?: string;
   adviceOverride?: string;
+  showWhy?: boolean;
 }) {
   const [open, setOpen] = useState<"why" | "how" | null>(null);
   const advice = adviceOverride ?? buildAdvice({ title, text, evidence });
@@ -113,14 +115,16 @@ export function EvidenceToggle({
   return (
     <div className="mt-2">
       <div className="flex flex-wrap gap-x-4 gap-y-2">
-        <button
-          type="button"
-          onClick={() => setOpen((value) => (value === "why" ? null : "why"))}
-          aria-expanded={open === "why"}
-          className="text-sm text-muted-foreground underline decoration-dotted underline-offset-2"
-        >
-          왜 이렇게 봤나요?
-        </button>
+        {showWhy && (
+          <button
+            type="button"
+            onClick={() => setOpen((value) => (value === "why" ? null : "why"))}
+            aria-expanded={open === "why"}
+            className="text-sm text-muted-foreground underline decoration-dotted underline-offset-2"
+          >
+            왜 이렇게 봤나요?
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setOpen((value) => (value === "how" ? null : "how"))}
@@ -165,7 +169,7 @@ export function ParagraphSection({
         <p>{paragraph.text}</p>
       )}
       {showGuidance && (
-        <EvidenceToggle evidence={paragraph.evidence} title={title} text={paragraph.text} />
+        <EvidenceToggle evidence={paragraph.evidence} title={title} text={paragraph.text} showWhy={false} />
       )}
     </ReportSection>
   );

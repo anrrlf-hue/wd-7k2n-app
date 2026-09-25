@@ -9,7 +9,7 @@ import {
   type NormalizedLandmark,
 } from "@mediapipe/tasks-vision";
 import { analyzeEdgeBand, analyzeVerticalCreaseBand } from "@/lib/palm-line-features";
-import { runPalmLineOnnx, preloadPalmLineModel, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
+import { runPalmLineOnnx, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
 import { runPalmFourLineOnnx } from "@/lib/palm-4line-onnx";
 import { fuseFateSignal } from "@/lib/palm-fate-fusion";
 import type {
@@ -42,10 +42,11 @@ function getHandLandmarker(): Promise<HandLandmarker> {
   return handLandmarkerPromise;
 }
 
-/** 앱 진입 시 미리 불러 첫 분석 지연을 줄이고 싶을 때 호출 (실패해도 무시) */
+/** 카메라 화면에 필요한 손 랜드마커만 미리 불러온다.
+ * 큰 손금 ONNX 모델은 촬영 전 화면에서 같이 로드하지 않는다 — 저사양/모바일
+ * 브라우저에서 카메라 화면이 멈춘 것처럼 보이는 초기 부하를 피하기 위함이다. */
 export function preloadHandLandmarker() {
   getHandLandmarker().catch(() => {});
-  preloadPalmLineModel();
 }
 
 interface Rect {
