@@ -10,6 +10,7 @@ import {
 } from "@mediapipe/tasks-vision";
 import { analyzeEdgeBand, analyzeVerticalCreaseBand } from "@/lib/palm-line-features";
 import { runPalmLineOnnx, preloadPalmLineModel, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
+import { runPalmFourLineOnnx, type FourLinePoseObservation } from "@/lib/palm-4line-onnx";
 import type {
   HandShape,
   HandSide,
@@ -425,6 +426,51 @@ function bestSecondaryLineSignal(
   };
 }
 
+function fuseFateSignal(
+  base: NonNullable<PalmFacts["secondaryLines"]>["fate"],
+  model: FourLinePoseObservation | null,
+): NonNullable<PalmFacts["secondaryLines"]>["fate"] {
+  const modelConfidence = model?.confidence ?? 0;
+  const modelVerticalSpan = model?.verticalSpan ?? 0;
+  const modelHorizontalSpan = model?.horizontalSpan ?? 0;
+  const modelLineLike =
+    Boolean(model) &&
+    modelVerticalSpan >= 0.18 &&
+    modelVerticalSpan >= Math.max(0.12, modelHorizontalSpan * 2);
+
+  const heuristicSupports = base.status === "faint" || base.status === "clear";
+  const strongModel = modelLineLike && modelConfidence >= 0.25;
+  const mediumModel = modelLineLike && modelConfidence >= 0.12;
+  const corroborated = heuristicSupports && mediumModel;
+
+  let status: NonNullable<PalmFacts["secondaryLines"]>["fate"]["status"] = "not_seen";
+  if ((base.status === "clear" && mediumModel) || (base.status === "faint" && strongModel)) {
+    status = "clear";
+  } else if (corroborated || strongModel || base.status === "clear") {
+    status = "faint";
+  }
+
+  const strength = Math.max(base.strength, strongModel ? modelConfidence : modelConfidence * 0.7);
+  const span = Math.max(base.span, modelLineLike ? modelVerticalSpan : 0);
+
+  return {
+    status,
+    strength: Math.min(1, strength),
+    span,
+    modelConfidence: model ? modelConfidence : null,
+    modelVerticalSpan: model ? modelVerticalSpan : null,
+    corroborated,
+    note:
+      status === "clear"
+        ? "운명선 후보가 영상 주름 신호와 별도 4선 모델에서 함께 확인됩니다."
+        : status === "faint"
+          ? model
+            ? "운명선 후보가 일부 보이지만 두 검출 경로의 일치가 충분하지 않아 아직 선명 판정으로 올리지 않았습니다."
+            : base.note
+          : "운명선 후보가 두 검출 경로에서 충분히 확인되지 않았습니다.",
+  };
+}
+
 function detectSecondaryPalmLines(
   rawCrop: HTMLCanvasElement,
   enhancedCrop: HTMLCanvasElement,
@@ -798,7 +844,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   const adaptivePalmCrop = cropAndRotatePalm(canvas, landmarksPx, handSide === "left", adaptiveMargin);
   const enhancedPalmCrop = enhancePalmContrast(adaptivePalmCrop);
   const palmCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left", adaptiveMargin);
-  const secondaryLines = detectSecondaryPalmLines(adaptivePalmCrop, enhancedPalmCrop, palmCropLandmarks);
+  const secondaryLinesBase = detectSecondaryPalmLines(adaptivePalmCrop, enhancedPalmCrop, palmCropLandmarks);
 
   const onnxRaw = await runPalmLineOnnx(rawPalmCrop);
   const rawDetectedBeforeFallback = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
@@ -837,11 +883,20 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
         heartLine: mapOnnxObservation(heartChoice.observation ?? missingObservation("heart_line")),
         headLine: mapOnnxObservation(headChoice.observation ?? missingObservation("head_line")),
         lifeLine: mapOnnxObservation(lifeChoice.observation ?? missingObservation("life_line")),
-        fateLine: { presence: "unknown", note: "현재 3선 모델은 운명선(fate line)을 분할하지 않아 별도 검증이 필요합니다." },
+        fateLine: { presence: "unknown", note: "주요 3선 모델과 별도로 운명선 전용 보조 모델을 교차확인합니다." },
         mounts: "unknown",
         marks: "unknown",
       }
     : null;
+
+  const fourLine = await runPalmFourLineOnnx(enhancedPalmCrop, 0.08);
+  const fateModel = fourLine?.fate ?? null;
+  const secondaryLines = secondaryLinesBase
+    ? {
+        ...secondaryLinesBase,
+        fate: fuseFateSignal(secondaryLinesBase.fate, fateModel),
+      }
+    : undefined;
 
   const rawDetectedLineCount = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
   const enhancedDetectedLineCount = onnxEnhanced?.observations.filter((o) => o.detected).length ?? 0;
@@ -871,6 +926,9 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
       headLine: pixelCount(onnxEnhanced, "head_line"),
       lifeLine: pixelCount(onnxEnhanced, "life_line"),
     },
+    fateModelConfidence: fateModel?.confidence ?? null,
+    fateModelVerticalSpan: fateModel?.verticalSpan ?? null,
+    fateModelCorroborated: secondaryLines?.fate.corroborated ?? false,
     chosenVariant: {
       heartLine: heartChoice.variant,
       headLine: headChoice.variant,
