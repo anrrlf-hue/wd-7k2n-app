@@ -1,0 +1,1 @@
+Temporary trigger for validating the latest palm camera, preprocessing, secondary-line guards, persistence, and result rendering.
