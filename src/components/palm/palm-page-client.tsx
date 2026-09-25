@@ -299,6 +299,55 @@ export function PalmPageClient({
   }, [resumeKey]);
 
   useEffect(() => {
+    if (!cameraOpen) return;
+    const video = cameraVideoRef.current;
+    const stream = cameraStreamRef.current;
+    if (!video || !stream) return;
+
+    video.srcObject = stream;
+    void video.play();
+
+    let cancelled = false;
+    const timer = window.setInterval(async () => {
+      if (cancelled || cameraProbeBusyRef.current || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+      const probe = cameraProbeCanvasRef.current;
+      if (!probe) return;
+
+      const maxDim = 480;
+      const scale = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
+      probe.width = Math.max(1, Math.round(video.videoWidth * scale));
+      probe.height = Math.max(1, Math.round(video.videoHeight * scale));
+      const ctx = probe.getContext("2d");
+      if (!ctx) return;
+
+      ctx.drawImage(video, 0, 0, probe.width, probe.height);
+      cameraProbeBusyRef.current = true;
+      try {
+        const assessment = await assessPalmCaptureFrame(probe);
+        if (!cancelled) {
+          setCameraReady(assessment.ready);
+          setCameraMessage(assessment.message);
+        }
+      } finally {
+        cameraProbeBusyRef.current = false;
+      }
+    }, 650);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      video.srcObject = null;
+    };
+  }, [cameraOpen]);
+
+  useEffect(() => {
+    return () => {
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!resumeKey || !finalReport || (stage !== "result" && stage !== "saju_only")) return;
     const saved: PalmResumeState = {
       stage,
@@ -359,21 +408,54 @@ export function PalmPageClient({
     setStage(data.palmSkipped ? "saju_only" : "result");
   }
 
-  async function handleFile(file: File) {
-    setErrorMsg(null);
-    setStage("detecting");
+  function replacePreview(next: string | null) {
     setPreviewUrl((old) => {
-      if (old) URL.revokeObjectURL(old);
-      return URL.createObjectURL(file);
+      if (old?.startsWith("blob:")) URL.revokeObjectURL(old);
+      return next;
     });
+  }
+
+  function stopLiveCamera() {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraOpen(false);
+    setCameraReady(false);
+    setCameraMessage("손바닥 전체를 화면 안에 맞춰주세요.");
+  }
+
+  async function openLiveCamera() {
+    setErrorMsg(null);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      cameraInputRef.current?.click();
+      return;
+    }
 
     try {
-      const canvas = await fileToCanvas(file);
+      stopLiveCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+      cameraStreamRef.current = stream;
+      setCameraOpen(true);
+    } catch {
+      cameraInputRef.current?.click();
+    }
+  }
+
+  async function processPalmCanvas(canvas: HTMLCanvasElement, preview: string) {
+    setErrorMsg(null);
+    setStage("detecting");
+    replacePreview(preview);
+
+    try {
       const facts = await analyzePalmFromCanvas(canvas);
       setPalmFacts(facts);
 
-      // 손금 성공 판정은 오직 실제 ONNX 결과 기준(isPalmFactsUsable)으로만
-      // 한다 — Sobel 휴리스틱이 뭔가 "검출됐다"고 해도 여기서 걸러진다.
       if (!isPalmFactsUsable(facts)) {
         setRetakeAttempts((n) => n + 1);
         setStage("retake");
@@ -384,6 +466,34 @@ export function PalmPageClient({
       await fetchReport(facts);
     } catch {
       setErrorMsg("분석 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
+      setStage("error");
+    }
+  }
+
+  async function captureLiveCamera() {
+    const video = cameraVideoRef.current;
+    if (!video?.videoWidth || !video.videoHeight) return;
+
+    const maxDim = 1280;
+    const scale = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const preview = canvas.toDataURL("image/jpeg", 0.9);
+    stopLiveCamera();
+    await processPalmCanvas(canvas, preview);
+  }
+
+  async function handleFile(file: File) {
+    try {
+      const canvas = await fileToCanvas(file);
+      await processPalmCanvas(canvas, URL.createObjectURL(file));
+    } catch {
+      setErrorMsg("사진을 불러오지 못했어요. 다른 사진으로 다시 시도해주세요.");
       setStage("error");
     }
   }
@@ -403,6 +513,7 @@ export function PalmPageClient({
   }
 
   function reset() {
+    stopLiveCamera();
     if (resumeKey) {
       sessionStorage.removeItem(`${resumeKey}:palm`);
       sessionStorage.removeItem(`${resumeKey}:funnel`);
