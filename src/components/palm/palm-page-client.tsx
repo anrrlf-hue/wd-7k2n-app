@@ -599,7 +599,7 @@ export function PalmPageClient({
       {stage === "upload" && (
         <div className="mt-6 flex flex-1 flex-col">
           {cameraOpen ? (
-            <div>
+            <div className="pb-28">
               <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-3xl border border-(--gold-soft) bg-black">
                 <video
                   ref={cameraVideoRef}
@@ -616,15 +616,7 @@ export function PalmPageClient({
               <div className="mystic-card mt-4 p-4 text-center">
                 <p className="text-base leading-7 text-foreground">{cameraMessage}</p>
               </div>
-              <div className="mt-4 flex flex-col gap-3">
-                <Button
-                  size="lg"
-                  onClick={captureLiveCamera}
-                  className="primary-cta h-14 w-full rounded-full text-base"
-                >
-                  <Camera className="size-4" />
-                  지금 촬영하기
-                </Button>
+              <div className="mt-4">
                 <Button
                   size="lg"
                   variant="outline"
@@ -633,6 +625,19 @@ export function PalmPageClient({
                 >
                   취소
                 </Button>
+              </div>
+              <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 px-4 pt-3 pb-4 backdrop-blur">
+                <div className="mx-auto flex w-full max-w-sm justify-center">
+                  <Button
+                    type="button"
+                    aria-label="손금 사진 촬영"
+                    onClick={captureLiveCamera}
+                    className="primary-cta flex size-20 flex-col gap-1 rounded-full p-0 shadow-xl"
+                  >
+                    <Camera className="size-5" />
+                    <span className="text-xs font-semibold">촬영</span>
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (
