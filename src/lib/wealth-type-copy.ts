@@ -21,7 +21,7 @@ export interface WealthTypeCopyEntry {
 }
 
 const COMMON_BRIDGE_TEXT =
-  "이 분류는 사주 해석이며 실제 재무진단은 아닙니다. 뒤에서 소득과 지출, 목표를 확인한 뒤 필요한 행동을 따로 정합니다.";
+  "이 성향이 실제 생활에서 어떻게 드러나는지는 다음 단계에서 손금과 현재의 선택을 함께 보며 이어서 살펴봅니다.";
 
 export const WEALTH_TYPE_COPY: Record<WealthTypeCode, WealthTypeCopyEntry> = {
   ACCUM: {
