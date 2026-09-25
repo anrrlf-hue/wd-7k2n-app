@@ -1,0 +1,15 @@
+name: vercel-auth-check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Vercel token presence
+        env:
+          HAS_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN != '' }}
+        run: |
+          echo "HAS_VERCEL_TOKEN=$HAS_VERCEL_TOKEN"
