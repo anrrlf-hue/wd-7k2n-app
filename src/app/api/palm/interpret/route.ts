@@ -106,6 +106,10 @@ export async function POST(request: Request) {
   const palmFacts = (parsed.data.palmFacts ?? null) as PalmFacts | null;
   const palmSkipped = palmFacts === null;
 
+  if (palmFacts?.pipelineDiagnostics) {
+    console.info("[palm-pipeline-client]", JSON.stringify(palmFacts.pipelineDiagnostics));
+  }
+
   if (palmFacts && !isPalmFactsUsable(palmFacts)) {
     return NextResponse.json({
       usable: false,
