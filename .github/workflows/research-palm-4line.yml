@@ -155,12 +155,44 @@ jobs:
           required = {"life", "heart", "head", "fate"}
           if not required.issubset(detected):
               raise SystemExit(f"ONNX candidate lost classes: {sorted(required - detected)}")
+
+          # OpenCV/간단 런타임에서도 검증할 수 있도록 NMS 없는 원시 출력 모델도 별도 생성.
+          raw_export = source.export(
+              format="onnx",
+              imgsz=640,
+              opset=17,
+              simplify=False,
+              dynamic=False,
+              nms=False,
+              device="cpu",
+          )
+          shutil.copy2(raw_export, "/tmp/palm_4line_raw.onnx")
+          raw_graph = onnx.load(raw_export)
+          print("RAW_ONNX_SIZE_BYTES", os.path.getsize(raw_export))
+          print("RAW_ONNX_INPUTS", [(x.name, shape_of(x)) for x in raw_graph.graph.input])
+          print("RAW_ONNX_OUTPUTS", [(x.name, shape_of(x)) for x in raw_graph.graph.output])
+
+          raw_runtime = YOLO(raw_export, task="pose")
+          raw_result = raw_runtime.predict("/tmp/palm_sample.png", conf=0.10, imgsz=640, verbose=False)[0]
+          raw_rows = []
+          if raw_result.boxes is not None:
+              for i in range(len(raw_result.boxes)):
+                  cls_id = int(raw_result.boxes.cls[i].item())
+                  conf = float(raw_result.boxes.conf[i].item())
+                  raw_rows.append((raw_result.names[cls_id], round(conf, 4)))
+          raw_rows.sort(key=lambda x: x[1], reverse=True)
+          print("RAW_ONNX_DETECTIONS", raw_rows)
+          raw_detected = {str(r[0]).lower().replace("_"," ").replace("-"," ").replace(" line","").strip() for r in raw_rows}
+          if not required.issubset(raw_detected):
+              raise SystemExit(f"Raw ONNX candidate lost classes: {sorted(required - raw_detected)}")
           PY
 
       - name: Upload ONNX candidate
         uses: actions/upload-artifact@v4
         with:
           name: palm-4line-onnx
-          path: /tmp/palm_4line.onnx
+          path: |
+            /tmp/palm_4line.onnx
+            /tmp/palm_4line_raw.onnx
           if-no-files-found: error
           retention-days: 3
