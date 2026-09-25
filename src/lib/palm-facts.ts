@@ -171,7 +171,7 @@ export function describePalmFailureReasons(facts: PalmFacts, attempt: number): s
     const d = facts.pipelineDiagnostics;
     if (d && d.highlightRatio > 0.35) {
       reasons.push("손바닥 반사가 강해 얇은 선이 사라졌어요. 빛이 정면으로 반사되지 않게 각도만 조금 바꿔주세요.");
-    } else if (d && d.sharpness < 8) {
+    } else if (d && d.sharpness < 4) {
       reasons.push("사진 초점이 약해 얇은 선이 뭉개졌어요. 손바닥에 초점을 맞춘 뒤 다시 찍어주세요.");
     } else if (d && d.rawDetectedLineCount === 0 && d.enhancedDetectedLineCount === 0) {
       reasons.push("사진 상태는 크게 나쁘지 않지만 현재 분석 모델이 주요 선을 충분히 읽지 못했어요.");
