@@ -339,7 +339,7 @@ export function PaymentScreen({
       <PaywallOffer
         title={PAID_PRODUCT.name}
         includedItems={REPORT_CONTENTS}
-        ctaText="9,900원 상품 구성 미리보기"
+        ctaText="상품 구성 미리보기"
         onRequest={startPaidResult}
       />
 

@@ -332,7 +332,8 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
           ? "약함"
           : "중화",
     geukguk: result.advanced.geukguk,
-    yongsin: result.advanced.yongsin,
+    // 출생시간 미상에서는 임시 12시가 정밀 용신에 섞일 수 있으므로 노출하지 않는다.
+    yongsin: input.hour === null ? [] : result.advanced.yongsin,
     fiveElements,
     dominantElement,
     wealthStarCount: wealthStarTypes.length,
@@ -345,18 +346,19 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     outputStarPillars,
     officerStarPillars,
     missingElements,
-    wealthOpportunityDaeunCount,
+    wealthOpportunityDaeunCount: input.hour === null ? 0 : wealthOpportunityDaeunCount,
     peakStagePillars,
     pillars,
     keyRelations,
     gwimunRelations,
     pillarStages,
-    gilsin: result.advanced.sinsal.gilsin,
-    hyungsin: result.advanced.sinsal.hyungsin,
+    // 시간 미상에서는 임시 시주가 섞일 수 있는 정밀 신살·대운 값을 확정 근거로 노출하지 않는다.
+    gilsin: input.hour === null ? [] : result.advanced.sinsal.gilsin,
+    hyungsin: input.hour === null ? [] : result.advanced.sinsal.hyungsin,
     gongmang: result.gongmang.branchesKo,
-    currentDaeun,
-    nextDaeun,
-    daeunList,
+    currentDaeun: input.hour === null ? null : currentDaeun,
+    nextDaeun: input.hour === null ? null : nextDaeun,
+    daeunList: input.hour === null ? [] : daeunList,
     // ssaju.toCompact()는 항상 4기둥(시주 포함) 기준 원국표를 반환한다 —
     // 시간 미상이어도 우리가 채운 임시 12시(午)를 실제 시주인 것처럼
     // "12:00"·시 열에 그대로 적어준다. 이 텍스트는 LLM 프롬프트에 그대로

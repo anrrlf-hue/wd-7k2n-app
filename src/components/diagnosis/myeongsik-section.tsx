@@ -93,10 +93,16 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
         adviceOverride={advice.join(" ")}
       />
 
-      <p className="mt-4 text-sm">
-        격국 <span className="font-semibold">{view.geukguk}</span> · 신강신약{" "}
-        <span className="font-semibold">{view.dayStrengthGrade}</span>({view.dayStrengthScore})
-      </p>
+      {view.hasTimeInput ? (
+        <p className="mt-4 text-sm">
+          격국 <span className="font-semibold">{view.geukguk}</span> · 신강신약{" "}
+          <span className="font-semibold">{view.dayStrengthGrade}</span>({view.dayStrengthScore})
+        </p>
+      ) : (
+        <p className="mt-4 text-sm text-muted-foreground">
+          출생시간이 없어 격국·신강신약·용신 같은 정밀 판정은 확정하지 않았습니다.
+        </p>
+      )}
 
       <p className="mt-4 text-sm">
         재성 궁위 —{" "}

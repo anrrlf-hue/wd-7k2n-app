@@ -123,7 +123,25 @@ export async function POST(request: Request) {
     // 성공 여부와 무관해야 하므로 enrichSajuFacts 호출 전에 계산한다
     // (api/saju/route.ts와 같은 패턴).
     const wealthType = classifyWealthType(shallowFacts);
-    const deepFacts: SajuFacts = enrichSajuFacts(shallowFacts, parsed.data);
+    const deepFacts: SajuFacts =
+      parsed.data.hour === null ? shallowFacts : enrichSajuFacts(shallowFacts, parsed.data);
+
+    if (parsed.data.hour === null) {
+      return NextResponse.json({
+        usable: true,
+        palmSkipped,
+        palmFacts,
+        freeReport: null,
+        fortuneCandidates: [],
+        tripleCompare: [],
+        lifetimeStory: null,
+        verdict: null,
+        primaryCandidateId: null,
+        wealthType,
+        precisionLimited: true,
+        warnings: ["출생시간이 없어 사주와 손금을 합친 정밀 해석은 만들지 않았습니다."],
+      });
+    }
 
     const personalityCheck = parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null;
     const mbti = parsed.data.mbti ?? null;

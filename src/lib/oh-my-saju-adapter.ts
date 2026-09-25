@@ -203,9 +203,16 @@ function bucketFromGrade(grade: string): "strong" | "weak" | "neutral" {
   return "weak"; // 신약/태약/극약
 }
 
+interface RawNatalPillar {
+  hanja: string;
+}
+
+type RawNatalPillars = Partial<Record<PillarFact["pillar"], RawNatalPillar>>;
+
 interface OhMySajuCallResult {
   enrichment: OhMySajuEnrichment | null;
   rawTimingPillars: unknown;
+  natalPillars: RawNatalPillars | null;
   elapsedMs: number;
   coldStart: boolean;
 }
@@ -272,9 +279,21 @@ function callOhMySaju(input: SajuFactsInput): OhMySajuCallResult {
       ? { pattern, strengthGrade, strengthScore, strengthBucket: bucketFromGrade(strengthGrade) }
       : null;
 
+  const rawNatal = analysis?.calculation?.pillars;
+  const natalPillars: RawNatalPillars | null =
+    rawNatal && typeof rawNatal === "object"
+      ? {
+          year: typeof rawNatal.year?.hanja === "string" ? { hanja: rawNatal.year.hanja } : undefined,
+          month: typeof rawNatal.month?.hanja === "string" ? { hanja: rawNatal.month.hanja } : undefined,
+          day: typeof rawNatal.day?.hanja === "string" ? { hanja: rawNatal.day.hanja } : undefined,
+          hour: typeof rawNatal.hour?.hanja === "string" ? { hanja: rawNatal.hour.hanja } : undefined,
+        }
+      : null;
+
   return {
     enrichment,
     rawTimingPillars: data?.result?.timing?.luckPillars?.pillars,
+    natalPillars,
     elapsedMs: Date.now() - startedAt,
     coldStart,
   };
@@ -338,6 +357,20 @@ export function getOhMySajuEnrichment(input: SajuFactsInput): OhMySajuEnrichment
   }
 }
 
+function natalPillarsMatchFacts(
+  facts: SajuFacts,
+  natalPillars: RawNatalPillars | null,
+  includeHour: boolean,
+): boolean {
+  if (!natalPillars) return false;
+  const expected = new Map(facts.pillars.map((pillar) => [pillar.pillar, pillar.ganzhi]));
+  const keys: PillarFact["pillar"][] = includeHour
+    ? ["year", "month", "day", "hour"]
+    : ["year", "month", "day"];
+
+  return keys.every((key) => expected.get(key) === natalPillars[key]?.hanja);
+}
+
 // facts.geukguk/dayStrength/dayStrengthScore는 oh-my-saju 판정으로 바꾸고,
 // facts.daeunAnalysis는 oh-my-saju의 timing(대운 8~10구간) + 로컬 합충형파해
 // 계산으로 새로 채운다. 나머지 필드(오행/십성 개수, 궁위, ssaju 자체 대운 등)는
@@ -350,7 +383,8 @@ export function enrichSajuFacts(facts: SajuFacts, input: SajuFactsInput): SajuFa
     return facts;
   }
 
-  const daeunAnalysis = buildDaeunAnalysis(result.rawTimingPillars, facts.pillars, input);
+  const exactIdentityMatch =
+    input.hour !== null && natalPillarsMatchFacts(facts, result.natalPillars, true);
 
   if (!result.enrichment) {
     // 소프트 폴백: 서브프로세스 자체는 성공(예외 없음)했지만 ziping/ditianshui
@@ -360,14 +394,31 @@ export function enrichSajuFacts(facts: SajuFacts, input: SajuFactsInput): SajuFa
     logOhMySajuFallback({ reason: "enrichment_missing", elapsedMs: result.elapsedMs, coldStart: result.coldStart });
   }
 
+  if (input.hour !== null && result.enrichment && !exactIdentityMatch) {
+    console.error(
+      "[oh-my-saju-identity-mismatch]",
+      JSON.stringify({
+        ssaju: Object.fromEntries(facts.pillars.map((pillar) => [pillar.pillar, pillar.ganzhi])),
+        ohMySaju: result.natalPillars,
+      }),
+    );
+  }
+
+  // 서로 다른 원국/시각 정책의 결과를 한 사람의 확정 근거처럼 합치지 않는다.
+  // 보강값과 timing은 "출생시간이 있고 + 4주 원국이 완전히 일치"할 때만 채택한다.
+  const useEnrichment = Boolean(result.enrichment && exactIdentityMatch);
+  const daeunAnalysis = exactIdentityMatch
+    ? buildDaeunAnalysis(result.rawTimingPillars, facts.pillars, input)
+    : null;
+
   return {
     ...facts,
-    ...(result.enrichment
+    ...(useEnrichment
       ? {
-          geukguk: result.enrichment.pattern,
-          dayStrength: result.enrichment.strengthBucket,
-          dayStrengthScore: result.enrichment.strengthScore,
-          dayStrengthGrade: result.enrichment.strengthGrade,
+          geukguk: result.enrichment!.pattern,
+          dayStrength: result.enrichment!.strengthBucket,
+          dayStrengthScore: result.enrichment!.strengthScore,
+          dayStrengthGrade: result.enrichment!.strengthGrade,
           geukgukSource: "ziping_ditianshui" as const,
         }
       : {}),

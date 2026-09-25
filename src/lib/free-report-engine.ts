@@ -50,7 +50,12 @@ async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: n
     if (!res.ok) throw new Error(`Claude API error: ${res.status}`);
 
     const data = await res.json();
-    const text: string = data?.content?.[0]?.text ?? "";
+    const text: string = Array.isArray(data?.content)
+      ? data.content
+          .filter((block: { type?: string; text?: string }) => block?.type === "text" && typeof block.text === "string")
+          .map((block: { text: string }) => block.text)
+          .join("\n")
+      : "";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Claude 응답에서 JSON을 찾지 못했습니다.");
     return JSON.parse(jsonMatch[0]);

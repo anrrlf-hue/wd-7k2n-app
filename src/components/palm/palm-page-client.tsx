@@ -116,7 +116,7 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
 
 /** 손금 완료 뒤에는 추가 성향게임을 강제하지 않는다.
  * 짧은 현실 연결 -> 2단계 재무질문 -> 무료 우선순위 -> 사용자가 고른 질문 ->
- * 9,900원 전환 화면으로 이어진다. */
+ * 가격 미검증 상태의 상품 구성 미리보기 화면으로 이어진다. */
 type FunnelStage = "intro" | "survey" | "analysis" | "payment";
 
 interface FunnelResumeState {

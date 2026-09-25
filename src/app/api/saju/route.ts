@@ -10,6 +10,7 @@ import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { buildLifetimeStory } from "@/lib/real-world-personalization";
 import { buildMyeongsikView } from "@/lib/myeongsik-view";
 import { classifyWealthType } from "@/lib/wealth-type";
+import { getMoneyTendency } from "@/lib/money-tendency";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
 // 요청 1회로 (1) 얕은 사주팔자+money-tendency(fallback/게이지 근거로 항상 유지)
@@ -62,16 +63,45 @@ export async function POST(request: Request) {
 
   try {
     const shallowFacts = computeSajuFacts(parsed.data);
+    const dayPillar = shallowFacts.pillars.find((pillar) => pillar.pillar === "day");
+    if (dayPillar) {
+      // 결과 첫 화면도 아래 상세 리포트와 같은 원국의 일간을 사용한다.
+      shallow = { ...shallow, tendency: getMoneyTendency(dayPillar.ganzhi) };
+    }
     // 재물 유형은 순수 ssaju 십성 카운트만 쓴다 — oh-my-saju 서브프로세스
     // 성공 여부와 무관해야 하므로 enrichSajuFacts 호출 전에 계산한다.
     wealthType = classifyWealthType(shallowFacts);
-    const facts = enrichSajuFacts(shallowFacts, parsed.data);
+    const facts = parsed.data.hour === null
+      ? shallowFacts
+      : enrichSajuFacts(shallowFacts, parsed.data);
     myeongsik = buildMyeongsikView(facts);
     daeunAnalysis = facts.daeunAnalysis;
     const personality = {
       mbti: parsed.data.mbti ?? null,
       check: parsed.data.personalityAnswers ? scorePersonalityCheck(parsed.data.personalityAnswers) : null,
     };
+
+    // 출생시간 미상에서는 임시 시주가 섞일 수 있는 강약·격국·용신·대운 기반
+    // 심층 문장을 생성하지 않는다. 3주/오행/십성 기반의 부분 결과만 보여준다.
+    if (parsed.data.hour === null) {
+      lifetimeStory = null;
+      return NextResponse.json({
+        ...shallow,
+        resultSource: "fallback",
+        deep: null,
+        freeReport: null,
+        birthInput: parsed.data,
+        personalityInput: {
+          personalityAnswers: parsed.data.personalityAnswers ?? null,
+          mbti: parsed.data.mbti ?? null,
+        },
+        daeunAnalysis: null,
+        lifetimeStory: null,
+        myeongsik,
+        wealthType,
+      } satisfies FullSajuDiagnosis);
+    }
+
     lifetimeStory = buildLifetimeStory(facts, personality, null);
 
     const [interpretationResult, freeReportResult] = await Promise.all([

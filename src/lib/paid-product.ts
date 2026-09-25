@@ -1,7 +1,7 @@
 export const PAID_PRODUCT = {
   sku: "finance-one-question-v1",
   name: "내 돈 고민 한 가지 현실판정",
-  priceKrw: 9900,
+  priceKrw: null,
   promise:
     "한 가지 돈 고민을 실제 금액과 날짜로 확인해, 지금 계획이 가능한지와 무엇을 바꿀지까지 정리합니다.",
   included: [
@@ -18,6 +18,7 @@ export const PAID_PRODUCT = {
     "무제한 상담이나 상시 관리는 포함하지 않습니다.",
   ],
   recheckCount: 1,
+  priceStatus: "unvalidated" as const,
   status: "preview" as const,
 };
 
