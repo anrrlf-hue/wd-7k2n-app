@@ -1,0 +1,41 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Palm secondary regression
+        run: node scripts/test-palm-secondary-regressions.mjs
+
+      - name: Saju engine identity regression
+        run: node scripts/test-saju-engine-identity.mjs
+
+      - name: Finance regression
+        run: node scripts/test-finance-regressions.mjs
+
+      - name: Build
+        run: pnpm build
