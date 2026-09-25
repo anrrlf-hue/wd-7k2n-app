@@ -532,10 +532,10 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   const palmCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left", adaptiveMargin);
   const secondaryLines = detectSecondaryPalmLines(adaptivePalmCrop, palmCropLandmarks);
 
-  const [onnxRaw, onnxEnhanced] = await Promise.all([
-    runPalmLineOnnx(rawPalmCrop),
-    runPalmLineOnnx(enhancedPalmCrop),
-  ]);
+  const onnxRaw = await runPalmLineOnnx(rawPalmCrop);
+  const rawDetectedBeforeFallback = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
+  const enhancedAttempted = rawDetectedBeforeFallback < 3;
+  const onnxEnhanced = enhancedAttempted ? await runPalmLineOnnx(enhancedPalmCrop) : null;
 
   const chooseObservation = (cls: OnnxLineClass): { observation: OnnxLineObservation | null; variant: "raw" | "enhanced" } => {
     const raw = onnxRaw?.observations.find((o) => o.class === cls) ?? null;
@@ -591,6 +591,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
     enhancedCropWidth: enhancedPalmCrop.width,
     enhancedCropHeight: enhancedPalmCrop.height,
     rawDetectedLineCount,
+    enhancedAttempted,
     enhancedDetectedLineCount,
     rawPixelCount: {
       heartLine: pixelCount(onnxRaw, "heart_line"),
