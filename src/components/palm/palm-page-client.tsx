@@ -349,7 +349,7 @@ export function PalmPageClient({
           setCameraReady(stableReady);
           setCameraMessage(
             stableReady
-              ? assessment.message
+              ? "좋습니다. 지금 찍으시면 됩니다."
               : assessment.ready
                 ? "좋아요. 초점이 안정되도록 잠깐만 그대로 있어주세요."
                 : assessment.message,
@@ -613,8 +613,13 @@ export function PalmPageClient({
                 />
               </div>
               <canvas ref={cameraProbeCanvasRef} className="hidden" />
-              <div className="mystic-card mt-4 p-4 text-center">
-                <p className="text-base leading-7 text-foreground">{cameraMessage}</p>
+              <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  손바닥 전체가 점선 안에 들어오게 맞추고, 손가락을 살짝 편 채 잠깐 멈춰주세요.
+                </p>
+                <p className={`mt-2 text-base font-medium leading-7 ${cameraReady ? "text-(--gold)" : "text-foreground"}`}>
+                  {cameraMessage}
+                </p>
               </div>
               <div className="mt-4">
                 <Button
@@ -626,19 +631,21 @@ export function PalmPageClient({
                   취소
                 </Button>
               </div>
-              <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 px-4 pt-3 pb-4 backdrop-blur">
-                <div className="mx-auto flex w-full max-w-sm justify-center">
-                  <Button
-                    type="button"
-                    aria-label="손금 사진 촬영"
-                    onClick={captureLiveCamera}
-                    className="primary-cta flex size-20 flex-col gap-1 rounded-full p-0 shadow-xl"
-                  >
-                    <Camera className="size-5" />
-                    <span className="text-xs font-semibold">촬영</span>
-                  </Button>
+              {cameraReady && (
+                <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 px-4 pt-3 pb-4 backdrop-blur">
+                  <div className="mx-auto flex w-full max-w-sm justify-center">
+                    <Button
+                      type="button"
+                      aria-label="손금 사진 촬영"
+                      onClick={captureLiveCamera}
+                      className="primary-cta flex size-20 flex-col gap-1 rounded-full p-0 shadow-xl"
+                    >
+                      <Camera className="size-5" />
+                      <span className="text-xs font-semibold">촬영</span>
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <>
