@@ -8,12 +8,8 @@ import { Button } from "@/components/ui/button";
 import { CompanionHeading } from "@/components/brand-companion";
 import { JourneyHeader } from "@/components/journey-header";
 import { JourneyScene } from "@/components/journey-scene";
-import type { FinanceQuestionId } from "@/lib/finance-question";
 import { VerdictCard } from "@/components/diagnosis/verdict-card";
 import { ReportSection, ParagraphSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
-import { SurveyForm } from "@/components/palm/survey-form";
-import { AnalysisResultCard } from "@/components/palm/analysis-result-card";
-import { PaymentScreen } from "@/components/palm/payment-screen";
 import {
   analyzePalmFromCanvas,
   assessPalmCaptureFrame,
@@ -21,8 +17,7 @@ import {
 } from "@/lib/palm-detection";
 import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
 import { PalmReadingSections, TripleCompareSection } from "@/components/palm/palm-reading-sections";
-import { buildAnalysisResult, type AnalysisResult } from "@/lib/analysis-result";
-import type { SurveyInput } from "@/lib/survey-input";
+import { RealityAnswerFunnel } from "@/components/palm/reality-answer-funnel";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
@@ -31,10 +26,10 @@ import { track } from "@/lib/analytics";
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
 
-function financeJourneyKey(birthInput: BirthInput | null): string | null {
+function realityJourneyKey(birthInput: BirthInput | null): string | null {
   if (!birthInput) return null;
   return [
-    "saju-app:finance-journey:v1",
+    "saju-app:reality-journey:v1",
     birthInput.year,
     birthInput.month,
     birthInput.day,
@@ -129,133 +124,6 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
   );
 }
 
-/** 손금 완료 뒤에는 추가 성향게임을 강제하지 않는다.
- * 짧은 현실 연결 -> 2단계 재무질문 -> 무료 우선순위 -> 사용자가 고른 질문 ->
- * 가격 미검증 상태의 상품 구성 미리보기 화면으로 이어진다. */
-type FunnelStage = "intro" | "survey" | "analysis" | "payment";
-
-interface FunnelResumeState {
-  stage: FunnelStage;
-  analysisResult: AnalysisResult | null;
-  surveyInput?: SurveyInput;
-  selectedQuestion: FinanceQuestionId | null;
-}
-
-function ConversionFunnel({
-  birthInput,
-  sajuSummary,
-  resumeKey,
-  onStart,
-  onChapterChange,
-}: {
-  birthInput: BirthInput;
-  sajuSummary: string | null;
-  resumeKey: string;
-  onStart: () => void;
-  onChapterChange: (chapter: 3 | 4 | 5) => void;
-}) {
-  const stored = readSessionJson<FunnelResumeState>(`${resumeKey}:funnel`);
-  const [stage, setStage] = useState<FunnelStage>(stored?.stage ?? "intro");
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(stored?.analysisResult ?? null);
-  const [surveyInput, setSurveyInput] = useState<SurveyInput | undefined>(stored?.surveyInput);
-  const [selectedQuestion, setSelectedQuestion] = useState<FinanceQuestionId | null>(stored?.selectedQuestion ?? null);
-  const funnelTopRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (stage === "intro") return;
-    requestAnimationFrame(() => {
-      funnelTopRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
-    });
-  }, [stage]);
-
-  useEffect(() => {
-    sessionStorage.setItem(
-      `${resumeKey}:funnel`,
-      JSON.stringify({ stage, analysisResult, surveyInput, selectedQuestion } satisfies FunnelResumeState),
-    );
-  }, [resumeKey, stage, analysisResult, surveyInput, selectedQuestion]);
-
-  function handleSurveyComplete(input: SurveyInput) {
-    track("survey_completed");
-    setSurveyInput(input);
-    setAnalysisResult(buildAnalysisResult(input));
-    setStage("analysis");
-    track("analysis_result_viewed");
-  }
-
-  return (
-    <div id="conversion-funnel" ref={funnelTopRef} className="mt-8 scroll-mt-6">
-      {stage === "intro" && (
-        <div className="transition-panel">
-          <p className="section-eyebrow">사주풀이에서 끝나지 않고 현실로 이어집니다</p>
-          <h2 className="mt-2 text-2xl leading-snug font-semibold">
-            사주에서 본 나를,
-            <br />
-            지금의 삶으로 이어서 볼게요
-          </h2>
-          <p className="mt-3 text-base leading-7 text-muted-foreground">
-            사주와 손금에서 본 성향에 지금의 생활과 재무상황을 더해, 앞으로 어떤 방향으로 가면 좋을지 이어서 살펴봅니다.
-          </p>
-          <Button
-            size="lg"
-            onClick={() => {
-              track("finance_bridge_started");
-              onStart();
-              onChapterChange(4);
-              setStage("survey");
-            }}
-            className="mt-5 h-14 w-full rounded-full text-base"
-          >
-            현실과 이어서 보기
-          </Button>
-        </div>
-      )}
-
-      {stage === "survey" && (
-        <SurveyForm
-          initialValue={surveyInput}
-          onComplete={handleSurveyComplete}
-          onBack={() => {
-            onChapterChange(3);
-            setStage("intro");
-          }}
-        />
-      )}
-
-      {stage === "analysis" && analysisResult && (
-        <AnalysisResultCard
-          result={analysisResult}
-          concerns={surveyInput?.financeQuestionIds ?? []}
-          sajuSummary={sajuSummary}
-          onRevise={() => setStage("survey")}
-          onProceed={(question) => {
-            setSelectedQuestion(question);
-            track("payment_screen_viewed", { question });
-            onChapterChange(5);
-            setStage("payment");
-          }}
-        />
-      )}
-
-      {stage === "payment" && analysisResult && selectedQuestion && (
-        <PaymentScreen
-          question={selectedQuestion}
-          concerns={surveyInput?.financeQuestionIds ?? []}
-          sajuSummary={sajuSummary}
-          result={analysisResult}
-          input={surveyInput!}
-          birthInput={birthInput}
-          persistenceKey={`${resumeKey}:payment`}
-          onBack={() => {
-            onChapterChange(4);
-            setStage("analysis");
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
 export function PalmPageClient({
   birthInput,
   personalityInput,
@@ -263,7 +131,7 @@ export function PalmPageClient({
   birthInput: BirthInput | null;
   personalityInput?: PersonalityInputEcho;
 }) {
-  const resumeKey = financeJourneyKey(birthInput);
+  const resumeKey = realityJourneyKey(birthInput);
   const [stage, setStage] = useState<Stage>("upload");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
@@ -832,9 +700,10 @@ export function PalmPageClient({
 
       </div>
       {(stage === "result" || stage === "saju_only") && birthInput && resumeKey && (
-        <ConversionFunnel
+        <RealityAnswerFunnel
           birthInput={birthInput}
-          sajuSummary={wealthType?.pieces.typeAndDiagnosis ?? null}
+          personalityInput={personalityInput}
+          palmLines={palmFacts?.onnxLines ?? null}
           resumeKey={resumeKey}
           onStart={() => { setFunnelActive(true); setReadingOpen(false); }}
           onChapterChange={setChapter}
