@@ -51,5 +51,8 @@ jobs:
       - name: Reality answer regression
         run: node scripts/test-reality-answer-regressions.mjs
 
+      - name: Free Saju V3 regression
+        run: node scripts/test-free-saju-v3.mjs
+
       - name: Build
         run: pnpm build
