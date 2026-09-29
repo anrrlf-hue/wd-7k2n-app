@@ -155,7 +155,7 @@ export function validateRealityAnswer(answer: RealityAnswer): RealityAnswerValid
     ...answer.actions.flatMap((action) => [action.title, action.detail, action.doneWhen]),
   ].join("\n");
 
-  if (answer.timing.precision === "daeun_only" && /(?:20\d{2}년\s*)?\d{1,2}월|\d{1,2}일/.test(generatedText)) {
+  if (answer.timing.precision === "daeun_only" && /(?:20\d{2}년\s*)?\d{1,2}월(?:\s*\d{1,2}일)?|(?:이번|다음)\s*\d{1,2}월/.test(generatedText)) {
     errors.push("대운 수준 답변에서 특정 월·날짜를 생성했습니다.");
   }
 
