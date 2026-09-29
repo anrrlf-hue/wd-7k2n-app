@@ -16,7 +16,7 @@ export interface RealityQuestionParseResult {
 const DOMAIN_KEYWORDS: Record<RealityAnswerDomain, string[]> = {
   love: [
     "연애", "결혼", "재회", "헤어", "이별", "남자친구", "여자친구", "남친", "여친",
-    "소개팅", "썸", "배우자", "연인", "사랑",
+    "소개팅", "썸", "배우자", "연인", "사랑", "만나는 사람", "교제",
   ],
   career: [
     "취업", "이직", "퇴사", "면접", "지원", "합격", "채용", "직무", "커리어", "연봉",
