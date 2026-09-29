@@ -1,6 +1,7 @@
 import { PalmPageClient } from "@/components/palm/palm-page-client";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import { MBTI_TYPES, type MbtiType } from "@/lib/mbti-facts";
+import { parseSajuFocus } from "@/lib/saju-focus";
 
 function parseBirthInput(sp: Record<string, string | string[] | undefined>): BirthInput | null {
   const get = (key: string) => {
@@ -63,6 +64,8 @@ export default async function PalmPage({
   const sp = await searchParams;
   const birthInput = parseBirthInput(sp);
   const personalityInput = parsePersonalityInput(sp);
+  const focusRaw = Array.isArray(sp.focus) ? sp.focus[0] : sp.focus;
+  const focus = parseSajuFocus(focusRaw);
 
-  return <PalmPageClient birthInput={birthInput} personalityInput={personalityInput} />;
+  return <PalmPageClient birthInput={birthInput} personalityInput={personalityInput} focus={focus} />;
 }
