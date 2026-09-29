@@ -11,6 +11,7 @@ import { buildLifetimeStory } from "@/lib/real-world-personalization";
 import { buildMyeongsikView } from "@/lib/myeongsik-view";
 import { classifyWealthType } from "@/lib/wealth-type";
 import { getMoneyTendency } from "@/lib/money-tendency";
+import { SAJU_FOCUS_VALUES, parseSajuFocus } from "@/lib/saju-focus";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
 // 요청 1회로 (1) 얕은 사주팔자+money-tendency(fallback/게이지 근거로 항상 유지)
@@ -25,6 +26,7 @@ const bodySchema = z.object({
   hour: z.number().int().min(0).max(23).nullable(),
   minute: z.number().int().min(0).max(59).nullable(),
   gender: z.enum(["남", "여"]),
+  focus: z.enum(SAJU_FOCUS_VALUES).optional(),
   /** 성향 스텝은 완전히 선택 사항 — 안 보내면 undefined */
   personalityAnswers: z.record(z.string(), z.number().min(1).max(5)).optional(),
   mbti: z.enum(MBTI_TYPES).optional(),
@@ -118,6 +120,7 @@ export async function POST(request: Request) {
 
   const payload: FullSajuDiagnosis = {
     ...shallow,
+    focus: parseSajuFocus(parsed.data.focus),
     resultSource,
     deep,
     freeReport,

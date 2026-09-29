@@ -12,7 +12,7 @@ import { BrandCompanion } from "@/components/brand-companion";
 const STATUS_MESSAGES = [
   "사주를 계산하는 중이에요",
   "명식 구조를 분석하는 중이에요",
-  "재물·직업 흐름을 분석하는 중이에요",
+  "성향·관계·일·재물 흐름을 분석하는 중이에요",
   "나만의 해석을 만드는 중이에요",
   "거의 다 됐어요, 조금만 더 기다려주세요",
 ];

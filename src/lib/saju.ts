@@ -7,6 +7,7 @@ import type { DaeunAnalysis } from "./saju-facts";
 import type { LifetimePeriodStory } from "./real-world-personalization";
 import type { MyeongsikView } from "./myeongsik-view";
 import type { WealthTypeResult } from "./wealth-type";
+import type { SajuFocus } from "./saju-focus";
 
 export interface BirthInput {
   year: number;
@@ -50,6 +51,8 @@ export interface FreeReportPayload {
 }
 
 export interface FullSajuDiagnosis extends SajuDiagnosis {
+  /** 첫 화면에서 고른 관심사. 계산을 제한하지 않고 무료 결과의 우선순위만 정한다. */
+  focus: SajuFocus;
   /** "deep" = 딥 해석 성공(LLM 또는 검증 통과한 mock), "fallback" = 딥 파이프라인 자체가 실패해 얕은 결과만 있음 */
   resultSource: "deep" | "fallback";
   deep: DeepResultPayload | null;

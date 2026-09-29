@@ -33,6 +33,9 @@ const evidenceItem = z.object({
 export const FreeSajuReportSchema = z.object({
   snapshot: paragraph, // ① 한눈에 보는 나
   temperament: paragraph, // ② 타고난 성향
+  relationshipStyle: paragraph, // 사람과 관계를 맺는 방식
+  loveStyle: paragraph, // 연애·결혼에서의 나
+  lifeRhythm: paragraph, // 생활 리듬·스트레스 패턴(의료 진단 아님)
   wealthStructure: paragraph, // ③ 재물운/돈복의 큰 구조
   earningStyle: paragraph, // ④ 돈을 버는 방식
   keepingStyle: paragraph, // ⑤ 돈을 지키는 방식
@@ -114,6 +117,9 @@ export function validateFreeSajuReport(raw: unknown): ValidationResult & { data?
   const paragraphTexts = [
     d.snapshot,
     d.temperament,
+    d.relationshipStyle,
+    d.loveStyle,
+    d.lifeRhythm,
     d.wealthStructure,
     d.earningStyle,
     d.keepingStyle,

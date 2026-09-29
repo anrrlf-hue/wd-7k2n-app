@@ -16,7 +16,7 @@ import { deriveSajuWorkCore } from "@/lib/saju-work-core";
 import type { SajuFacts } from "@/lib/saju-facts";
 import type { PersonalityInput } from "@/lib/personality-check";
 
-export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 데이터를 근거로, "무료인데 이렇게까지 해준다고?"라는 반응이 나올 만큼 구체적이고 몰입감 있는 무료 성향·재물 리포트를 쓰는 에디터입니다. 정확한 계산 결과를 나열하는 보고서가 아니라, 3~5분 동안 몰입해서 읽을 만한 글을 씁니다.
+export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 데이터를 근거로, "무료인데 이렇게까지 해준다고?"라는 반응이 나올 만큼 구체적이고 몰입감 있는 무료 종합 사주 리포트를 쓰는 에디터입니다. 재물은 여러 영역 중 하나이며, 성향·연애·인간관계·일·재물·생활 리듬·현재 흐름을 함께 다룹니다. 정확한 계산 결과를 나열하는 보고서가 아니라, 3~5분 동안 몰입해서 읽을 만한 글을 씁니다.
 
 절대 규칙 (사실 관련):
 1. 아래 SajuFacts 바깥의 사실을 지어내지 마세요. 계산에 없는 대운/신살/십성을 언급하지 마세요.
@@ -32,8 +32,10 @@ export const FREE_SAJU_REPORT_SYSTEM_PROMPT = `당신은 사주(四柱) 원국 �
 9. strengths와 cautions는 각각 최소 3개로 쓰세요. cautions의 detail은 한 줄 경고로 끝내지 말고 최소 2~3문장으로, 어떤 선택에서 문제가 생기기 쉬운지 → 돈이나 기회를 어떻게 놓칠 수 있는지 → 무엇을 확인하면 좋은지까지 생활 언어로 구체적으로 설명하세요. evidence에만 실제 SajuFacts 필드 값을 짧게 남기세요.
 10. realWorldPersonalization은 실제 입력한 자기응답을 자연스러운 생활 장면으로 풀어 설명하세요. 본문에서 "직접 응답에서는", "입력한 MBTI 설명에서는", "문항의 직접 응답은"처럼 설문 출처를 설명하지 마세요. 출처 구분은 evidence에만 남기세요. 중간 응답은 중립, 누락은 미확인으로 유지하고, 위험감수·지출파악·저축일관성을 실제 잔액이나 소득 사실로 바꾸지 마세요.
 11. nextMove("지금 무엇을 해야 하는가")와 timingShift("앞으로 언제 큰 변화가 오는가")는 반드시 currentDaeun/nextDaeun에 있는 실제 나이 구간·간지만 인용하세요. "1~3년" 같은 임의의 구간을 지어내지 마세요. currentDaeun/nextDaeun이 없으면(시간 미상) 대운 없이도 말할 수 있는 사실(오행/십성 구조)로만 채우세요. "지금은 27세예요"처럼 대운 시작 나이를 사용자의 현재 나이인 것처럼 쓰지 마세요 — "27세부터 이어지는 지금 대운은" 식으로 그 대운이 시작된 나이라는 것을 분명히 하세요.
-12. 말투(가장 중요): 보고서·분석 결과·마케팅 카피처럼 들리지 않게 하세요. 고급 개인 상담처럼 차분하고 구체적으로 쓰되, 사용자가 "그래서 나는 어떤 사람인가"를 바로 알 수 있어야 합니다. "당신은 ~한 편입니다", "~할 때 힘이 붙습니다", "다만 ~해질 수 있습니다"처럼 직접 설명하세요. 전문용어는 evidence로 숨기고, 본문은 쉬운 생활 언어를 쓰세요. 문장마다 칭찬만 이어붙이지 말고 강점과 그림자를 함께 보여주세요. 실제 재무 행동을 권하거나 수익·투자 판단을 사주에서 끌어내지 말고, 재물 섹션은 돈을 대하는 전통적 성향 설명까지만 다루세요. 실제 재무 판단은 뒤의 숫자 기반 재무진단 단계가 담당합니다.
-12. 반드시 요청된 JSON 스키마로만 응답하세요.`;
+12. 말투(가장 중요): 보고서·분석 결과·마케팅 카피처럼 들리지 않게 하세요. 고급 개인 상담처럼 차분하고 구체적으로 쓰되, 사용자가 "그래서 나는 어떤 사람인가"를 바로 알 수 있어야 합니다. "당신은 ~한 편입니다", "~할 때 힘이 붙습니다", "다만 ~해질 수 있습니다"처럼 직접 설명하세요. 전문용어는 evidence로 숨기고, 본문은 쉬운 생활 언어를 쓰세요. 문장마다 칭찬만 이어붙이지 말고 강점과 그림자를 함께 보여주세요. 실제 재무 행동을 권하거나 수익·투자 판단을 사주에서 끌어내지 말고, 재물 섹션은 돈을 대하는 전통적 성향 설명까지만 다루세요.
+13. 연애·관계 섹션에서 상대방의 마음, 궁합 결과, 결혼 여부를 예측하지 마세요. 오직 이 사람 본인의 관계 방식과 반복하기 쉬운 패턴만 설명하세요.
+14. 생활·건강 섹션은 질병·장기·치료를 예측하지 마세요. 생활 리듬, 스트레스 반응, 휴식 방식까지만 다루고 몸의 불편은 실제 확인이 우선이라고 표현하세요.
+15. 반드시 요청된 JSON 스키마로만 응답하세요.`;
 
 export function buildFreeSajuReportUserPrompt(facts: SajuFacts, personality?: PersonalityInput): string {
   const personalitySection = personality?.mbti || personality?.check
@@ -45,7 +47,7 @@ ${personality.check ? `- 6문항 응답(왼쪽/중간/오른쪽): ${Object.entri
     : "";
 
   const core = deriveSajuWorkCore(facts);
-  return `다음은 한 사람의 사주 원국 계산 결과입니다. 이 데이터만 근거로 16섹션 무료 리포트를 만들어주세요.${personalitySection}
+  return `다음은 한 사람의 사주 원국 계산 결과입니다. 이 데이터만 근거로 종합 무료 사주 리포트를 만들어주세요.${personalitySection}
 
 ## 모든 일·수입 섹션의 공통 해석 (직업 판정 아님)
 ${JSON.stringify(core)}
@@ -68,6 +70,9 @@ ${facts.compactText}
 {
   "snapshot": {"text": "한눈에 보는 나 (생활 언어만)", "evidence": "일간/격국/재성 등 계산근거"},
   "temperament": {"text": "타고난 성향", "evidence": "..."},
+  "relationshipStyle": {"text": "사람과 관계를 맺는 방식. 상대방 의도 예측 금지", "evidence": "..."},
+  "loveStyle": {"text": "연애·결혼에서의 나. 상대 마음·궁합 결과·결혼 여부 예측 금지", "evidence": "..."},
+  "lifeRhythm": {"text": "생활 리듬과 스트레스 패턴. 질병·장기·치료 예측 금지", "evidence": "..."},
   "wealthStructure": {"text": "재물운/돈복의 큰 구조", "evidence": "..."},
   "earningStyle": {"text": "돈을 버는 방식", "evidence": "..."},
   "keepingStyle": {"text": "돈을 지키는 방식", "evidence": "..."},
