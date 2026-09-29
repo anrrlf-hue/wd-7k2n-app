@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LandingFocusSelector } from "@/components/landing/focus-selector";
 import styles from "./page.module.css";
 
 export default function Home() {
@@ -15,11 +16,7 @@ export default function Home() {
           aria-label="내 관리"
           className={`${styles.hotspot} ${styles.management}`}
         />
-        <Link
-          href="/diagnosis"
-          aria-label="내 재물운 무료 보기"
-          className={`${styles.hotspot} ${styles.diagnosis}`}
-        />
+        <LandingFocusSelector />
         <Link
           href="/management"
           aria-label="기존 이용자 내 관리"
