@@ -62,18 +62,20 @@ export function RealityAnswerFunnel({
   resumeKey,
   onStart,
   onChapterChange,
+  initialDomain,
 }: {
   birthInput: BirthInput;
   personalityInput?: PersonalityInputEcho;
   palmLines?: OnnxPalmLines | null;
   resumeKey: string;
   onStart: () => void;
+  initialDomain?: RealityAnswerDomain | null;
   onChapterChange: (chapter: 3 | 4 | 5) => void;
 }) {
   const storageKey = `${resumeKey}:reality-answer`;
   const stored = readResume(storageKey);
   const [stage, setStage] = useState<FunnelStage>(stored?.stage ?? "intro");
-  const [domain, setDomain] = useState<RealityAnswerDomain | null>(stored?.domain ?? null);
+  const [domain, setDomain] = useState<RealityAnswerDomain | null>(stored?.domain ?? initialDomain ?? null);
   const [question, setQuestion] = useState(stored?.question ?? "");
   const [answer, setAnswer] = useState<RealityAnswer | null>(stored?.answer ?? null);
   const [loading, setLoading] = useState(false);
