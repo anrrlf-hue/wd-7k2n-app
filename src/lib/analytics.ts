@@ -17,6 +17,9 @@ export type ConversionEvent =
   | "finance_bridge_started"
   | "survey_completed"
   | "analysis_result_viewed"
+  | "reality_answer_started"
+  | "reality_answer_preview_viewed"
+  | "reality_answer_full_preview_viewed"
   | "payment_screen_viewed"
   | "payment_cta_clicked"
   | "payment_completed";
