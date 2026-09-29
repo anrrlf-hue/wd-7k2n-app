@@ -66,7 +66,10 @@ function classifyDomain(raw: string): {
   let bestScore = 0;
   let bestMatched: string[] = [];
 
-  for (const domain of DOMAIN_PRIORITY) {
+  // "전체 흐름"은 구체 분야가 전혀 잡히지 않을 때만 사용한다.
+  // 예: "취업이 안 되는데 뭘 바꿔야 할까요?"에서 "바꿔야" 때문에
+  // overall이 career를 덮어쓰면 안 된다.
+  for (const domain of DOMAIN_PRIORITY.filter((item) => item !== "overall")) {
     const matched = DOMAIN_KEYWORDS[domain].filter((keyword) => text.includes(keyword));
     const score = matched.reduce((sum, keyword) => sum + Math.max(1, Math.min(keyword.length, 4)), 0);
     if (score > bestScore) {
@@ -76,7 +79,18 @@ function classifyDomain(raw: string): {
     }
   }
 
-  return { domain: best, matchedKeywords: bestMatched, score: bestScore };
+  if (best) return { domain: best, matchedKeywords: bestMatched, score: bestScore };
+
+  const overallMatched = DOMAIN_KEYWORDS.overall.filter((keyword) => text.includes(keyword));
+  const overallScore = overallMatched.reduce(
+    (sum, keyword) => sum + Math.max(1, Math.min(keyword.length, 4)),
+    0,
+  );
+  return {
+    domain: overallScore > 0 ? "overall" : null,
+    matchedKeywords: overallMatched,
+    score: overallScore,
+  };
 }
 
 function classifyIntent(raw: string): RealityAnswerIntent {
