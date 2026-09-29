@@ -36,6 +36,10 @@ const DOMAIN_KEYWORDS: Record<RealityAnswerDomain, string[]> = {
     "건강", "피곤", "피로", "수면", "잠", "스트레스", "지쳐", "아파", "병원", "생활",
     "휴식", "리듬",
   ],
+  overall: [
+    "앞으로", "전체 흐름", "변화", "바꿔야", "움직일 때", "움직여야", "전환", "운세",
+    "올해 흐름", "내년 흐름",
+  ],
 };
 
 const DOMAIN_PRIORITY: RealityAnswerDomain[] = [
@@ -45,6 +49,7 @@ const DOMAIN_PRIORITY: RealityAnswerDomain[] = [
   "money",
   "relationship",
   "wellbeing",
+  "overall",
 ];
 
 function normalize(value: string): string {
@@ -133,7 +138,11 @@ function decisionPointFor(raw: string, domain: RealityAnswerDomain | null): stri
     return "상대를 바꾸려 하기보다, 반복되는 갈등에서 내가 조정할 행동과 지켜야 할 경계를 무엇으로 둘지";
   }
 
-  return "사주로 건강을 단정하지 않고, 생활 리듬을 먼저 조정할지 의료 확인이 필요한지 구분할지";
+  if (domain === "wellbeing") {
+    return "사주로 건강을 단정하지 않고, 생활 리듬을 먼저 조정할지 의료 확인이 필요한지 구분할지";
+  }
+
+  return "지금 바로 큰 변화를 만들지, 작은 실험으로 방향을 확인한 뒤 확대할지";
 }
 
 export function parseRealityQuestion(raw: string): RealityQuestionParseResult {
