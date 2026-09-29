@@ -210,8 +210,8 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     text:
       `당신은 ${imagery.image}처럼 ${imagery.core} 사람입니다. ` +
       `${dayStrength === "strong" ? "자기 기준이 분명하고 한번 방향을 잡으면 쉽게 흔들리지 않습니다" : dayStrength === "weak" ? "주변의 흐름을 잘 읽고 필요한 도움을 받아 방향을 잡는 데 능합니다" : "자기 기준과 주변 상황을 함께 보며 균형점을 찾는 감각이 있습니다"}. ` +
-      `일과 재물에서는 ${activeCompare === "output" ? "생각을 말이나 결과물로 바꿔 보여줄 때" : activeCompare === "peer" ? "직접 움직이며 내 몫을 만들어갈 때" : "구상과 실행을 함께 굴릴 때"} 힘이 붙습니다. 다만 강점이 강해질수록 ${dayStrength === "strong" ? "확신이 고집으로 굳지 않는지" : dayStrength === "weak" ? "주변 의견 속에서 내 기준을 잃지 않는지" : "조정이 지나쳐 결정을 미루지 않는지"}를 함께 살피는 것이 중요합니다.`,
-    evidence: `일간 ${dayStemKo}(${dayElement}), 격국 ${geukguk}, 재성 ${wealthStarCount}개. 전통적 성향 해석이며 실제 성격·수입·자산을 측정한 결과는 아닙니다.`,
+      `일과 관계, 중요한 선택에서는 ${activeCompare === "output" ? "생각을 말이나 결과물로 바꿔 보여줄 때" : activeCompare === "peer" ? "직접 움직이며 내 몫을 만들어갈 때" : "구상과 실행을 함께 굴릴 때"} 힘이 붙습니다. 다만 강점이 강해질수록 ${dayStrength === "strong" ? "확신이 고집으로 굳지 않는지" : dayStrength === "weak" ? "주변 의견 속에서 내 기준을 잃지 않는지" : "조정이 지나쳐 결정을 미루지 않는지"}를 함께 살피는 것이 중요합니다.`,
+    evidence: `일간 ${dayStemKo}(${dayElement}), 격국 ${geukguk}, 비겁 ${peerStarCount}개, 식상 ${outputStarCount}개, 관성 ${officerStarCount}개, 인성 ${resourceStarCount}개, 재성 ${wealthStarCount}개. 전통적 성향 해석이며 실제 성격·관계·직업·자산 상태를 측정한 결과는 아닙니다.`,
   };
 
   // ② 타고난 성향
@@ -233,6 +233,58 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     temperament.text += ` 평소 태도와 별개로 본바탕에는 ${dayStagePhrase} 기운이 깔려 있어, 정작 중요한 순간에는 평소와 다른 얼굴이 나올 수 있습니다.`;
     temperament.evidence += `, 일지 12운성 ${dayStage}`;
   }
+
+  // 사람과 관계를 맺는 방식 — 상대의 마음을 예측하지 않고, 관계에서
+  // 본인이 어떤 기준과 반응 방식을 쓰기 쉬운지만 설명한다.
+  const relationshipStyle: ReportParagraph =
+    socialCompare === "officer"
+      ? {
+          text:
+            "사람과의 관계에서는 역할과 약속이 분명할수록 마음이 편한 편입니다. 애매한 태도나 말이 자주 바뀌는 상황에서는 신뢰가 빠르게 떨어질 수 있습니다. 대신 기준이 맞는 사람에게는 오래 책임지고 관계를 이어가는 힘이 있습니다.",
+          evidence: `관성 ${officerStarCount}개 · 인성 ${resourceStarCount}개. 상대방의 성격·의도·행동을 예측한 것이 아니라 본인의 관계 기준을 전통적으로 해석한 결과입니다.`,
+        }
+      : socialCompare === "resource"
+        ? {
+            text:
+              "사람을 볼 때 말의 내용만큼 분위기와 맥락을 함께 읽는 편입니다. 상대에게 맞춰주는 힘이 있지만, 관계를 오래 지키려다 내 불편을 늦게 알아차릴 수도 있습니다. 중요한 관계일수록 내가 받아들일 수 있는 선을 먼저 정해두는 편이 좋습니다.",
+            evidence: `인성 ${resourceStarCount}개 · 관성 ${officerStarCount}개. 실제 대인관계 이력은 확인하지 않았습니다.`,
+          }
+        : {
+            text:
+              "관계에서는 내 기준과 상대의 입장을 둘 다 보려는 편입니다. 그래서 중간에서 조율하는 힘은 좋지만, 서로 원하는 것이 다를 때 결론을 오래 미룰 수 있습니다. 가까운 관계일수록 애매하게 넘기기보다 서로 기대하는 것을 말로 확인하는 편이 잘 맞습니다.",
+            evidence: `관성 ${officerStarCount}개 · 인성 ${resourceStarCount}개의 균형`,
+          };
+
+  // 연애·결혼에서의 나 — 궁합이나 상대의 마음·결혼 결과를 예측하지 않는다.
+  const loveStyle: ReportParagraph = {
+    text:
+      dayStrength === "strong"
+        ? "연애에서는 마음이 생겨도 쉽게 상대에게 끌려가기보다 내 기준을 유지하려는 편입니다. 관계가 깊어질수록 약속과 태도의 일관성을 중요하게 보고, 신뢰가 깨지면 마음을 다시 여는 데 시간이 걸릴 수 있습니다. 다만 내가 이미 결론을 내린 뒤에는 상대의 설명을 들을 여지가 줄어들 수 있어, 중요한 갈등일수록 결론보다 대화를 먼저 두는 편이 좋습니다."
+        : dayStrength === "weak"
+          ? "연애에서는 상대의 반응과 관계의 분위기를 세심하게 살피는 편입니다. 상대를 이해하고 맞춰주는 힘이 장점이지만, 관계를 지키려다 내 기준과 불편을 뒤로 미룰 수 있습니다. 좋아하는 마음과 실제로 관계가 건강하게 이어지는지는 따로 확인하는 것이 중요합니다."
+          : "연애에서는 내 마음과 상대의 반응을 함께 보며 균형을 맞추려는 편입니다. 너무 빠르게 확신하지도, 쉽게 관계를 끊지도 않는 편이라 안정감이 있지만 애매한 상태가 길어질 수 있습니다. 관계가 중요한 만큼 서로의 말보다 실제 행동과 약속이 맞는지를 확인하는 편이 좋습니다.",
+    evidence: `일간 강약 ${dayStrengthShort(dayStrength)}, 관성 ${officerStarCount}개, 인성 ${resourceStarCount}개. 상대방의 마음·궁합·결혼 여부는 판단하지 않습니다.`,
+  };
+
+  // 생활 리듬·스트레스 패턴 — 질병·장기·치료 해석 금지.
+  const lifeRhythm: ReportParagraph =
+    outputStarCount > resourceStarCount
+      ? {
+          text:
+            "생각이 생기면 밖으로 움직이고 결과를 만들어야 에너지가 풀리는 편입니다. 여러 일을 한꺼번에 벌이면 성취감은 크지만, 멈추는 시점을 놓쳐 피로가 뒤늦게 몰릴 수 있습니다. 일정 안에 쉬는 시간을 따로 넣고, 하루를 끝내는 기준을 정해두는 방식이 생활 리듬을 지키는 데 도움이 됩니다.",
+          evidence: `식상 ${outputStarCount}개 · 인성 ${resourceStarCount}개. 생활 성향 해석이며 질병·건강상태 진단이 아닙니다.`,
+        }
+      : resourceStarCount > outputStarCount
+        ? {
+            text:
+              "혼자 생각을 정리하고 충분히 이해한 뒤 움직일 때 안정감을 느끼는 편입니다. 일정이 복잡하거나 사람을 많이 상대하면 겉으로는 버텨도 안에서 피로가 오래 남을 수 있습니다. 조용히 쉬는 시간과 정보에서 떨어지는 시간을 의식적으로 만드는 편이 생활 리듬을 회복하는 데 잘 맞습니다.",
+            evidence: `인성 ${resourceStarCount}개 · 식상 ${outputStarCount}개. 의료적 판단이 아니라 전통적 생활 성향 해석입니다.`,
+          }
+        : {
+            text:
+              "움직이는 시간과 혼자 정리하는 시간이 모두 필요한 편입니다. 어느 한쪽이 너무 길어지면 집중력이 떨어지거나 답답함이 커질 수 있어, 일과 휴식의 경계를 분명히 두는 것이 중요합니다. 몸의 불편이나 피로가 계속될 때는 사주와 별개로 실제 생활기록과 의료 확인을 우선해야 합니다.",
+            evidence: `식상 ${outputStarCount}개 · 인성 ${resourceStarCount}개의 균형. 질병 예측에 사용하지 않습니다.`,
+          };
 
   // ③ 재물운/돈복의 큰 구조
   const wealthStructure = compose(seedFor(3), {
@@ -486,6 +538,9 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   return {
     snapshot,
     temperament,
+    relationshipStyle,
+    loveStyle,
+    lifeRhythm,
     wealthStructure,
     earningStyle,
     keepingStyle,
