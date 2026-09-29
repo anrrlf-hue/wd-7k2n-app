@@ -79,13 +79,32 @@ export interface RealityTiming {
   precision: "daeun_only" | "seun" | "monthly";
 }
 
+/**
+ * 사용자가 실제로 읽는 유료 리포트 본문.
+ * evidence/방법론 설명과 분리하고 생활 언어의 해석만 둔다.
+ */
+export interface RealityNarrativeReport {
+  /** 이 질문과 연결된 타고난 성향·선택 방식. */
+  questionReading: string;
+  /** 현재 대운과 질문이 맞물려 현실에서 어떻게 느껴질 수 있는지. */
+  currentFlow: string;
+  /** 위 해석을 현실에서 어떤 방향으로 풀어갈지. */
+  solutionReading: string;
+}
+
 export interface RealityAnswer {
   question: RealityQuestion;
 
   /** 광고 카피가 아니라 사용자의 질문에 대한 짧은 방향 제시. */
   headline: string;
 
-  /** 사주/대운/손금/자가응답 중 실제로 존재하는 근거만 사용. */
+  /**
+   * 실제 리포트 본문. optional은 기존 브라우저에 저장된 V1 기록을
+   * 깨뜨리지 않기 위한 하위호환용이며, 새 엔진 출력은 반드시 채운다.
+   */
+  report?: RealityNarrativeReport;
+
+  /** 현재 흐름을 짧게 요약한 호환 필드. report.currentFlow과 같은 방향을 유지한다. */
   whyNow: string;
 
   /** 이 사람에게 반복되기 쉬운 선택 패턴. 근거가 없으면 단정하지 않는다. */
@@ -131,6 +150,21 @@ export function validateRealityAnswer(answer: RealityAnswer): RealityAnswerValid
   if (!answer.question.raw.trim()) errors.push("질문 원문이 비어 있습니다.");
   if (!answer.question.decisionPoint.trim()) errors.push("현실 결정점이 비어 있습니다.");
   if (!answer.headline.trim()) errors.push("핵심 답변이 비어 있습니다.");
+  if (!answer.report) {
+    errors.push("실제 사주 리포트 본문이 비어 있습니다.");
+  } else {
+    if (answer.report.questionReading.trim().length < 80) errors.push("질문 풀이 본문이 너무 짧습니다.");
+    if (answer.report.currentFlow.trim().length < 80) errors.push("현재 흐름 본문이 너무 짧습니다.");
+    if (answer.report.solutionReading.trim().length < 80) errors.push("현실 해법 본문이 너무 짧습니다.");
+    const reportText = [
+      answer.report.questionReading,
+      answer.report.currentFlow,
+      answer.report.solutionReading,
+    ].join("\n");
+    if (/(질문과 직접 관련된|근거를 골라|원국.?대운.?자가응답|판단에 연결했|분석 방법|해석 방법)/.test(reportText)) {
+      errors.push("리포트 본문에 분석 방법 설명이 노출됐습니다.");
+    }
+  }
   if (answer.actions.length !== 3) errors.push("행동은 정확히 3개여야 합니다.");
   if (answer.evidence.length === 0) errors.push("사주/대운/손금/자가응답 근거가 최소 1개 필요합니다.");
   if (answer.realityChecks.length === 0) errors.push("사주로 알 수 없는 현실 확인사항이 최소 1개 필요합니다.");
@@ -146,6 +180,9 @@ export function validateRealityAnswer(answer: RealityAnswer): RealityAnswerValid
 
   const generatedText = [
     answer.headline,
+    answer.report?.questionReading ?? "",
+    answer.report?.currentFlow ?? "",
+    answer.report?.solutionReading ?? "",
     answer.whyNow,
     answer.repeatingPattern,
     answer.avoid,
