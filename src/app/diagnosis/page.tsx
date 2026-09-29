@@ -10,6 +10,7 @@ import { LoadingStep } from "@/components/diagnosis/loading-step";
 import { ResultStep } from "@/components/diagnosis/result-step";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 import type { MbtiType } from "@/lib/mbti-facts";
+import { parseSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 
 // 확정된 최종 퍼널: 생년월일+성별 -> 출생시간 -> MBTI+6문항 성향체크 -> 1차
 // 무료 결과 -> (손금은 별도 라우트 /diagnosis/palm에서 최종 통합 리포트까지
@@ -36,6 +37,7 @@ const CLIENT_TIMEOUT_MS = 30000;
 const STORAGE_KEY = "saju-app:diagnosis-session:v1";
 
 interface StoredSession {
+  focus?: SajuFocus;
   birthDate: string;
   gender: "남" | "여";
   knowsTime: boolean;
@@ -46,6 +48,7 @@ interface StoredSession {
 }
 
 export default function DiagnosisPage() {
+  const [focus, setFocus] = useState<SajuFocus>("overall");
   const [step, setStep] = useState<Step>("date");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState<"남" | "여">("남");
@@ -63,11 +66,19 @@ export default function DiagnosisPage() {
   // state"를 잡기 위한 규칙이라 이 케이스엔 해당하지 않는다.
   useEffect(() => {
     try {
+      const urlFocus = parseSajuFocus(new URLSearchParams(window.location.search).get("focus"));
       const raw = sessionStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
+      if (!raw) {
+        setFocus(urlFocus);
+        return;
+      }
       const saved: StoredSession = JSON.parse(raw);
-      if (!saved?.diagnosis) return;
+      if (!saved?.diagnosis) {
+        setFocus(urlFocus);
+        return;
+      }
       /* eslint-disable react-hooks/set-state-in-effect */
+      setFocus(saved.focus ?? saved.diagnosis.focus ?? urlFocus);
       setBirthDate(saved.birthDate);
       setGender(saved.gender);
       setKnowsTime(saved.knowsTime);
@@ -88,6 +99,7 @@ export default function DiagnosisPage() {
     } catch {
       // 저장소 접근 불가는 무시 — 어차피 폼 상태는 아래에서 초기화된다.
     }
+    setFocus(parseSajuFocus(new URLSearchParams(window.location.search).get("focus")));
     setBirthDate("");
     setKnowsTime(false);
     setBirthTime("");
@@ -124,6 +136,7 @@ export default function DiagnosisPage() {
           hour,
           minute,
           gender,
+          focus,
           personalityAnswers: hasPersonality ? personalityAnswers : undefined,
           mbti: mbti !== "모름" ? mbti : undefined,
         }),
@@ -135,7 +148,7 @@ export default function DiagnosisPage() {
       setDiagnosis(data);
       setStep("result");
       try {
-        const toStore: StoredSession = { birthDate, gender, knowsTime, birthTime, personalityAnswers, mbti, diagnosis: data };
+        const toStore: StoredSession = { focus, birthDate, gender, knowsTime, birthTime, personalityAnswers, mbti, diagnosis: data };
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
       } catch {
         // 저장 실패(용량 초과, 프라이빗 모드 등)해도 이번 화면 표시엔 지장 없다.
