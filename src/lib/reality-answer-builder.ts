@@ -80,6 +80,115 @@ function action(title: string, detail: string, doneWhen: string): RealityAction 
   return { title, detail, doneWhen };
 }
 
+const ELEMENT_TONE: Record<string, string> = {
+  목: "한곳에 머무르기보다 성장할 방향과 다음 가능성을 찾을 때 힘이 살아나는 편입니다.",
+  화: "생각을 안에 오래 두기보다 표현하고 움직이며 반응을 확인할 때 흐름이 살아나는 편입니다.",
+  토: "급하게 판을 바꾸기보다 기준을 세우고 안정적으로 쌓아갈 때 강점이 살아나는 편입니다.",
+  금: "무엇을 할지보다 무엇을 하지 않을지 기준을 세울 때 판단이 선명해지는 편입니다.",
+  수: "한 번에 결론을 닫기보다 상황을 읽고 여러 가능성을 비교할 때 강점이 살아나는 편입니다.",
+};
+
+function questionReadingFor(
+  question: RealityQuestion,
+  facts: SajuFacts,
+  personality: PersonalityInput | null | undefined,
+): string {
+  const opening =
+    ELEMENT_TONE[facts.dayElement] ??
+    "한쪽으로 밀어붙이기보다 상황을 읽고 자기 기준을 세울 때 강점이 살아나는 편입니다.";
+
+  const speed = level(personality, "speed");
+  const autonomy = level(personality, "autonomy");
+  const spend = level(personality, "spendAwareness");
+
+  if (question.domain === "career") {
+    const workTone =
+      facts.officerStarCount > facts.outputStarCount
+        ? "일에서는 역할과 책임이 분명해야 마음이 놓이는 쪽이 강합니다. 그래서 현재 자리가 답답해도 아무 방향으로나 벗어나기보다, 다음 자리의 역할과 기준이 분명할 때 움직임이 더 안정적입니다."
+        : facts.outputStarCount > facts.officerStarCount
+          ? "정해진 틀만 따르기보다 내가 직접 판단하고 결과를 만들어낼 여지가 있을 때 힘이 붙는 편입니다. 일이 막힐 때는 직장 자체보다 '내가 움직일 수 있는 범위가 너무 좁은가'가 더 큰 문제일 수 있습니다."
+          : "조직의 안정성과 내 방식대로 움직일 여지를 둘 다 필요로 하는 편입니다. 한쪽만 보고 직장을 고르면 처음에는 좋아 보여도 시간이 지나 같은 답답함이 반복될 수 있습니다.";
+    const personal =
+      speed === "왼쪽"
+        ? "결정이 빠른 편이라 답답함이 커졌을 때 퇴사 결론부터 앞서지 않도록 다음 조건을 먼저 확인하는 것이 중요합니다."
+        : "결정을 충분히 생각하는 편이라 준비만 길어지지 않도록 실제 지원이라는 확인 단계까지 이어가는 것이 중요합니다.";
+    return `${opening} ${workTone} ${personal}`;
+  }
+
+  if (question.domain === "work_business") {
+    const workTone =
+      facts.wealthStarCount + facts.outputStarCount > facts.officerStarCount + facts.peerStarCount
+        ? "기회를 발견하면 직접 움직여 결과로 연결하려는 힘이 비교적 강한 편입니다. 다만 아이디어가 맞는지보다 실제 고객·권한·수익 구조가 확인됐는지가 사업과 새 역할의 성패를 가르는 현실 조건이 됩니다."
+        : "혼자 판을 크게 벌이기보다 역할과 조건이 분명한 상태에서 실력을 쌓을 때 안정적으로 힘을 내는 편입니다. 새로운 제안이나 독립은 '할 수 있느냐'보다 내게 남는 권한·경력·수익 구조가 있는지를 먼저 보는 것이 중요합니다.";
+    return `${opening} ${workTone} 지금 질문에서는 가능성 자체보다 실제로 검증할 수 있는 조건이 있는지가 핵심입니다.`;
+  }
+
+  if (question.domain === "money") {
+    const moneyTone =
+      facts.wealthStarCount > 0 && facts.outputStarCount > 0
+        ? "돈과 기회가 보이면 그것을 실제 결과로 연결하려는 힘이 있는 편입니다. 반대로 들어오는 기회가 많아질수록 어디에 돈을 쓰고 무엇을 남길지 기준이 흐려지면 체감상 '버는데 남지 않는' 느낌이 커질 수 있습니다."
+        : facts.wealthStarCount === 0
+          ? "한 번의 큰 재물 기회를 기다리기보다 내가 잘하는 일을 반복해서 수입으로 연결하고, 들어온 돈을 지키는 구조를 만드는 쪽이 더 잘 맞습니다. 재물운의 좋고 나쁨보다 돈을 남기는 습관이 결과 차이를 크게 만들 수 있습니다."
+          : "돈을 다루는 감각과 실제 생활의 현금흐름은 따로 볼 필요가 있습니다. 기회가 있어도 지출 기준과 남기는 규칙이 없으면 재물 흐름을 체감하기 어렵습니다.";
+    const personal =
+      spend === "오른쪽"
+        ? "특히 스스로 지출이 잘 보이지 않는다고 답한 만큼, 이번 질문은 사주보다 실제 결제내역을 함께 확인할 때 훨씬 선명해집니다."
+        : "이번 질문에서는 버는 힘보다 들어온 돈을 어떤 기준으로 남길지가 더 중요한 확인점입니다.";
+    return `${opening} ${moneyTone} ${personal}`;
+  }
+
+  if (question.domain === "love") {
+    const relationTone =
+      autonomy === "오른쪽"
+        ? "관계에서는 상대의 반응과 분위기를 많이 고려하는 편이라, 마음이 남아 있거나 관계를 지키고 싶을 때 내 기준을 뒤로 미룰 수 있습니다. 그래서 '좋아하는가'와 '이 관계가 실제로 나아지고 있는가'를 따로 보는 것이 중요합니다."
+        : "관계에서도 자기 기준이 분명한 편이라 애매한 상태를 오래 끌기보다 결론을 내리고 싶어질 수 있습니다. 다만 상대의 마음이나 관계의 미래는 내 사주만으로 정할 수 없으므로 실제 대화와 행동 변화를 함께 봐야 합니다.";
+    return `${opening} ${relationTone} 지금 질문에서는 감정의 크기보다 관계가 반복해서 보여주는 현실적인 패턴이 더 중요한 판단 기준입니다.`;
+  }
+
+  if (question.domain === "relationship") {
+    return `${opening} 사람 사이에서 의견이 다를 때는 누가 옳은지 빨리 정하기보다 서로 무엇을 중요하게 보는지 확인할수록 관계가 덜 소모됩니다. 특히 반복되는 충돌은 성격 전체의 문제가 아니라 같은 상황에서 비슷한 말과 행동이 되풀이되는지 살펴보는 편이 더 정확합니다. 지금 질문은 '내가 문제인가'보다 '어떤 장면에서 충돌이 반복되는가'로 바꾸어 보는 것이 좋습니다.`;
+  }
+
+  if (question.domain === "wellbeing") {
+    return `${opening} 사주에서 보이는 기질은 생활 리듬을 돌아보는 참고는 될 수 있지만, 몸의 상태나 질병 여부를 판단하는 근거가 되지는 않습니다. 지금처럼 피로가 크게 느껴질 때는 버티는 성향이나 몰아서 움직이는 습관이 있는지 확인하고, 수면·휴식·증상의 실제 변화를 기록하는 쪽이 더 도움이 됩니다. 몸의 불편이 지속되면 사주 해석과 분리해 의료적으로 확인해야 합니다.`;
+  }
+
+  return `${opening} 지금은 '무엇이 생길까'보다 내가 어떤 방식으로 변화를 선택하는지가 더 중요해 보입니다. 한 번에 여러 영역을 바꾸면 결과를 비교하기 어렵기 때문에, 가장 답답한 한 가지를 고르고 작게 시험해 보는 방식이 잘 맞습니다. 변화 자체가 목적이 아니라 실제로 삶이 나아지는지를 확인할 수 있어야 다음 선택도 선명해집니다.`;
+}
+
+function currentFlowReadingFor(question: RealityQuestion, facts: SajuFacts): string {
+  if (!facts.currentDaeun) {
+    return "출생시간이 없거나 현재 대운 정보가 충분하지 않아 지금의 시기를 세밀하게 나누어 말하기는 어렵습니다. 대신 현재 질문에서는 타고난 선택 방식과 지금 실제로 확인되는 상황을 중심으로 보는 편이 맞습니다. 시기를 억지로 좁히기보다 현실에서 한 번 행동해보고 그 결과를 다시 비교하는 방식이 더 안전합니다.";
+  }
+
+  const current = daeunFlavor(facts.currentDaeun);
+  const next = facts.nextDaeun ? daeunFlavor(facts.nextDaeun) : null;
+  const domainLine: Record<RealityQuestion["domain"], string> = {
+    career: "일에서는 지금 자리를 지킬지 옮길지보다, 어떤 역할과 환경에서 내 힘을 제대로 쓸 수 있는지가 더 크게 느껴질 수 있습니다.",
+    work_business: "일과 사업에서는 새로운 책임이나 기회를 그냥 지나치기보다 실제로 잡을 가치가 있는지 따져보고 싶어지는 때입니다.",
+    money: "돈에서는 들어오고 나가는 양보다 어떤 기회를 잡고 무엇을 지킬지에 대한 기준이 중요하게 느껴질 수 있습니다.",
+    love: "관계에서는 마음만으로 밀고 가기보다 약속과 행동이 실제로 맞는지 확인하고 싶어지는 때입니다.",
+    relationship: "사람 사이에서는 평소 넘기던 차이나 불편이 더 분명하게 느껴져 관계의 기준을 다시 세우고 싶어질 수 있습니다.",
+    wellbeing: "생활에서는 부담을 무작정 견디기보다 내 리듬이 어디서 무너지는지 확인하고 조정할 필요가 커질 수 있습니다.",
+    overall: "전체적으로는 익숙한 방식을 계속 가져갈지, 새로운 방식으로 바꿀지에 대한 생각이 커질 수 있습니다.",
+  };
+
+  const nextLine = facts.nextDaeun
+    ? `다음 대운으로 넘어가면 ${next} 쪽으로 결이 바뀌므로, 지금의 선택을 영구적인 결론으로 보기보다 현재 구간에서 확인할 것을 확인하고 다음 흐름에서 다시 비교하는 편이 좋습니다.`
+    : "다음 대운을 정밀하게 연결할 정보가 부족하므로 지금 단계에서는 현재 행동의 결과를 먼저 확인하는 것이 좋습니다.";
+
+  return `${facts.currentDaeun.ageRange}세부터 이어지는 지금 흐름은 ${current} 쪽에 무게가 실립니다. ${domainLine[question.domain]} ${nextLine}`;
+}
+
+function solutionReadingFor(
+  question: RealityQuestion,
+  choose: string,
+  avoid: string,
+  pattern: string,
+): string {
+  return `이 질문을 풀 때 가장 중요한 것은 ${choose} 반대로 ${avoid} 쪽으로 가면 현재 고민의 원인을 확인하기 전에 결론만 먼저 내릴 수 있습니다. ${pattern} 그래서 이번에는 큰 결정을 한 번에 끝내기보다 아래 행동 3가지를 실제로 해보고, 그 결과가 달라지는지를 기준으로 다음 선택을 정하는 편이 좋습니다.`;
+}
+
 function domainPlan(question: RealityQuestion): {
   headline: string;
   avoid: string;
@@ -236,11 +345,19 @@ export function buildRealityAnswerFallback(input: RealityAnswerBuildInput): Real
     uncertainty.push("출생시간이 없어 시주와 정밀 대운 정보 일부를 사용하지 않습니다.");
   }
 
+  const repeatingPattern = patternFor(input.question, input.facts, input.personality);
+  const report = {
+    questionReading: questionReadingFor(input.question, input.facts, input.personality),
+    currentFlow: currentFlowReadingFor(input.question, input.facts),
+    solutionReading: solutionReadingFor(input.question, plan.choose, plan.avoid, repeatingPattern),
+  };
+
   return {
     question: input.question,
     headline: plan.headline,
-    whyNow: `${flowSentence(input.facts)} ${input.evidence.length > 0 ? "질문과 직접 관련된 원국·대운·자가응답만 골라 현실 판단에 연결했습니다." : "사용할 수 있는 근거가 제한적이어서 현실 조건을 더 우선합니다."}`,
-    repeatingPattern: patternFor(input.question, input.facts, input.personality),
+    report,
+    whyNow: report.currentFlow,
+    repeatingPattern,
     avoid: plan.avoid,
     choose: plan.choose,
     actions: plan.actions,

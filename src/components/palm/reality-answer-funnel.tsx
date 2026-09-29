@@ -315,12 +315,38 @@ export function RealityAnswerFunnel({
             <p className="mt-2 text-xl leading-8 font-semibold">{answer.headline}</p>
           </section>
 
-          <section className="mt-5 rounded-2xl border border-border bg-card p-5">
-            <h3 className="font-semibold">왜 지금 이 고민이 커졌을까요?</h3>
-            <p className="mt-2 text-base leading-7 text-muted-foreground">{answer.whyNow}</p>
-          </section>
+          {answer.report ? (
+            <section className="mt-5">
+              <p className="section-eyebrow">내 질문 사주풀이</p>
+              <div className="mt-3 space-y-3">
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <h3 className="text-lg font-semibold">이 질문을 사주로 풀면</h3>
+                  <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
+                    {answer.report.questionReading}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <h3 className="text-lg font-semibold">지금의 흐름</h3>
+                  <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
+                    {answer.report.currentFlow}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
+                  <h3 className="text-lg font-semibold">이 고민을 풀어가는 방향</h3>
+                  <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
+                    {answer.report.solutionReading}
+                  </p>
+                </div>
+              </div>
+            </section>
+          ) : (
+            <section className="mt-5 rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold">지금의 흐름</h3>
+              <p className="mt-2 text-base leading-7 text-muted-foreground">{answer.whyNow}</p>
+            </section>
+          )}
 
-          <section className="mt-4 rounded-2xl border border-border bg-card p-5">
+          <section className="mt-5 rounded-2xl border border-border bg-card p-5">
             <h3 className="font-semibold">반복하기 쉬운 패턴</h3>
             <p className="mt-2 text-base leading-7 text-muted-foreground">{answer.repeatingPattern}</p>
           </section>
@@ -372,7 +398,7 @@ export function RealityAnswerFunnel({
           )}
 
           <details className="mt-5 rounded-2xl border border-border bg-card p-4">
-            <summary className="cursor-pointer text-sm font-medium">이번 답변에 사용한 정보</summary>
+            <summary className="cursor-pointer text-sm font-medium">왜 이렇게 봤나요? · 사주 근거</summary>
             <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
               {answer.evidence.map((item, index) => (
                 <li key={`${item.source}-${item.label}-${index}`}>

@@ -18,6 +18,11 @@ import type { SajuFacts } from "@/lib/saju-facts";
 
 const RealityAnswerDraftSchema = z.object({
   headline: z.string().min(10),
+  report: z.object({
+    questionReading: z.string().min(80),
+    currentFlow: z.string().min(80),
+    solutionReading: z.string().min(80),
+  }),
   whyNow: z.string().min(20),
   repeatingPattern: z.string().min(20),
   avoid: z.string().min(10),

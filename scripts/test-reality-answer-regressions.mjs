@@ -108,6 +108,19 @@ for (const [id, raw, expectedDomain] of cases) {
 
   const validation = contractMod.validateRealityAnswer(answer);
   assert(validation.ok, `${id}: answer validation failed: ${validation.errors.join("; ")}`);
+  assert(answer.report, `${id}: narrative report missing`);
+  assert(answer.report.questionReading.length >= 80, `${id}: question report too short`);
+  assert(answer.report.currentFlow.length >= 80, `${id}: current-flow report too short`);
+  assert(answer.report.solutionReading.length >= 80, `${id}: solution report too short`);
+  const reportText = [
+    answer.report.questionReading,
+    answer.report.currentFlow,
+    answer.report.solutionReading,
+  ].join("\n");
+  assert(
+    !/(질문과 직접 관련된|근거를 골라|판단에 연결했|분석 방법|해석 방법)/.test(reportText),
+    `${id}: analysis-method language leaked into customer report`,
+  );
   assert(answer.actions.length === 3, `${id}: action count must be 3`);
   assert(answer.actions.every((x) => x.doneWhen.trim().length > 0), `${id}: doneWhen missing`);
   assert(answer.realityChecks.length > 0, `${id}: reality checks missing`);

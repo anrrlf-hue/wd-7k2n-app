@@ -114,8 +114,34 @@ export default function ManagementPage() {
           <section className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
             <p className="section-eyebrow">받은 현실답변</p>
             <p className="mt-2 text-xl leading-8 font-semibold">{selected.answer.headline}</p>
-            <p className="mt-3 text-base leading-7 text-muted-foreground">{selected.answer.whyNow}</p>
           </section>
+
+          {selected.answer.report ? (
+            <section className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <h2 className="font-semibold">이 질문을 사주로 풀면</h2>
+                <p className="mt-3 text-base leading-8 text-muted-foreground">
+                  {selected.answer.report.questionReading}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <h2 className="font-semibold">지금의 흐름</h2>
+                <p className="mt-3 text-base leading-8 text-muted-foreground">
+                  {selected.answer.report.currentFlow}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
+                <h2 className="font-semibold">이 고민을 풀어가는 방향</h2>
+                <p className="mt-3 text-base leading-8 text-muted-foreground">
+                  {selected.answer.report.solutionReading}
+                </p>
+              </div>
+            </section>
+          ) : (
+            <section className="mt-4 rounded-2xl border border-border bg-card p-5">
+              <p className="text-base leading-7 text-muted-foreground">{selected.answer.whyNow}</p>
+            </section>
+          )}
 
           <section className="mt-5">
             <div className="flex items-end justify-between gap-3">
