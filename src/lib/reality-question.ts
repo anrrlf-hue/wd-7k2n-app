@@ -105,7 +105,7 @@ function classifyIntent(raw: string): RealityAnswerIntent {
   return "open_question";
 }
 
-function decisionPointFor(raw: string, domain: RealityAnswerDomain | null): string | null {
+export function decisionPointFor(raw: string, domain: RealityAnswerDomain | null): string | null {
   const text = normalize(raw);
   if (!domain) return null;
 
