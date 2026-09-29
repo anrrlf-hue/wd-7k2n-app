@@ -12,6 +12,7 @@ export const REALITY_ANSWER_DOMAINS = [
   "money",
   "relationship",
   "wellbeing",
+  "overall",
 ] as const;
 
 export type RealityAnswerDomain = (typeof REALITY_ANSWER_DOMAINS)[number];
@@ -23,6 +24,7 @@ export const REALITY_ANSWER_DOMAIN_LABELS: Record<RealityAnswerDomain, string> =
   money: "돈·재물",
   relationship: "인간관계",
   wellbeing: "생활·건강",
+  overall: "전체 흐름·변화",
 };
 
 export const REALITY_ANSWER_INTENTS = [
@@ -141,6 +143,25 @@ export function validateRealityAnswer(answer: RealityAnswer): RealityAnswerValid
       errors.push(`행동 ${index + 1}이 추상적입니다: "${action.title}"`);
     }
   });
+
+  const generatedText = [
+    answer.headline,
+    answer.whyNow,
+    answer.repeatingPattern,
+    answer.avoid,
+    answer.choose,
+    answer.timing.now,
+    answer.timing.nextCheckpoint,
+    ...answer.actions.flatMap((action) => [action.title, action.detail, action.doneWhen]),
+  ].join("\n");
+
+  if (answer.timing.precision === "daeun_only" && /(?:20\d{2}년\s*)?\d{1,2}월(?:\s*\d{1,2}일)?|(?:이번|다음)\s*\d{1,2}월/.test(generatedText)) {
+    errors.push("대운 수준 답변에서 특정 월·날짜를 생성했습니다.");
+  }
+
+  if (/(반드시|무조건|틀림없이|100\s*%)/.test(generatedText)) {
+    errors.push("확정적 예측 표현이 포함되어 있습니다.");
+  }
 
   if (answer.question.domain === "wellbeing" && !answer.safetyNote) {
     errors.push("생활·건강 답변에는 safetyNote가 필요합니다.");

@@ -48,5 +48,8 @@ jobs:
       - name: Finance regression
         run: node scripts/test-finance-regressions.mjs
 
+      - name: Reality answer regression
+        run: node scripts/test-reality-answer-regressions.mjs
+
       - name: Build
         run: pnpm build

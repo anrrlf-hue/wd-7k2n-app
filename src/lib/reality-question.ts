@@ -16,7 +16,7 @@ export interface RealityQuestionParseResult {
 const DOMAIN_KEYWORDS: Record<RealityAnswerDomain, string[]> = {
   love: [
     "연애", "결혼", "재회", "헤어", "이별", "남자친구", "여자친구", "남친", "여친",
-    "소개팅", "썸", "배우자", "연인", "사랑",
+    "소개팅", "썸", "배우자", "연인", "사랑", "만나는 사람", "교제",
   ],
   career: [
     "취업", "이직", "퇴사", "면접", "지원", "합격", "채용", "직무", "커리어", "연봉",
@@ -36,6 +36,10 @@ const DOMAIN_KEYWORDS: Record<RealityAnswerDomain, string[]> = {
     "건강", "피곤", "피로", "수면", "잠", "스트레스", "지쳐", "아파", "병원", "생활",
     "휴식", "리듬",
   ],
+  overall: [
+    "앞으로", "전체 흐름", "변화", "바꿔야", "움직일 때", "움직여야", "전환", "운세",
+    "올해 흐름", "내년 흐름",
+  ],
 };
 
 const DOMAIN_PRIORITY: RealityAnswerDomain[] = [
@@ -45,6 +49,7 @@ const DOMAIN_PRIORITY: RealityAnswerDomain[] = [
   "money",
   "relationship",
   "wellbeing",
+  "overall",
 ];
 
 function normalize(value: string): string {
@@ -61,7 +66,10 @@ function classifyDomain(raw: string): {
   let bestScore = 0;
   let bestMatched: string[] = [];
 
-  for (const domain of DOMAIN_PRIORITY) {
+  // "전체 흐름"은 구체 분야가 전혀 잡히지 않을 때만 사용한다.
+  // 예: "취업이 안 되는데 뭘 바꿔야 할까요?"에서 "바꿔야" 때문에
+  // overall이 career를 덮어쓰면 안 된다.
+  for (const domain of DOMAIN_PRIORITY.filter((item) => item !== "overall")) {
     const matched = DOMAIN_KEYWORDS[domain].filter((keyword) => text.includes(keyword));
     const score = matched.reduce((sum, keyword) => sum + Math.max(1, Math.min(keyword.length, 4)), 0);
     if (score > bestScore) {
@@ -71,7 +79,18 @@ function classifyDomain(raw: string): {
     }
   }
 
-  return { domain: best, matchedKeywords: bestMatched, score: bestScore };
+  if (best) return { domain: best, matchedKeywords: bestMatched, score: bestScore };
+
+  const overallMatched = DOMAIN_KEYWORDS.overall.filter((keyword) => text.includes(keyword));
+  const overallScore = overallMatched.reduce(
+    (sum, keyword) => sum + Math.max(1, Math.min(keyword.length, 4)),
+    0,
+  );
+  return {
+    domain: overallScore > 0 ? "overall" : null,
+    matchedKeywords: overallMatched,
+    score: overallScore,
+  };
 }
 
 function classifyIntent(raw: string): RealityAnswerIntent {
@@ -133,7 +152,11 @@ function decisionPointFor(raw: string, domain: RealityAnswerDomain | null): stri
     return "상대를 바꾸려 하기보다, 반복되는 갈등에서 내가 조정할 행동과 지켜야 할 경계를 무엇으로 둘지";
   }
 
-  return "사주로 건강을 단정하지 않고, 생활 리듬을 먼저 조정할지 의료 확인이 필요한지 구분할지";
+  if (domain === "wellbeing") {
+    return "사주로 건강을 단정하지 않고, 생활 리듬을 먼저 조정할지 의료 확인이 필요한지 구분할지";
+  }
+
+  return "지금 바로 큰 변화를 만들지, 작은 실험으로 방향을 확인한 뒤 확대할지";
 }
 
 export function parseRealityQuestion(raw: string): RealityQuestionParseResult {

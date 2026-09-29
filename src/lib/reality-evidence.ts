@@ -156,5 +156,21 @@ export function selectRealityEvidence(
     personalityEvidence(options.personality, items, ["speed", "plan"]);
   }
 
+  if (domain === "overall") {
+    add(
+      items,
+      "saju",
+      "십성 구성",
+      `비겁 ${facts.peerStarCount} · 식상 ${facts.outputStarCount} · 재성 ${facts.wealthStarCount} · 관성 ${facts.officerStarCount} · 인성 ${facts.resourceStarCount}`,
+    );
+    if (facts.keyRelations.length > 0) {
+      add(items, "saju", "원국 관계", facts.keyRelations.slice(0, 4).join(" · "));
+    }
+    if (facts.peakStagePillars.length > 0) {
+      add(items, "saju", "12운성 정점 자리", facts.peakStagePillars.join(", "));
+    }
+    personalityEvidence(options.personality, items, ["speed", "plan", "autonomy", "risk"]);
+  }
+
   return items;
 }
