@@ -22,14 +22,17 @@ import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import type { WealthTypeResult } from "@/lib/wealth-type";
+import type { SajuFocus } from "@/lib/saju-focus";
+import type { RealityAnswerDomain } from "@/lib/reality-answer-contract";
 import { track } from "@/lib/analytics";
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
 
-function realityJourneyKey(birthInput: BirthInput | null): string | null {
+function realityJourneyKey(birthInput: BirthInput | null, focus: SajuFocus): string | null {
   if (!birthInput) return null;
   return [
-    "saju-app:reality-journey:v1",
+    "saju-app:reality-journey:v2",
+    focus,
     birthInput.year,
     birthInput.month,
     birthInput.day,
@@ -108,9 +111,7 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
   return (
     <div className="mt-3">
       <ParagraphSection title="조직에서 강한 부분" paragraph={report.teamStrength} />
-      <ParagraphSection title="독립적으로 움직일 때 강한 부분" paragraph={report.soloStrength} />
-      <ParagraphSection title="사람과 돈" paragraph={report.peopleAndMoney} />
-      <ParagraphSection title="의사결정 스타일" paragraph={report.decisionStyle} />
+      <ParagraphSection title="혼자 움직일 때 강한 부분" paragraph={report.soloStrength} />
       <ParagraphSection title="기회를 잡는 방식" paragraph={report.opportunityStyle} />
       <ReportSection title="나의 강점 3가지">
         <div className="space-y-2.5">
@@ -127,11 +128,13 @@ function FinalReportSections({ report }: { report: FreeSajuReport }) {
 export function PalmPageClient({
   birthInput,
   personalityInput,
+  focus = "overall",
 }: {
   birthInput: BirthInput | null;
   personalityInput?: PersonalityInputEcho;
+  focus?: SajuFocus;
 }) {
-  const resumeKey = realityJourneyKey(birthInput);
+  const resumeKey = realityJourneyKey(birthInput, focus);
   const [stage, setStage] = useState<Stage>("upload");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
