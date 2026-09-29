@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   validateRealityAnswer,
   type RealityAnswer,
+  type RealityAnswerDomain,
   type RealityQuestion,
 } from "@/lib/reality-answer-contract";
 import { buildRealityAnswerFallback } from "@/lib/reality-answer-builder";
@@ -10,7 +11,7 @@ import {
   REALITY_ANSWER_SYSTEM_PROMPT,
   buildRealityAnswerUserPrompt,
 } from "@/lib/reality-answer-prompt";
-import { parseRealityQuestion, type RealityQuestionParseResult } from "@/lib/reality-question";
+import { decisionPointFor, parseRealityQuestion, type RealityQuestionParseResult } from "@/lib/reality-question";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 import type { PersonalityInput } from "@/lib/personality-check";
 import type { SajuFacts } from "@/lib/saju-facts";
@@ -40,6 +41,7 @@ export interface RealityAnswerEngineOptions {
   timeoutMs?: number;
   personality?: PersonalityInput | null;
   palm?: OnnxPalmLines | null;
+  domainOverride?: RealityAnswerDomain | null;
 }
 
 export type RealityAnswerEngineResult =
@@ -99,13 +101,21 @@ async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: n
   }
 }
 
-function toQuestion(parse: RealityQuestionParseResult): RealityQuestion | null {
-  if (!parse.domain || !parse.decisionPoint) return null;
+function toQuestion(
+  parse: RealityQuestionParseResult,
+  domainOverride?: RealityAnswerDomain | null,
+): RealityQuestion | null {
+  const domain = domainOverride ?? parse.domain;
+  if (!domain) return null;
+  const decisionPoint = domainOverride
+    ? decisionPointFor(parse.raw, domainOverride)
+    : parse.decisionPoint;
+  if (!decisionPoint) return null;
   return {
     raw: parse.raw,
-    domain: parse.domain,
+    domain,
     intent: parse.intent,
-    decisionPoint: parse.decisionPoint,
+    decisionPoint,
   };
 }
 
@@ -115,7 +125,7 @@ export async function getRealityAnswer(
   options: RealityAnswerEngineOptions = {},
 ): Promise<RealityAnswerEngineResult> {
   const parse = parseRealityQuestion(rawQuestion);
-  const question = toQuestion(parse);
+  const question = toQuestion(parse, options.domainOverride);
 
   if (!question) {
     return {
