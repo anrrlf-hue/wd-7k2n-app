@@ -42,6 +42,7 @@ const evidenceMod = await import(pathToFileURL(path.join(root, "src/lib/reality-
 const builderMod = await import(pathToFileURL(path.join(root, "src/lib/reality-answer-builder.ts")).href);
 const contractMod = await import(pathToFileURL(path.join(root, "src/lib/reality-answer-contract.ts")).href);
 const personalityMod = await import(pathToFileURL(path.join(root, "src/lib/personality-check.ts")).href);
+const managementMod = await import(pathToFileURL(path.join(root, "src/lib/reality-management.ts")).href);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -146,4 +147,56 @@ for (const item of outputs) {
   console.log(`PASS ${item.id} [${item.domain}] :: ${item.headline} / ${item.firstAction}`);
 }
 console.log("\nPASS 10/10 + ambiguous-question guard");
+
+// My Management persistence regression.
+const memory = new Map();
+globalThis.window = {};
+globalThis.localStorage = {
+  getItem: (key) => memory.get(key) ?? null,
+  setItem: (key, value) => memory.set(key, value),
+  removeItem: (key) => memory.delete(key),
+};
+
+const managementParsed = questionMod.parseRealityQuestion("지금 이직을 준비하는 게 맞을까요?");
+const managementQuestion = {
+  raw: managementParsed.raw,
+  domain: managementParsed.domain,
+  intent: managementParsed.intent,
+  decisionPoint: managementParsed.decisionPoint,
+};
+const managementEvidence = evidenceMod.selectRealityEvidence(
+  facts,
+  managementQuestion.domain,
+  { personality, palm: null },
+);
+const managementAnswer = builderMod.buildRealityAnswerFallback({
+  question: managementQuestion,
+  facts,
+  evidence: managementEvidence,
+  personality,
+});
+
+const saved = managementMod.saveRealityAnswer({
+  birthInput: { year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남" },
+  answer: managementAnswer,
+});
+assert(managementMod.loadRealityManagement().records.length === 1, "M01: reality answer was not saved");
+managementMod.updateRealityAction(saved.id, 0, true);
+let managed = managementMod.loadRealityManagement().records[0];
+assert(managed.actionDone[0] === true && managed.status === "active", "M02: action progress was not saved");
+managementMod.updateRealityNote(saved.id, "첫 행동 실행 완료");
+managed = managementMod.loadRealityManagement().records[0];
+assert(managed.note === "첫 행동 실행 완료", "M03: management note was not saved");
+managementMod.updateRealityAction(saved.id, 1, true);
+managementMod.updateRealityAction(saved.id, 2, true);
+managed = managementMod.loadRealityManagement().records[0];
+assert(managed.status === "completed", "M04: all actions should complete the record");
+const duplicate = managementMod.saveRealityAnswer({
+  birthInput: saved.birthInput,
+  answer: managementAnswer,
+});
+assert(duplicate.id === saved.id, "M05: same question should update instead of duplicate");
+assert(managementMod.loadRealityManagement().records.length === 1, "M05: duplicate management record created");
+console.log("PASS M01-M05 reality management persistence");
+
 hooks.deregister?.();

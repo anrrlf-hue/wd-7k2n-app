@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,7 @@ import type { RealityAnswerEngineResult } from "@/lib/reality-answer-engine";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import { track } from "@/lib/analytics";
+import { saveRealityAnswer } from "@/lib/reality-management";
 
 type FunnelStage = "intro" | "question" | "preview" | "result";
 
@@ -76,6 +78,7 @@ export function RealityAnswerFunnel({
   const [answer, setAnswer] = useState<RealityAnswer | null>(stored?.answer ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -277,6 +280,8 @@ export function RealityAnswerFunnel({
           <Button
             size="lg"
             onClick={() => {
+              const record = saveRealityAnswer({ birthInput, answer });
+              setSavedRecordId(record.id);
               setStage("result");
               onChapterChange(5);
               track("reality_answer_full_preview_viewed", { domain: answer.question.domain });
@@ -380,6 +385,18 @@ export function RealityAnswerFunnel({
           <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
             현재는 판매 전 상품 검증용 미리보기이며 실제 결제는 아직 연결하지 않았습니다.
           </p>
+
+          {savedRecordId && (
+            <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
+              <p className="font-semibold">내 관리에 저장했습니다</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                받은 답과 행동 3가지를 저장했습니다. 하나씩 실행하고 체크해보세요.
+              </p>
+              <Button asChild size="lg" className="mt-4 h-13 w-full rounded-full text-base">
+                <Link href="/management">내 관리에서 실행하기</Link>
+              </Button>
+            </div>
+          )}
 
           <Button size="lg" variant="outline" onClick={resetQuestion} className="mt-5 h-13 w-full rounded-full text-base">
             다른 질문하기
