@@ -4,13 +4,16 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
+import type { SajuFocus } from "@/lib/saju-focus";
 
 export function PalmEntryCard({
   birthInput,
   personalityInput,
+  focus,
 }: {
   birthInput: BirthInput;
   personalityInput?: PersonalityInputEcho;
+  focus?: SajuFocus;
 }) {
   const params = new URLSearchParams({
     year: String(birthInput.year),
@@ -33,6 +36,9 @@ export function PalmEntryCard({
   }
   if (personalityInput?.mbti) {
     params.set("mbti", personalityInput.mbti);
+  }
+  if (focus) {
+    params.set("focus", focus);
   }
 
   return (
