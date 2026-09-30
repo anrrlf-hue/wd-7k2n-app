@@ -7,6 +7,7 @@ import type {
 import { daeunFlavor } from "@/lib/fortune-candidates";
 import type { PersonalityInput } from "@/lib/personality-check";
 import type { SajuFacts } from "@/lib/saju-facts";
+import { buildSajuTimingOutlook, type SajuTimingOutlook } from "@/lib/saju-timing";
 
 export interface RealityAnswerBuildInput {
   question: RealityQuestion;
@@ -27,14 +28,27 @@ function flowSentence(facts: SajuFacts): string {
   return `${facts.currentDaeun.ageRange}세부터 이어지는 지금 대운은 ${daeunFlavor(facts.currentDaeun)} 흐름입니다. 이 흐름은 결과를 정해주는 예언이라기보다, 지금 어떤 선택을 더 의식해서 점검할지 정하는 참고축으로 씁니다.`;
 }
 
-function timingFor(facts: SajuFacts) {
+function timingFor(question: RealityQuestion, facts: SajuFacts) {
+  const outlook = buildSajuTimingOutlook(facts, question.domain);
+
+  if (outlook) {
+    return {
+      now: outlook.summary,
+      nextCheckpoint:
+        "위 시기는 결과를 보장하는 날짜가 아니라 질문과 관련된 흐름이 상대적으로 더 부각되는 구간입니다. 실제 상황과 함께 보세요.",
+      precision: outlook.precision,
+      windows: outlook.windows.map((window) => ({ label: window.label, reason: window.reason })),
+      basis: outlook.basis,
+    };
+  }
+
   const now = facts.currentDaeun
-    ? `현재는 ${facts.currentDaeun.ageRange}세부터 이어지는 ${daeunFlavor(facts.currentDaeun)} 흐름을 참고하되, 실제 결정은 지금 확인되는 조건과 함께 판단합니다.`
-    : "정밀한 현재 대운을 확인하기 어려워 특정 시기를 단정하지 않습니다. 지금 확인 가능한 현실 조건을 우선합니다.";
+    ? `현재는 ${facts.currentDaeun.ageRange}세부터 이어지는 ${daeunFlavor(facts.currentDaeun)} 흐름입니다. 세운·월운을 좁혀 말할 근거가 부족해 대운 수준까지만 봅니다.`
+    : "출생시간이 없거나 현재 대운 정보가 충분하지 않아 특정 시기를 좁혀 말하지 않습니다.";
 
   const nextCheckpoint = facts.nextDaeun
-    ? `현실 행동은 먼저 30일 뒤 점검하고, 큰 방향은 다음 대운(${facts.nextDaeun.ageRange}세부터)으로 넘어갈 때 다시 비교할 수 있습니다.`
-    : "먼저 30일 뒤 실행 결과를 확인하고, 실제 상황이 달라졌을 때 다시 판단합니다.";
+    ? `큰 흐름은 다음 대운(${facts.nextDaeun.ageRange}세부터)에서 다시 결이 달라집니다.`
+    : "현재 정보로는 특정 연도·월을 확정해서 말하지 않습니다.";
 
   return { now, nextCheckpoint, precision: "daeun_only" as const };
 }
@@ -47,8 +61,7 @@ function patternFor(
   const speed = level(personality, "speed");
   const plan = level(personality, "plan");
   const autonomy = level(personality, "autonomy");
-  const risk = level(personality, "risk");
-  const spend = level(personality, "spendAwareness");
+  const change = level(personality, "change");
 
   switch (question.domain) {
     case "career":
@@ -56,12 +69,12 @@ function patternFor(
       if (plan === "왼쪽") return "준비를 오래 하는 힘은 있지만, 기준을 계속 보완하다 실제 지원 시점을 늦출 수 있습니다. 준비 완료 기준을 먼저 정하는 편이 좋습니다.";
       return "현재 직장이 힘든 이유와 다음 직장에서 얻고 싶은 조건을 섞어서 판단하기 쉽습니다. 두 항목을 분리하면 결정이 선명해집니다.";
     case "work_business":
-      if (risk === "왼쪽") return "새 기회가 보이면 실행 속도가 빨라질 수 있습니다. 사업이나 새 역할에서는 가능성보다 먼저 '돈을 내는 사람·권한·비용'을 확인해야 합니다.";
+      if (change === "왼쪽") return "새 기회가 보이면 실행 속도가 빨라질 수 있습니다. 사업이나 새 역할에서는 가능성보다 먼저 '돈을 내는 사람·권한·비용'을 확인해야 합니다.";
       return "좋은 가능성과 실제 사업성·역할 조건을 같은 것으로 보기 쉽습니다. 시작 여부보다 검증해야 할 현실 조건을 먼저 고정하는 편이 좋습니다.";
     case "money":
-      if (spend === "오른쪽") return "돈이 들어오는 문제보다 어디로 빠져나가는지 체감이 늦어질 수 있습니다. 재물 흐름 해석과 별개로 실제 거래내역을 확인해야 원인을 잡을 수 있습니다.";
-      if (risk === "왼쪽") return "기회가 보일 때 수익 가능성에 먼저 시선이 갈 수 있습니다. 큰 결정보다 감당 가능한 손실과 현금 여유를 먼저 확인하는 방식이 필요합니다.";
-      return "재물운의 좋고 나쁨보다, 들어온 돈을 남기는 기준과 실제 현금흐름을 분리해서 보는 것이 중요합니다.";
+      if (change === "왼쪽") return "새로운 기회가 보이면 먼저 관심이 갈 수 있습니다. 재물 질문에서는 기회 자체와 실제로 감당할 수 있는 조건을 따로 보는 것이 중요합니다.";
+      if (change === "오른쪽") return "익숙하고 안정적인 방식을 선호해 새로운 재물 기회를 늦게 검토할 수 있습니다. 변화가 필요한지와 단순히 불안해서 피하는지를 구분해 보는 편이 좋습니다.";
+      return "재물운의 좋고 나쁨보다, 돈과 기회를 어떤 기준으로 선택하는지가 반복 패턴을 더 잘 보여줍니다.";
     case "love":
       if (autonomy === "오른쪽") return "관계를 지키려는 마음 때문에 상대의 반응을 기준으로 내 결정을 늦출 수 있습니다. 관계의 미래보다 반복되는 실제 행동이 달라지는지를 보는 편이 좋습니다.";
       return "감정이 강할수록 '좋아하는 마음'과 '관계를 계속해도 되는 근거'를 같은 것으로 보기 쉽습니다. 두 가지를 따로 확인해야 합니다.";
@@ -99,7 +112,7 @@ function questionReadingFor(
 
   const speed = level(personality, "speed");
   const autonomy = level(personality, "autonomy");
-  const spend = level(personality, "spendAwareness");
+  const change = level(personality, "change");
 
   if (question.domain === "career") {
     const workTone =
@@ -131,9 +144,11 @@ function questionReadingFor(
           ? "한 번의 큰 재물 기회를 기다리기보다 내가 잘하는 일을 반복해서 수입으로 연결하고, 들어온 돈을 지키는 구조를 만드는 쪽이 더 잘 맞습니다. 재물운의 좋고 나쁨보다 돈을 남기는 습관이 결과 차이를 크게 만들 수 있습니다."
           : "돈을 다루는 감각과 실제 생활의 현금흐름은 따로 볼 필요가 있습니다. 기회가 있어도 지출 기준과 남기는 규칙이 없으면 재물 흐름을 체감하기 어렵습니다.";
     const personal =
-      spend === "오른쪽"
-        ? "특히 스스로 지출이 잘 보이지 않는다고 답한 만큼, 이번 질문은 사주보다 실제 결제내역을 함께 확인할 때 훨씬 선명해집니다."
-        : "이번 질문에서는 버는 힘보다 들어온 돈을 어떤 기준으로 남길지가 더 중요한 확인점입니다.";
+      change === "왼쪽"
+        ? "새로운 가능성에 관심이 빨리 가는 편이라면, 재물 흐름이 좋아 보이는 시기에도 실제 조건을 따로 확인하는 것이 중요합니다."
+        : change === "오른쪽"
+          ? "안정을 중요하게 보는 편이라면, 좋은 흐름이 들어와도 익숙한 선택만 고집하지 않는지 함께 살펴볼 필요가 있습니다."
+          : "이번 질문에서는 재물운의 크기보다 어떤 방식으로 기회를 선택하고 유지하는지가 더 중요한 확인점입니다.";
     return `${opening} ${moneyTone} ${personal}`;
   }
 
@@ -185,8 +200,13 @@ function solutionReadingFor(
   choose: string,
   avoid: string,
   pattern: string,
+  timing: ReturnType<typeof timingFor>,
 ): string {
-  return `이 질문을 풀 때 가장 중요한 것은 ${choose} 반대로 ${avoid} 쪽으로 가면 현재 고민의 원인을 확인하기 전에 결론만 먼저 내릴 수 있습니다. ${pattern} 그래서 이번에는 큰 결정을 한 번에 끝내기보다 아래 행동 3가지를 실제로 해보고, 그 결과가 달라지는지를 기준으로 다음 선택을 정하는 편이 좋습니다.`;
+  if (question.intent === "timing" && timing.windows && timing.windows.length > 0) {
+    return `${timing.windows[0].label}을 가장 먼저 눈여겨볼 수 있습니다. 다만 이 시기에 어떤 일이 반드시 생긴다는 뜻은 아닙니다. ${pattern} 시기 해석은 '언제 가능성이 상대적으로 부각되는가'를 보는 것이고, 실제 결과는 만남·채용·시장·상대방 의사처럼 사주 밖의 조건과 함께 결정됩니다.`;
+  }
+
+  return `이 질문에 대한 사주풀이의 중심은 ${choose} ${pattern} 반대로 ${avoid} 쪽은 현재 흐름과 맞물릴 때 같은 고민을 반복하게 만들 수 있어 주의해서 보는 편이 좋습니다. 행동을 정하기 전에 먼저 이 답이 지금 상황과 얼마나 맞는지 확인해 보세요.`;
 }
 
 function domainPlan(question: RealityQuestion): {
@@ -346,22 +366,30 @@ export function buildRealityAnswerFallback(input: RealityAnswerBuildInput): Real
   }
 
   const repeatingPattern = patternFor(input.question, input.facts, input.personality);
+  const timing = timingFor(input.question, input.facts);
+  const timingHeadline =
+    input.question.intent === "timing" && timing.windows?.length
+      ? timing.windows[0].label + "을 가장 먼저 눈여겨볼 시기로 봅니다."
+      : null;
   const report = {
     questionReading: questionReadingFor(input.question, input.facts, input.personality),
     currentFlow: currentFlowReadingFor(input.question, input.facts),
-    solutionReading: solutionReadingFor(input.question, plan.choose, plan.avoid, repeatingPattern),
+    solutionReading: solutionReadingFor(input.question, plan.choose, plan.avoid, repeatingPattern, timing),
+    timingReading: timing.windows?.length
+      ? timing.now + " " + timing.windows.map((window) => window.label + ": " + window.reason).join(" ")
+      : undefined,
   };
 
   return {
     question: input.question,
-    headline: plan.headline,
+    headline: timingHeadline ?? plan.headline,
     report,
     whyNow: report.currentFlow,
     repeatingPattern,
     avoid: plan.avoid,
     choose: plan.choose,
     actions: plan.actions,
-    timing: timingFor(input.facts),
+    timing,
     realityChecks: plan.realityChecks,
     evidence: input.evidence,
     uncertainty,
