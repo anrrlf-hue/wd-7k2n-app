@@ -20,7 +20,22 @@ export function StepShell({
       <JourneyHeader chapter={1} />
       {/* Exit animations can stall when a mobile tab is backgrounded.
        * Mount the new step immediately; only animate its entrance. */}
-      {stepKey !== "result" && <div className="mb-7"><p className="mb-2 text-xs text-muted-foreground">{stepKey === "date" ? "출생정보 · 1 / 3" : stepKey === "time" ? "출생정보 · 2 / 3" : stepKey === "personality" ? "나의 응답 · 3 / 3 · 선택사항" : "분석 준비"}</p><Progress value={progress} className="h-1" /></div>}
+      {stepKey !== "result" && (
+        <div className="mb-7">
+          <p className="mb-2 text-xs text-muted-foreground">
+            {stepKey === "focus"
+              ? "관심 사주 · 1 / 4"
+              : stepKey === "date"
+                ? "출생정보 · 2 / 4"
+                : stepKey === "time"
+                  ? "출생정보 · 3 / 4"
+                  : stepKey === "personality"
+                    ? "나의 응답 · 4 / 4 · 선택사항"
+                    : "분석 준비"}
+          </p>
+          <Progress value={progress} className="h-1" />
+        </div>
+      )}
       <motion.div
         key={stepKey}
         initial={{ opacity: 0, x: 12 }}

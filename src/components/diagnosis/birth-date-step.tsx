@@ -12,12 +12,14 @@ export function BirthDateStep({
   gender,
   onGenderChange,
   onNext,
+  onBack,
 }: {
   value: string;
   onChange: (v: string) => void;
   gender: "남" | "여";
   onGenderChange: (v: "남" | "여") => void;
   onNext: () => void;
+  onBack?: () => void;
 }) {
   return (
     <div className="flex flex-1 flex-col">
@@ -72,6 +74,15 @@ export function BirthDateStep({
         >
           다음
         </Button>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mt-4 min-h-10 w-full text-sm text-muted-foreground underline underline-offset-4"
+          >
+            보고 싶은 사주 다시 고르기
+          </button>
+        )}
       </div>
     </div>
   );

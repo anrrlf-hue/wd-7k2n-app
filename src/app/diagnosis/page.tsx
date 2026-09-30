@@ -8,6 +8,7 @@ import { BirthTimeStep } from "@/components/diagnosis/birth-time-step";
 import { PersonalityStep } from "@/components/diagnosis/personality-step";
 import { LoadingStep } from "@/components/diagnosis/loading-step";
 import { ResultStep } from "@/components/diagnosis/result-step";
+import { SajuFocusStep } from "@/components/diagnosis/saju-focus-step";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 import type { MbtiType } from "@/lib/mbti-facts";
 import { parseSajuFocus, type SajuFocus } from "@/lib/saju-focus";
@@ -18,9 +19,9 @@ import { parseSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 // 신호로 실제로 쓰인다 — 사주 계산값을 바꾸는 용도가 아니다.
 // 손금 이후 다시 여기로 돌아와 질문을 더 받는 단계(money-check/summary)는
 // 없다 — 결제 뒤/후반에 추가 질문을 만들지 않는다는 원칙에 따라 완전히 제거했다.
-type Step = "date" | "time" | "personality" | "loading" | "result" | "error";
+type Step = "focus" | "date" | "time" | "personality" | "loading" | "result" | "error";
 
-const STEP_ORDER: Step[] = ["date", "time", "personality", "loading", "result"];
+const STEP_ORDER: Step[] = ["focus", "date", "time", "personality", "loading", "result"];
 
 // 서버 쪽 이론상 최대 처리시간: enrichSajuFacts의 oh-my-saju 서브프로세스
 // 타임아웃(6초) + 그 뒤 Promise.all로 동시 실행되는 딥해석/무료리포트 각각의
@@ -48,8 +49,8 @@ interface StoredSession {
 }
 
 export default function DiagnosisPage() {
-  const [focus, setFocus] = useState<SajuFocus>("overall");
-  const [step, setStep] = useState<Step>("date");
+  const [focus, setFocus] = useState<SajuFocus | null>(null);
+  const [step, setStep] = useState<Step>("focus");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState<"남" | "여">("남");
   const [knowsTime, setKnowsTime] = useState(false);
@@ -66,7 +67,8 @@ export default function DiagnosisPage() {
   // state"를 잡기 위한 규칙이라 이 케이스엔 해당하지 않는다.
   useEffect(() => {
     try {
-      const urlFocus = parseSajuFocus(new URLSearchParams(window.location.search).get("focus"));
+      const focusParam = new URLSearchParams(window.location.search).get("focus");
+      const urlFocus = focusParam ? parseSajuFocus(focusParam) : null;
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (!raw) {
         setFocus(urlFocus);
@@ -78,7 +80,7 @@ export default function DiagnosisPage() {
         return;
       }
       /* eslint-disable react-hooks/set-state-in-effect */
-      setFocus(saved.focus ?? saved.diagnosis.focus ?? urlFocus);
+      setFocus(saved.focus ?? saved.diagnosis.focus ?? urlFocus ?? "overall");
       setBirthDate(saved.birthDate);
       setGender(saved.gender);
       setKnowsTime(saved.knowsTime);
@@ -99,17 +101,22 @@ export default function DiagnosisPage() {
     } catch {
       // 저장소 접근 불가는 무시 — 어차피 폼 상태는 아래에서 초기화된다.
     }
-    setFocus(parseSajuFocus(new URLSearchParams(window.location.search).get("focus")));
+    const focusParam = new URLSearchParams(window.location.search).get("focus");
+    setFocus(focusParam ? parseSajuFocus(focusParam) : null);
     setBirthDate("");
     setKnowsTime(false);
     setBirthTime("");
     setPersonalityAnswers({});
     setMbti("모름");
     setDiagnosis(null);
-    setStep("date");
+    setStep("focus");
   }
 
   async function handleFetchDiagnosis() {
+    if (!focus) {
+      setStep("focus");
+      return;
+    }
     setStep("loading");
     setError(null);
 
@@ -177,6 +184,14 @@ export default function DiagnosisPage() {
 
   return (
     <StepShell stepKey={step} progress={progress}>
+      {step === "focus" && (
+        <SajuFocusStep
+          value={focus}
+          onChange={setFocus}
+          onNext={() => setStep("date")}
+        />
+      )}
+
       {step === "date" && (
         <BirthDateStep
           value={birthDate}
@@ -184,6 +199,7 @@ export default function DiagnosisPage() {
           gender={gender}
           onGenderChange={setGender}
           onNext={() => setStep("time")}
+          onBack={() => setStep("focus")}
         />
       )}
 
