@@ -3,6 +3,7 @@ import type {
   RealityAnswer,
   RealityEvidence,
   RealityQuestion,
+  RealityTiming,
 } from "@/lib/reality-answer-contract";
 import { daeunFlavor } from "@/lib/fortune-candidates";
 import type { PersonalityInput } from "@/lib/personality-check";
@@ -28,7 +29,7 @@ function flowSentence(facts: SajuFacts): string {
   return `${facts.currentDaeun.ageRange}세부터 이어지는 지금 대운은 ${daeunFlavor(facts.currentDaeun)} 흐름입니다. 이 흐름은 결과를 정해주는 예언이라기보다, 지금 어떤 선택을 더 의식해서 점검할지 정하는 참고축으로 씁니다.`;
 }
 
-function timingFor(question: RealityQuestion, facts: SajuFacts) {
+function timingFor(question: RealityQuestion, facts: SajuFacts): RealityTiming {
   const outlook = buildSajuTimingOutlook(facts, question.domain);
 
   if (outlook) {
