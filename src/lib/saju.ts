@@ -8,6 +8,7 @@ import type { LifetimePeriodStory } from "./real-world-personalization";
 import type { MyeongsikView } from "./myeongsik-view";
 import type { WealthTypeResult } from "./wealth-type";
 import type { SajuFocus } from "./saju-focus";
+import type { FocusedSajuReport } from "./free-saju-focus-report";
 
 export interface BirthInput {
   year: number;
@@ -56,8 +57,10 @@ export interface FullSajuDiagnosis extends SajuDiagnosis {
   /** "deep" = 딥 해석 성공(LLM 또는 검증 통과한 mock), "fallback" = 딥 파이프라인 자체가 실패해 얕은 결과만 있음 */
   resultSource: "deep" | "fallback";
   deep: DeepResultPayload | null;
-  /** 무료 사주 V2(12섹션). 딥 파이프라인이 실패해도 이건 별도로 계산을 시도한다. */
+  /** 무료 종합 사주 리포트. */
   freeReport: FreeReportPayload | null;
+  /** 전체 사주가 아닌 개별 분야를 골랐을 때만 생성되는 5개 심화풀이. */
+  focusedReport: FocusedSajuReport | null;
   /** 손금 교차 분석 페이지로 넘어갈 때 다시 쓰기 위해 입력값을 그대로 echo. */
   birthInput: BirthInput;
   /** 성향정보 입력을 손금 페이지까지 이어가기 위한 echo. 입력 안 했으면 둘 다 null. */
