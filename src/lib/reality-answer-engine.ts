@@ -89,7 +89,7 @@ async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: n
       },
       body: JSON.stringify({
         model: "claude-sonnet-5",
-        max_tokens: 1800,
+        max_tokens: 2200,
         system: systemPrompt,
         messages: [{ role: "user", content: userPrompt }],
       }),
@@ -111,6 +111,43 @@ async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: n
   } finally {
     clearTimeout(timer);
   }
+}
+
+function hasUnsupportedTimingMention(
+  text: string,
+  timing: RealityAnswer["timing"],
+): boolean {
+  if (!timing.windows || timing.windows.length === 0) return false;
+
+  const allowedYears = new Set<string>();
+  const allowedYearMonths = new Set<string>();
+  const allowedMonths = new Set<string>();
+  for (const window of timing.windows) {
+    const match = window.label.match(/(20\d{2})년(?:\s*(\d{1,2})월)?/);
+    if (!match) continue;
+    allowedYears.add(match[1]);
+    if (match[2]) {
+      allowedYearMonths.add(match[1] + "-" + String(Number(match[2])));
+      allowedMonths.add(String(Number(match[2])));
+    }
+  }
+
+  for (const match of text.matchAll(/(20\d{2})년(?:\s*(\d{1,2})월)?/g)) {
+    const year = match[1];
+    const month = match[2] ? String(Number(match[2])) : null;
+    if (month) {
+      if (!allowedYearMonths.has(year + "-" + month)) return true;
+    } else if (!allowedYears.has(year)) {
+      return true;
+    }
+  }
+
+  for (const match of text.matchAll(/(?<!\d)(\d{1,2})월/g)) {
+    const month = String(Number(match[1]));
+    if (!allowedMonths.has(month)) return true;
+  }
+
+  return false;
 }
 
 function toQuestion(
@@ -181,6 +218,20 @@ export async function getRealityAnswer(
   if (raw) {
     const draft = RealityAnswerDraftSchema.safeParse(raw);
     if (draft.success) {
+      const draftNarrative = [
+        draft.data.headline,
+        draft.data.report.questionReading,
+        draft.data.report.currentFlow,
+        draft.data.report.solutionReading,
+        draft.data.report.timingReading ?? "",
+      ].join("\n");
+
+      if (
+        question.intent === "timing" &&
+        hasUnsupportedTimingMention(draftNarrative, fallback.timing)
+      ) {
+        fallbackReason = "timing-drift: model introduced a year/month outside calculated windows";
+      } else {
       const candidate: RealityAnswer = {
         question,
         ...draft.data,
@@ -207,6 +258,7 @@ export async function getRealityAnswer(
         return { status: "ready", source: "llm", answer: candidate, parse };
       }
       fallbackReason = `validation-failed: ${validation.errors.join("; ")}`;
+      }
     } else {
       fallbackReason = `schema-failed: ${draft.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; ")}`;
     }
