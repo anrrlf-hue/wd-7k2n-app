@@ -69,14 +69,19 @@ export interface RealityAction {
   doneWhen: string;
 }
 
+export interface RealityTimingWindow {
+  label: string;
+  reason: string;
+}
+
 export interface RealityTiming {
   now: string;
   nextCheckpoint: string;
-  /**
-   * 현재 구현은 대운 수준의 근거만 확실히 보유한다.
-   * 세운/월운이 구현되기 전에는 특정 월·날짜를 사주 근거로 생성하지 않는다.
-   */
-  precision: "daeun_only" | "seun" | "monthly";
+  precision: "daeun_only" | "yearly" | "seun" | "monthly";
+  /** 세운·월운 계산이 있을 때 사용자가 실제로 궁금해하는 시기 구간. */
+  windows?: RealityTimingWindow[];
+  /** 시기 산정 방식과 한계를 짧게 설명. */
+  basis?: string;
 }
 
 /**
@@ -88,14 +93,16 @@ export interface RealityNarrativeReport {
   questionReading: string;
   /** 현재 대운과 질문이 맞물려 현실에서 어떻게 느껴질 수 있는지. */
   currentFlow: string;
-  /** 위 해석을 현실에서 어떤 방향으로 풀어갈지. */
+  /** 질문에 대한 답을 현실적으로 어떻게 이해할지. 행동지침이 중심이 아니다. */
   solutionReading: string;
+  /** 시기 질문일 때 세운·월운 구간을 풀어 설명. */
+  timingReading?: string;
 }
 
 export interface RealityAnswer {
   question: RealityQuestion;
 
-  /** 광고 카피가 아니라 사용자의 질문에 대한 짧은 방향 제시. */
+  /** 사용자가 물어본 것에 먼저 답하는 한 문장. 행동 제안보다 답 자체가 우선이다. */
   headline: string;
 
   /**
@@ -116,7 +123,10 @@ export interface RealityAnswer {
   /** 현재 상황에서 우선할 선택 하나. */
   choose: string;
 
-  /** 반드시 3개. 추상 조언이 아니라 현실 행동. */
+  /**
+   * 기존 내 관리와의 하위호환을 위해 3개를 유지한다.
+   * 질문 답변의 중심이 아니라 맨 마지막에 두는 현실 참고사항이다.
+   */
   actions: [RealityAction, RealityAction, RealityAction];
 
   timing: RealityTiming;
@@ -189,6 +199,7 @@ export function validateRealityAnswer(answer: RealityAnswer): RealityAnswerValid
     answer.choose,
     answer.timing.now,
     answer.timing.nextCheckpoint,
+    ...(answer.timing.windows ?? []).flatMap((window) => [window.label, window.reason]),
     ...answer.actions.flatMap((action) => [action.title, action.detail, action.doneWhen]),
   ].join("\n");
 
