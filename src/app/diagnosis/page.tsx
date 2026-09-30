@@ -199,6 +199,7 @@ export default function DiagnosisPage() {
           gender={gender}
           onGenderChange={setGender}
           onNext={() => setStep("time")}
+          onBack={() => setStep("focus")}
         />
       )}
 
