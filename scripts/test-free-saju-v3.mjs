@@ -106,8 +106,8 @@ const focusStepSource = fs.readFileSync(path.join(root, "src/components/diagnosi
 assert(!homeSource.includes("LandingFocusSelector"), "focus choices must not cover the first landing screen");
 assert(homeSource.includes("내 사주 무료 보기"), "simple first-screen Saju CTA missing");
 assert(
-  homeSource.includes("궁금한 내용을 사주로 풀고") &&
-    homeSource.includes("현실에서 어떻게 움직일지 알려줍니다"),
+  homeSource.includes("궁금한 질문에") &&
+    homeSource.includes("사주로 답합니다"),
   "third first-screen benefit was not updated",
 );
 assert(diagnosisSource.includes('type Step = "focus"'), "focus must be the first diagnosis step");
