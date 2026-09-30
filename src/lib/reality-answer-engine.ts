@@ -15,6 +15,7 @@ import { decisionPointFor, parseRealityQuestion, type RealityQuestionParseResult
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 import type { PersonalityInput } from "@/lib/personality-check";
 import type { SajuFacts } from "@/lib/saju-facts";
+import { buildSajuTimingOutlook } from "@/lib/saju-timing";
 
 const RealityAnswerDraftSchema = z.object({
   headline: z.string().min(10),
@@ -22,6 +23,7 @@ const RealityAnswerDraftSchema = z.object({
     questionReading: z.string().min(80),
     currentFlow: z.string().min(80),
     solutionReading: z.string().min(80),
+    timingReading: z.string().min(20).optional(),
   }),
   whyNow: z.string().min(20),
   repeatingPattern: z.string().min(20),
@@ -35,7 +37,12 @@ const RealityAnswerDraftSchema = z.object({
   timing: z.object({
     now: z.string().min(10),
     nextCheckpoint: z.string().min(10),
-    precision: z.literal("daeun_only"),
+    precision: z.enum(["daeun_only", "yearly", "seun", "monthly"]),
+    windows: z.array(z.object({
+      label: z.string().min(3),
+      reason: z.string().min(5),
+    })).optional(),
+    basis: z.string().min(10).optional(),
   }),
   realityChecks: z.array(z.string().min(2)).min(1),
   uncertainty: z.array(z.string().min(2)),
@@ -144,6 +151,7 @@ export async function getRealityAnswer(
     palm: options.palm,
     personality: options.personality,
   });
+  const timingOutlook = buildSajuTimingOutlook(facts, question.domain);
 
   const fallback = buildRealityAnswerFallback({
     question,
@@ -158,7 +166,7 @@ export async function getRealityAnswer(
   try {
     raw = await callClaude(
       REALITY_ANSWER_SYSTEM_PROMPT,
-      buildRealityAnswerUserPrompt(question, evidence),
+      buildRealityAnswerUserPrompt(question, evidence, timingOutlook),
       options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     );
     if (!raw) fallbackReason = "no-api-key";
@@ -173,6 +181,16 @@ export async function getRealityAnswer(
       const candidate: RealityAnswer = {
         question,
         ...draft.data,
+        // 시기는 계산 엔진 결과만 사용한다. LLM이 다른 연도·월을 추가하지 못하게 고정한다.
+        headline: question.intent === "timing" ? fallback.headline : draft.data.headline,
+        report: {
+          ...draft.data.report,
+          timingReading:
+            question.intent === "timing"
+              ? fallback.report?.timingReading
+              : draft.data.report.timingReading,
+        },
+        timing: fallback.timing,
         // LLM이 evidence를 새로 만들지 못하게 실제 selector 결과만 붙인다.
         evidence,
       };
