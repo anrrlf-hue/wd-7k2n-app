@@ -36,13 +36,13 @@ const EXAMPLES: Record<RealityAnswerDomain, string> = {
 };
 
 const INCLUDED = [
-  "지금 질문에 대한 핵심 답변",
-  "왜 이 고민이 지금 커졌는지",
-  "반복하기 쉬운 선택 패턴",
-  "지금 피할 선택과 우선할 선택",
-  "바로 실행할 행동 3가지",
-  "다시 판단할 시점",
-  "사주로 알 수 없어 현실에서 확인할 조건",
+  "궁금한 것에 대한 핵심 답",
+  "눈여겨볼 시기와 흐름",
+  "왜 그렇게 읽히는지",
+  "반복해서 나타나기 쉬운 패턴",
+  "이 답을 현실에서 어떻게 이해할지",
+  "사주 밖에서 확인할 변수",
+  "필요할 때 참고할 현실 포인트",
 ];
 
 function readResume(key: string): RealityFunnelResume | null {
@@ -313,9 +313,28 @@ export function RealityAnswerFunnel({
           <h2 className="mt-2 text-2xl leading-snug font-semibold">{answer.question.raw}</h2>
 
           <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
-            <p className="section-eyebrow">핵심 답변</p>
+            <p className="section-eyebrow">먼저 답하면</p>
             <p className="mt-2 text-xl leading-8 font-semibold">{answer.headline}</p>
           </section>
+
+          {answer.timing.windows && answer.timing.windows.length > 0 && (
+            <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
+              <p className="section-eyebrow">눈여겨볼 시기</p>
+              <div className="mt-3 space-y-3">
+                {answer.timing.windows.map((window, index) => (
+                  <div key={window.label} className="rounded-xl bg-accent p-4">
+                    <p className="font-semibold">
+                      {index === 0 ? "가장 먼저 · " : ""}{window.label}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{window.reason}</p>
+                  </div>
+                ))}
+              </div>
+              {answer.timing.basis && (
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">{answer.timing.basis}</p>
+              )}
+            </section>
+          )}
 
           {answer.report ? (
             <section className="mt-5">
@@ -334,7 +353,7 @@ export function RealityAnswerFunnel({
                   </p>
                 </div>
                 <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
-                  <h3 className="text-lg font-semibold">이 고민을 풀어가는 방향</h3>
+                  <h3 className="text-lg font-semibold">이 답을 어떻게 이해할까요?</h3>
                   <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
                     {answer.report.solutionReading}
                   </p>
@@ -364,27 +383,13 @@ export function RealityAnswerFunnel({
             </section>
           </div>
 
-          <section className="mt-6">
-            <p className="section-eyebrow">현실에서 할 행동 3가지</p>
-            <div className="mt-3 space-y-3">
-              {answer.actions.map((item, index) => (
-                <div key={item.title} className="rounded-2xl border border-border bg-card p-5">
-                  <p className="text-sm font-semibold text-(--gold)">0{index + 1}</p>
-                  <h3 className="mt-1 text-lg font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-base leading-7 text-muted-foreground">{item.detail}</p>
-                  <p className="mt-3 rounded-xl bg-accent px-3 py-2 text-sm leading-6">
-                    완료 기준 · {item.doneWhen}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-5 rounded-2xl border border-border bg-card p-5">
-            <h3 className="font-semibold">언제 다시 판단할까요?</h3>
-            <p className="mt-2 text-base leading-7 text-muted-foreground">{answer.timing.now}</p>
-            <p className="mt-2 text-base leading-7 font-medium">{answer.timing.nextCheckpoint}</p>
-          </section>
+          {(!answer.timing.windows || answer.timing.windows.length === 0) && (
+            <section className="mt-5 rounded-2xl border border-border bg-card p-5">
+              <h3 className="font-semibold">현재 시기 흐름</h3>
+              <p className="mt-2 text-base leading-7 text-muted-foreground">{answer.timing.now}</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{answer.timing.nextCheckpoint}</p>
+            </section>
+          )}
 
           <section className="mt-5 rounded-2xl border border-border bg-card p-5">
             <h3 className="font-semibold">현실에서 꼭 확인할 것</h3>
@@ -392,6 +397,19 @@ export function RealityAnswerFunnel({
               {answer.realityChecks.map((item) => <li key={item}>· {item}</li>)}
             </ul>
           </section>
+
+          <details className="mt-5 rounded-2xl border border-border bg-card p-4">
+            <summary className="cursor-pointer text-sm font-medium">필요하면 참고할 현실 포인트 3가지</summary>
+            <div className="mt-3 space-y-3">
+              {answer.actions.map((item, index) => (
+                <div key={item.title} className="rounded-xl bg-accent p-4">
+                  <p className="text-xs font-semibold text-(--gold)">0{index + 1}</p>
+                  <p className="mt-1 font-semibold">{item.title}</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </details>
 
           {answer.safetyNote && (
             <p className="mt-4 rounded-2xl bg-accent p-4 text-sm leading-6 text-muted-foreground">
