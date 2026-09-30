@@ -1,6 +1,6 @@
 "use client";
 
-import { EvidenceToggle, ReportSection } from "@/components/diagnosis/report-section";
+import { ReportSection } from "@/components/diagnosis/report-section";
 import { pillarLifeAreaLabel } from "@/lib/saju-labels";
 import type { MyeongsikView } from "@/lib/myeongsik-view";
 
@@ -87,11 +87,18 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
           </div>
         ))}
       </div>
-      <EvidenceToggle
-        evidence={elementEvidence}
-        title="오행 부족과 균형"
-        adviceOverride={advice.join(" ")}
-      />
+      <div className="mt-4 rounded-2xl bg-accent p-4">
+        <p className="text-sm font-semibold">오행에서 이렇게 참고해보세요</p>
+        <div className="mt-2 space-y-2 text-[15px] leading-7 text-accent-foreground">
+          {advice.map((item, index) => (
+            <p key={index}>{item}</p>
+          ))}
+        </div>
+      </div>
+      <details className="mt-3 rounded-xl border border-border bg-card p-3.5">
+        <summary className="cursor-pointer text-sm text-muted-foreground">왜 이렇게 봤나요? · 오행 근거</summary>
+        <p className="mt-2 text-[15px] leading-7 text-muted-foreground">{elementEvidence}</p>
+      </details>
 
       {view.hasTimeInput ? (
         <p className="mt-4 text-sm">
