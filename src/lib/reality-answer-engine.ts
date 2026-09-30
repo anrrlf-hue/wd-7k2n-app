@@ -151,7 +151,10 @@ export async function getRealityAnswer(
     palm: options.palm,
     personality: options.personality,
   });
-  const timingOutlook = buildSajuTimingOutlook(facts, question.domain);
+  const timingOutlook =
+    question.intent === "timing"
+      ? buildSajuTimingOutlook(facts, question.domain)
+      : null;
 
   const fallback = buildRealityAnswerFallback({
     question,
