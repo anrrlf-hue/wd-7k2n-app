@@ -28,6 +28,12 @@ export default function Home() {
           <br />
           답과 시기를 짚어드립니다
         </div>
+
+        <section className={styles.questionPromise}>
+          <p className={styles.questionPromiseEyebrow}>궁금한 건 직접 물어보세요</p>
+          <strong>답과 시기를 함께 봅니다</strong>
+          <p>연애·인간관계 · 일·직업·사업 · 돈·재물 · 생활·건강</p>
+        </section>
         <Link
           href="/management"
           aria-label="기존 이용자 내 관리"
