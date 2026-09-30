@@ -49,104 +49,57 @@
   }
 }
 
-.focusPanel {
+.diagnosisCta {
   position: absolute;
   z-index: 12;
-  top: 27.2%;
-  left: 4.5%;
-  right: 4.5%;
-  padding: 14px;
-  border: 1px solid rgba(102, 74, 30, .14);
-  border-radius: 22px;
-  background: rgba(248, 242, 232, .96);
-  box-shadow: 0 10px 30px rgba(42, 28, 8, .12);
-  backdrop-filter: blur(8px);
-}
-.focusEyebrow {
-  margin: 0;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .14em;
-  color: #8a6426;
-}
-.focusTitle {
-  margin: 4px 0 0;
-  font-size: clamp(20px, 5.4vw, 26px);
-  line-height: 1.2;
-  font-weight: 800;
-  color: #261b10;
-}
-.focusDescription {
-  margin: 5px 0 0;
-  font-size: 11px;
-  line-height: 1.45;
-  color: #6d6256;
-}
-.focusGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 10px;
-}
-.focusChip {
-  min-height: 34px;
-  padding: 7px 8px;
-  border: 1px solid #d9cdbb;
-  border-radius: 999px;
-  background: rgba(255,255,255,.66);
-  color: #4b4137;
-  font-size: 11px;
-  font-weight: 650;
-  cursor: pointer;
-}
-.focusChip:first-child {
-  grid-column: 1 / -1;
-}
-.focusChipActive {
-  border-color: #a77b2d;
-  background: #f0dfb9;
-  color: #4b3210;
-  box-shadow: inset 0 0 0 1px rgba(167,123,45,.12);
-}
-.focusHint {
-  min-height: 16px;
-  margin: 8px 2px 0;
-  font-size: 10px;
-  line-height: 1.45;
-  color: #75695c;
-}
-.focusCta {
+  top: 33.85%;
+  left: 5.8%;
+  width: 45.5%;
+  height: 5.3%;
   display: flex;
-  min-height: 44px;
-  margin-top: 8px;
   align-items: center;
   justify-content: center;
+  gap: .35rem;
   border-radius: 999px;
-  background: #33200f;
-  color: #fff8e8;
-  font-size: 13px;
+  background: #f1d083;
+  color: #302213;
+  font-size: clamp(11px, 3.2vw, 15px);
   font-weight: 800;
   text-decoration: none;
-  box-shadow: 0 6px 16px rgba(51,32,15,.18);
+  box-shadow: 0 4px 14px rgba(19, 24, 43, .16);
 }
-.focusCta:focus-visible,
-.focusChip:focus-visible {
-  outline: 3px solid #d9ad55;
+.diagnosisCta:focus-visible {
+  outline: 3px solid #fff0b8;
   outline-offset: 2px;
 }
+.benefitThirdCopy {
+  position: absolute;
+  z-index: 13;
+  top: 64.2%;
+  left: 68%;
+  width: 27%;
+  min-height: 7.8%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 6px 8px;
+  border-radius: 0 0 15px 15px;
+  background: rgba(255, 253, 248, .98);
+  color: #4a4035;
+  font-size: clamp(8.5px, 2.45vw, 11px);
+  line-height: 1.38;
+  font-weight: 650;
+  text-align: center;
+  letter-spacing: -.02em;
+}
 @media (max-width: 360px) {
-  .focusPanel {
-    top: 26.7%;
-    padding: 11px;
+  .diagnosisCta {
+    font-size: 11px;
   }
-  .focusGrid {
-    gap: 5px;
-  }
-  .focusChip {
-    min-height: 31px;
-    font-size: 10px;
-  }
-  .focusHint {
-    display: none;
+  .benefitThirdCopy {
+    top: 64%;
+    min-height: 8.1%;
+    font-size: 8.5px;
+    padding-inline: 4px;
   }
 }
