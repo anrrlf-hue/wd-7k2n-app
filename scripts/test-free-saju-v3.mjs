@@ -94,7 +94,7 @@ assert(
 const resultSource = fs.readFileSync(path.join(root, "src/components/diagnosis/result-step.tsx"), "utf8");
 assert(resultSource.includes("집중풀이"), "focused deep-dive UI missing");
 assert(resultSource.includes("이 분야는 전체 사주보다 더 깊게 봅니다"), "focused-vs-overall distinction missing");
-assert(resultSource.includes("전체 사주도 함께 보기"), "full Saju continuation UI missing");
+assert(resultSource.includes("나의 종합 사주"), "broad overall Saju UI missing");
 assert(resultSource.includes("연애·결혼에서의 나"), "love section missing from free result");
 assert(resultSource.includes("생활 리듬과 스트레스 패턴"), "life rhythm section missing from free result");
 assert(!resultSource.includes("나의 재물사주"), "money-only free-result heading remains");
