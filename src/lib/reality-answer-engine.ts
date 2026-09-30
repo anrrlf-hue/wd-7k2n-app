@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   validateRealityAnswer,
   type RealityAnswer,
-  type RealityAnswerDomain,
   type RealityQuestion,
 } from "@/lib/reality-answer-contract";
 import { buildRealityAnswerFallback } from "@/lib/reality-answer-builder";
