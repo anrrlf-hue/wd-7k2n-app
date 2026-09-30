@@ -12,6 +12,7 @@ import { SajuFocusStep } from "@/components/diagnosis/saju-focus-step";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 import type { MbtiType } from "@/lib/mbti-facts";
 import { parseSajuFocus, type SajuFocus } from "@/lib/saju-focus";
+import { normalizePersonalityAnswers } from "@/lib/personality-check";
 
 // 확정된 최종 퍼널: 생년월일+성별 -> 출생시간 -> MBTI+6문항 성향체크 -> 1차
 // 무료 결과 -> (손금은 별도 라우트 /diagnosis/palm에서 최종 통합 리포트까지
@@ -85,7 +86,7 @@ export default function DiagnosisPage() {
       setGender(saved.gender);
       setKnowsTime(saved.knowsTime);
       setBirthTime(saved.birthTime);
-      setPersonalityAnswers(saved.personalityAnswers);
+      setPersonalityAnswers(normalizePersonalityAnswers(saved.personalityAnswers));
       setMbti(saved.mbti);
       setDiagnosis(saved.diagnosis);
       setStep("result");
