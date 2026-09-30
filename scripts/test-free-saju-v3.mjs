@@ -40,6 +40,7 @@ const factsMod = await import(pathToFileURL(path.join(root, "src/lib/saju-facts.
 const reportMod = await import(pathToFileURL(path.join(root, "src/lib/free-report-mock.ts")).href);
 const schemaMod = await import(pathToFileURL(path.join(root, "src/lib/free-report-schema.ts")).href);
 const focusMod = await import(pathToFileURL(path.join(root, "src/lib/saju-focus.ts")).href);
+const focusReportMod = await import(pathToFileURL(path.join(root, "src/lib/free-saju-focus-report.ts")).href);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -65,13 +66,33 @@ assert(!/(질병이 있다|간이 안|심장이 안|반드시 결혼|상대가.*
   [report.relationshipStyle.text, report.loveStyle.text, report.lifeRhythm.text].join("\n")
 ), "unsafe relationship/health claim leaked into free V3");
 
+assert(focusMod.SAJU_FOCUS_VALUES.length === 5, "free Saju must expose exactly five top-level choices");
 for (const focus of focusMod.SAJU_FOCUS_VALUES) {
   assert(focusMod.parseSajuFocus(focus) === focus, "focus parser failed: " + focus);
 }
+assert(focusMod.parseSajuFocus("love") === "love_relationship", "legacy love focus mapping failed");
+assert(focusMod.parseSajuFocus("relationship") === "love_relationship", "legacy relationship focus mapping failed");
+assert(focusMod.parseSajuFocus("career") === "work", "legacy career focus mapping failed");
+assert(focusMod.parseSajuFocus("work_business") === "work", "legacy business focus mapping failed");
 assert(focusMod.parseSajuFocus("unknown") === "overall", "unknown focus must fall back to overall");
 
+for (const focus of ["love_relationship", "work", "money", "wellbeing"]) {
+  const focused = focusReportMod.buildFocusedSajuReport(facts, report, focus);
+  assert(focused, "focused report missing: " + focus);
+  assert(focused.sections.length === 5, "focused report must have exactly five sections: " + focus);
+  assert(
+    focused.sections.every((section) => section.paragraph.text.trim().length >= 80),
+    "focused report section too shallow: " + focus,
+  );
+}
+assert(
+  focusReportMod.buildFocusedSajuReport(facts, report, "overall") === null,
+  "overall Saju should stay broad instead of generating a focused deep-dive",
+);
+
 const resultSource = fs.readFileSync(path.join(root, "src/components/diagnosis/result-step.tsx"), "utf8");
-assert(resultSource.includes("먼저 보고 싶은 주제"), "focus-first result UI missing");
+assert(resultSource.includes("집중풀이"), "focused deep-dive UI missing");
+assert(resultSource.includes("이 분야는 전체 사주보다 더 깊게 봅니다"), "focused-vs-overall distinction missing");
 assert(resultSource.includes("전체 사주도 함께 보기"), "full Saju continuation UI missing");
 assert(resultSource.includes("연애·결혼에서의 나"), "love section missing from free result");
 assert(resultSource.includes("생활 리듬과 스트레스 패턴"), "life rhythm section missing from free result");
@@ -92,5 +113,5 @@ assert(diagnosisSource.includes('type Step = "focus"'), "focus must be the first
 assert(focusStepSource.includes("어떤 사주가"), "diagnosis focus chooser missing");
 assert(focusStepSource.includes("전체 사주"), "overall Saju choice missing");
 
-console.log("PASS FREE SAJU V3: universal report + diagnosis-first 7 focus choices + landing copy");
+console.log("PASS FREE SAJU V4: 5 choices + focused deep reading + broad overall Saju");
 hooks.deregister?.();

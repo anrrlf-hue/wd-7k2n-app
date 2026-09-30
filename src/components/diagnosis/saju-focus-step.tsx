@@ -26,7 +26,7 @@ export function SajuFocusStep({
         가장 궁금하세요?
       </h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
-        전체 사주는 모두 계산합니다. 고른 주제는 무료 결과에서 먼저, 더 자세히 보여드려요.
+        전체 사주는 넓게 보고, 분야를 고르면 그 주제를 5가지 관점으로 더 깊게 풀어드려요.
       </p>
 
       <div className="mt-7 grid grid-cols-2 gap-2.5">
@@ -38,6 +38,7 @@ export function SajuFocusStep({
             onClick={() => onChange(item)}
             className={
               "min-h-16 rounded-2xl border px-3 py-3 text-left transition-colors " +
+              (item === "overall" ? "col-span-2 " : "") +
               (value === item
                 ? "border-(--gold) bg-(--gold-soft)"
                 : "border-border bg-card")

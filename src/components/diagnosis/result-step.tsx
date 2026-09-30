@@ -1,7 +1,7 @@
 "use client";
 
 import { CompanionHeading } from "@/components/brand-companion";
-import { Fragment, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { MyeongsikSection } from "@/components/diagnosis/myeongsik-section";
 import { DaeunFlowSection } from "@/components/diagnosis/daeun-flow-section";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { FullSajuDiagnosis } from "@/lib/saju";
-import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
+import type { FreeSajuReport } from "@/lib/free-report-schema";
 import { SAJU_FOCUS_LABELS, SAJU_FOCUS_SHORT_DESCRIPTIONS, type SajuFocus } from "@/lib/saju-focus";
 
 const revealVariants = {
@@ -39,127 +39,35 @@ function splitLeadSentence(text: string): { headline: string; rest: string } {
   return { headline: match[1], rest: match[2] };
 }
 
-type SectionKey =
-  | "temperament"
-  | "relationshipStyle"
-  | "loveStyle"
-  | "jobOrientation"
-  | "teamStrength"
-  | "soloStrength"
-  | "wealthStructure"
-  | "earningStyle"
-  | "keepingStyle"
-  | "leakPattern"
-  | "bigMoneyAffinity"
-  | "lifeRhythm"
-  | "decisionStyle"
-  | "opportunityStyle"
-  | "nextMove"
-  | "timingShift";
+const BROAD_SECTIONS = [
+  ["타고난 성향", "temperament"],
+  ["연애·결혼에서의 나", "loveStyle"],
+  ["사람과 관계를 맺는 방식", "relationshipStyle"],
+  ["일할 때 힘이 나는 방식", "jobOrientation"],
+  ["돈·재물을 다루는 기본 성향", "wealthStructure"],
+  ["생활 리듬과 스트레스 패턴", "lifeRhythm"],
+  ["의사결정 스타일", "decisionStyle"],
+] as const;
 
-interface SectionDef {
-  key: SectionKey;
-  title: string;
-  paragraph: ReportParagraph;
-  showGuidance?: boolean;
-}
-
-function sectionMap(report: FreeSajuReport): Record<SectionKey, SectionDef> {
-  return {
-    temperament: { key: "temperament", title: "타고난 성향", paragraph: report.temperament },
-    relationshipStyle: { key: "relationshipStyle", title: "사람과 관계를 맺는 방식", paragraph: report.relationshipStyle },
-    loveStyle: { key: "loveStyle", title: "연애·결혼에서의 나", paragraph: report.loveStyle },
-    jobOrientation: { key: "jobOrientation", title: "일할 때 힘이 나는 방식", paragraph: report.jobOrientation },
-    teamStrength: { key: "teamStrength", title: "조직에서 강한 부분", paragraph: report.teamStrength },
-    soloStrength: { key: "soloStrength", title: "혼자 움직일 때 강한 부분", paragraph: report.soloStrength },
-    wealthStructure: { key: "wealthStructure", title: "돈·재물을 다루는 기본 성향", paragraph: report.wealthStructure },
-    earningStyle: { key: "earningStyle", title: "돈을 만드는 방식", paragraph: report.earningStyle },
-    keepingStyle: { key: "keepingStyle", title: "돈을 지키는 방식", paragraph: report.keepingStyle },
-    leakPattern: { key: "leakPattern", title: "돈에서 반복하기 쉬운 패턴", paragraph: report.leakPattern, showGuidance: true },
-    bigMoneyAffinity: { key: "bigMoneyAffinity", title: "큰 기회와 돈을 대하는 방식", paragraph: report.bigMoneyAffinity },
-    lifeRhythm: { key: "lifeRhythm", title: "생활 리듬과 스트레스 패턴", paragraph: report.lifeRhythm },
-    decisionStyle: { key: "decisionStyle", title: "의사결정 스타일", paragraph: report.decisionStyle },
-    opportunityStyle: { key: "opportunityStyle", title: "기회를 잡는 방식", paragraph: report.opportunityStyle },
-    nextMove: { key: "nextMove", title: "지금 무엇을 해야 하는가", paragraph: report.nextMove },
-    timingShift: { key: "timingShift", title: "앞으로 큰 흐름은 어떻게 바뀌는가", paragraph: report.timingShift },
-  };
-}
-
-const FOCUS_PRIORITY: Record<SajuFocus, SectionKey[]> = {
-  overall: ["temperament", "relationshipStyle", "loveStyle", "jobOrientation", "wealthStructure", "lifeRhythm"],
-  love: ["loveStyle", "relationshipStyle", "temperament", "decisionStyle"],
-  money: ["wealthStructure", "earningStyle", "keepingStyle", "leakPattern", "bigMoneyAffinity"],
-  career: ["jobOrientation", "teamStrength", "soloStrength", "decisionStyle"],
-  work_business: ["jobOrientation", "soloStrength", "opportunityStyle", "decisionStyle"],
-  relationship: ["relationshipStyle", "decisionStyle", "temperament"],
-  wellbeing: ["lifeRhythm", "temperament", "decisionStyle"],
-};
-
-const CORE_ORDER: SectionKey[] = [
-  "temperament",
-  "loveStyle",
-  "relationshipStyle",
-  "jobOrientation",
-  "wealthStructure",
-  "lifeRhythm",
-  "decisionStyle",
-  "nextMove",
-  "timingShift",
-];
-
-function OrderedFreeReport({
+function BroadFreeReport({
   report,
-  focus,
   wealthType,
 }: {
   report: FreeSajuReport;
-  focus: SajuFocus;
   wealthType: FullSajuDiagnosis["wealthType"];
 }) {
-  const sections = sectionMap(report);
-  const priority = FOCUS_PRIORITY[focus];
-  const used = new Set(priority);
-  const remaining = CORE_ORDER.filter((key) => !used.has(key));
-
-  function renderSection(key: SectionKey, index: number, prefix: string) {
-    const item = sections[key];
-    return (
-      <Fragment key={key}>
-        <ParagraphSection
-          step={prefix + String(index + 1)}
-          title={item.title}
-          paragraph={item.paragraph}
-          showGuidance={item.showGuidance}
-        />
-        {key === "wealthStructure" && <WealthTypeSection result={wealthType} />}
-      </Fragment>
-    );
-  }
-
   return (
-    <>
-      <section className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
-        <p className="section-eyebrow">먼저 보고 싶은 주제 · {SAJU_FOCUS_LABELS[focus]}</p>
-        <h2 className="mt-2 text-xl leading-8 font-semibold">
-          {focus === "overall" ? "전체 사주를 고르게 먼저 봅니다" : SAJU_FOCUS_LABELS[focus] + "부터 먼저 풀어볼게요"}
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {SAJU_FOCUS_SHORT_DESCRIPTIONS[focus]}. 다른 영역도 아래에서 함께 볼 수 있습니다.
-        </p>
-      </section>
-
-      <div className="mt-3">
-        {priority.map((key, index) => renderSection(key, index, "①-"))}
-      </div>
-
-      {remaining.length > 0 && (
-        <div className="mt-7">
-          <p className="section-eyebrow">전체 사주도 함께 보기</p>
-          <div className="mt-3">
-            {remaining.map((key, index) => renderSection(key, index, "②-"))}
-          </div>
+    <div className="mt-3">
+      {BROAD_SECTIONS.map(([title, key], index) => (
+        <div key={key}>
+          <ParagraphSection
+            step={"②-" + String(index + 1)}
+            title={title}
+            paragraph={report[key]}
+          />
+          {key === "wealthStructure" && <WealthTypeSection result={wealthType} />}
         </div>
-      )}
+      ))}
 
       <ReportSection title="조심할 반복 패턴">
         <div className="space-y-2.5">
@@ -178,7 +86,39 @@ function OrderedFreeReport({
       {report.realWorldPersonalization && (
         <ParagraphSection title="현실에서는 이렇게 나타나요" paragraph={report.realWorldPersonalization} />
       )}
-    </>
+    </div>
+  );
+}
+
+function FocusedFreeReport({
+  focusedReport,
+}: {
+  focusedReport: NonNullable<FullSajuDiagnosis["focusedReport"]>;
+}) {
+  return (
+    <section className="mt-6">
+      <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
+        <p className="section-eyebrow">집중풀이 · {SAJU_FOCUS_LABELS[focusedReport.focus]}</p>
+        <h2 className="mt-2 text-xl leading-8 font-semibold">
+          이 분야는 전체 사주보다 더 깊게 봅니다
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          {focusedReport.intro}
+        </p>
+      </div>
+
+      <div className="mt-3">
+        {focusedReport.sections.map((section, index) => (
+          <ParagraphSection
+            key={section.title}
+            step={"①-" + String(index + 1)}
+            title={section.title}
+            paragraph={section.paragraph}
+            showGuidance={index === 2 || index === 4}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -208,7 +148,7 @@ export function ResultStep({
     }
   }
 
-  const { tendency, deep, freeReport, resultSource, personalityInput, myeongsik, wealthType } = diagnosis;
+  const { tendency, deep, freeReport, focusedReport, resultSource, personalityInput, myeongsik, wealthType } = diagnosis;
   const focus = diagnosis.focus ?? "overall";
   const isDeep = resultSource === "deep" && deep !== null;
   const interp = deep?.interpretation;
@@ -268,7 +208,26 @@ export function ResultStep({
       </Button>
 
       {report ? (
-        <OrderedFreeReport report={report} focus={focus} wealthType={wealthType} />
+        <>
+          {focusedReport ? (
+            <FocusedFreeReport focusedReport={focusedReport} />
+          ) : (
+            <section className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
+              <p className="section-eyebrow">전체 사주</p>
+              <h2 className="mt-2 text-xl leading-8 font-semibold">내 사주를 넓게 한 번에 봅니다</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                성향·관계·일·재물·생활 리듬과 현재 흐름을 한쪽에 치우치지 않고 살펴봅니다.
+              </p>
+            </section>
+          )}
+
+          <div className="mt-7">
+            <p className="section-eyebrow">
+              {focusedReport ? "전체 사주도 함께 보기" : "나의 종합 사주"}
+            </p>
+            <BroadFreeReport report={report} wealthType={wealthType} />
+          </div>
+        </>
       ) : (
         <ReportSection title="나의 기본 성향">
           <p>{tendency.topStrength}</p>
