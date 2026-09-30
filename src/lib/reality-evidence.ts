@@ -107,7 +107,7 @@ export function selectRealityEvidence(
     if (facts.officerStarPillars.length > 0) {
       add(items, "saju", "관성 위치", facts.officerStarPillars.join(", "));
     }
-    personalityEvidence(options.personality, items, ["speed", "plan", "autonomy", "risk"]);
+    personalityEvidence(options.personality, items, ["speed", "plan", "autonomy", "change"]);
     palmEvidence(options.palm, domain, items);
   }
 
@@ -127,7 +127,7 @@ export function selectRealityEvidence(
       "재성 대운 출현",
       `전체 대운에서 재성 신호 ${facts.wealthOpportunityDaeunCount}회`,
     );
-    personalityEvidence(options.personality, items, ["risk", "spendAwareness", "savingConsistency"]);
+    personalityEvidence(options.personality, items, ["change", "plan", "speed"]);
   }
 
   if (domain === "love" || domain === "relationship") {
@@ -140,7 +140,7 @@ export function selectRealityEvidence(
     if (facts.keyRelations.length > 0) {
       add(items, "saju", "원국 관계", facts.keyRelations.slice(0, 4).join(" · "));
     }
-    personalityEvidence(options.personality, items, ["autonomy", "speed", "plan"]);
+    personalityEvidence(options.personality, items, ["autonomy", "emotionExpression", "socialEnergy", "speed"]);
     palmEvidence(options.palm, domain, items);
   }
 
@@ -169,7 +169,7 @@ export function selectRealityEvidence(
     if (facts.peakStagePillars.length > 0) {
       add(items, "saju", "12운성 정점 자리", facts.peakStagePillars.join(", "));
     }
-    personalityEvidence(options.personality, items, ["speed", "plan", "autonomy", "risk"]);
+    personalityEvidence(options.personality, items, ["speed", "plan", "autonomy", "change"]);
   }
 
   return items;
