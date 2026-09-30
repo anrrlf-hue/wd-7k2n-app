@@ -105,10 +105,14 @@ function scoreGroups(groups: TenGodGroup[], weights: DomainWeight): number {
   return groups.reduce((sum, group) => sum + (weights[group] ?? 0), 0);
 }
 
-function currentKstYearMonth(referenceDate?: Date): { year: number; month: number } {
+function currentKstYearMonth(referenceDate?: Date): { year: number; month: number; day: number } {
   const date = referenceDate ?? new Date();
   const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-  return { year: kst.getUTCFullYear(), month: kst.getUTCMonth() + 1 };
+  return {
+    year: kst.getUTCFullYear(),
+    month: kst.getUTCMonth() + 1,
+    day: kst.getUTCDate(),
+  };
 }
 
 function hanjaPillarsForDate(year: number, month: number, day: number) {
@@ -170,7 +174,10 @@ export function buildSajuTimingOutlook(
   for (const candidate of candidateYears) {
     const months: { month: number; score: number; groups: TenGodGroup[]; pillar: string }[] = [];
     for (let month = 1; month <= 12; month += 1) {
-      if (candidate.year === current.year && month < current.month) continue;
+      if (
+        candidate.year === current.year &&
+        (month < current.month || (month === current.month && current.day > 15))
+      ) continue;
       const monthPillar = hanjaPillarsForDate(candidate.year, month, 15).monthPillar;
       const groups = pillarGroups(facts.dayStem, monthPillar);
       const score = candidate.score + scoreGroups(groups, weights);
