@@ -30,7 +30,10 @@ function flowSentence(facts: SajuFacts): string {
 }
 
 function timingFor(question: RealityQuestion, facts: SajuFacts): RealityTiming {
-  const outlook = buildSajuTimingOutlook(facts, question.domain);
+  const outlook =
+    question.intent === "timing"
+      ? buildSajuTimingOutlook(facts, question.domain)
+      : null;
 
   if (outlook) {
     return {
