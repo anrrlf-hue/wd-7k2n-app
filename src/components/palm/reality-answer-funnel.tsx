@@ -234,7 +234,7 @@ export function RealityAnswerFunnel({
             onClick={() => void submitQuestion()}
             className="mt-5 h-14 w-full rounded-full text-base"
           >
-            {loading ? "내 질문을 보고 있어요..." : "내 질문으로 현실답변 보기"}
+            {loading ? "내 질문을 보고 있어요..." : "내 질문으로 사주답변 보기"}
           </Button>
 
           <button
@@ -252,14 +252,14 @@ export function RealityAnswerFunnel({
 
       {stage === "preview" && answer && (
         <div>
-          <p className="section-eyebrow">{REALITY_ANSWER_DOMAIN_LABELS[answer.question.domain]} · 현실답변</p>
-          <h2 className="mt-2 text-2xl leading-snug font-semibold">이 질문에서 먼저 볼 것은 이것입니다</h2>
+          <p className="section-eyebrow">{REALITY_ANSWER_DOMAIN_LABELS[answer.question.domain]} · 내 질문 풀이</p>
+          <h2 className="mt-2 text-2xl leading-snug font-semibold">이 질문에 먼저 답하면</h2>
 
           <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
             <p className="text-sm text-muted-foreground">내 질문</p>
             <p className="mt-2 text-base leading-7 font-semibold">{answer.question.raw}</p>
             <div className="mt-4 border-t border-border pt-4">
-              <p className="text-sm text-muted-foreground">먼저 잡은 방향</p>
+              <p className="text-sm text-muted-foreground">먼저 답하면</p>
               <p className="mt-2 text-xl leading-8 font-semibold">{answer.headline}</p>
             </div>
           </div>
@@ -267,7 +267,7 @@ export function RealityAnswerFunnel({
           <div className="mt-5 rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <LockKeyhole className="size-4 text-(--gold)" />
-              <p className="font-semibold">사주 현실답변 전체 구성</p>
+              <p className="font-semibold">내 질문 사주풀이 전체 구성</p>
             </div>
             <ul className="mt-4 space-y-3">
               {INCLUDED.map((item) => (
@@ -291,7 +291,7 @@ export function RealityAnswerFunnel({
             className="mt-5 h-14 w-full rounded-full text-base"
           >
             <Sparkles className="size-4" />
-            현실답변 전체 미리보기
+            전체 사주답변 보기
           </Button>
           <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
             현재는 상품 검증 단계라 실제 결제 전 전체 구성을 미리 보여드립니다.
@@ -309,7 +309,7 @@ export function RealityAnswerFunnel({
 
       {stage === "result" && answer && (
         <div>
-          <p className="section-eyebrow">{REALITY_ANSWER_DOMAIN_LABELS[answer.question.domain]} · 사주 현실답변</p>
+          <p className="section-eyebrow">{REALITY_ANSWER_DOMAIN_LABELS[answer.question.domain]} · 내 질문 사주풀이</p>
           <h2 className="mt-2 text-2xl leading-snug font-semibold">{answer.question.raw}</h2>
 
           <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
