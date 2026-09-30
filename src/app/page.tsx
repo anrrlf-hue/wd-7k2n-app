@@ -24,9 +24,9 @@ export default function Home() {
         </Link>
 
         <div className={styles.benefitThirdCopy}>
-          궁금한 내용을 사주로 풀고,
+          궁금한 질문에
           <br />
-          현실에서 어떻게 움직일지 알려줍니다.
+          사주로 답합니다.
         </div>
         <Link
           href="/management"
