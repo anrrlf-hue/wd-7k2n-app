@@ -80,7 +80,7 @@ export default function DiagnosisPage() {
         return;
       }
       /* eslint-disable react-hooks/set-state-in-effect */
-      setFocus(saved.focus ?? saved.diagnosis.focus ?? urlFocus ?? "overall");
+      setFocus(parseSajuFocus(String(saved.focus ?? saved.diagnosis.focus ?? urlFocus ?? "overall")));
       setBirthDate(saved.birthDate);
       setGender(saved.gender);
       setKnowsTime(saved.knowsTime);
