@@ -12,6 +12,7 @@ import { buildMyeongsikView } from "@/lib/myeongsik-view";
 import { classifyWealthType } from "@/lib/wealth-type";
 import { getMoneyTendency } from "@/lib/money-tendency";
 import { SAJU_FOCUS_VALUES, parseSajuFocus } from "@/lib/saju-focus";
+import { buildFocusedSajuReport } from "@/lib/free-saju-focus-report";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
 // 요청 1회로 (1) 얕은 사주팔자+money-tendency(fallback/게이지 근거로 항상 유지)
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
   let deep: FullSajuDiagnosis["deep"] = null;
   let resultSource: FullSajuDiagnosis["resultSource"] = "fallback";
   let freeReport: FullSajuDiagnosis["freeReport"] = null;
+  let focusedReport: FullSajuDiagnosis["focusedReport"] = null;
   let daeunAnalysis: FullSajuDiagnosis["daeunAnalysis"] = null;
   let lifetimeStory: FullSajuDiagnosis["lifetimeStory"] = null;
   let myeongsik: FullSajuDiagnosis["myeongsik"] = null;
@@ -112,6 +114,11 @@ export async function POST(request: Request) {
 
     if (freeReportResult) {
       freeReport = { source: freeReportResult.source, report: freeReportResult.report };
+      focusedReport = buildFocusedSajuReport(
+        facts,
+        freeReportResult.report,
+        parseSajuFocus(parsed.data.focus),
+      );
     }
   } catch (err) {
     // facts 계산 자체(ssaju 등)가 실패한 경우. 로그만 남기고 fallback으로 응답한다.
@@ -124,6 +131,7 @@ export async function POST(request: Request) {
     resultSource,
     deep,
     freeReport,
+    focusedReport,
     birthInput: parsed.data,
     personalityInput: {
       personalityAnswers: parsed.data.personalityAnswers ?? null,
