@@ -15,6 +15,7 @@ import { decisionPointFor, parseRealityQuestion, type RealityQuestionParseResult
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 import type { PersonalityInput } from "@/lib/personality-check";
 import type { SajuFacts } from "@/lib/saju-facts";
+import { realityDomainForSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 import { buildSajuTimingOutlook } from "@/lib/saju-timing";
 
 const RealityAnswerDraftSchema = z.object({
@@ -29,21 +30,6 @@ const RealityAnswerDraftSchema = z.object({
   repeatingPattern: z.string().min(20),
   avoid: z.string().min(10),
   choose: z.string().min(10),
-  actions: z.tuple([
-    z.object({ title: z.string().min(2), detail: z.string().min(10), doneWhen: z.string().min(5) }),
-    z.object({ title: z.string().min(2), detail: z.string().min(10), doneWhen: z.string().min(5) }),
-    z.object({ title: z.string().min(2), detail: z.string().min(10), doneWhen: z.string().min(5) }),
-  ]),
-  timing: z.object({
-    now: z.string().min(10),
-    nextCheckpoint: z.string().min(10),
-    precision: z.enum(["daeun_only", "yearly", "seun", "monthly"]),
-    windows: z.array(z.object({
-      label: z.string().min(3),
-      reason: z.string().min(5),
-    })).optional(),
-    basis: z.string().min(10).optional(),
-  }),
   realityChecks: z.array(z.string().min(2)).min(1),
   uncertainty: z.array(z.string().min(2)),
   safetyNote: z.string().min(5).optional(),
@@ -53,7 +39,8 @@ export interface RealityAnswerEngineOptions {
   timeoutMs?: number;
   personality?: PersonalityInput | null;
   palm?: OnnxPalmLines | null;
-  domainOverride?: RealityAnswerDomain | null;
+  /** 사용자에게 보이는 5개 사주 선택. 내부 세부분류는 질문 내용으로 자동 결정한다. */
+  focusHint?: SajuFocus | null;
 }
 
 export type RealityAnswerEngineResult =
@@ -152,14 +139,16 @@ function hasUnsupportedTimingMention(
 
 function toQuestion(
   parse: RealityQuestionParseResult,
-  domainOverride?: RealityAnswerDomain | null,
+  focusHint?: SajuFocus | null,
 ): RealityQuestion | null {
-  const domain = domainOverride ?? parse.domain;
+  const domain = focusHint
+    ? realityDomainForSajuFocus(focusHint, parse.domain)
+    : parse.domain;
   if (!domain) return null;
-  const decisionPoint = domainOverride
-    ? decisionPointFor(parse.raw, domainOverride)
-    : parse.decisionPoint;
+
+  const decisionPoint = decisionPointFor(parse.raw, domain);
   if (!decisionPoint) return null;
+
   return {
     raw: parse.raw,
     domain,
@@ -174,13 +163,13 @@ export async function getRealityAnswer(
   options: RealityAnswerEngineOptions = {},
 ): Promise<RealityAnswerEngineResult> {
   const parse = parseRealityQuestion(rawQuestion);
-  const question = toQuestion(parse, options.domainOverride);
+  const question = toQuestion(parse, options.focusHint);
 
   if (!question) {
     return {
       status: "needs_clarification",
       parse,
-      reason: "질문의 분야나 실제 결정점을 아직 특정하기 어렵습니다. 연애·취업/이직·직장/사업·돈·인간관계·생활/건강·전체 흐름 중 가까운 주제를 하나 고르면 이어갈 수 있습니다.",
+      reason: "질문의 분야를 특정하기 어렵습니다. 처음 선택한 5개 사주 분야 중 가까운 주제를 기준으로 질문해 주세요.",
     };
   }
 
@@ -188,10 +177,7 @@ export async function getRealityAnswer(
     palm: options.palm,
     personality: options.personality,
   });
-  const timingOutlook =
-    question.intent === "timing"
-      ? buildSajuTimingOutlook(facts, question.domain)
-      : null;
+  const timingOutlook = buildSajuTimingOutlook(facts, question.domain);
 
   const fallback = buildRealityAnswerFallback({
     question,
@@ -227,7 +213,6 @@ export async function getRealityAnswer(
       ].join("\n");
 
       if (
-        question.intent === "timing" &&
         hasUnsupportedTimingMention(draftNarrative, fallback.timing)
       ) {
         fallbackReason = "timing-drift: model introduced a year/month outside calculated windows";
@@ -235,17 +220,11 @@ export async function getRealityAnswer(
       const candidate: RealityAnswer = {
         question,
         ...draft.data,
-        // 시기는 계산 엔진 결과만 사용한다. LLM이 다른 연도·월을 추가하지 못하게 고정한다.
-        headline: question.intent === "timing" ? fallback.headline : draft.data.headline,
         report: {
           ...draft.data.report,
-          timingReading:
-            question.intent === "timing"
-              ? fallback.report?.timingReading
-              : draft.data.report.timingReading,
+          timingReading: fallback.report?.timingReading,
         },
         timing: fallback.timing,
-        // LLM이 evidence를 새로 만들지 못하게 실제 selector 결과만 붙인다.
         evidence,
       };
 
