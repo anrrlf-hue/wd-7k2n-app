@@ -151,7 +151,6 @@ function FocusedFreeReport({
             step={"①-" + String(index + 1)}
             title={section.title}
             paragraph={section.paragraph}
-            showGuidance={index === 2 || index === 4}
           />
         ))}
       </div>
