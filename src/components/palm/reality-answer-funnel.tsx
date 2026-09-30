@@ -436,10 +436,10 @@ export function RealityAnswerFunnel({
             <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
               <p className="font-semibold">내 관리에 저장했습니다</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                받은 답과 행동 3가지를 저장했습니다. 하나씩 실행하고 체크해보세요.
+                받은 답과 눈여겨볼 시기, 현실에서 참고할 내용을 저장했습니다.
               </p>
               <Button asChild size="lg" className="mt-4 h-13 w-full rounded-full text-base">
-                <Link href="/management">내 관리에서 실행하기</Link>
+                <Link href="/management">내 관리에서 다시 보기</Link>
               </Button>
             </div>
           )}
