@@ -225,8 +225,18 @@ export function buildFocusedSajuReport(
       intro:
         "돈을 많이 벌 수 있는지 한 줄로 판단하지 않고, 돈을 만들고 지키고 큰 기회를 대하는 내 방식을 깊게 봅니다.",
       sections: [
-        p("내 재물 성향의 기본 구조", report.wealthStructure.text, report.wealthStructure.evidence),
-        p("돈을 만드는 방식", report.earningStyle.text, report.earningStyle.evidence),
+        p(
+          "내 재물 성향의 기본 구조",
+          report.wealthStructure.text +
+            " 여기서 중요한 것은 재물운의 크기를 점수처럼 보는 것이 아니라, 기회가 왔을 때 어떤 기준으로 선택하고 이후에 무엇을 남기는지를 함께 보는 것입니다.",
+          report.wealthStructure.evidence,
+        ),
+        p(
+          "돈을 만드는 방식",
+          report.earningStyle.text +
+            " 같은 재물 구조라도 실제 수입으로 이어지려면 내가 반복해서 만들 수 있는 일, 사람들이 값을 지불하는 이유, 오래 유지할 수 있는 방식이 현실에서 함께 확인되어야 합니다.",
+          report.earningStyle.evidence,
+        ),
         p(
           "돈을 지키고 새기 쉬운 패턴",
           report.keepingStyle.text + " " + report.leakPattern.text + " " + pattern.text,
