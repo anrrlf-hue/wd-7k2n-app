@@ -22,7 +22,7 @@ import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import type { WealthTypeResult } from "@/lib/wealth-type";
-import { initialRealityDomainForSajuFocus, type SajuFocus } from "@/lib/saju-focus";
+import type { SajuFocus } from "@/lib/saju-focus";
 import { track } from "@/lib/analytics";
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
@@ -707,7 +707,7 @@ export function PalmPageClient({
           personalityInput={personalityInput}
           palmLines={palmFacts?.onnxLines ?? null}
           resumeKey={resumeKey}
-          initialDomain={initialRealityDomainForSajuFocus(focus)}
+          initialFocus={focus}
           onStart={() => { setFunnelActive(true); setReadingOpen(false); }}
           onChapterChange={setChapter}
         />

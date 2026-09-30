@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
-import {
-  REALITY_ANSWER_DOMAINS,
-  type RealityAnswerDomain,
-} from "@/lib/reality-answer-contract";
 import { getRealityAnswer } from "@/lib/reality-answer-engine";
 import { computeSajuFacts, type SajuFacts } from "@/lib/saju-facts";
 import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { scorePersonalityCheck } from "@/lib/personality-check";
+import { SAJU_FOCUS_VALUES, type SajuFocus } from "@/lib/saju-focus";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 
 const onnxLineDetailSchema = z.object({
@@ -33,7 +30,7 @@ const onnxPalmLinesSchema = z.object({
 
 const bodySchema = z.object({
   question: z.string().trim().min(2).max(500),
-  domainHint: z.enum(REALITY_ANSWER_DOMAINS).nullable().optional(),
+  focusHint: z.enum(SAJU_FOCUS_VALUES).nullable().optional(),
   year: z.number().int().min(1900).max(2035),
   month: z.number().int().min(1).max(12),
   day: z.number().int().min(1).max(31),
@@ -81,14 +78,14 @@ export async function POST(request: Request) {
       timeoutMs: 9000,
       personality,
       palm: (parsed.data.palmLines ?? null) as OnnxPalmLines | null,
-      domainOverride: (parsed.data.domainHint ?? null) as RealityAnswerDomain | null,
+      focusHint: (parsed.data.focusHint ?? null) as SajuFocus | null,
     });
 
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
       {
-        error: "현실답변을 만드는 중 문제가 발생했습니다.",
+        error: "사주답변을 만드는 중 문제가 발생했습니다.",
         detail: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },

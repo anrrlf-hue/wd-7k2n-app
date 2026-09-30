@@ -36,14 +36,23 @@ export function parseSajuFocus(value: string | null | undefined): SajuFocus {
   return "overall";
 }
 
-/**
- * 무료 사주 관심사는 넓은 카테고리다.
- * 뒤의 현실질문은 더 세밀한 7개 분류를 유지하므로,
- * 오분류 위험이 적은 좁은 경우만 기본 선택값으로 넘긴다.
- */
-export function initialRealityDomainForSajuFocus(
+/** 사용자에게 보이는 선택은 처음부터 끝까지 이 5개로 유지한다.
+ * 내부 질문 엔진만 넓은 카테고리 안에서 세부 분야를 자동으로 나눈다. */
+export function realityDomainForSajuFocus(
   focus: SajuFocus,
-): "overall" | "money" | "wellbeing" | null {
-  if (focus === "overall" || focus === "money" || focus === "wellbeing") return focus;
-  return null;
+  parsedDomain: import("@/lib/reality-answer-contract").RealityAnswerDomain | null,
+): import("@/lib/reality-answer-contract").RealityAnswerDomain {
+  if (focus === "overall") return parsedDomain ?? "overall";
+  if (focus === "money") return "money";
+  if (focus === "wellbeing") return "wellbeing";
+
+  if (focus === "love_relationship") {
+    return parsedDomain === "relationship" ? "relationship" : "love";
+  }
+
+  if (focus === "work") {
+    return parsedDomain === "career" ? "career" : "work_business";
+  }
+
+  return "overall";
 }

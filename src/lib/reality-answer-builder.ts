@@ -1,5 +1,4 @@
 import type {
-  RealityAction,
   RealityAnswer,
   RealityEvidence,
   RealityQuestion,
@@ -8,7 +7,7 @@ import type {
 import { daeunFlavor } from "@/lib/fortune-candidates";
 import type { PersonalityInput } from "@/lib/personality-check";
 import type { SajuFacts } from "@/lib/saju-facts";
-import { buildSajuTimingOutlook, type SajuTimingOutlook } from "@/lib/saju-timing";
+import { buildSajuTimingOutlook } from "@/lib/saju-timing";
 
 export interface RealityAnswerBuildInput {
   question: RealityQuestion;
@@ -22,42 +21,108 @@ function level(personality: PersonalityInput | null | undefined, key: string): s
   return value && value !== "미확인" ? value : null;
 }
 
-function flowSentence(facts: SajuFacts): string {
-  if (!facts.currentDaeun) {
-    return "출생시간이 없거나 현재 대운 정보가 충분하지 않아, 지금의 시기를 좁혀 단정하지 않고 원국과 실제 상황을 중심으로 봅니다.";
-  }
-  return `${facts.currentDaeun.ageRange}세부터 이어지는 지금 대운은 ${daeunFlavor(facts.currentDaeun)} 흐름입니다. 이 흐름은 결과를 정해주는 예언이라기보다, 지금 어떤 선택을 더 의식해서 점검할지 정하는 참고축으로 씁니다.`;
-}
-
 function timingFor(question: RealityQuestion, facts: SajuFacts): RealityTiming {
-  const outlook =
-    question.intent === "timing"
-      ? buildSajuTimingOutlook(facts, question.domain)
-      : null;
+  const outlook = buildSajuTimingOutlook(facts, question.domain);
 
   if (outlook) {
     return {
       now: outlook.summary,
       nextCheckpoint:
-        "위 시기는 결과를 보장하는 날짜가 아니라 질문과 관련된 흐름이 상대적으로 더 부각되는 구간입니다. 실제 상황과 함께 보세요.",
+        "이 시기는 사건을 보장하는 날짜가 아니라, 질문과 관련된 흐름이 상대적으로 더 강해지는 구간입니다.",
       precision: outlook.precision,
-      windows: outlook.windows.map((window) => ({ label: window.label, reason: window.reason })),
+      windows: outlook.windows.map((window) => ({
+        label: window.label,
+        reason: window.reason,
+      })),
       basis: outlook.basis,
     };
   }
 
   const now = facts.currentDaeun
-    ? `현재는 ${facts.currentDaeun.ageRange}세부터 이어지는 ${daeunFlavor(facts.currentDaeun)} 흐름입니다. 세운·월운을 좁혀 말할 근거가 부족해 대운 수준까지만 봅니다.`
-    : "출생시간이 없거나 현재 대운 정보가 충분하지 않아 특정 시기를 좁혀 말하지 않습니다.";
+    ? `현재는 ${facts.currentDaeun.ageRange}세부터 이어지는 ${daeunFlavor(facts.currentDaeun)} 흐름입니다.`
+    : "출생시간이 없거나 현재 대운 정보가 충분하지 않아 연도·월까지 시기를 좁히지는 않습니다.";
 
-  const nextCheckpoint = facts.nextDaeun
-    ? `큰 흐름은 다음 대운(${facts.nextDaeun.ageRange}세부터)에서 다시 결이 달라집니다.`
-    : "현재 정보로는 특정 연도·월을 확정해서 말하지 않습니다.";
-
-  return { now, nextCheckpoint, precision: "daeun_only" as const };
+  return {
+    now,
+    nextCheckpoint: facts.hasTimeInput
+      ? "현재 확인 가능한 큰 흐름까지만 봅니다."
+      : "출생시간을 알면 현재 흐름과 시기를 더 세밀하게 볼 수 있습니다.",
+    precision: "daeun_only",
+  };
 }
 
-function patternFor(
+function timingLead(timing: RealityTiming): string | null {
+  return timing.windows?.[0]?.label ?? null;
+}
+
+function directAnswerFor(question: RealityQuestion, facts: SajuFacts, timing: RealityTiming): string {
+  const first = timingLead(timing);
+  const q = question.raw;
+
+  if (question.domain === "love") {
+    if (/재회|헤어진|이별/.test(q)) {
+      return first
+        ? `관계가 다시 움직이기 쉬운 시기는 ${first}을 먼저 눈여겨볼 수 있습니다. 다만 실제 재회는 상대방의 의사가 함께 맞아야 합니다.`
+        : "재회 가능성 자체는 사주만으로 확정하기 어렵고, 현재는 관계의 큰 흐름까지만 볼 수 있습니다.";
+    }
+    if (/결혼/.test(q)) {
+      return first
+        ? `결혼·관계 진전 흐름은 ${first}을 먼저 눈여겨볼 수 있습니다.`
+        : "결혼 시기를 연도·월까지 좁힐 근거는 부족하지만 관계운의 큰 흐름은 볼 수 있습니다.";
+    }
+    if (/여자친구|남자친구|연애|인연|소개팅|썸/.test(q)) {
+      return first
+        ? `새 인연이 들어오기 쉬운 흐름은 ${first}을 가장 먼저 눈여겨볼 수 있습니다.`
+        : "새 인연의 정확한 시기를 좁히기는 어렵지만, 관계운의 큰 흐름은 볼 수 있습니다.";
+    }
+    return first
+      ? `연애·관계 흐름은 ${first}에 상대적으로 더 살아나는 편입니다.`
+      : "연애·관계는 현재 큰 흐름과 타고난 관계 패턴을 중심으로 볼 수 있습니다.";
+  }
+
+  if (question.domain === "career") {
+    return first
+      ? `취업·이직과 같은 일의 이동 흐름은 ${first}을 먼저 눈여겨볼 수 있습니다.`
+      : "취업·이직의 정확한 월을 좁히기는 어렵지만, 일의 큰 변화 흐름은 볼 수 있습니다.";
+  }
+
+  if (question.domain === "work_business") {
+    return first
+      ? `직장·사업에서 변화나 기회가 부각되는 시기는 ${first}을 먼저 눈여겨볼 수 있습니다.`
+      : "직장·사업의 정확한 시기를 좁히기는 어렵지만, 현재 큰 흐름은 볼 수 있습니다.";
+  }
+
+  if (question.domain === "money") {
+    if (/(안 모|모이지|저축|새는)/.test(q)) {
+      const structural =
+        facts.wealthStarCount + facts.outputStarCount > facts.officerStarCount + facts.resourceStarCount
+          ? "돈을 만들 기회에는 반응이 빠른 편이지만, 들어온 흐름을 오래 유지하는 방식에서 차이가 생기기 쉬운 사주입니다."
+          : "한 번의 큰 기회보다 안정적으로 쌓이는 흐름에서 재물운이 더 잘 드러나는 사주입니다.";
+      return first ? `${structural} 재물 흐름은 ${first}을 먼저 눈여겨볼 수 있습니다.` : structural;
+    }
+    return first
+      ? `재물 흐름이 상대적으로 강해지는 시기는 ${first}을 먼저 눈여겨볼 수 있습니다.`
+      : "재물운의 정확한 월을 좁히기는 어렵지만, 재물의 큰 흐름은 볼 수 있습니다.";
+  }
+
+  if (question.domain === "relationship") {
+    return first
+      ? `새 관계나 기존 관계의 변화가 부각되는 시기는 ${first}을 먼저 눈여겨볼 수 있습니다.`
+      : "인간관계의 정확한 시기를 좁히기는 어렵지만, 관계 변화의 큰 흐름은 볼 수 있습니다.";
+  }
+
+  if (question.domain === "wellbeing") {
+    return first
+      ? `생활 리듬과 에너지 변화가 크게 느껴질 수 있는 시기는 ${first}을 먼저 눈여겨볼 수 있습니다.`
+      : "생활·건강은 질병을 예측하지 않고, 현재 생활 리듬과 큰 변화 흐름까지만 봅니다.";
+  }
+
+  return first
+    ? `전체 흐름에서 변화가 상대적으로 크게 부각되는 시기는 ${first}을 먼저 눈여겨볼 수 있습니다.`
+    : "현재는 앞으로의 큰 흐름과 변화 방향을 중심으로 볼 수 있습니다.";
+}
+
+function repeatingPatternFor(
   question: RealityQuestion,
   facts: SajuFacts,
   personality: PersonalityInput | null | undefined,
@@ -66,337 +131,221 @@ function patternFor(
   const plan = level(personality, "plan");
   const autonomy = level(personality, "autonomy");
   const change = level(personality, "change");
+  const emotion = level(personality, "emotionExpression");
 
-  switch (question.domain) {
-    case "career":
-      if (speed === "왼쪽") return "답답함이 커지면 조건을 다 확인하기 전에 결론부터 내릴 수 있습니다. 이번 결정에서는 '떠날 이유'와 '옮길 곳의 조건'을 따로 확인하는 게 중요합니다.";
-      if (plan === "왼쪽") return "준비를 오래 하는 힘은 있지만, 기준을 계속 보완하다 실제 지원 시점을 늦출 수 있습니다. 준비 완료 기준을 먼저 정하는 편이 좋습니다.";
-      return "현재 직장이 힘든 이유와 다음 직장에서 얻고 싶은 조건을 섞어서 판단하기 쉽습니다. 두 항목을 분리하면 결정이 선명해집니다.";
-    case "work_business":
-      if (change === "왼쪽") return "새 기회가 보이면 실행 속도가 빨라질 수 있습니다. 사업이나 새 역할에서는 가능성보다 먼저 '돈을 내는 사람·권한·비용'을 확인해야 합니다.";
-      return "좋은 가능성과 실제 사업성·역할 조건을 같은 것으로 보기 쉽습니다. 시작 여부보다 검증해야 할 현실 조건을 먼저 고정하는 편이 좋습니다.";
-    case "money":
-      if (change === "왼쪽") return "새로운 기회가 보이면 먼저 관심이 갈 수 있습니다. 재물 질문에서는 기회 자체와 실제로 감당할 수 있는 조건을 따로 보는 것이 중요합니다.";
-      if (change === "오른쪽") return "익숙하고 안정적인 방식을 선호해 새로운 재물 기회를 늦게 검토할 수 있습니다. 변화가 필요한지와 단순히 불안해서 피하는지를 구분해 보는 편이 좋습니다.";
-      return "재물운의 좋고 나쁨보다, 돈과 기회를 어떤 기준으로 선택하는지가 반복 패턴을 더 잘 보여줍니다.";
-    case "love":
-      if (autonomy === "오른쪽") return "관계를 지키려는 마음 때문에 상대의 반응을 기준으로 내 결정을 늦출 수 있습니다. 관계의 미래보다 반복되는 실제 행동이 달라지는지를 보는 편이 좋습니다.";
-      return "감정이 강할수록 '좋아하는 마음'과 '관계를 계속해도 되는 근거'를 같은 것으로 보기 쉽습니다. 두 가지를 따로 확인해야 합니다.";
-    case "relationship":
-      if (autonomy === "왼쪽") return "내 기준이 분명할수록 갈등에서 설명보다 결론을 먼저 제시할 수 있습니다. 상대를 설득하기 전에 서로 원하는 것을 한 번 분리해 확인하는 게 도움이 됩니다.";
-      return "갈등의 원인을 성격 전체로 확대하기보다, 반복되는 대화 장면 한두 개를 찾아 행동 단위로 보는 편이 해결에 가깝습니다.";
-    case "wellbeing":
-      return "피로와 스트레스를 사주 신호로 질병처럼 해석하면 실제 원인을 놓칠 수 있습니다. 생활 리듬과 증상을 기록하고, 필요한 경우 의료 확인으로 분리하는 게 중요합니다.";
-    case "overall":
-      if (speed === "왼쪽") return "변화가 필요하다고 느끼는 순간 한 번에 크게 바꾸려는 쪽으로 갈 수 있습니다. 작은 실험으로 먼저 확인하면 불필요한 손실을 줄일 수 있습니다.";
-      return "막연한 변화 욕구를 여러 문제에 동시에 적용하면 무엇이 효과가 있었는지 알기 어렵습니다. 지금 가장 바꾸고 싶은 것 하나부터 확인하는 편이 좋습니다.";
+  if (question.domain === "love" || question.domain === "relationship") {
+    if (emotion === "오른쪽") {
+      return "마음이 생겨도 바로 드러내기보다 안에서 오래 정리하는 편이라, 관계가 시작되기 전 상대가 내 마음을 알아차리기 어려울 수 있습니다.";
+    }
+    if (autonomy === "오른쪽") {
+      return "관계에서는 내 마음만큼 상대의 반응과 분위기를 함께 보는 편이라, 관계의 속도가 상대 상황에 따라 달라질 수 있습니다.";
+    }
+    return "관계가 시작되면 애매한 상태를 오래 끌기보다 내 기준을 빨리 세우는 편이라, 시작과 정리의 경계가 비교적 분명한 편입니다.";
   }
-}
 
-function action(title: string, detail: string, doneWhen: string): RealityAction {
-  return { title, detail, doneWhen };
-}
+  if (question.domain === "career" || question.domain === "work_business") {
+    if (change === "왼쪽") {
+      return "익숙한 자리에 오래 머무르기보다 새로운 역할이나 가능성이 보일 때 마음이 먼저 움직이는 편입니다.";
+    }
+    if (plan === "왼쪽") {
+      return "일에서는 준비와 구조를 먼저 잡는 편이라, 변화가 와도 기준이 분명할수록 힘을 쓰기 쉽습니다.";
+    }
+    return "일에서는 정해진 틀과 내 방식대로 움직일 여지를 모두 필요로 해서, 둘 중 하나만 강한 환경에서는 답답함을 느끼기 쉽습니다.";
+  }
 
-const ELEMENT_TONE: Record<string, string> = {
-  목: "한곳에 머무르기보다 성장할 방향과 다음 가능성을 찾을 때 힘이 살아나는 편입니다.",
-  화: "생각을 안에 오래 두기보다 표현하고 움직이며 반응을 확인할 때 흐름이 살아나는 편입니다.",
-  토: "급하게 판을 바꾸기보다 기준을 세우고 안정적으로 쌓아갈 때 강점이 살아나는 편입니다.",
-  금: "무엇을 할지보다 무엇을 하지 않을지 기준을 세울 때 판단이 선명해지는 편입니다.",
-  수: "한 번에 결론을 닫기보다 상황을 읽고 여러 가능성을 비교할 때 강점이 살아나는 편입니다.",
-};
+  if (question.domain === "money") {
+    if (change === "왼쪽") {
+      return "재물에서는 새로운 기회나 변화에 관심이 빠르게 가는 편이라, 기회가 여러 개 겹칠 때 흐름이 분산될 수 있습니다.";
+    }
+    return "재물에서는 큰 한 번보다 반복해서 이어지는 흐름에서 안정감을 느끼는 편입니다.";
+  }
+
+  if (question.domain === "wellbeing") {
+    if (speed === "왼쪽") {
+      return "생각이 생기면 빠르게 움직이는 편이라 바쁜 시기에는 피로를 뒤늦게 느낄 수 있습니다.";
+    }
+    return "생활에서는 충분히 정리하고 쉬는 시간이 있어야 다시 힘이 붙는 편입니다.";
+  }
+
+  return "변화가 필요하다고 느낄 때 한 영역만 따로 보기보다 여러 문제를 한꺼번에 연결해서 생각하기 쉬운 편입니다.";
+}
 
 function questionReadingFor(
   question: RealityQuestion,
   facts: SajuFacts,
   personality: PersonalityInput | null | undefined,
 ): string {
-  const opening =
-    ELEMENT_TONE[facts.dayElement] ??
-    "한쪽으로 밀어붙이기보다 상황을 읽고 자기 기준을 세울 때 강점이 살아나는 편입니다.";
+  const elementTone: Record<string, string> = {
+    목: "성장할 방향과 다음 가능성이 보일 때 마음이 움직이는 편입니다.",
+    화: "표현하고 움직이며 반응을 확인할 때 기운이 살아나는 편입니다.",
+    토: "기준을 세우고 안정적으로 쌓아갈 때 힘이 붙는 편입니다.",
+    금: "무엇을 할지보다 무엇을 남기고 정리할지 분명할 때 판단이 선명해지는 편입니다.",
+    수: "상황을 충분히 읽고 여러 가능성을 비교할 때 감각이 살아나는 편입니다.",
+  };
+  const opening = elementTone[facts.dayElement] ?? "상황을 읽고 자기 기준을 세울 때 강점이 살아나는 편입니다.";
+  const pattern = repeatingPatternFor(question, facts, personality);
 
-  const speed = level(personality, "speed");
-  const autonomy = level(personality, "autonomy");
-  const change = level(personality, "change");
+  if (question.domain === "love") {
+    return `${opening} 연애에서는 마음이 생기는 것과 실제 관계가 시작되는 속도가 꼭 같지는 않은 편입니다. ${pattern} 그래서 인연운이 들어오는 시기에는 새로운 만남 자체뿐 아니라 기존 관계가 갑자기 가까워지는 모습으로도 나타날 수 있습니다.`;
+  }
+
+  if (question.domain === "relationship") {
+    return `${opening} 사람관계에서는 가까워질수록 서로의 방식 차이가 더 또렷하게 보이는 편입니다. ${pattern} 관계운이 움직이는 시기에는 새로운 사람이 들어오기도 하고, 기존 관계의 거리감이나 역할이 달라지는 모습으로 나타날 수도 있습니다.`;
+  }
 
   if (question.domain === "career") {
-    const workTone =
-      facts.officerStarCount > facts.outputStarCount
-        ? "일에서는 역할과 책임이 분명해야 마음이 놓이는 쪽이 강합니다. 그래서 현재 자리가 답답해도 아무 방향으로나 벗어나기보다, 다음 자리의 역할과 기준이 분명할 때 움직임이 더 안정적입니다."
-        : facts.outputStarCount > facts.officerStarCount
-          ? "정해진 틀만 따르기보다 내가 직접 판단하고 결과를 만들어낼 여지가 있을 때 힘이 붙는 편입니다. 일이 막힐 때는 직장 자체보다 '내가 움직일 수 있는 범위가 너무 좁은가'가 더 큰 문제일 수 있습니다."
-          : "조직의 안정성과 내 방식대로 움직일 여지를 둘 다 필요로 하는 편입니다. 한쪽만 보고 직장을 고르면 처음에는 좋아 보여도 시간이 지나 같은 답답함이 반복될 수 있습니다.";
-    const personal =
-      speed === "왼쪽"
-        ? "결정이 빠른 편이라 답답함이 커졌을 때 퇴사 결론부터 앞서지 않도록 다음 조건을 먼저 확인하는 것이 중요합니다."
-        : "결정을 충분히 생각하는 편이라 준비만 길어지지 않도록 실제 지원이라는 확인 단계까지 이어가는 것이 중요합니다.";
-    return `${opening} ${workTone} ${personal}`;
+    return `${opening} 일에서는 단순히 직장을 옮기는 것보다 어떤 역할에서 내 힘을 제대로 쓰는지가 중요하게 나타나는 편입니다. ${pattern} 이동운이 강한 때에는 실제 이직뿐 아니라 역할 변경, 새로운 제안, 준비하던 기회의 가시화로 나타날 수 있습니다.`;
   }
 
   if (question.domain === "work_business") {
-    const workTone =
-      facts.wealthStarCount + facts.outputStarCount > facts.officerStarCount + facts.peerStarCount
-        ? "기회를 발견하면 직접 움직여 결과로 연결하려는 힘이 비교적 강한 편입니다. 다만 아이디어가 맞는지보다 실제 고객·권한·수익 구조가 확인됐는지가 사업과 새 역할의 성패를 가르는 현실 조건이 됩니다."
-        : "혼자 판을 크게 벌이기보다 역할과 조건이 분명한 상태에서 실력을 쌓을 때 안정적으로 힘을 내는 편입니다. 새로운 제안이나 독립은 '할 수 있느냐'보다 내게 남는 권한·경력·수익 구조가 있는지를 먼저 보는 것이 중요합니다.";
-    return `${opening} ${workTone} 지금 질문에서는 가능성 자체보다 실제로 검증할 수 있는 조건이 있는지가 핵심입니다.`;
+    return `${opening} 직장·사업에서는 내 판단으로 움직일 수 있는 범위와 결과가 눈에 보일 때 힘이 붙는 편입니다. ${pattern} 흐름이 강해지는 시기에는 새 역할, 사업 기회, 고객이나 제안이 늘어나는 형태처럼 여러 방식으로 나타날 수 있습니다.`;
   }
 
   if (question.domain === "money") {
     const moneyTone =
-      facts.wealthStarCount > 0 && facts.outputStarCount > 0
-        ? "돈과 기회가 보이면 그것을 실제 결과로 연결하려는 힘이 있는 편입니다. 반대로 들어오는 기회가 많아질수록 어디에 돈을 쓰고 무엇을 남길지 기준이 흐려지면 체감상 '버는데 남지 않는' 느낌이 커질 수 있습니다."
-        : facts.wealthStarCount === 0
-          ? "한 번의 큰 재물 기회를 기다리기보다 내가 잘하는 일을 반복해서 수입으로 연결하고, 들어온 돈을 지키는 구조를 만드는 쪽이 더 잘 맞습니다. 재물운의 좋고 나쁨보다 돈을 남기는 습관이 결과 차이를 크게 만들 수 있습니다."
-          : "돈을 다루는 감각과 실제 생활의 현금흐름은 따로 볼 필요가 있습니다. 기회가 있어도 지출 기준과 남기는 규칙이 없으면 재물 흐름을 체감하기 어렵습니다.";
-    const personal =
-      change === "왼쪽"
-        ? "새로운 가능성에 관심이 빨리 가는 편이라면, 재물 흐름이 좋아 보이는 시기에도 실제 조건을 따로 확인하는 것이 중요합니다."
-        : change === "오른쪽"
-          ? "안정을 중요하게 보는 편이라면, 좋은 흐름이 들어와도 익숙한 선택만 고집하지 않는지 함께 살펴볼 필요가 있습니다."
-          : "이번 질문에서는 재물운의 크기보다 어떤 방식으로 기회를 선택하고 유지하는지가 더 중요한 확인점입니다.";
-    return `${opening} ${moneyTone} ${personal}`;
-  }
-
-  if (question.domain === "love") {
-    const relationTone =
-      autonomy === "오른쪽"
-        ? "관계에서는 상대의 반응과 분위기를 많이 고려하는 편이라, 마음이 남아 있거나 관계를 지키고 싶을 때 내 기준을 뒤로 미룰 수 있습니다. 그래서 '좋아하는가'와 '이 관계가 실제로 나아지고 있는가'를 따로 보는 것이 중요합니다."
-        : "관계에서도 자기 기준이 분명한 편이라 애매한 상태를 오래 끌기보다 결론을 내리고 싶어질 수 있습니다. 다만 상대의 마음이나 관계의 미래는 내 사주만으로 정할 수 없으므로 실제 대화와 행동 변화를 함께 봐야 합니다.";
-    return `${opening} ${relationTone} 지금 질문에서는 감정의 크기보다 관계가 반복해서 보여주는 현실적인 패턴이 더 중요한 판단 기준입니다.`;
-  }
-
-  if (question.domain === "relationship") {
-    return `${opening} 사람 사이에서 의견이 다를 때는 누가 옳은지 빨리 정하기보다 서로 무엇을 중요하게 보는지 확인할수록 관계가 덜 소모됩니다. 특히 반복되는 충돌은 성격 전체의 문제가 아니라 같은 상황에서 비슷한 말과 행동이 되풀이되는지 살펴보는 편이 더 정확합니다. 지금 질문은 '내가 문제인가'보다 '어떤 장면에서 충돌이 반복되는가'로 바꾸어 보는 것이 좋습니다.`;
+      facts.wealthStarCount + facts.outputStarCount > facts.officerStarCount + facts.resourceStarCount
+        ? "재물에서는 기회를 발견하고 움직이는 힘이 먼저 드러나는 편입니다."
+        : "재물에서는 크게 움직이기보다 흐름을 안정적으로 이어가는 쪽이 더 잘 맞는 편입니다.";
+    return `${opening} ${moneyTone} ${pattern} 재물운이 강해지는 시기에는 수입 자체뿐 아니라 새로운 일거리, 거래, 보상, 돈과 관련된 결정이 많아지는 방식으로 나타날 수 있습니다.`;
   }
 
   if (question.domain === "wellbeing") {
-    return `${opening} 사주에서 보이는 기질은 생활 리듬을 돌아보는 참고는 될 수 있지만, 몸의 상태나 질병 여부를 판단하는 근거가 되지는 않습니다. 지금처럼 피로가 크게 느껴질 때는 버티는 성향이나 몰아서 움직이는 습관이 있는지 확인하고, 수면·휴식·증상의 실제 변화를 기록하는 쪽이 더 도움이 됩니다. 몸의 불편이 지속되면 사주 해석과 분리해 의료적으로 확인해야 합니다.`;
+    return `${opening} 생활·건강에서는 질병을 맞히는 방식이 아니라 에너지를 쓰고 회복하는 리듬을 봅니다. ${pattern} 흐름이 크게 바뀌는 때에는 일정, 수면, 활동량, 스트레스 체감이 평소와 달라지는 모습으로 느껴질 수 있습니다.`;
   }
 
-  return `${opening} 지금은 '무엇이 생길까'보다 내가 어떤 방식으로 변화를 선택하는지가 더 중요해 보입니다. 한 번에 여러 영역을 바꾸면 결과를 비교하기 어렵기 때문에, 가장 답답한 한 가지를 고르고 작게 시험해 보는 방식이 잘 맞습니다. 변화 자체가 목적이 아니라 실제로 삶이 나아지는지를 확인할 수 있어야 다음 선택도 선명해집니다.`;
+  return `${opening} 전체 사주에서는 한 분야만 떼기보다 관계·일·재물·생활의 흐름이 어느 시기에 함께 바뀌는지를 봅니다. ${pattern} 변화운이 강한 구간은 실제 사건 하나보다 여러 영역에서 생각과 선택이 동시에 달라지는 형태로 나타날 수 있습니다.`;
 }
 
 function currentFlowReadingFor(question: RealityQuestion, facts: SajuFacts): string {
   if (!facts.currentDaeun) {
-    return "출생시간이 없거나 현재 대운 정보가 충분하지 않아 지금의 시기를 세밀하게 나누어 말하기는 어렵습니다. 대신 현재 질문에서는 타고난 선택 방식과 지금 실제로 확인되는 상황을 중심으로 보는 편이 맞습니다. 시기를 억지로 좁히기보다 현실에서 한 번 행동해보고 그 결과를 다시 비교하는 방식이 더 안전합니다.";
+    return "출생시간이 없거나 현재 대운 정보가 충분하지 않아 지금의 시기를 세밀하게 나누어 말하기는 어렵습니다. 이 경우 타고난 사주 구조와 현재 질문의 성격을 중심으로 풀이합니다. 정확한 연도·월은 출생시간이 있을 때보다 넓게 봐야 합니다.";
   }
 
   const current = daeunFlavor(facts.currentDaeun);
   const next = facts.nextDaeun ? daeunFlavor(facts.nextDaeun) : null;
   const domainLine: Record<RealityQuestion["domain"], string> = {
-    career: "일에서는 지금 자리를 지킬지 옮길지보다, 어떤 역할과 환경에서 내 힘을 제대로 쓸 수 있는지가 더 크게 느껴질 수 있습니다.",
-    work_business: "일과 사업에서는 새로운 책임이나 기회를 그냥 지나치기보다 실제로 잡을 가치가 있는지 따져보고 싶어지는 때입니다.",
-    money: "돈에서는 들어오고 나가는 양보다 어떤 기회를 잡고 무엇을 지킬지에 대한 기준이 중요하게 느껴질 수 있습니다.",
-    love: "관계에서는 마음만으로 밀고 가기보다 약속과 행동이 실제로 맞는지 확인하고 싶어지는 때입니다.",
-    relationship: "사람 사이에서는 평소 넘기던 차이나 불편이 더 분명하게 느껴져 관계의 기준을 다시 세우고 싶어질 수 있습니다.",
-    wellbeing: "생활에서는 부담을 무작정 견디기보다 내 리듬이 어디서 무너지는지 확인하고 조정할 필요가 커질 수 있습니다.",
-    overall: "전체적으로는 익숙한 방식을 계속 가져갈지, 새로운 방식으로 바꿀지에 대한 생각이 커질 수 있습니다.",
+    love: "연애·인연에서는 만남의 시작과 기존 관계의 변화가 평소보다 더 크게 느껴질 수 있는 흐름입니다.",
+    career: "취업·이직에서는 새로운 자리나 역할에 대한 생각이 커지고, 실제 이동 가능성을 보게 되는 흐름입니다.",
+    work_business: "직장·사업에서는 역할과 기회가 바뀌거나 새로운 제안이 들어오는 문제에 시선이 가는 흐름입니다.",
+    money: "재물에서는 돈 자체보다 기회와 보상, 거래의 움직임이 평소보다 더 크게 느껴질 수 있는 흐름입니다.",
+    relationship: "사람관계에서는 새로운 연결과 기존 관계의 거리 변화가 눈에 띄기 쉬운 흐름입니다.",
+    wellbeing: "생활에서는 평소 유지하던 리듬이 달라지거나 에너지 사용 방식의 변화를 느끼기 쉬운 흐름입니다.",
+    overall: "전체적으로는 익숙한 흐름을 그대로 갈지 새로운 방향으로 옮길지에 대한 변화감이 커지는 시기입니다.",
   };
 
   const nextLine = facts.nextDaeun
-    ? `다음 대운으로 넘어가면 ${next} 쪽으로 결이 바뀌므로, 지금의 선택을 영구적인 결론으로 보기보다 현재 구간에서 확인할 것을 확인하고 다음 흐름에서 다시 비교하는 편이 좋습니다.`
-    : "다음 대운을 정밀하게 연결할 정보가 부족하므로 지금 단계에서는 현재 행동의 결과를 먼저 확인하는 것이 좋습니다.";
+    ? `다음 대운에서는 ${next} 쪽으로 결이 바뀌기 때문에 지금과는 다른 방식으로 같은 주제가 다시 나타날 수 있습니다.`
+    : "다음 대운의 세부 정보는 현재 답변에서 넓게만 봅니다.";
 
-  return `${facts.currentDaeun.ageRange}세부터 이어지는 지금 흐름은 ${current} 쪽에 무게가 실립니다. ${domainLine[question.domain]} ${nextLine}`;
+  return `${facts.currentDaeun.ageRange}세부터 이어지는 현재 대운은 ${current} 흐름입니다. ${domainLine[question.domain]} ${nextLine}`;
 }
 
 function solutionReadingFor(
   question: RealityQuestion,
-  choose: string,
-  avoid: string,
-  pattern: string,
-  timing: ReturnType<typeof timingFor>,
+  timing: RealityTiming,
+  repeatingPattern: string,
 ): string {
-  if (question.intent === "timing" && timing.windows && timing.windows.length > 0) {
-    return `${timing.windows[0].label}을 가장 먼저 눈여겨볼 수 있습니다. 다만 이 시기에 어떤 일이 반드시 생긴다는 뜻은 아닙니다. ${pattern} 시기 해석은 '언제 가능성이 상대적으로 부각되는가'를 보는 것이고, 실제 결과는 만남·채용·시장·상대방 의사처럼 사주 밖의 조건과 함께 결정됩니다.`;
+  const first = timingLead(timing);
+  const timingText = first
+    ? `${first}을 가장 먼저 눈여겨볼 수 있고, 이후 후보 시기는 ${(timing.windows ?? []).slice(1).map((x) => x.label).join(", ") || "현재 큰 흐름"}입니다.`
+    : "연도·월까지 좁힌 시기보다 현재 큰 흐름을 중심으로 보는 편이 맞습니다.";
+
+  if (question.domain === "love" || question.domain === "relationship") {
+    return `${timingText} 이 시기에 관계가 꼭 시작되거나 끝난다는 뜻은 아니지만, 만남과 관계 변화가 평소보다 부각되기 쉬운 구간으로 볼 수 있습니다. ${repeatingPattern} 실제 결과는 상대방의 의사와 만남 환경에 따라 달라질 수 있습니다.`;
   }
 
-  return `이 질문에 대한 사주풀이의 중심은 ${choose} ${pattern} 반대로 ${avoid} 쪽은 현재 흐름과 맞물릴 때 같은 고민을 반복하게 만들 수 있어 주의해서 보는 편이 좋습니다. 행동을 정하기 전에 먼저 이 답이 지금 상황과 얼마나 맞는지 확인해 보세요.`;
-}
-
-function domainPlan(question: RealityQuestion): {
-  headline: string;
-  avoid: string;
-  choose: string;
-  actions: [RealityAction, RealityAction, RealityAction];
-  realityChecks: string[];
-  safetyNote?: string;
-} {
-  const q = question.raw;
-
-  if (question.domain === "career") {
-    if (/취업|면접|지원|합격/.test(q)) {
-      return {
-        headline: "지원 수만 늘리기보다, 먼저 지원 방향과 실제 병목을 좁히는 편이 좋습니다.",
-        avoid: "어디든 붙어야 한다는 마음으로 서로 다른 직무에 같은 준비물을 반복해서 보내는 것.",
-        choose: "지원할 직무를 좁히고, 탈락이 많이 생기는 단계부터 보완하는 것.",
-        actions: [
-          action("지원 직무를 2개 이하로 좁히기", "원하는 직무와 실제 경력으로 지원 가능한 직무를 비교해 최대 2개만 남깁니다.", "지원 직무명이 2개 이하로 적혀 있음"),
-          action("최근 지원 5건을 단계별로 나누기", "서류·과제·면접 중 어디에서 가장 많이 멈췄는지 기록합니다.", "가장 많이 막힌 단계 1개가 특정됨"),
-          action("보여줄 결과물 하나 보강하기", "가장 중요한 직무에 맞춰 포트폴리오·경력기술·과제 예시 중 하나를 실제로 수정합니다.", "지원할 때 첨부하거나 보여줄 파일/링크 1개가 완성됨"),
-        ],
-        realityChecks: ["실제 채용공고 수요", "요구 경력·자격", "최근 서류·면접 피드백"],
-      };
-    }
-    return {
-      headline: "퇴사 결정보다 다음 자리의 조건을 먼저 확인한 뒤 움직이는 편이 좋습니다.",
-      avoid: "현재가 힘들다는 이유만으로 다음 직장의 조건을 확인하기 전에 퇴사일을 먼저 정하는 것.",
-      choose: "재직 상태에서 다음 직장의 조건과 실제 이동 가능성을 확인하는 것.",
-      actions: [
-        action("다음 직장의 필수조건 3개 적기", "연봉·업무·성장·근무형태 중 포기할 수 없는 조건을 3개만 정합니다.", "필수조건 3개가 문장으로 남음"),
-        action("실제 공고 5개 비교하기", "현재 직장과 비교해 좋아지는 조건과 나빠지는 조건을 표시합니다.", "공고 5개에 장단점 표시가 완료됨"),
-        action("퇴사 전 시장 반응 확인하기", "지원하거나 채용담당자와 접촉해 내 경력이 실제로 어떤 반응을 받는지 확인합니다.", "지원 2건 이상 또는 실제 채용 접점 1건이 생김"),
-      ],
-      realityChecks: ["실제 채용 가능성", "연봉·직무 범위", "퇴사 후 버틸 기간", "출퇴근·근무조건"],
-    };
-  }
-
-  if (question.domain === "work_business") {
-    if (/사업|창업|독립|장사/.test(q)) {
-      return {
-        headline: "시작 여부보다 먼저, 실제 고객이 돈을 낼 문제인지 검증하는 단계가 필요합니다.",
-        avoid: "준비가 됐다는 느낌만으로 고정비나 퇴사 같은 되돌리기 어려운 결정을 먼저 하는 것.",
-        choose: "작게 팔아본 뒤 실제 결제 반응을 보고 확대하는 것.",
-        actions: [
-          action("팔 상품을 한 문장으로 정하기", "누구의 어떤 문제를 무엇으로 해결하고 얼마를 받을지 한 문장으로 씁니다.", "고객·문제·상품·가격이 한 문장에 모두 있음"),
-          action("잠재고객 10명에게 실제 제안하기", "설명만 듣는 인터뷰가 아니라 가격이 포함된 실제 제안을 보냅니다.", "제안 기록 10건이 남음"),
-          action("확대 기준을 숫자로 정하기", "정한 기간 안에 결제 건수나 문의 건수가 어느 정도 나오면 확대할지 기준을 정합니다.", "확대·수정·중단을 가르는 숫자 기준이 있음"),
-        ],
-        realityChecks: ["실제 고객 수요", "가격 반응", "원가·고정비", "규제·계약 조건", "생활비 여유"],
-      };
-    }
-    return {
-      headline: "새 역할은 책임보다 권한·보상·경력가치가 함께 커지는지 확인한 뒤 결정하는 편이 좋습니다.",
-      avoid: "좋은 기회라는 말만 듣고 역할 범위와 지원 조건을 확인하지 않은 채 수락하는 것.",
-      choose: "6개월 뒤 내게 무엇이 남는 역할인지 확인하고 결정하는 것.",
-      actions: [
-        action("권한과 책임을 따로 적기", "새 역할에서 내가 책임질 것과 실제로 결정할 수 있는 것을 나눠 씁니다.", "책임 목록과 권한 목록이 각각 존재함"),
-        action("보상과 평가기준 확인하기", "급여·성과평가·승진·직급 중 무엇이 실제로 달라지는지 확인합니다.", "변경되는 보상/평가 조건이 문서나 대화로 확인됨"),
-        action("6개월 뒤 남는 경력자산 정하기", "이 역할을 맡았을 때 이력서에 남길 성과나 경험을 한 문장으로 씁니다.", "6개월 뒤 남길 결과 한 문장이 정해짐"),
-      ],
-      realityChecks: ["보상", "의사결정 권한", "업무량", "지원 인력·시간", "조직의 실제 기대"],
-    };
+  if (question.domain === "career" || question.domain === "work_business") {
+    return `${timingText} 이 시기에는 일의 이동, 역할 변화, 제안이나 기회가 평소보다 눈에 띄기 쉬운 흐름으로 볼 수 있습니다. ${repeatingPattern} 실제 변화의 형태는 회사 상황과 시장 조건에 따라 달라질 수 있습니다.`;
   }
 
   if (question.domain === "money") {
-    return {
-      headline: "재물운의 좋고 나쁨보다, 실제로 돈이 들어오고 남는 구조부터 확인하는 것이 먼저입니다.",
-      avoid: "사주 흐름만으로 투자·대출·고액 지출 결정을 확정하는 것.",
-      choose: "최근 현금흐름을 확인하고, 돈을 남기는 규칙 하나를 먼저 만드는 것.",
-      actions: [
-        action("최근 한 달 지출을 세 묶음으로 나누기", "고정비·생활비·선택지출로 나눠 실제 결제내역을 봅니다.", "최근 한 달 지출이 세 묶음으로 정리됨"),
-        action("소득 직후 남길 금액 정하기", "생활비를 쓰고 남기는 방식이 아니라 소득이 들어온 직후 먼저 남길 금액을 정합니다.", "자동이체 또는 별도 계좌 이동 금액이 정해짐"),
-        action("30일 뒤 잔액 변화 확인하기", "정한 규칙을 한 번 실행한 뒤 실제 잔액과 지출 변화를 비교합니다.", "시작 전·후 잔액을 비교할 수 있음"),
-      ],
-      realityChecks: ["실제 월소득", "고정·변동지출", "부채와 금리", "비상자금", "금융상품 조건"],
-    };
-  }
-
-  if (question.domain === "love") {
-    if (/재회|헤어진|이별/.test(q)) {
-      return {
-        headline: "그리움보다 먼저, 헤어진 원인이 실제로 달라졌는지를 확인하는 편이 좋습니다.",
-        avoid: "상대의 현재 의사를 확인하지 않은 채 반복해서 연락하거나 재회를 압박하는 것.",
-        choose: "헤어진 원인의 변화 여부를 확인하고, 연락한다면 목적이 분명한 한 번의 소통으로 제한하는 것.",
-        actions: [
-          action("헤어진 핵심 이유를 한 문장으로 적기", "감정 표현이 아니라 실제로 관계를 끝내게 만든 사건이나 반복 행동을 씁니다.", "핵심 이유가 한 문장으로 정리됨"),
-          action("달라진 증거를 확인하기", "그 문제가 지금 달라졌다고 볼 수 있는 실제 행동이나 상황이 있는지 적습니다.", "변화 증거가 있거나 없다는 판단이 가능함"),
-          action("연락 목적을 하나로 제한하기", "연락한다면 답을 강요하지 않고 확인하고 싶은 내용 하나만 전달합니다.", "한 번 보낼 메시지의 목적이 한 문장으로 정해짐"),
-        ],
-        realityChecks: ["상대방이 연락을 원하는지", "이별 원인의 실제 변화", "현재 각자의 관계 상태", "서로의 경계와 의사"],
-      };
-    }
-    return {
-      headline: "좋아하는 마음만으로 미래를 정하기보다, 반복되는 문제가 실제로 달라지는지를 기준으로 보는 편이 좋습니다.",
-      avoid: "상대의 마음이나 미래 행동을 사주로 대신 확정하는 것.",
-      choose: "관계에서 반복되는 문제 하나를 정하고, 대화 뒤 실제 행동 변화가 있는지 확인하는 것.",
-      actions: [
-        action("반복 갈등 한 가지 적기", "최근 가장 자주 반복된 갈등을 성격 평가가 아니라 행동으로 씁니다.", "반복 갈등이 구체적 행동 한 문장으로 정리됨"),
-        action("바라는 변화 한 가지 말하기", "상대에게 바라는 행동을 하나만 구체적으로 전달합니다.", "요구가 추상 표현이 아닌 행동 문장으로 전달됨"),
-        action("2~4주 동안 실제 변화 확인하기", "말보다 실제 행동이 달라지는지 관찰하고 기록합니다.", "같은 갈등의 반복 여부를 비교할 기록이 있음"),
-      ],
-      realityChecks: ["상대방의 의사", "신뢰와 약속 이행", "실제 갈등 빈도", "관계에서 지켜야 할 경계"],
-    };
-  }
-
-  if (question.domain === "relationship") {
-    return {
-      headline: "누가 문제인지 결론내리기보다, 반복해서 부딪히는 장면을 행동 단위로 바꾸어 보는 것이 먼저입니다.",
-      avoid: "한 번의 갈등을 상대나 내 성격 전체의 문제로 확대하는 것.",
-      choose: "최근 갈등에서 반복되는 말과 행동을 찾고, 내가 바꿀 부분과 지켜야 할 경계를 나누는 것.",
-      actions: [
-        action("최근 갈등 3건을 기록하기", "누구와 무슨 상황에서 어떤 말로 시작됐는지 짧게 적습니다.", "갈등 사례 3건이 같은 형식으로 기록됨"),
-        action("다음 대화에서 요구를 되묻기", "내 결론을 말하기 전에 상대가 원하는 것을 한 문장으로 확인합니다.", "상대 요구를 되묻는 대화를 1회 실행함"),
-        action("2주 뒤 반복 여부 비교하기", "같은 유형의 갈등 횟수가 줄었는지 확인합니다.", "시작 전과 2주 뒤 반복 횟수를 비교할 수 있음"),
-      ],
-      realityChecks: ["상대의 실제 행동", "조직·가족의 관계 구조", "반복되는 갈등의 맥락", "내가 통제할 수 없는 상대의 선택"],
-    };
+    return `${timingText} 재물운이 강하다는 것은 돈이 자동으로 늘어난다는 뜻보다 돈과 관련된 기회·보상·결정이 더 많이 움직일 수 있다는 의미에 가깝습니다. ${repeatingPattern} 실제 금액의 결과는 소득과 지출, 계약과 시장 상황에 따라 달라질 수 있습니다.`;
   }
 
   if (question.domain === "wellbeing") {
-    return {
-      headline: "사주로 질병을 판단하기보다, 지금 무너진 생활 리듬과 실제 불편을 먼저 확인하는 것이 좋습니다.",
-      avoid: "피로·통증·수면 문제를 사주 때문이라고 단정해 필요한 의료 확인을 미루는 것.",
-      choose: "생활 리듬을 기록하면서 증상이 지속되거나 심하면 의료기관에서 확인하는 것.",
-      actions: [
-        action("7일간 수면과 피로 기록하기", "취침·기상시간과 하루 피로도를 간단히 적습니다.", "7일 기록이 연속으로 남음"),
-        action("하루 종료 시간을 정하기", "업무나 활동을 멈추고 쉬기 시작할 시간을 하나 정합니다.", "정한 종료 시간을 최소 5일 지켜봄"),
-        action("지속되는 불편은 의료 확인하기", "증상이 계속되거나 악화되면 의료기관에서 상태를 확인합니다.", "필요한 경우 진료 예약 또는 상담을 완료함"),
-      ],
-      realityChecks: ["실제 증상과 지속기간", "수면시간", "복용 중인 약", "기존 질환", "의료진의 평가"],
-      safetyNote: "이 답변은 질병 진단이나 치료를 대신하지 않습니다.",
-    };
+    return `${timingText} 생활 리듬의 변화가 크게 느껴질 수 있는 구간으로 참고할 수 있습니다. ${repeatingPattern} 질병이나 치료 시기를 뜻하는 것은 아니며 실제 증상은 사주와 분리해 확인해야 합니다.`;
   }
 
-  return {
-    headline: "한 번에 크게 바꾸기보다, 지금 가장 바꾸고 싶은 것 하나를 작은 실험으로 확인하는 편이 좋습니다.",
-    avoid: "막연한 변화 욕구 때문에 일·관계·돈을 동시에 크게 바꾸는 것.",
-    choose: "변화 하나를 정해 짧게 시험하고, 실제 결과를 보고 확대할지 결정하는 것.",
-    actions: [
-      action("바꾸고 싶은 것 하나 고르기", "일·관계·돈·생활 중 지금 가장 답답한 영역 하나만 선택합니다.", "변화 대상이 하나로 정해짐"),
-      action("30일짜리 작은 실험 만들기", "되돌릴 수 있는 범위에서 행동 하나를 30일 동안 시험합니다.", "무엇을 얼마나 할지 적힌 실험 계획이 있음"),
-      action("유지·확대·중단 기준 정하기", "30일 뒤 어떤 결과면 계속하고 어떤 결과면 멈출지 미리 정합니다.", "세 가지 판단 기준이 문장으로 정리됨"),
-    ],
-    realityChecks: ["실제 비용", "시간 여유", "가족·직장 등 이해관계", "되돌릴 수 있는 범위"],
-  };
+  return `${timingText} 이 구간은 한 가지 사건을 예고한다기보다 관계·일·재물·생활 중 여러 영역에서 변화가 겹쳐 보일 수 있는 시기입니다. ${repeatingPattern} 실제로 어떤 변화가 나타나는지는 현재 생활 조건에 따라 달라질 수 있습니다.`;
+}
+
+function cautionFor(question: RealityQuestion): string {
+  switch (question.domain) {
+    case "love":
+    case "relationship":
+      return "상대방의 마음이나 행동을 내 사주만으로 확정할 수는 없습니다.";
+    case "career":
+      return "사주 시기가 실제 합격이나 채용 결과를 보장하는 것은 아닙니다.";
+    case "work_business":
+      return "사주 시기가 실제 사업 성공이나 계약 결과를 보장하는 것은 아닙니다.";
+    case "money":
+      return "재물운이 강한 시기와 실제 투자·수익 결과는 같은 뜻이 아닙니다.";
+    case "wellbeing":
+      return "사주로 질병이나 치료 결과를 판단하지 않습니다.";
+    case "overall":
+      return "좋은 흐름이 보여도 모든 영역이 동시에 같은 결과로 움직인다는 뜻은 아닙니다.";
+  }
+}
+
+function keyPointFor(question: RealityQuestion, timing: RealityTiming): string {
+  const first = timingLead(timing);
+  if (first) return `${first}이 이 질문에서 가장 먼저 눈여겨볼 시기입니다.`;
+  return "현재는 정확한 월보다 큰 흐름을 중심으로 보는 것이 맞습니다.";
+}
+
+function realityChecksFor(question: RealityQuestion): string[] {
+  switch (question.domain) {
+    case "love":
+      return ["실제 만남 환경", "상대방의 의사와 현재 관계 상태"];
+    case "relationship":
+      return ["상대방의 실제 반응", "현재 관계의 거리와 상황"];
+    case "career":
+      return ["실제 채용시장과 지원 조건", "현재 경력과 준비 상태"];
+    case "work_business":
+      return ["실제 조직·시장 상황", "제안·고객·계약 같은 현실 조건"];
+    case "money":
+      return ["실제 소득·지출·자산 상태", "계약·시장·금융 조건"];
+    case "wellbeing":
+      return ["실제 수면·피로·생활 리듬", "증상이 있으면 의료적 확인"];
+    case "overall":
+      return ["현재 생활환경", "관계·일·재물에서 실제로 바뀌고 있는 조건"];
+  }
 }
 
 export function buildRealityAnswerFallback(input: RealityAnswerBuildInput): RealityAnswer {
-  const plan = domainPlan(input.question);
-  const uncertainty: string[] = [
-    "현재 V1은 대운 수준의 흐름만 사용하며 특정 월·날짜를 사주 근거로 정하지 않습니다.",
-  ];
-  if (!input.facts.hasTimeInput) {
-    uncertainty.push("출생시간이 없어 시주와 정밀 대운 정보 일부를 사용하지 않습니다.");
-  }
-
-  const repeatingPattern = patternFor(input.question, input.facts, input.personality);
   const timing = timingFor(input.question, input.facts);
-  const timingHeadline =
-    input.question.intent === "timing" && timing.windows?.length
-      ? timing.windows[0].label + "을 가장 먼저 눈여겨볼 시기로 봅니다."
-      : null;
+  const repeatingPattern = repeatingPatternFor(input.question, input.facts, input.personality);
   const report = {
     questionReading: questionReadingFor(input.question, input.facts, input.personality),
     currentFlow: currentFlowReadingFor(input.question, input.facts),
-    solutionReading: solutionReadingFor(input.question, plan.choose, plan.avoid, repeatingPattern, timing),
+    solutionReading: solutionReadingFor(input.question, timing, repeatingPattern),
     timingReading: timing.windows?.length
       ? timing.now + " " + timing.windows.map((window) => window.label + ": " + window.reason).join(" ")
-      : undefined,
+      : timing.now,
   };
+
+  const uncertainty = [
+    "표시한 시기는 사건을 보장하는 날짜가 아니라 해당 주제가 상대적으로 부각되는 구간입니다.",
+  ];
+  if (!input.facts.hasTimeInput) {
+    uncertainty.push("출생시간이 없어 시주와 세밀한 시기 해석에는 제한이 있습니다.");
+  }
 
   return {
     question: input.question,
-    headline: timingHeadline ?? plan.headline,
+    headline: directAnswerFor(input.question, input.facts, timing),
     report,
     whyNow: report.currentFlow,
     repeatingPattern,
-    avoid: plan.avoid,
-    choose: plan.choose,
-    actions: plan.actions,
+    avoid: cautionFor(input.question),
+    choose: keyPointFor(input.question, timing),
     timing,
-    realityChecks: plan.realityChecks,
+    realityChecks: realityChecksFor(input.question),
     evidence: input.evidence,
     uncertainty,
-    safetyNote: plan.safetyNote,
+    safetyNote:
+      input.question.domain === "wellbeing"
+        ? "이 답변은 질병 진단이나 치료를 대신하지 않습니다."
+        : undefined,
   };
 }
