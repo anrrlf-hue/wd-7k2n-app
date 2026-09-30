@@ -193,6 +193,7 @@ export function validateRealityAnswer(answer: RealityAnswer): RealityAnswerValid
     answer.report?.questionReading ?? "",
     answer.report?.currentFlow ?? "",
     answer.report?.solutionReading ?? "",
+    answer.report?.timingReading ?? "",
     answer.whyNow,
     answer.repeatingPattern,
     answer.avoid,
