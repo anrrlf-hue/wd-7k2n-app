@@ -110,6 +110,9 @@ export function decisionPointFor(raw: string, domain: RealityAnswerDomain | null
   if (!domain) return null;
 
   if (domain === "career") {
+    if (/(언제|시기|몇월|몇 월|몇년|몇 년)/.test(text)) {
+      return "취업·이직 흐름이 상대적으로 강해지는 시기가 언제인지";
+    }
     if (text.includes("이직") || text.includes("퇴사")) {
       return "퇴사부터 할지, 재직 상태에서 다음 직장을 준비할지";
     }
@@ -120,6 +123,9 @@ export function decisionPointFor(raw: string, domain: RealityAnswerDomain | null
   }
 
   if (domain === "work_business") {
+    if (/(언제|시기|몇월|몇 월|몇년|몇 년)/.test(text)) {
+      return "직장·사업과 관련된 변화나 기회가 상대적으로 부각되는 시기가 언제인지";
+    }
     if (text.includes("사업") || text.includes("창업") || text.includes("독립")) {
       return "바로 독립할지, 실제 유료 수요를 먼저 검증할지";
     }
@@ -130,6 +136,9 @@ export function decisionPointFor(raw: string, domain: RealityAnswerDomain | null
   }
 
   if (domain === "love") {
+    if (/(언제|시기|몇월|몇 월|몇년|몇 년)/.test(text)) {
+      return "연애·인연 흐름이 상대적으로 살아나는 시기가 언제인지";
+    }
     if (text.includes("재회")) return "다시 연락을 시도할지, 관계를 정리할지";
     if (text.includes("헤어") || text.includes("계속") || text.includes("만나")) {
       return "관계를 계속 이어갈지, 반복되는 문제를 기준으로 다시 판단할지";
@@ -139,6 +148,9 @@ export function decisionPointFor(raw: string, domain: RealityAnswerDomain | null
   }
 
   if (domain === "money") {
+    if (/(언제|시기|몇월|몇 월|몇년|몇 년)/.test(text)) {
+      return "재물과 기회 흐름이 상대적으로 강해지는 시기가 언제인지";
+    }
     if (/(안 모|모이지|저축)/.test(text)) {
       return "수입을 더 늘리기보다, 먼저 지출과 남기는 구조를 바꿀지";
     }
@@ -149,14 +161,23 @@ export function decisionPointFor(raw: string, domain: RealityAnswerDomain | null
   }
 
   if (domain === "relationship") {
-    return "상대를 바꾸려 하기보다, 반복되는 갈등에서 내가 조정할 행동과 지켜야 할 경계를 무엇으로 둘지";
+    if (/(언제|시기|몇월|몇 월|몇년|몇 년)/.test(text)) {
+      return "새로운 인간관계나 관계 변화가 상대적으로 부각되는 시기가 언제인지";
+    }
+    return "현재 인간관계에서 반복되는 흐름과 관계의 특징이 무엇인지";
   }
 
   if (domain === "wellbeing") {
-    return "사주로 건강을 단정하지 않고, 생활 리듬을 먼저 조정할지 의료 확인이 필요한지 구분할지";
+    if (/(언제|시기|몇월|몇 월|몇년|몇 년)/.test(text)) {
+      return "생활 리듬과 에너지 변화가 상대적으로 크게 느껴지는 시기가 언제인지";
+    }
+    return "생활 리듬과 스트레스 패턴이 어떤 방식으로 나타나는지";
   }
 
-  return "지금 바로 큰 변화를 만들지, 작은 실험으로 방향을 확인한 뒤 확대할지";
+  if (/(언제|시기|몇월|몇 월|몇년|몇 년)/.test(text)) {
+    return "앞으로 흐름의 변화가 상대적으로 크게 부각되는 시기가 언제인지";
+  }
+  return "앞으로 어떤 흐름이 두드러지고 무엇이 달라질 가능성이 있는지";
 }
 
 export function parseRealityQuestion(raw: string): RealityQuestionParseResult {

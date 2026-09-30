@@ -112,9 +112,26 @@ export default function ManagementPage() {
           <p className="mt-2 text-xs leading-5 text-muted-foreground">{birthLabel(selected)}</p>
 
           <section className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
-            <p className="section-eyebrow">받은 현실답변</p>
+            <p className="section-eyebrow">받은 사주답변</p>
             <p className="mt-2 text-xl leading-8 font-semibold">{selected.answer.headline}</p>
           </section>
+
+          {selected.answer.timing.windows && selected.answer.timing.windows.length > 0 && (
+            <section className="mt-4 rounded-2xl border border-(--gold-soft) bg-card p-5">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="size-4 text-(--gold)" />
+                <h2 className="font-semibold">눈여겨볼 시기</h2>
+              </div>
+              <div className="mt-3 space-y-2">
+                {selected.answer.timing.windows.map((window, index) => (
+                  <div key={window.label} className="rounded-xl bg-accent p-3">
+                    <p className="font-semibold">{index === 0 ? "가장 먼저 · " : ""}{window.label}</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{window.reason}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {selected.answer.report ? (
             <section className="mt-4 space-y-3">
@@ -131,7 +148,7 @@ export default function ManagementPage() {
                 </p>
               </div>
               <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
-                <h2 className="font-semibold">이 고민을 풀어가는 방향</h2>
+                <h2 className="font-semibold">이 답을 어떻게 이해할까요?</h2>
                 <p className="mt-3 text-base leading-8 text-muted-foreground">
                   {selected.answer.report.solutionReading}
                 </p>
@@ -143,17 +160,10 @@ export default function ManagementPage() {
             </section>
           )}
 
-          <section className="mt-5">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="section-eyebrow">지금 할 행동</p>
-                <h2 className="mt-1 text-xl font-semibold">{done}/3 완료</h2>
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {selected.status === "completed" ? "모두 완료" : "하나씩 체크"}
-              </span>
-            </div>
-
+          <details className="mt-5 rounded-2xl border border-border bg-card p-4">
+            <summary className="cursor-pointer text-sm font-medium">
+              필요하면 참고할 현실 포인트 · {done}/3 확인
+            </summary>
             <div className="mt-3 space-y-3">
               {selected.answer.actions.map((action, index) => {
                 const checked = selected.actionDone[index] ?? false;
@@ -163,10 +173,8 @@ export default function ManagementPage() {
                     type="button"
                     onClick={() => toggleAction(index as 0 | 1 | 2)}
                     className={
-                      "w-full rounded-2xl border p-5 text-left transition-colors " +
-                      (checked
-                        ? "border-(--gold-soft) bg-(--gold-soft)"
-                        : "border-border bg-card")
+                      "w-full rounded-xl border p-4 text-left transition-colors " +
+                      (checked ? "border-(--gold-soft) bg-(--gold-soft)" : "border-border bg-card")
                     }
                   >
                     <div className="flex gap-3">
@@ -178,38 +186,35 @@ export default function ManagementPage() {
                           {action.title}
                         </p>
                         <p className="mt-2 text-sm leading-6 text-muted-foreground">{action.detail}</p>
-                        <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                          완료 기준 · {action.doneWhen}
-                        </p>
                       </div>
                     </div>
                   </button>
                 );
               })}
             </div>
-          </section>
+          </details>
 
-          <section className="mt-5 rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="size-4 text-(--gold)" />
-              <h2 className="font-semibold">다시 확인할 때</h2>
-            </div>
-            <p className="mt-3 text-base leading-7">{selected.answer.timing.nextCheckpoint}</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              관리 기준일 · {dateLabel(selected.checkDueAt)}
-            </p>
-          </section>
+          {(!selected.answer.timing.windows || selected.answer.timing.windows.length === 0) && (
+            <section className="mt-5 rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="size-4 text-(--gold)" />
+                <h2 className="font-semibold">현재 시기 흐름</h2>
+              </div>
+              <p className="mt-3 text-base leading-7">{selected.answer.timing.now}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{selected.answer.timing.nextCheckpoint}</p>
+            </section>
+          )}
 
           <section className="mt-5 rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <NotebookPen className="size-4 text-(--gold)" />
-              <h2 className="font-semibold">실행하면서 메모</h2>
+              <h2 className="font-semibold">답변을 보며 메모</h2>
             </div>
             <textarea
               value={noteDraft}
               maxLength={2000}
               onChange={(event) => setNoteDraft(event.target.value)}
-              placeholder="해본 것, 달라진 점, 다시 궁금해진 것을 적어두세요."
+              placeholder="느낀 점, 실제로 맞았던 부분, 다시 궁금해진 것을 적어두세요."
               className="mt-3 min-h-28 w-full resize-none rounded-2xl border border-border bg-background p-4 text-sm leading-6 outline-none focus:border-(--gold)"
             />
             <Button
@@ -254,7 +259,7 @@ export default function ManagementPage() {
             onClick={toggleStatus}
             className="mt-6 h-14 w-full rounded-full text-base"
           >
-            {selected.status === "completed" ? "다시 진행 중으로 바꾸기" : "이 질문은 여기까지 완료"}
+            {selected.status === "completed" ? "다시 확인 중으로 바꾸기" : "이 답변 확인 완료"}
           </Button>
 
           <Button asChild size="lg" variant="outline" className="mt-3 h-13 w-full rounded-full text-base">
@@ -284,17 +289,17 @@ export default function ManagementPage() {
         <h1 className="mt-2 text-2xl leading-snug font-semibold">
           받은 답을 보고 끝내지 않고,
           <br />
-          실제 행동까지 이어갑니다
+          궁금했던 답과 시기를 다시 확인합니다
         </h1>
         <p className="mt-3 text-base leading-7 text-muted-foreground">
-          내가 물어본 질문과 받은 현실답변, 지금 할 행동을 한곳에서 다시 볼 수 있습니다.
+          내가 물어본 질문과 받은 사주답변, 지금 할 행동을 한곳에서 다시 볼 수 있습니다.
         </p>
 
         {records.length === 0 ? (
           <div className="mt-8 rounded-2xl border border-border bg-card p-6 text-center">
             <p className="font-semibold">아직 저장된 현실답변이 없습니다.</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              사주·손금 풀이 뒤 궁금한 것을 물어보고 현실답변 전체를 열면 여기에 자동으로 저장됩니다.
+              사주·손금 풀이 뒤 궁금한 것을 물어보고 사주답변 전체를 열면 여기에 자동으로 저장됩니다.
             </p>
             <Button asChild size="lg" className="mt-5 h-13 w-full rounded-full text-base">
               <Link href="/diagnosis">사주부터 시작하기</Link>
@@ -328,7 +333,7 @@ export default function ManagementPage() {
                   </p>
 
                   <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                    <span>{record.status === "completed" ? "완료" : `행동 ${done}/3`}</span>
+                    <span>{record.status === "completed" ? "확인 완료" : `참고 ${done}/3`}</span>
                     <span>{dateLabel(record.createdAt)}</span>
                   </div>
                 </button>

@@ -41,6 +41,7 @@ const reportMod = await import(pathToFileURL(path.join(root, "src/lib/free-repor
 const schemaMod = await import(pathToFileURL(path.join(root, "src/lib/free-report-schema.ts")).href);
 const focusMod = await import(pathToFileURL(path.join(root, "src/lib/saju-focus.ts")).href);
 const focusReportMod = await import(pathToFileURL(path.join(root, "src/lib/free-saju-focus-report.ts")).href);
+const personalityMod = await import(pathToFileURL(path.join(root, "src/lib/personality-check.ts")).href);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -93,7 +94,7 @@ assert(
 const resultSource = fs.readFileSync(path.join(root, "src/components/diagnosis/result-step.tsx"), "utf8");
 assert(resultSource.includes("집중풀이"), "focused deep-dive UI missing");
 assert(resultSource.includes("이 분야는 전체 사주보다 더 깊게 봅니다"), "focused-vs-overall distinction missing");
-assert(resultSource.includes("전체 사주도 함께 보기"), "full Saju continuation UI missing");
+assert(resultSource.includes("나의 종합 사주"), "broad overall Saju UI missing");
 assert(resultSource.includes("연애·결혼에서의 나"), "love section missing from free result");
 assert(resultSource.includes("생활 리듬과 스트레스 패턴"), "life rhythm section missing from free result");
 assert(!resultSource.includes("나의 재물사주"), "money-only free-result heading remains");
@@ -113,5 +114,31 @@ assert(diagnosisSource.includes('type Step = "focus"'), "focus must be the first
 assert(focusStepSource.includes("어떤 사주가"), "diagnosis focus chooser missing");
 assert(focusStepSource.includes("전체 사주"), "overall Saju choice missing");
 
-console.log("PASS FREE SAJU V4: 5 choices + focused deep reading + broad overall Saju");
+const personalityIds = personalityMod.PERSONALITY_CHECK_ITEMS.map((item) => item.id);
+assert(
+  JSON.stringify(personalityIds) === JSON.stringify([
+    "speed",
+    "plan",
+    "change",
+    "autonomy",
+    "emotionExpression",
+    "socialEnergy",
+  ]),
+  "self-check must use six universal, non-finance axes",
+);
+assert(!personalityIds.includes("spendAwareness"), "finance-biased spend question remains");
+assert(!personalityIds.includes("savingConsistency"), "finance-biased saving question remains");
+
+const myeongsikSource = fs.readFileSync(path.join(root, "src/components/diagnosis/myeongsik-section.tsx"), "utf8");
+assert(
+  myeongsikSource.includes("오행에서 이렇게 참고해보세요"),
+  "Ohaeng guidance must be visible without a tap",
+);
+assert(
+  !myeongsikSource.includes("<EvidenceToggle"),
+  "Ohaeng guidance is still hidden behind a toggle",
+);
+assert(resultSource.includes("다른 영역은 한눈에"), "focused reading should summarize other areas instead of repeating full sections");
+
+console.log("PASS FREE SAJU V5: 5 choices + focused reading + universal self-check + visible Ohaeng guidance");
 hooks.deregister?.();

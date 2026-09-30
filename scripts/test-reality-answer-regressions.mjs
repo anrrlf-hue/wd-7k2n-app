@@ -62,10 +62,10 @@ const personality = {
   check: personalityMod.scorePersonalityCheck({
     speed: 2,
     plan: 2,
-    risk: 2,
+    change: 2,
     autonomy: 2,
-    spendAwareness: 4,
-    savingConsistency: 3,
+    emotionExpression: 4,
+    socialEnergy: 3,
   }),
 };
 
@@ -151,6 +151,31 @@ assert(
   new Set(outputs.map((x) => x.firstAction)).size >= 7,
   "Reality actions are too generic across domains",
 );
+
+const timingParsed = questionMod.parseRealityQuestion("여자친구는 언제 생길까요?");
+assert(timingParsed.domain === "love", "T01: timing love question domain failed");
+assert(timingParsed.intent === "timing", "T01: timing intent failed");
+const timingQuestion = {
+  raw: timingParsed.raw,
+  domain: timingParsed.domain,
+  intent: timingParsed.intent,
+  decisionPoint: timingParsed.decisionPoint,
+};
+const timingEvidence = evidenceMod.selectRealityEvidence(facts, timingQuestion.domain, { personality, palm: null });
+const timingAnswer = builderMod.buildRealityAnswerFallback({
+  question: timingQuestion,
+  facts,
+  evidence: timingEvidence,
+  personality,
+});
+assert(timingAnswer.timing.precision === "monthly", "T01: monthly timing precision missing");
+assert((timingAnswer.timing.windows?.length ?? 0) >= 1, "T01: timing windows missing");
+assert(/20\d{2}년/.test(timingAnswer.headline), "T01: direct answer must lead with a year/month window");
+assert(
+  !timingAnswer.headline.includes("기록") && !timingAnswer.headline.includes("행동"),
+  "T01: timing headline drifted back to action advice",
+);
+console.log("PASS T01 question-first timing answer");
 
 const ambiguous = questionMod.parseRealityQuestion("요즘 어떻게 해야 할지 모르겠어요");
 assert(ambiguous.domain === null, "Ambiguous question should request clarification instead of inventing a domain");

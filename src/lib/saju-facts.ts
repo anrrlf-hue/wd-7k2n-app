@@ -49,6 +49,7 @@ export interface PillarStageFact {
 }
 
 export interface SajuFacts {
+  gender: "남" | "여";
   hasTimeInput: boolean;
   dayStem: string;
   dayStemKo: string;
@@ -319,6 +320,7 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
   ).length;
 
   return {
+    gender: input.gender,
     hasTimeInput: input.hour !== null,
     dayStem: result.dayStem,
     dayStemKo: result.pillarDetails.day.stemKo,

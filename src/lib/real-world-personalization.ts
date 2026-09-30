@@ -255,37 +255,40 @@ export function buildRealWorldPersonalization(
   if (relationText) sentences.push(`${relationText}입니다.`);
 
   if (check) {
-    evidenceParts.push("6문항 speed/plan/autonomy/risk/spendAwareness/savingConsistency");
+    evidenceParts.push("6문항 speed/plan/change/autonomy/emotionExpression/socialEnergy");
 
-    const risk = check.levels.risk;
-    if (risk === "왼쪽") {
-      sentences.push("새로운 기회가 보이면 안정성만 지키기보다 가능성을 먼저 살펴보는 편이라, 좋은 기회를 빠르게 잡을 수 있지만 조건 확인이 짧아지지 않도록 주의가 필요합니다.");
-    } else if (risk === "오른쪽") {
-      sentences.push("기회보다 손실 가능성을 먼저 살피는 편이라 큰 실수를 줄이는 데 강점이 있지만, 충분히 감당할 수 있는 기회까지 너무 일찍 닫지는 않는지 확인할 필요가 있습니다.");
-    } else if (risk === "중간") {
-      sentences.push("기회와 안정 사이에서 어느 한쪽으로 치우치기보다 상황을 보고 판단하는 편입니다.");
+    const change = check.levels.change;
+    if (change === "왼쪽") {
+      sentences.push("익숙한 방식만 유지하기보다 새로운 환경이나 가능성을 먼저 살펴보는 편입니다. 변화가 많을 때는 흥미가 생기지만 동시에 여러 선택을 열어두면 집중이 분산될 수 있습니다.");
+    } else if (change === "오른쪽") {
+      sentences.push("새로운 변화보다 익숙하고 검증된 방식을 선호하는 편입니다. 안정감은 강점이지만 상황이 이미 달라졌는데도 기존 방식을 오래 붙들고 있지는 않은지 돌아볼 필요가 있습니다.");
+    } else if (change === "중간") {
+      sentences.push("변화와 안정 사이에서 한쪽으로 치우치기보다 상황을 보고 선택하는 편입니다.");
     }
 
-    const spend = check.levels.spendAwareness;
-    if (spend === "왼쪽") {
-      sentences.push("돈이 어디로 나가는지 비교적 잘 파악하려는 편이라, 지출 흐름이 흐트러졌을 때도 원인을 찾기 쉬운 편입니다.");
-    } else if (spend === "오른쪽") {
-      sentences.push("큰 지출보다 작은 지출이 여러 번 쌓일 때 전체 흐름을 놓치기 쉬워, 돈이 새는 느낌이 생기면 먼저 사용처를 묶어서 보는 것이 도움이 됩니다.");
+    const emotion = check.levels.emotionExpression;
+    if (emotion === "왼쪽") {
+      sentences.push("감정이 생기면 비교적 바로 표현하는 편이라 관계에서 의도가 잘 전달될 수 있습니다. 다만 감정이 큰 순간에는 말의 속도가 생각보다 빨라질 수 있습니다.");
+    } else if (emotion === "오른쪽") {
+      sentences.push("감정을 바로 드러내기보다 안에서 정리한 뒤 표현하는 편입니다. 차분하게 말할 수 있다는 장점이 있지만 상대가 내 상태를 알아차리기 어려울 때도 있습니다.");
     }
 
-    const saving = check.levels.savingConsistency;
-    if (saving === "왼쪽") {
-      sentences.push("저축이나 남겨두는 돈을 일정하게 유지하려는 힘이 있어, 한 번 만든 기준을 오래 가져가는 방식이 잘 맞습니다.");
-    } else if (saving === "오른쪽") {
-      sentences.push("저축의 폭이 상황에 따라 달라지는 편이라, 의지보다 자동이체나 고정 금액처럼 흔들리지 않는 장치를 두는 편이 더 안정적입니다.");
+    const social = check.levels.socialEnergy;
+    if (social === "왼쪽") {
+      sentences.push("사람과 이야기하고 함께 움직일 때 에너지가 살아나는 편입니다. 혼자 오래 고민하기보다 대화 속에서 생각이 선명해질 수 있습니다.");
+    } else if (social === "오른쪽") {
+      sentences.push("혼자 정리할 시간이 있어야 에너지가 다시 차는 편입니다. 일정과 관계가 겹칠수록 의식적으로 혼자 쉬는 시간을 확보하는 것이 중요합니다.");
     }
   }
 
-  if (mbti) evidenceParts.push(`MBTI ${mbti}`);
+  if (mbti) {
+    evidenceParts.push(`MBTI ${mbti}`);
+    sentences.push(`${ei(mbti)}이며, ${sn(mbti)}에 가깝습니다.`);
+  }
 
   const { structured, relational } = derivePersonalityAxes(facts, personality);
-  sentences.push(realLifeScene(structured, relational, "money"));
   sentences.push(realLifeScene(structured, relational, "work"));
+  sentences.push(realLifeScene(structured, relational, "relationship"));
   sentences.push(strengthFlip(structured, relational));
 
   return {

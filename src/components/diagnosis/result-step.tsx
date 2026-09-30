@@ -49,6 +49,43 @@ const BROAD_SECTIONS = [
   ["의사결정 스타일", "decisionStyle"],
 ] as const;
 
+function firstSentence(text: string): string {
+  const match = text.match(/^(.+?[.!?요])(?:\s|$)/);
+  return match?.[1] ?? text;
+}
+
+function OtherAreasSummary({
+  report,
+  focus,
+}: {
+  report: FreeSajuReport;
+  focus: NonNullable<FullSajuDiagnosis["focusedReport"]>["focus"];
+}) {
+  const areas = [
+    { key: "temperament", title: "타고난 성향", paragraph: report.temperament },
+    { key: "love_relationship", title: "연애·인간관계", paragraph: report.relationshipStyle },
+    { key: "work", title: "일·직업·사업", paragraph: report.jobOrientation },
+    { key: "money", title: "돈·재물", paragraph: report.wealthStructure },
+    { key: "wellbeing", title: "생활·건강", paragraph: report.lifeRhythm },
+  ].filter((item) => item.key !== focus);
+
+  return (
+    <section className="mt-7">
+      <p className="section-eyebrow">다른 영역은 한눈에</p>
+      <div className="mt-3 grid gap-3">
+        {areas.map((item) => (
+          <div key={item.key} className="rounded-2xl border border-border bg-card p-4">
+            <p className="text-sm font-semibold">{item.title}</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {firstSentence(item.paragraph.text)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function BroadFreeReport({
   report,
   wealthType,
@@ -114,7 +151,6 @@ function FocusedFreeReport({
             step={"①-" + String(index + 1)}
             title={section.title}
             paragraph={section.paragraph}
-            showGuidance={index === 2 || index === 4}
           />
         ))}
       </div>
@@ -221,12 +257,14 @@ export function ResultStep({
             </section>
           )}
 
-          <div className="mt-7">
-            <p className="section-eyebrow">
-              {focusedReport ? "전체 사주도 함께 보기" : "나의 종합 사주"}
-            </p>
-            <BroadFreeReport report={report} wealthType={wealthType} />
-          </div>
+          {focusedReport ? (
+            <OtherAreasSummary report={report} focus={focusedReport.focus} />
+          ) : (
+            <div className="mt-7">
+              <p className="section-eyebrow">나의 종합 사주</p>
+              <BroadFreeReport report={report} wealthType={wealthType} />
+            </div>
+          )}
         </>
       ) : (
         <ReportSection title="나의 기본 성향">
