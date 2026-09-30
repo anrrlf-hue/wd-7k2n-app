@@ -24,9 +24,9 @@ export default function Home() {
         </Link>
 
         <div className={styles.benefitThirdCopy}>
-          궁금한 질문에
+          궁금한 질문이
           <br />
-          사주로 답합니다.
+          현실로 이어집니다
         </div>
         <Link
           href="/management"
