@@ -251,7 +251,7 @@ function solutionReadingFor(
     : "연도·월까지 좁힌 시기보다 현재 큰 흐름을 중심으로 보는 편이 맞습니다.";
 
   if (question.domain === "love" || question.domain === "relationship") {
-    return `${timingText} 이 시기에 관계가 반드시 시작되거나 끝난다는 뜻은 아니지만, 만남과 관계 변화가 평소보다 부각되기 쉬운 구간으로 볼 수 있습니다. ${repeatingPattern} 실제 결과는 상대방의 의사와 만남 환경에 따라 달라질 수 있습니다.`;
+    return `${timingText} 이 시기에 관계가 꼭 시작되거나 끝난다는 뜻은 아니지만, 만남과 관계 변화가 평소보다 부각되기 쉬운 구간으로 볼 수 있습니다. ${repeatingPattern} 실제 결과는 상대방의 의사와 만남 환경에 따라 달라질 수 있습니다.`;
   }
 
   if (question.domain === "career" || question.domain === "work_business") {
