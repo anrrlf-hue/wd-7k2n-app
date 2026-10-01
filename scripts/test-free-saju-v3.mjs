@@ -104,15 +104,29 @@ const diagnosisSource = fs.readFileSync(path.join(root, "src/app/diagnosis/page.
 const focusStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/saju-focus-step.tsx"), "utf8");
 
 assert(!homeSource.includes("LandingFocusSelector"), "focus choices must not cover the first landing screen");
-assert(homeSource.includes("내 사주 무료 보기"), "simple first-screen Saju CTA missing");
+assert(homeSource.includes("내 궁금증 답과 시기 보기"), "question-first primary CTA missing");
+assert(homeSource.includes("전체 사주 무료로 보기"), "free Saju secondary CTA missing");
+assert(homeSource.includes("/diagnosis?mode=question"), "primary CTA must enter question-first mode");
+assert(homeSource.includes("/diagnosis?mode=free"), "secondary CTA must preserve free Saju mode");
 assert(
   homeSource.includes("당신의 궁금증에") &&
     homeSource.includes("답과 시기를 짚어드립니다"),
   "third first-screen benefit was not updated",
 );
-assert(diagnosisSource.includes('type Step = "focus"'), "focus must be the first diagnosis step");
+assert(diagnosisSource.includes('type Step ='), "diagnosis step state missing");
+assert(diagnosisSource.includes('| "question"'), "question-first step missing from diagnosis flow");
+assert(diagnosisSource.includes('/api/reality-answer'), "question-first flow must call the answer/timing API");
+assert(diagnosisSource.includes('mode === "question"'), "question-first mode routing missing");
 assert(focusStepSource.includes("어떤 사주가"), "diagnosis focus chooser missing");
 assert(focusStepSource.includes("전체 사주"), "overall Saju choice missing");
+
+const questionStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/question-first-step.tsx"), "utf8");
+const questionResultSource = fs.readFileSync(path.join(root, "src/components/diagnosis/question-answer-result.tsx"), "utf8");
+assert(questionStepSource.includes("지금 가장 궁금한 것을"), "direct question input screen missing");
+assert(questionStepSource.includes("답과 함께"), "question promise copy missing");
+assert(questionResultSource.includes("눈여겨볼 시기"), "answer result timing section missing");
+assert(questionResultSource.includes("손금까지 함께 보면 더 입체적으로"), "optional palm enhancement CTA missing");
+assert(questionResultSource.includes("전체 사주 무료로 보기"), "free Saju escape hatch missing from question answer");
 
 const personalityStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/personality-step.tsx"), "utf8");
 assert(personalityStepSource.includes("MBTI"), "MBTI selection must remain");
@@ -150,5 +164,5 @@ assert(!reportSectionSource.includes("왜 이렇게 봤나요"), "why-explanatio
 assert(!reportSectionSource.includes("어떻게 할까요"), "action-guidance toggle remains in free report");
 assert(resultSource.includes("다른 영역은 한눈에"), "focused reading should summarize other areas instead of repeating full sections");
 
-console.log("PASS FREE SAJU V7: MBTI-only UI + focused reading + visible Ohaeng + no why/how toggles");
+console.log("PASS FREE SAJU V8: question-first business funnel + preserved free Saju + MBTI-only UI");
 hooks.deregister?.();
