@@ -307,7 +307,6 @@ export function ResultStep({
           <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} focus={focus} />
         </div>
       </div>
-      </div>
     </div>
   );
 }
