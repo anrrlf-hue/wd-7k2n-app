@@ -3,86 +3,40 @@
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepBadge } from "@/components/diagnosis/step-badge";
-import { PERSONALITY_CHECK_ITEMS } from "@/lib/personality-check";
 import { MBTI_TYPES, type MbtiType } from "@/lib/mbti-facts";
 
-const LIKERT = [1, 2, 3, 4, 5];
-
-/** 무료 사주 흐름 안에 있는 정식 스텝. "손금은 유료 보너스가 아니다"와 같은
- * 원칙으로, 성향정보도 결과 맨 아래 곁다리가 아니라 입력 단계 중 하나로
- * 다룬다. 완전히 건너뛸 수 있어 이탈 위험을 늘리지 않는다.
- * "정밀 심리검사"가 아니라 "간단 성향 체크"라고만 표기한다(6문항).
- * MBTI+6문항은 real-world-personalization.ts에서 실제로 쓰인다 — 사주를
- * 맞추는 보정용이 아니라, 사주에서 나온 구조가 현실에서 어떻게 나타나는지
- * 구체화하는 개인화 정보다.
- *
- * 가독성(재수정): 폰트는 유지하되(14~16px), 라벨 자체를 짧게 줄여서
- * (PERSONALITY_CHECK_ITEMS 참고) 320px에서도 한 줄 안에 들어오게 했다 —
- * 글자를 줄이는 대신 문구를 줄이는 방향. 1~5 버튼은 항상 5등분 flex-1이라
- * 정렬이 항목마다 흔들리지 않는다. */
+/**
+ * 사용자 요청에 따라 별도 6문항 성향 체크는 제거하고 MBTI만 선택적으로 받는다.
+ * MBTI는 사주 계산값을 바꾸지 않고, 결과 문장을 조금 더 개인화하는 보조정보로만 쓴다.
+ */
 export function PersonalityStep({
-  personalityAnswers,
-  onPersonalityChange,
   mbti,
   onMbtiChange,
   onNext,
-  onSkip,
   onBack,
 }: {
-  personalityAnswers: Record<string, number>;
-  onPersonalityChange: (id: string, value: number) => void;
   mbti: MbtiType | "모름";
   onMbtiChange: (v: MbtiType | "모름") => void;
   onNext: () => void;
-  onSkip: () => void;
   onBack: () => void;
 }) {
-  const answeredCount = Object.keys(personalityAnswers).length;
-
   return (
     <div className="flex flex-1 flex-col">
       <StepBadge icon={<Sparkles className="size-5" />} />
 
       <h2 className="text-2xl font-semibold tracking-tight">
-        조금 더 나답게
-        <br />볼까요?
+        MBTI를 알고 있다면
+        <br />함께 볼게요
       </h2>
       <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-        사주에서 읽은 모습이 실제 나와 어디가 맞고 다른지 비교하는 6문항이에요. 사주 계산 결과를 바꾸는 데 쓰지 않아요.
+        MBTI는 사주 계산을 바꾸지 않고, 풀이를 조금 더 나답게 표현하는 데만 참고합니다.
+        모르면 그냥 넘어가도 됩니다.
       </p>
 
-      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">왼쪽에 가까우면 1, 오른쪽에 가까우면 5를 골라요.</p>
-      <div className="mt-4 space-y-4">
-        {PERSONALITY_CHECK_ITEMS.map((item) => (
-          <div key={item.id} className="rounded-xl border border-border p-3.5">
-            <div className="flex items-start justify-between gap-3 text-base leading-snug text-foreground/90">
-              <span className="flex-1">{item.leftLabel}</span>
-              <span className="flex-1 text-right">{item.rightLabel}</span>
-            </div>
-            <div className="mt-3 flex gap-1.5">
-              {LIKERT.map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => onPersonalityChange(item.id, v)}
-                  aria-pressed={personalityAnswers[item.id] === v}
-                  aria-label={`${item.leftLabel}에서 ${item.rightLabel}까지 5단계 중 ${v}`}
-                  className={`flex-1 rounded-lg border py-3 text-base transition-colors ${
-                    personalityAnswers[item.id] === v
-                      ? "border-(--gold) bg-(--gold-soft) text-(--gold)"
-                      : "border-border text-foreground/80"
-                  }`}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
       <div className="mt-6">
-        <label htmlFor="mbti" className="text-[15px] font-medium">MBTI를 알고 있다면 함께 비교해볼게요</label>
+        <label htmlFor="mbti" className="text-[15px] font-medium">
+          내 MBTI
+        </label>
         <select
           id="mbti"
           value={mbti}
@@ -98,27 +52,13 @@ export function PersonalityStep({
         </select>
       </div>
 
-      <div className="mt-auto flex flex-col gap-2 pt-10">
-        <div className="flex gap-2">
-          <Button variant="outline" size="lg" onClick={onBack} className="h-13 rounded-full">
-            이전
-          </Button>
-          <Button
-            size="lg"
-            disabled={answeredCount > 0 && answeredCount < PERSONALITY_CHECK_ITEMS.length}
-            onClick={onNext}
-            className="h-13 flex-1 rounded-full text-base"
-          >
-            {answeredCount === 0
-              ? "다음"
-              : answeredCount < PERSONALITY_CHECK_ITEMS.length
-                ? `${answeredCount}/${PERSONALITY_CHECK_ITEMS.length}문항 응답 중`
-                : "다음"}
-          </Button>
-        </div>
-        <button type="button" onClick={onSkip} className="text-center text-[15px] text-muted-foreground">
-          이건 건너뛰고 바로 결과 볼게요
-        </button>
+      <div className="mt-auto flex gap-2 pt-10">
+        <Button variant="outline" size="lg" onClick={onBack} className="h-13 rounded-full">
+          이전
+        </Button>
+        <Button size="lg" onClick={onNext} className="h-13 flex-1 rounded-full text-base">
+          다음
+        </Button>
       </div>
     </div>
   );
