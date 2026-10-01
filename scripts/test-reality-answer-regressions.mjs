@@ -192,6 +192,48 @@ assert(/20\d{2}년/.test(timingAnswer.headline), "T01: direct love answer must i
 assert(!/(기록|행동|30일)/.test(timingAnswer.headline), "T01: timing answer drifted back to coaching");
 console.log("PASS T01 direct love answer + timing");
 
+const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+const currentYear = nowKst.getUTCFullYear();
+const nextYear = currentYear + 1;
+
+function buildScopedAnswer(raw, expectedDomain) {
+  const parsed = questionMod.parseRealityQuestion(raw);
+  assert(parsed.domain === expectedDomain, `scope test: expected ${expectedDomain}, got ${parsed.domain}`);
+  assert(parsed.timeScope, `scope test: time scope missing for "${raw}"`);
+  const question = {
+    raw: parsed.raw,
+    domain: parsed.domain,
+    intent: parsed.intent,
+    decisionPoint: parsed.decisionPoint,
+    timeScope: parsed.timeScope,
+  };
+  const evidence = evidenceMod.selectRealityEvidence(facts, question.domain, { personality, palm: null });
+  return { parsed, answer: builderMod.buildRealityAnswerFallback({ question, facts, evidence, personality }) };
+}
+
+const thisYear = buildScopedAnswer("올해 사업이 잘될까요?", "work_business");
+assert(
+  thisYear.answer.timing.windows?.every((w) => w.label.startsWith(String(currentYear) + "년")),
+  "T02: '올해' question leaked timing outside the current year",
+);
+assert(thisYear.answer.timing.basis?.includes("올해"), "T02: scoped timing basis must explain the user's range");
+console.log("PASS T02 '올해' timing is constrained to current year");
+
+const nextYearAnswer = buildScopedAnswer("내년 연애운은 언제 좋아질까요?", "love");
+assert(
+  nextYearAnswer.answer.timing.windows?.every((w) => w.label.startsWith(String(nextYear) + "년")),
+  "T03: '내년' question leaked timing outside next year",
+);
+console.log("PASS T03 '내년' timing is constrained to next year");
+
+const explicitMonth = buildScopedAnswer(`${nextYear}년 3월 이직 흐름은 어떤가요?`, "career");
+assert(
+  explicitMonth.answer.timing.windows?.length === 1 &&
+    explicitMonth.answer.timing.windows[0].label.startsWith(`${nextYear}년 3월`),
+  "T04: explicit year/month question did not stay inside that month",
+);
+console.log("PASS T04 explicit year/month timing is constrained to that month");
+
 // Customer UI regression: 5 visible choices, no why/how evidence UI, no action checklist.
 const funnelSource = fs.readFileSync(path.join(root, "src/components/palm/reality-answer-funnel.tsx"), "utf8");
 const reportSectionSource = fs.readFileSync(path.join(root, "src/components/diagnosis/report-section.tsx"), "utf8");
@@ -221,6 +263,10 @@ assert(
   palmDetectionSource.includes("handLandmarkerPromise = null") &&
     palmDetectionSource.includes("shouldSkipSecondaryPoseModel"),
   "UI11: palm model retry/mobile pressure guards missing",
+);
+assert(
+  palmPageSource.includes("setFunnelActive(true)") && palmPageSource.includes("setReadingOpen(false)"),
+  "UI12: question users must return to the combined answer before the long palm reading",
 );
 
 console.log("REALITY ANSWER REGRESSION RESULTS");
