@@ -708,6 +708,7 @@ export function PalmPageClient({
           birthInput={birthInput}
           personalityInput={personalityInput}
           palmLines={palmFacts?.onnxLines ?? null}
+          palmFacts={palmFacts}
           resumeKey={resumeKey}
           initialFocus={focus}
           initialQuestion={initialQuestion}
