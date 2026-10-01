@@ -230,13 +230,31 @@ function timingWindowCopy(
       : rank === 1
         ? "첫 흐름 뒤에 결과를 확인하거나 다음 움직임이 이어지기 쉬운 두 번째 구간입니다."
         : "앞선 흐름이 약했다면 같은 주제가 다시 살아날 수 있는 후속 구간입니다.";
+  const roleMeaning =
+    rank === 0
+      ? "이때는 변화가 ‘처음 크게 보이는 장면’을 눈여겨보는 게 핵심입니다."
+      : rank === 1
+        ? "이때는 앞서 시작된 변화가 실제 결과로 이어지는지 확인하는 성격이 더 강합니다."
+        : "이때는 앞서 미뤄졌거나 놓친 주제가 다시 움직이는 후속 성격이 더 강합니다.";
+  const positiveLead =
+    rank === 0
+      ? "가장 강한 구간에서는"
+      : rank === 1
+        ? "두 번째 구간에서는"
+        : "후속 구간에서는";
+  const cautionLead =
+    rank === 0
+      ? "첫 움직임이 강해도"
+      : rank === 1
+        ? "앞선 흐름이 이어진다고 보여도"
+        : "다시 기회가 보인다고 해도";
 
   if (!signal) {
     return {
       reason: `${role} ${base.reason}`,
-      meaning: base.meaning,
-      positive: base.positive,
-      caution: base.caution,
+      meaning: `${base.meaning} ${roleMeaning}`,
+      positive: `${positiveLead} ${base.positive}`,
+      caution: `${cautionLead} ${base.caution}`,
     };
   }
 
@@ -279,9 +297,9 @@ function timingWindowCopy(
 
   return {
     reason: `${role} 이번 구간은 ${signalLabel} 신호가 상대적으로 더 두드러집니다.`,
-    meaning: domainMeaning,
-    positive: SIGNAL_POSITIVE[signal],
-    caution: signal === "재성" && domain === "love" ? base.caution : SIGNAL_CAUTION[signal],
+    meaning: `${domainMeaning} ${roleMeaning}`,
+    positive: `${positiveLead} ${SIGNAL_POSITIVE[signal]}`,
+    caution: `${cautionLead} ${signal === "재성" && domain === "love" ? base.caution : SIGNAL_CAUTION[signal]}`,
   };
 }
 
