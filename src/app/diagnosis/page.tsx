@@ -12,12 +12,11 @@ import { SajuFocusStep } from "@/components/diagnosis/saju-focus-step";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 import type { MbtiType } from "@/lib/mbti-facts";
 import { parseSajuFocus, type SajuFocus } from "@/lib/saju-focus";
-import { normalizePersonalityAnswers } from "@/lib/personality-check";
 
-// 확정된 최종 퍼널: 생년월일+성별 -> 출생시간 -> MBTI+6문항 성향체크 -> 1차
+// 확정된 최종 퍼널: 생년월일+성별 -> 출생시간 -> 선택형 MBTI -> 1차
 // 무료 결과 -> (손금은 별도 라우트 /diagnosis/palm에서 최종 통합 리포트까지
-// 이어짐). MBTI는 triple-compare.ts의 결정 방식/관계-감정 축 네 번째
-// 신호로 실제로 쓰인다 — 사주 계산값을 바꾸는 용도가 아니다.
+// 이어짐). 별도 6문항 성향 체크는 사용자 흐름에서 제거했다. MBTI는
+// 사주 계산값을 바꾸지 않고 결과 표현을 개인화하는 보조정보로만 사용한다.
 // 손금 이후 다시 여기로 돌아와 질문을 더 받는 단계(money-check/summary)는
 // 없다 — 결제 뒤/후반에 추가 질문을 만들지 않는다는 원칙에 따라 완전히 제거했다.
 type Step = "focus" | "date" | "time" | "personality" | "loading" | "result" | "error";
@@ -36,7 +35,7 @@ const CLIENT_TIMEOUT_MS = 30000;
 // 완료된 진단을 세션 저장소에 남겨 같은 탭에서 새로고침해도 복원한다.
 // 서버에 아무것도 저장하지 않고(고유 결과 URL 등은 범위 밖), 브라우저를
 // 닫으면 사라지는 가벼운 수준으로만 처리한다.
-const STORAGE_KEY = "saju-app:diagnosis-session:v1";
+const STORAGE_KEY = "saju-app:diagnosis-session:v2";
 
 interface StoredSession {
   focus?: SajuFocus;
@@ -44,7 +43,6 @@ interface StoredSession {
   gender: "남" | "여";
   knowsTime: boolean;
   birthTime: string;
-  personalityAnswers: Record<string, number>;
   mbti: MbtiType | "모름";
   diagnosis: FullSajuDiagnosis;
 }
@@ -56,7 +54,6 @@ export default function DiagnosisPage() {
   const [gender, setGender] = useState<"남" | "여">("남");
   const [knowsTime, setKnowsTime] = useState(false);
   const [birthTime, setBirthTime] = useState("");
-  const [personalityAnswers, setPersonalityAnswers] = useState<Record<string, number>>({});
   const [mbti, setMbti] = useState<MbtiType | "모름">("모름");
   const [diagnosis, setDiagnosis] = useState<FullSajuDiagnosis | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +83,6 @@ export default function DiagnosisPage() {
       setGender(saved.gender);
       setKnowsTime(saved.knowsTime);
       setBirthTime(saved.birthTime);
-      setPersonalityAnswers(normalizePersonalityAnswers(saved.personalityAnswers));
       setMbti(saved.mbti);
       setDiagnosis(saved.diagnosis);
       setStep("result");
@@ -107,7 +103,6 @@ export default function DiagnosisPage() {
     setBirthDate("");
     setKnowsTime(false);
     setBirthTime("");
-    setPersonalityAnswers({});
     setMbti("모름");
     setDiagnosis(null);
     setStep("focus");
@@ -133,7 +128,6 @@ export default function DiagnosisPage() {
     const clientTimeout = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
 
     try {
-      const hasPersonality = Object.keys(personalityAnswers).length > 0;
       const res = await fetch("/api/saju", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -145,7 +139,6 @@ export default function DiagnosisPage() {
           minute,
           gender,
           focus,
-          personalityAnswers: hasPersonality ? personalityAnswers : undefined,
           mbti: mbti !== "모름" ? mbti : undefined,
         }),
         signal: controller.signal,
@@ -156,7 +149,7 @@ export default function DiagnosisPage() {
       setDiagnosis(data);
       setStep("result");
       try {
-        const toStore: StoredSession = { focus, birthDate, gender, knowsTime, birthTime, personalityAnswers, mbti, diagnosis: data };
+        const toStore: StoredSession = { focus, birthDate, gender, knowsTime, birthTime, mbti, diagnosis: data };
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
       } catch {
         // 저장 실패(용량 초과, 프라이빗 모드 등)해도 이번 화면 표시엔 지장 없다.
@@ -217,16 +210,9 @@ export default function DiagnosisPage() {
 
       {step === "personality" && (
         <PersonalityStep
-          personalityAnswers={personalityAnswers}
-          onPersonalityChange={(id, value) => setPersonalityAnswers((prev) => ({ ...prev, [id]: value }))}
           mbti={mbti}
           onMbtiChange={setMbti}
           onNext={handleFetchDiagnosis}
-          onSkip={() => {
-            setPersonalityAnswers({});
-            setMbti("모름");
-            handleFetchDiagnosis();
-          }}
           onBack={() => setStep("time")}
         />
       )}

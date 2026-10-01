@@ -33,6 +33,9 @@ function timingFor(question: RealityQuestion, facts: SajuFacts): RealityTiming {
       windows: outlook.windows.map((window) => ({
         label: window.label,
         reason: window.reason,
+        meaning: window.meaning,
+        positive: window.positive,
+        caution: window.caution,
       })),
       basis: outlook.basis,
     };
@@ -132,6 +135,7 @@ function repeatingPatternFor(
   const autonomy = level(personality, "autonomy");
   const change = level(personality, "change");
   const emotion = level(personality, "emotionExpression");
+  const mbti = personality?.mbti ?? null;
 
   if (question.domain === "love" || question.domain === "relationship") {
     if (emotion === "오른쪽") {
@@ -139,6 +143,12 @@ function repeatingPatternFor(
     }
     if (autonomy === "오른쪽") {
       return "관계에서는 내 마음만큼 상대의 반응과 분위기를 함께 보는 편이라, 관계의 속도가 상대 상황에 따라 달라질 수 있습니다.";
+    }
+    if (mbti?.[2] === "F") {
+      return "관계에서는 말의 내용만큼 분위기와 감정의 결을 중요하게 느끼는 편이라, 편안함이 생기면 마음이 빠르게 가까워질 수 있습니다.";
+    }
+    if (mbti?.[0] === "I") {
+      return "처음부터 넓게 만나기보다 편안한 몇 사람과 천천히 가까워지는 쪽이 더 자연스러운 편입니다.";
     }
     return "관계가 시작되면 애매한 상태를 오래 끌기보다 내 기준을 빨리 세우는 편이라, 시작과 정리의 경계가 비교적 분명한 편입니다.";
   }
@@ -150,6 +160,12 @@ function repeatingPatternFor(
     if (plan === "왼쪽") {
       return "일에서는 준비와 구조를 먼저 잡는 편이라, 변화가 와도 기준이 분명할수록 힘을 쓰기 쉽습니다.";
     }
+    if (mbti?.[3] === "J") {
+      return "일에서는 목표와 순서가 분명할수록 마음이 편하고, 변화가 와도 '무엇부터 할지'가 보이면 속도가 붙는 편입니다.";
+    }
+    if (mbti?.[3] === "P") {
+      return "일에서는 선택지를 열어두고 상황을 보며 방향을 조정할 때 강점이 살아나는 편입니다.";
+    }
     return "일에서는 정해진 틀과 내 방식대로 움직일 여지를 모두 필요로 해서, 둘 중 하나만 강한 환경에서는 답답함을 느끼기 쉽습니다.";
   }
 
@@ -157,12 +173,24 @@ function repeatingPatternFor(
     if (change === "왼쪽") {
       return "재물에서는 새로운 기회나 변화에 관심이 빠르게 가는 편이라, 기회가 여러 개 겹칠 때 흐름이 분산될 수 있습니다.";
     }
+    if (mbti?.[3] === "J") {
+      return "재물에서는 계획이 보이고 기준이 정해져 있을 때 안정감을 느끼는 편입니다.";
+    }
+    if (mbti?.[3] === "P") {
+      return "재물에서는 한 가지 방식에 고정되기보다 상황에 따라 기회를 바꾸어 보는 편입니다.";
+    }
     return "재물에서는 큰 한 번보다 반복해서 이어지는 흐름에서 안정감을 느끼는 편입니다.";
   }
 
   if (question.domain === "wellbeing") {
     if (speed === "왼쪽") {
       return "생각이 생기면 빠르게 움직이는 편이라 바쁜 시기에는 피로를 뒤늦게 느낄 수 있습니다.";
+    }
+    if (mbti?.[0] === "I") {
+      return "사람과 일정이 몰린 뒤에는 혼자 조용히 정리하는 시간이 있어야 다시 힘이 붙는 편입니다.";
+    }
+    if (mbti?.[0] === "E") {
+      return "사람과 대화하고 움직이는 과정에서 에너지가 살아나는 편이라, 너무 오래 혼자 있으면 답답함이 커질 수 있습니다.";
     }
     return "생활에서는 충분히 정리하고 쉬는 시간이 있어야 다시 힘이 붙는 편입니다.";
   }
@@ -320,7 +348,11 @@ export function buildRealityAnswerFallback(input: RealityAnswerBuildInput): Real
     currentFlow: currentFlowReadingFor(input.question, input.facts),
     solutionReading: solutionReadingFor(input.question, timing, repeatingPattern),
     timingReading: timing.windows?.length
-      ? timing.now + " " + timing.windows.map((window) => window.label + ": " + window.reason).join(" ")
+      ? timing.now + " " + timing.windows.map((window) =>
+          window.label + ": " + (window.meaning ?? window.reason) +
+          (window.positive ? " 좋은 흐름: " + window.positive : "") +
+          (window.caution ? " 조심할 점: " + window.caution : "")
+        ).join(" ")
       : timing.now,
   };
 
