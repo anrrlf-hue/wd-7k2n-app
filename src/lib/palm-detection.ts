@@ -37,7 +37,13 @@ function getHandLandmarker(): Promise<HandLandmarker> {
         minHandDetectionConfidence: 0.5,
         minHandPresenceConfidence: 0.5,
       });
-    })();
+    })().catch((error) => {
+      // 모바일에서 첫 WASM/모델 로드가 네트워크·메모리 문제로 한 번 실패해도
+      // 거부된 Promise를 세션 내내 재사용하지 않는다. 다음 촬영/사진 선택에서
+      // 새로 로드할 수 있게 초기화한다.
+      handLandmarkerPromise = null;
+      throw error;
+    });
   }
   return handLandmarkerPromise;
 }
@@ -47,6 +53,15 @@ function getHandLandmarker(): Promise<HandLandmarker> {
  * 브라우저에서 카메라 화면이 멈춘 것처럼 보이는 초기 부하를 피하기 위함이다. */
 export function preloadHandLandmarker() {
   getHandLandmarker().catch(() => {});
+}
+
+function shouldSkipSecondaryPoseModel(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const mobile = /Android|iPhone|iPad|iPod/i.test(nav.userAgent);
+  const constrainedMemory = typeof nav.deviceMemory === "number" && nav.deviceMemory <= 4;
+  const constrainedCpu = typeof nav.hardwareConcurrency === "number" && nav.hardwareConcurrency <= 4;
+  return mobile || constrainedMemory || constrainedCpu;
 }
 
 interface Rect {
@@ -807,11 +822,14 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
   // 4선 모델의 네트워크 로드/초기화가 3선 추론 뒤에 직렬로 붙어 대기시간을
   // 늘리지 않도록 하되, 기존 3선 판정 우선순위는 그대로 유지한다.
   const totalModelStartedAt = performance.now();
+  const skipSecondaryPoseModel = shouldSkipSecondaryPoseModel();
   const fateModelStartedAt = performance.now();
-  const fourLinePromise = runPalmFourLineOnnx(enhancedPalmCrop, 0.08).then((result) => ({
-    result,
-    elapsedMs: performance.now() - fateModelStartedAt,
-  }));
+  const fourLinePromise = skipSecondaryPoseModel
+    ? Promise.resolve({ result: null, elapsedMs: 0 })
+    : runPalmFourLineOnnx(enhancedPalmCrop, 0.08).then((result) => ({
+        result,
+        elapsedMs: performance.now() - fateModelStartedAt,
+      }));
 
   const threeLineStartedAt = performance.now();
   const onnxRaw = await runPalmLineOnnx(rawPalmCrop);
@@ -898,6 +916,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
       headLine: pixelCount(onnxEnhanced, "head_line"),
       lifeLine: pixelCount(onnxEnhanced, "life_line"),
     },
+    fateModelSkipped: skipSecondaryPoseModel,
     fateModelConfidence: fateModel?.confidence ?? null,
     fateModelVerticalSpan: fateModel?.verticalSpan ?? null,
     fateModelCorroborated: secondaryLines?.fate.corroborated ?? false,
