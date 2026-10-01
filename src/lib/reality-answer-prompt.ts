@@ -52,7 +52,7 @@ export function buildRealityAnswerUserPrompt(
     ? `## 계산된 시기 후보
 - summary: ${timingOutlook.summary}
 - windows:
-${timingOutlook.windows.map((item, index) => `  ${index + 1}. ${item.label} — ${item.reason}`).join("\n")}
+${timingOutlook.windows.map((item, index) => [`  ${index + 1}. ${item.label}`, `     - 이때는: ${item.meaning}`, `     - 좋은 흐름: ${item.positive}`, `     - 조심할 점: ${item.caution}`].join("\n")).join("\n")}
 - basis: ${timingOutlook.basis}
 
 반드시 위 후보 중 가장 중요한 시기를 답변에 포함하세요. 위에 없는 연도·월은 만들지 마세요.`
@@ -78,7 +78,7 @@ ${timingSection}
 
 중요:
 - headline은 행동 조언이 아니라 질문에 대한 답이어야 합니다.
-- 시기 후보가 있으면 "언제"를 직접 묻지 않았어도 반드시 함께 언급하세요.
+- 시기 후보가 있으면 "언제"를 직접 묻지 않았어도 반드시 함께 언급하세요.\n- 날짜만 나열하지 말고 그 시기에 무엇이 들어올 수 있는지, 좋은 흐름으로 나타나는 모습, 조심할 점을 생활 언어로 설명하세요.
 - 계산법이나 근거 선택 과정을 고객에게 설명하지 마세요.
 - 행동 3개, 완료 기준, 30일 계획을 만들지 마세요.
 - 반드시 JSON 객체 하나만 반환하세요.`;
