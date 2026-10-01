@@ -1,6 +1,8 @@
 "use client";
 
 import { CompanionHeading } from "@/components/brand-companion";
+import Link from "next/link";
+import { Clock3, Hand } from "lucide-react";
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
@@ -275,19 +277,36 @@ export function ResultStep({
       <DaeunFlowSection view={myeongsik} />
       <MyeongsikSection view={myeongsik} />
 
-      {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소이자 이 화면의 유일한
-       * 다음 행동이다. 나머지 심층 섹션과 결제 선택은 손금까지 끝난 뒤
-       * 최종 통합 리포트 화면에서 딱 한 번만 나온다. */}
-      <div className="mt-8">
-        <p className="flex items-center gap-1.5 text-sm font-medium">
-          손에도 같은 성향과 흐름이 보일까요?
+      <section className="mt-8 rounded-3xl border border-(--gold-soft) bg-card p-5">
+        <div className="flex items-center gap-2 text-(--gold)">
+          <Clock3 className="size-4" />
+          <p className="section-eyebrow">무료 사주 다음</p>
+        </div>
+        <h2 className="mt-2 text-xl leading-8 font-semibold">
+          이제 가장 궁금한 것을<br />직접 물어보세요
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          방금 본 생년월일·출생시간을 다시 입력하지 않고, 같은 사주를 기준으로 질문에 대한 답과 시기를 이어서 봅니다.
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          손금은 사주와 별도로 읽고, 두 결과가 어디서 같고 다른지 이어서 살펴봅니다.
+        <Button asChild size="lg" className="mt-5 h-14 w-full rounded-full text-base">
+          <Link href={`/diagnosis?mode=question&focus=${focus}&from=free`}>
+            내 질문 답과 시기 보기
+          </Link>
+        </Button>
+      </section>
+
+      <div className="mt-7">
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          <Hand className="size-4 text-(--gold)" />
+          원하면 손금까지 더해볼 수 있어요
+        </p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          손금은 필수가 아닙니다. 사주와 별도로 현재 드러난 판단·관계·생활 방식을 보고, 두 결과가 어디서 같고 다른지 이어서 살펴봅니다.
         </p>
         <div className="mt-3">
           <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} focus={focus} />
         </div>
+      </div>
       </div>
     </div>
   );
