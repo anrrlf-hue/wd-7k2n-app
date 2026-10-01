@@ -65,9 +65,9 @@
   border-radius: 14px;
   background: linear-gradient(
     90deg,
-    rgba(8, 26, 49, .97) 0%,
-    rgba(8, 26, 49, .93) 82%,
-    rgba(8, 26, 49, .88) 100%
+    #0a223c 0%,
+    #0c2947 82%,
+    #0d2d4e 100%
   );
   box-shadow: 0 8px 22px rgba(0, 0, 0, .12);
   color: rgba(255,255,255,.9);
