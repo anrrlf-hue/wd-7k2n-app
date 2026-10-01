@@ -59,19 +59,44 @@ function TimingBlock({ answer, compact = false }: { answer: RealityAnswer; compa
     return (
       <section className={compact ? "mt-4 rounded-2xl bg-accent p-4" : "mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5"}>
         <p className="section-eyebrow">눈여겨볼 시기</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">{answer.timing.now}</p>
+
         <div className="mt-3 space-y-3">
           {answer.timing.windows.map((window, index) => (
-            <div key={window.label} className={compact ? "" : "rounded-xl bg-accent p-4"}>
-              <p className="font-semibold">
-                {index === 0 ? "가장 먼저 · " : ""}{window.label}
+            <div
+              key={window.label}
+              className={compact ? "rounded-xl bg-card/70 p-3" : "rounded-xl bg-accent p-4"}
+            >
+              <p className="text-xs font-semibold text-(--gold)">
+                {index === 0 ? "가장 강하게 보이는 시기" : index === 1 ? "두 번째로 눈여겨볼 시기" : "한 번 더 살아나는 시기"}
               </p>
-              {!compact && (
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">{window.reason}</p>
+              <p className="mt-1 text-base font-semibold">{window.label}</p>
+
+              <div className="mt-2">
+                <p className="text-xs font-medium text-foreground/70">이때는</p>
+                <p className="mt-0.5 text-sm leading-6 text-muted-foreground">
+                  {window.meaning ?? window.reason}
+                </p>
+              </div>
+
+              {window.positive && (
+                <div className="mt-2 rounded-lg bg-background/70 px-3 py-2">
+                  <p className="text-xs font-semibold text-(--gold)">좋은 흐름으로 나타나면</p>
+                  <p className="mt-0.5 text-sm leading-6 text-foreground/80">{window.positive}</p>
+                </div>
+              )}
+
+              {window.caution && (
+                <div className="mt-2">
+                  <p className="text-xs font-medium text-foreground/70">조심할 점</p>
+                  <p className="mt-0.5 text-sm leading-6 text-muted-foreground">{window.caution}</p>
+                </div>
               )}
             </div>
           ))}
         </div>
-        {!compact && answer.timing.basis && (
+
+        {answer.timing.basis && (
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{answer.timing.basis}</p>
         )}
       </section>
