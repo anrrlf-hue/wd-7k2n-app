@@ -284,6 +284,15 @@ export function PalmPageClient({
   }, []);
 
   useEffect(() => {
+    if (!initialQuestion?.trim()) return;
+    if (stage !== "result" && stage !== "saju_only") return;
+    if (funnelActive) return;
+    setFunnelActive(true);
+    setReadingOpen(false);
+    setChapter(4);
+  }, [initialQuestion, stage, funnelActive]);
+
+  useEffect(() => {
     if (!resumeKey || (stage !== "result" && stage !== "saju_only")) return;
     const saved: PalmResumeState = {
       stage,
