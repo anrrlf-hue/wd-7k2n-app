@@ -17,17 +17,27 @@ const STATUS_MESSAGES = [
   "거의 다 됐어요, 조금만 더 기다려주세요",
 ];
 
-export function LoadingStep() {
+export function LoadingStep({ mode = "saju" }: { mode?: "saju" | "question" }) {
+  const messages =
+    mode === "question"
+      ? [
+          "질문과 사주 흐름을 함께 보고 있어요",
+          "눈여겨볼 시기를 찾고 있어요",
+          "좋은 흐름과 조심할 점을 정리하고 있어요",
+          "답과 시기를 한눈에 정리하고 있어요",
+          "거의 다 됐어요, 조금만 더 기다려주세요",
+        ]
+      : STATUS_MESSAGES;
   const [statusIndex, setStatusIndex] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
       // 마지막 문구에 도달하면 거기서 멈춘다. 딥 해석 호출이 오래 걸려도
       // "처음부터 다시" 도는 것처럼 보이지 않게.
-      setStatusIndex((i) => Math.min(i + 1, STATUS_MESSAGES.length - 1));
+      setStatusIndex((i) => Math.min(i + 1, messages.length - 1));
     }, 1600);
     return () => clearInterval(timer);
-  }, []);
+  }, [messages.length]);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
@@ -41,7 +51,7 @@ export function LoadingStep() {
           transition={{ duration: 0.3 }}
           className="text-sm text-muted-foreground"
         >
-          {STATUS_MESSAGES[statusIndex]}
+          {messages[statusIndex]}
         </motion.p>
       </AnimatePresence>
     </div>
