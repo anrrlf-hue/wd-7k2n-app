@@ -5,18 +5,18 @@ import styles from "./page.module.css";
 const BENEFITS = [
   {
     icon: MoonStar,
-    title: "사주를 쉽게 풀어드립니다",
-    description: "복잡한 용어 대신 지금의 삶에 맞는 말로 쉽고 분명하게 풀어드립니다.",
-  },
-  {
-    icon: Clock3,
-    title: "답과 시기를 함께 봅니다",
-    description: "궁금한 질문에 먼저 답하고, 눈여겨볼 흐름과 시기를 함께 짚습니다.",
+    title: "사주를 현실 언어로 풀어드립니다",
+    description: "복잡한 사주를 지금의 삶에 맞는 말로 쉽고 명확하게 해석합니다.",
   },
   {
     icon: Hand,
-    title: "손금을 함께 보면",
+    title: "손금과 함께 입체적으로 봅니다",
     description: "사주는 흐름과 시기를, 손금은 지금 드러난 모습을 보완해 함께 봅니다.",
+  },
+  {
+    icon: Clock3,
+    title: "궁금한 질문에 답과 시기를 짚어드립니다",
+    description: "질문에 먼저 답하고, 눈여겨볼 흐름과 시기를 함께 짚어드립니다.",
   },
 ];
 
