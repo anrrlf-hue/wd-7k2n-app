@@ -128,10 +128,12 @@ export function PalmPageClient({
   birthInput,
   personalityInput,
   focus = "overall",
+  initialQuestion = null,
 }: {
   birthInput: BirthInput | null;
   personalityInput?: PersonalityInputEcho;
   focus?: SajuFocus;
+  initialQuestion?: string | null;
 }) {
   const resumeKey = realityJourneyKey(birthInput, focus);
   const [stage, setStage] = useState<Stage>("upload");
@@ -708,6 +710,7 @@ export function PalmPageClient({
           palmLines={palmFacts?.onnxLines ?? null}
           resumeKey={resumeKey}
           initialFocus={focus}
+          initialQuestion={initialQuestion}
           onStart={() => { setFunnelActive(true); setReadingOpen(false); }}
           onChapterChange={setChapter}
         />
