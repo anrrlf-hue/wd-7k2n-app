@@ -114,6 +114,12 @@ assert(diagnosisSource.includes('type Step = "focus"'), "focus must be the first
 assert(focusStepSource.includes("어떤 사주가"), "diagnosis focus chooser missing");
 assert(focusStepSource.includes("전체 사주"), "overall Saju choice missing");
 
+const personalityStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/personality-step.tsx"), "utf8");
+assert(personalityStepSource.includes("MBTI"), "MBTI selection must remain");
+assert(!personalityStepSource.includes("PERSONALITY_CHECK_ITEMS"), "six-question personality UI must be removed");
+assert(!personalityStepSource.includes("LIKERT"), "1-5 personality scale must be removed");
+assert(!diagnosisSource.includes("personalityAnswers"), "diagnosis flow must not send six-question answers");
+
 const personalityIds = personalityMod.PERSONALITY_CHECK_ITEMS.map((item) => item.id);
 assert(
   JSON.stringify(personalityIds) === JSON.stringify([
@@ -144,5 +150,5 @@ assert(!reportSectionSource.includes("왜 이렇게 봤나요"), "why-explanatio
 assert(!reportSectionSource.includes("어떻게 할까요"), "action-guidance toggle remains in free report");
 assert(resultSource.includes("다른 영역은 한눈에"), "focused reading should summarize other areas instead of repeating full sections");
 
-console.log("PASS FREE SAJU V6: focused reading + universal self-check + visible Ohaeng + no why/how toggles");
+console.log("PASS FREE SAJU V7: MBTI-only UI + focused reading + visible Ohaeng + no why/how toggles");
 hooks.deregister?.();
