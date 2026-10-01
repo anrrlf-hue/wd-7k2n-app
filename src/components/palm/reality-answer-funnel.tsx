@@ -6,7 +6,8 @@ import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { RealityAnswer } from "@/lib/reality-answer-contract";
 import type { RealityAnswerEngineResult } from "@/lib/reality-answer-engine";
-import type { OnnxPalmLines } from "@/lib/palm-facts";
+import type { OnnxPalmLines, PalmFacts } from "@/lib/palm-facts";
+import { buildPalmReadingSections } from "@/lib/palm-observation-text";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import {
   SAJU_FOCUS_LABELS,
@@ -43,6 +44,50 @@ const INCLUDED = [
   "반복해서 나타나기 쉬운 패턴",
   "풀이를 볼 때 주의할 점",
 ];
+
+function palmSummaryForFocus(facts: PalmFacts | null | undefined, focus: SajuFocus): string | null {
+  if (!facts?.onnxLines) return null;
+  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines);
+  const preferred: Record<SajuFocus, Array<(typeof sections)[number]["key"]>> = {
+    overall: ["together", "headLine", "heartLine", "lifeLine"],
+    love_relationship: ["heartLine", "together"],
+    work: ["fate", "headLine", "together"],
+    money: ["wealth", "headLine", "lifeLine"],
+    wellbeing: ["lifeLine", "together"],
+  };
+
+  const picked: string[] = [];
+  for (const key of preferred[focus]) {
+    const found = sections.find((section) => section.key === key);
+    if (!found) continue;
+    picked.push(found.text);
+    if (focus !== "overall" || picked.length >= 2) break;
+  }
+  return picked.length > 0 ? picked.join(" ") : null;
+}
+
+function PalmContribution({
+  facts,
+  focus,
+  compact = false,
+}: {
+  facts: PalmFacts | null | undefined;
+  focus: SajuFocus;
+  compact?: boolean;
+}) {
+  const summary = palmSummaryForFocus(facts, focus);
+  if (!summary) return null;
+
+  return (
+    <section className={compact ? "mt-4 rounded-2xl bg-accent p-4" : "mt-3 rounded-2xl border border-(--gold-soft) bg-card p-5"}>
+      <p className="section-eyebrow">손금을 함께 보면</p>
+      <p className="mt-2 text-base leading-7 text-muted-foreground">{summary}</p>
+      <p className="mt-3 text-xs leading-5 text-muted-foreground">
+        손금은 시기를 다시 계산하지 않습니다. 사주가 흐름과 시기를 보고, 손금은 지금 드러난 판단·관계·생활 방식을 보완해서 함께 봅니다.
+      </p>
+    </section>
+  );
+}
 
 function readResume(key: string): RealityFunnelResume | null {
   if (typeof window === "undefined") return null;
@@ -116,6 +161,7 @@ export function RealityAnswerFunnel({
   birthInput,
   personalityInput,
   palmLines,
+  palmFacts,
   resumeKey,
   onStart,
   onChapterChange,
@@ -125,6 +171,7 @@ export function RealityAnswerFunnel({
   birthInput: BirthInput;
   personalityInput?: PersonalityInputEcho;
   palmLines?: OnnxPalmLines | null;
+  palmFacts?: PalmFacts | null;
   resumeKey: string;
   onStart: () => void;
   initialFocus?: SajuFocus;
@@ -174,7 +221,7 @@ export function RealityAnswerFunnel({
           ...birthInput,
           question: trimmed,
           focusHint: focus,
-          palmLines: palmLines ?? null,
+          palmLines: palmFacts?.onnxLines ?? palmLines ?? null,
           personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
           mbti: personalityInput?.mbti ?? undefined,
         }),
@@ -245,11 +292,11 @@ export function RealityAnswerFunnel({
           </h2>
           <p className="mt-3 text-base leading-7 text-muted-foreground">
             {initialQuestion
-              ? `“${initialQuestion}” 질문에 사주와 방금 본 손금 흐름을 함께 반영합니다.`
+              ? `“${initialQuestion}” 질문을 다시 묻지 않고 이어봅니다. 사주는 흐름과 시기를 보고, 손금은 지금 드러난 판단·관계·생활 방식을 보완해 두 결과를 한 답으로 합칩니다.`
               : "질문에 대한 답과 함께, 사주 흐름에서 가장 먼저 눈여겨볼 시기를 같이 짚어드립니다."}
           </p>
           <Button size="lg" onClick={startQuestion} disabled={loading} className="mt-5 h-14 w-full rounded-full text-base">
-            {loading ? "손금까지 함께 보고 있어요..." : initialQuestion ? "손금까지 반영한 답 보기" : "지금 궁금한 것 물어보기"}
+            {loading ? "사주와 손금을 함께 보고 있어요..." : initialQuestion ? "사주+손금 종합답 보기" : "지금 궁금한 것 물어보기"}
           </Button>
         </div>
       )}
@@ -335,6 +382,7 @@ export function RealityAnswerFunnel({
               <p className="mt-2 text-xl leading-8 font-semibold">{answer.headline}</p>
             </div>
             <TimingBlock answer={answer} compact />
+            <PalmContribution facts={palmFacts} focus={focus} compact />
           </section>
 
           <section className="mt-5 rounded-2xl border border-border bg-card p-5">
@@ -356,7 +404,7 @@ export function RealityAnswerFunnel({
             className="mt-5 h-14 w-full rounded-full text-base"
           >
             <Sparkles className="size-4" />
-            전체 사주풀이 보기
+            {palmFacts ? "사주+손금 종합풀이 보기" : "전체 사주풀이 보기"}
           </Button>
 
           <button
@@ -371,7 +419,7 @@ export function RealityAnswerFunnel({
 
       {stage === "result" && answer && (
         <div>
-          <p className="section-eyebrow">{SAJU_FOCUS_LABELS[focus]} · 내 질문 사주풀이</p>
+          <p className="section-eyebrow">{SAJU_FOCUS_LABELS[focus]} · {palmFacts ? "사주+손금 풀이" : "내 질문 사주풀이"}</p>
           <h2 className="mt-2 text-2xl leading-snug font-semibold">{answer.question.raw}</h2>
 
           <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
@@ -383,22 +431,23 @@ export function RealityAnswerFunnel({
 
           {answer.report && (
             <section className="mt-5">
-              <p className="section-eyebrow">내 질문 사주풀이</p>
+              <p className="section-eyebrow">{palmFacts ? "사주와 손금을 함께 본 풀이" : "내 질문 사주풀이"}</p>
               <div className="mt-3 space-y-3">
                 <div className="rounded-2xl border border-border bg-card p-5">
-                  <h3 className="text-lg font-semibold">이 질문을 사주로 풀면</h3>
+                  <h3 className="text-lg font-semibold">사주로 보면</h3>
                   <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
                     {answer.report.questionReading}
                   </p>
                 </div>
+                <PalmContribution facts={palmFacts} focus={focus} />
                 <div className="rounded-2xl border border-border bg-card p-5">
-                  <h3 className="text-lg font-semibold">지금의 흐름</h3>
+                  <h3 className="text-lg font-semibold">현재 사주 흐름</h3>
                   <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
                     {answer.report.currentFlow}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
-                  <h3 className="text-lg font-semibold">앞으로 어떻게 나타날 수 있나요?</h3>
+                  <h3 className="text-lg font-semibold">{palmFacts ? "둘을 함께 보면" : "앞으로 어떻게 나타날 수 있나요?"}</h3>
                   <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
                     {answer.report.solutionReading}
                   </p>
