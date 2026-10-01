@@ -17,7 +17,7 @@ export function StepShell({
   progressLabel?: string;
 }) {
   return (
-    <div className={`journey-surface ${stepKey === "result" ? "result-bright" : ""}`}>
+    <div className={`journey-surface ${["result", "answer"].includes(stepKey) ? "result-bright" : ""}`}>
     <div className="journey-shell">
       <JourneyHeader chapter={1} />
       {/* Exit animations can stall when a mobile tab is backgrounded.
