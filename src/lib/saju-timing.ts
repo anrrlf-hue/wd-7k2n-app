@@ -237,7 +237,7 @@ export function buildSajuTimingOutlook(
 
   const current = currentKstYearMonth(referenceDate);
   const weights = weightsFor(domain, facts.gender);
-  const years: { year: number; score: number; groups: TenGodGroup[]; pillar: string }[] = [];
+  const years: { year: number; score: number; groups: TenGodGroup[] }[] = [];
 
   for (let year = current.year; year <= current.year + 4; year += 1) {
     const yearPillar = hanjaPillarsForDate(year, 6, 15).yearPillar;
@@ -252,7 +252,7 @@ export function buildSajuTimingOutlook(
       score += Math.min(2, scoreGroups(daeunGroups, weights) * 0.25);
     }
 
-    years.push({ year, score, groups, pillar: yearPillar });
+    years.push({ year, score, groups });
   }
 
   const rankedYears = [...years].sort((a, b) => b.score - a.score || a.year - b.year);
@@ -262,7 +262,7 @@ export function buildSajuTimingOutlook(
   const windows: SajuTimingWindow[] = [];
 
   for (const candidate of candidateYears) {
-    const months: { month: number; score: number; groups: TenGodGroup[]; pillar: string }[] = [];
+    const months: { month: number; score: number; groups: TenGodGroup[] }[] = [];
     for (let month = 1; month <= 12; month += 1) {
       if (
         candidate.year === current.year &&
@@ -271,7 +271,7 @@ export function buildSajuTimingOutlook(
       const monthPillar = hanjaPillarsForDate(candidate.year, month, 15).monthPillar;
       const groups = pillarGroups(facts.dayStem, monthPillar);
       const score = candidate.score + scoreGroups(groups, weights);
-      months.push({ month, score, groups, pillar: monthPillar });
+      months.push({ month, score, groups });
     }
 
     const bestMonths = months
