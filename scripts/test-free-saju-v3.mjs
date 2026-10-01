@@ -122,10 +122,11 @@ assert(focusStepSource.includes("전체 사주"), "overall Saju choice missing")
 
 const questionStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/question-first-step.tsx"), "utf8");
 const questionResultSource = fs.readFileSync(path.join(root, "src/components/diagnosis/question-answer-result.tsx"), "utf8");
+const palmEntrySource = fs.readFileSync(path.join(root, "src/components/diagnosis/palm-entry-card.tsx"), "utf8");
 assert(questionStepSource.includes("지금 가장 궁금한 것을"), "direct question input screen missing");
 assert(questionStepSource.includes("답과 함께"), "question promise copy missing");
 assert(questionResultSource.includes("눈여겨볼 시기"), "answer result timing section missing");
-assert(questionResultSource.includes("손금까지 함께 보면 더 입체적으로"), "optional palm enhancement CTA missing");
+assert(palmEntrySource.includes("손금까지 함께 보면 더 입체적으로"), "optional palm enhancement CTA missing");
 assert(questionResultSource.includes("전체 사주 무료로 보기"), "free Saju escape hatch missing from question answer");
 
 const personalityStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/personality-step.tsx"), "utf8");
