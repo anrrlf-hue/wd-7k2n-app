@@ -120,6 +120,7 @@ export function RealityAnswerFunnel({
   onStart,
   onChapterChange,
   initialFocus = "overall",
+  initialQuestion = null,
 }: {
   birthInput: BirthInput;
   personalityInput?: PersonalityInputEcho;
@@ -127,15 +128,16 @@ export function RealityAnswerFunnel({
   resumeKey: string;
   onStart: () => void;
   initialFocus?: SajuFocus;
+  initialQuestion?: string | null;
   onChapterChange: (chapter: 3 | 4 | 5) => void;
 }) {
   const storageKey = `${resumeKey}:reality-answer:v2`;
   const stored = readResume(storageKey);
   const storedFocus = parseSajuFocus(stored?.focus ?? stored?.domain ?? initialFocus);
-  const [stage, setStage] = useState<FunnelStage>(stored?.stage ?? "intro");
-  const [focus, setFocus] = useState<SajuFocus>(storedFocus);
-  const [question, setQuestion] = useState(stored?.question ?? "");
-  const [answer, setAnswer] = useState<RealityAnswer | null>(stored?.answer ?? null);
+  const [stage, setStage] = useState<FunnelStage>(initialQuestion ? "intro" : stored?.stage ?? "intro");
+  const [focus, setFocus] = useState<SajuFocus>(initialFocus ?? storedFocus);
+  const [question, setQuestion] = useState(initialQuestion ?? stored?.question ?? "");
+  const [answer, setAnswer] = useState<RealityAnswer | null>(initialQuestion ? null : stored?.answer ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
@@ -155,8 +157,8 @@ export function RealityAnswerFunnel({
 
   const placeholder = useMemo(() => EXAMPLES[focus], [focus]);
 
-  async function submitQuestion() {
-    const trimmed = question.trim();
+  async function submitQuestion(questionOverride?: string) {
+    const trimmed = (questionOverride ?? question).trim();
     if (trimmed.length < 2) {
       setError("궁금한 내용을 조금만 더 적어주세요.");
       return;
@@ -203,8 +205,15 @@ export function RealityAnswerFunnel({
   function startQuestion() {
     onStart();
     onChapterChange(4);
+    track("reality_answer_started", { focus, fromQuestionFirst: Boolean(initialQuestion) });
+
+    if (initialQuestion?.trim()) {
+      setQuestion(initialQuestion.trim());
+      void submitQuestion(initialQuestion.trim());
+      return;
+    }
+
     setStage("question");
-    track("reality_answer_started", { focus });
   }
 
   function resetQuestion() {
@@ -218,17 +227,29 @@ export function RealityAnswerFunnel({
     <div id="reality-answer-funnel" ref={topRef} className="mt-8 scroll-mt-6">
       {stage === "intro" && (
         <div className="transition-panel">
-          <p className="section-eyebrow">내 질문 사주풀이</p>
+          <p className="section-eyebrow">{initialQuestion ? "손금까지 반영한 내 질문" : "내 질문 사주풀이"}</p>
           <h2 className="mt-2 text-2xl leading-snug font-semibold">
-            가장 궁금한 것을
-            <br />
-            직접 물어보세요
+            {initialQuestion ? (
+              <>
+                같은 질문을 손금까지
+                <br />
+                함께 봅니다
+              </>
+            ) : (
+              <>
+                가장 궁금한 것을
+                <br />
+                직접 물어보세요
+              </>
+            )}
           </h2>
           <p className="mt-3 text-base leading-7 text-muted-foreground">
-            질문에 대한 답과 함께, 사주 흐름에서 가장 먼저 눈여겨볼 시기를 같이 짚어드립니다.
+            {initialQuestion
+              ? `“${initialQuestion}” 질문에 사주와 방금 본 손금 흐름을 함께 반영합니다.`
+              : "질문에 대한 답과 함께, 사주 흐름에서 가장 먼저 눈여겨볼 시기를 같이 짚어드립니다."}
           </p>
-          <Button size="lg" onClick={startQuestion} className="mt-5 h-14 w-full rounded-full text-base">
-            지금 궁금한 것 물어보기
+          <Button size="lg" onClick={startQuestion} disabled={loading} className="mt-5 h-14 w-full rounded-full text-base">
+            {loading ? "손금까지 함께 보고 있어요..." : initialQuestion ? "손금까지 반영한 답 보기" : "지금 궁금한 것 물어보기"}
           </Button>
         </div>
       )}

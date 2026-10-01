@@ -66,6 +66,15 @@ export default async function PalmPage({
   const personalityInput = parsePersonalityInput(sp);
   const focusRaw = Array.isArray(sp.focus) ? sp.focus[0] : sp.focus;
   const focus = parseSajuFocus(focusRaw);
+  const questionRaw = Array.isArray(sp.question) ? sp.question[0] : sp.question;
+  const initialQuestion = questionRaw?.trim() || null;
 
-  return <PalmPageClient birthInput={birthInput} personalityInput={personalityInput} focus={focus} />;
+  return (
+    <PalmPageClient
+      birthInput={birthInput}
+      personalityInput={personalityInput}
+      focus={focus}
+      initialQuestion={initialQuestion}
+    />
+  );
 }

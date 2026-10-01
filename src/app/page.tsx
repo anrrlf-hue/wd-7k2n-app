@@ -16,11 +16,18 @@ export default function Home() {
           className={`${styles.hotspot} ${styles.management}`}
         />
         <Link
-          href="/diagnosis"
-          aria-label="내 사주 무료 보기"
+          href="/diagnosis?mode=question"
+          aria-label="내 궁금증 답과 시기 보기"
           className={styles.diagnosisCta}
         >
-          내 사주 무료 보기 <span aria-hidden="true">→</span>
+          내 궁금증 답과 시기 보기 <span aria-hidden="true">→</span>
+        </Link>
+        <Link
+          href="/diagnosis?mode=free"
+          aria-label="전체 사주 무료로 보기"
+          className={styles.freeSajuLink}
+        >
+          전체 사주 무료로 보기
         </Link>
 
         <div className={styles.benefitThirdCopy}>

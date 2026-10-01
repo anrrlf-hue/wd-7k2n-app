@@ -12,21 +12,35 @@ export function SajuFocusStep({
   value,
   onChange,
   onNext,
+  mode = "free",
 }: {
   value: SajuFocus | null;
   onChange: (value: SajuFocus) => void;
   onNext: () => void;
+  mode?: "free" | "question";
 }) {
   return (
     <div className="flex flex-1 flex-col">
-      <p className="section-eyebrow">무료 사주풀이</p>
+      <p className="section-eyebrow">{mode === "question" ? "내 궁금증 답과 시기" : "무료 사주풀이"}</p>
       <h1 className="mt-2 text-2xl leading-snug font-semibold">
-        어떤 사주가
-        <br />
-        가장 궁금하세요?
+        {mode === "question" ? (
+          <>
+            무엇이 가장
+            <br />
+            궁금하세요?
+          </>
+        ) : (
+          <>
+            어떤 사주가
+            <br />
+            가장 궁금하세요?
+          </>
+        )}
       </h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
-        전체 사주는 넓게 보고, 분야를 고르면 그 주제를 5가지 관점으로 더 깊게 풀어드려요.
+        {mode === "question"
+          ? "가장 가까운 분야를 하나 고르면, 다음 화면에서 실제 궁금한 내용을 바로 물어볼 수 있어요."
+          : "전체 사주는 넓게 보고, 분야를 고르면 그 주제를 5가지 관점으로 더 깊게 풀어드려요."}
       </p>
 
       <div className="mt-7 grid grid-cols-2 gap-2.5">
@@ -59,7 +73,7 @@ export function SajuFocusStep({
           onClick={onNext}
           className="h-14 w-full rounded-full text-base"
         >
-          생년월일 입력하기
+          {mode === "question" ? "궁금한 내용 적기" : "생년월일 입력하기"}
         </Button>
       </div>
     </div>
