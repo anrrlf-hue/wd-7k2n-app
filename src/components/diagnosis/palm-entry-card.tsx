@@ -10,10 +10,14 @@ export function PalmEntryCard({
   birthInput,
   personalityInput,
   focus,
+  variant = "default",
+  question,
 }: {
   birthInput: BirthInput;
   personalityInput?: PersonalityInputEcho;
   focus?: SajuFocus;
+  variant?: "default" | "answerEnhance";
+  question?: string;
 }) {
   const params = new URLSearchParams({
     year: String(birthInput.year),
@@ -40,6 +44,9 @@ export function PalmEntryCard({
   if (focus) {
     params.set("focus", focus);
   }
+  if (question?.trim()) {
+    params.set("question", question.trim());
+  }
 
   return (
     <Link
@@ -51,13 +58,17 @@ export function PalmEntryCard({
       </span>
       <div className="flex-1">
         <p className="text-sm leading-snug font-medium">
-          손금에서는 어떤 내가 보일까요?
+          {variant === "answerEnhance"
+            ? "손금까지 함께 보면 더 입체적으로 볼 수 있어요"
+            : "손금에서는 어떤 내가 보일까요?"}
         </p>
         <p className="mt-1 text-xs opacity-80">
-          사진 한 장으로 독립된 두 번째 분석
+          {variant === "answerEnhance"
+            ? "선택사항 · 지금 받은 질문과 사주 흐름에 손금 분석을 더해봅니다"
+            : "사진 한 장으로 독립된 두 번째 분석"}
         </p>
         <span className="mt-2 inline-flex rounded-full bg-background/20 px-3 py-1 text-sm font-semibold">
-          손금 사진 찍기
+          {variant === "answerEnhance" ? "손금까지 함께 보기" : "손금 사진 찍기"}
         </span>
       </div>
       <ArrowRight className="size-4 shrink-0 text-current" />
