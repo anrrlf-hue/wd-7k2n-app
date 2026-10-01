@@ -50,6 +50,23 @@ function personalityEvidence(
   }
 }
 
+function palmLineDetail(line: OnnxPalmLines["heartLine"]): string {
+  const parts: string[] = [];
+  if (line.curve) parts.push(line.curve);
+  if (line.length) parts.push(`길이 ${line.length}`);
+  if (line.depthStrength) parts.push(`선명도 ${line.depthStrength}`);
+  return parts.length > 0 ? parts.join(" · ") : "선 위치만 확인";
+}
+
+function addPalmLine(
+  items: RealityEvidence[],
+  line: OnnxPalmLines["heartLine"],
+  label: string,
+) {
+  if (!line.detected) return;
+  add(items, "palm", label, palmLineDetail(line));
+}
+
 function palmEvidence(
   palm: OnnxPalmLines | null | undefined,
   domain: RealityAnswerDomain,
@@ -57,30 +74,33 @@ function palmEvidence(
 ) {
   if (!palm) return;
 
-  if ((domain === "love" || domain === "relationship") && palm.heartLine.detected) {
-    add(
-      items,
-      "palm",
-      "감정선 관찰",
-      palm.heartLine.curve
-        ? `${palm.heartLine.curve} · 길이 ${palm.heartLine.length ?? "미확인"}`
-        : `길이 ${palm.heartLine.length ?? "미확인"}`,
-    );
+  if (domain === "love" || domain === "relationship") {
+    addPalmLine(items, palm.heartLine, "현재 관계·감정 표현을 보완해 보는 감정선 관찰");
+    return;
   }
 
-  if ((domain === "career" || domain === "work_business") && palm.headLine.detected) {
-    add(
-      items,
-      "palm",
-      "두뇌선 관찰",
-      palm.headLine.curve
-        ? `${palm.headLine.curve} · 길이 ${palm.headLine.length ?? "미확인"}`
-        : `길이 ${palm.headLine.length ?? "미확인"}`,
-    );
+  if (domain === "career" || domain === "work_business") {
+    addPalmLine(items, palm.headLine, "현재 판단·일 처리 방식을 보완해 보는 두뇌선 관찰");
+    return;
   }
 
-  // 생활·건강에서는 손금으로 건강상태를 추론하지 않는다.
-  // 돈 영역에서도 손금선을 재물 성과 예측 근거로 쓰지 않는다.
+  if (domain === "money") {
+    addPalmLine(items, palm.headLine, "현재 돈 관련 판단 방식을 보완해 보는 두뇌선 관찰");
+    addPalmLine(items, palm.lifeLine, "현재 생활 흐름의 지속 방식을 보완해 보는 생명선 관찰");
+    return;
+  }
+
+  if (domain === "wellbeing") {
+    // 생명선은 건강 상태나 수명을 판단하는 근거로 쓰지 않는다.
+    addPalmLine(items, palm.lifeLine, "생활 리듬 참고용 생명선 관찰 · 건강 판단 아님");
+    return;
+  }
+
+  if (domain === "overall") {
+    addPalmLine(items, palm.headLine, "현재 판단 방식의 두뇌선 관찰");
+    addPalmLine(items, palm.heartLine, "현재 관계·감정 표현의 감정선 관찰");
+    addPalmLine(items, palm.lifeLine, "현재 생활 흐름의 생명선 관찰");
+  }
 }
 
 export function selectRealityEvidence(
