@@ -9,35 +9,32 @@ import { PersonalityStep } from "@/components/diagnosis/personality-step";
 import { LoadingStep } from "@/components/diagnosis/loading-step";
 import { ResultStep } from "@/components/diagnosis/result-step";
 import { SajuFocusStep } from "@/components/diagnosis/saju-focus-step";
-import type { FullSajuDiagnosis } from "@/lib/saju";
+import { QuestionFirstStep } from "@/components/diagnosis/question-first-step";
+import { QuestionAnswerResult } from "@/components/diagnosis/question-answer-result";
+import type { BirthInput, FullSajuDiagnosis } from "@/lib/saju";
 import type { MbtiType } from "@/lib/mbti-facts";
 import { parseSajuFocus, type SajuFocus } from "@/lib/saju-focus";
+import type { RealityAnswer } from "@/lib/reality-answer-contract";
+import type { RealityAnswerEngineResult } from "@/lib/reality-answer-engine";
 
-// 확정된 최종 퍼널: 생년월일+성별 -> 출생시간 -> 선택형 MBTI -> 1차
-// 무료 결과 -> (손금은 별도 라우트 /diagnosis/palm에서 최종 통합 리포트까지
-// 이어짐). 별도 6문항 성향 체크는 사용자 흐름에서 제거했다. MBTI는
-// 사주 계산값을 바꾸지 않고 결과 표현을 개인화하는 보조정보로만 사용한다.
-// 손금 이후 다시 여기로 돌아와 질문을 더 받는 단계(money-check/summary)는
-// 없다 — 결제 뒤/후반에 추가 질문을 만들지 않는다는 원칙에 따라 완전히 제거했다.
-type Step = "focus" | "date" | "time" | "personality" | "loading" | "result" | "error";
+type JourneyMode = "free" | "question";
+type Step =
+  | "focus"
+  | "question"
+  | "date"
+  | "time"
+  | "personality"
+  | "loading"
+  | "answering"
+  | "result"
+  | "answer"
+  | "error";
 
-const STEP_ORDER: Step[] = ["focus", "date", "time", "personality", "loading", "result"];
-
-// 서버 쪽 이론상 최대 처리시간: enrichSajuFacts의 oh-my-saju 서브프로세스
-// 타임아웃(6초) + 그 뒤 Promise.all로 동시 실행되는 딥해석/무료리포트 각각의
-// 9초 타임아웃(둘은 동시라 합산 아님) = 최대 15초. 여기에 Vercel 서버리스
-// 콜드스타트(자식 프로세스 최초 spawn 등) 여유를 더해야 하므로, 클라이언트
-// 타임아웃을 15초에 딱 맞추면 콜드스타트 상황에서 실제로는 성공할 요청이
-// 그냥 잘려나간다 — 30초로 넉넉히 잡는다.
+const FREE_STORAGE_KEY = "saju-app:diagnosis-session:v2";
+const QUESTION_STORAGE_KEY = "saju-app:question-first-session:v1";
 const CLIENT_TIMEOUT_MS = 30000;
 
-// 새로고침하면 결과가 통째로 날아가고 처음부터 다시 해야 하는 문제 대응 —
-// 완료된 진단을 세션 저장소에 남겨 같은 탭에서 새로고침해도 복원한다.
-// 서버에 아무것도 저장하지 않고(고유 결과 URL 등은 범위 밖), 브라우저를
-// 닫으면 사라지는 가벼운 수준으로만 처리한다.
-const STORAGE_KEY = "saju-app:diagnosis-session:v2";
-
-interface StoredSession {
+interface StoredFreeSession {
   focus?: SajuFocus;
   birthDate: string;
   gender: "남" | "여";
@@ -47,37 +44,103 @@ interface StoredSession {
   diagnosis: FullSajuDiagnosis;
 }
 
+interface StoredQuestionSession {
+  focus: SajuFocus;
+  question: string;
+  birthDate: string;
+  gender: "남" | "여";
+  knowsTime: boolean;
+  birthTime: string;
+  mbti: MbtiType | "모름";
+  answer: RealityAnswer;
+}
+
+function journeyModeFromLocation(): JourneyMode {
+  if (typeof window === "undefined") return "free";
+  return new URLSearchParams(window.location.search).get("mode") === "question" ? "question" : "free";
+}
+
+function birthInputFromState(input: {
+  birthDate: string;
+  gender: "남" | "여";
+  knowsTime: boolean;
+  birthTime: string;
+}): BirthInput | null {
+  const [year, month, day] = input.birthDate.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const [hour, minute] =
+    input.knowsTime && input.birthTime
+      ? input.birthTime.split(":").map(Number)
+      : [null, null];
+
+  return {
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    gender: input.gender,
+  };
+}
+
 export default function DiagnosisPage() {
+  const [mode, setMode] = useState<JourneyMode>("free");
   const [focus, setFocus] = useState<SajuFocus | null>(null);
   const [step, setStep] = useState<Step>("focus");
+  const [question, setQuestion] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState<"남" | "여">("남");
   const [knowsTime, setKnowsTime] = useState(false);
   const [birthTime, setBirthTime] = useState("");
   const [mbti, setMbti] = useState<MbtiType | "모름">("모름");
   const [diagnosis, setDiagnosis] = useState<FullSajuDiagnosis | null>(null);
+  const [questionAnswer, setQuestionAnswer] = useState<RealityAnswer | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // sessionStorage(외부 시스템)에서 복원하는 마운트 1회성 동기화라 useEffect가
-  // 맞는 자리다(React 공식 가이드의 "외부 시스템과 동기화" 케이스) — 서버
-  // 렌더에는 sessionStorage가 없어 useState 지연 초기화로 옮기면 하이드레이션
-  // 불일치가 난다. react-hooks/set-state-in-effect는 "다른 state에서 파생되는
-  // state"를 잡기 위한 규칙이라 이 케이스엔 해당하지 않는다.
   useEffect(() => {
     try {
-      const focusParam = new URLSearchParams(window.location.search).get("focus");
+      const params = new URLSearchParams(window.location.search);
+      const nextMode: JourneyMode = params.get("mode") === "question" ? "question" : "free";
+      const focusParam = params.get("focus");
       const urlFocus = focusParam ? parseSajuFocus(focusParam) : null;
-      const raw = sessionStorage.getItem(STORAGE_KEY);
+      setMode(nextMode);
+
+      if (nextMode === "question") {
+        const raw = sessionStorage.getItem(QUESTION_STORAGE_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw) as StoredQuestionSession;
+          if (saved?.answer && saved?.focus) {
+            setFocus(parseSajuFocus(saved.focus));
+            setQuestion(saved.question);
+            setBirthDate(saved.birthDate);
+            setGender(saved.gender);
+            setKnowsTime(saved.knowsTime);
+            setBirthTime(saved.birthTime);
+            setMbti(saved.mbti);
+            setQuestionAnswer(saved.answer);
+            setStep("answer");
+            return;
+          }
+        }
+        setFocus(urlFocus);
+        setStep("focus");
+        return;
+      }
+
+      const raw = sessionStorage.getItem(FREE_STORAGE_KEY);
       if (!raw) {
         setFocus(urlFocus);
+        setStep("focus");
         return;
       }
-      const saved: StoredSession = JSON.parse(raw);
+
+      const saved = JSON.parse(raw) as StoredFreeSession;
       if (!saved?.diagnosis) {
         setFocus(urlFocus);
+        setStep("focus");
         return;
       }
-      /* eslint-disable react-hooks/set-state-in-effect */
+
       setFocus(parseSajuFocus(String(saved.focus ?? saved.diagnosis.focus ?? urlFocus ?? "overall")));
       setBirthDate(saved.birthDate);
       setGender(saved.gender);
@@ -86,26 +149,45 @@ export default function DiagnosisPage() {
       setMbti(saved.mbti);
       setDiagnosis(saved.diagnosis);
       setStep("result");
-      /* eslint-enable react-hooks/set-state-in-effect */
     } catch {
-      // 세션 저장소를 못 읽어도(프라이빗 모드 등) 그냥 처음부터 진행한다.
+      // 세션을 읽지 못해도 새 흐름으로 진행한다.
     }
   }, []);
 
-  function restart() {
+  function clearCurrentSession() {
     try {
-      sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(mode === "question" ? QUESTION_STORAGE_KEY : FREE_STORAGE_KEY);
     } catch {
-      // 저장소 접근 불가는 무시 — 어차피 폼 상태는 아래에서 초기화된다.
+      // 저장소 접근 실패는 현재 폼 진행을 막지 않는다.
     }
-    const focusParam = new URLSearchParams(window.location.search).get("focus");
+  }
+
+  function restart() {
+    clearCurrentSession();
+    const params = new URLSearchParams(window.location.search);
+    const focusParam = params.get("focus");
     setFocus(focusParam ? parseSajuFocus(focusParam) : null);
+    setQuestion("");
     setBirthDate("");
     setKnowsTime(false);
     setBirthTime("");
     setMbti("모름");
     setDiagnosis(null);
+    setQuestionAnswer(null);
+    setError(null);
     setStep("focus");
+  }
+
+  function askAgain() {
+    try {
+      sessionStorage.removeItem(QUESTION_STORAGE_KEY);
+    } catch {
+      // 무시
+    }
+    setQuestion("");
+    setQuestionAnswer(null);
+    setError(null);
+    setStep(focus ? "question" : "focus");
   }
 
   async function handleFetchDiagnosis() {
@@ -113,17 +195,16 @@ export default function DiagnosisPage() {
       setStep("focus");
       return;
     }
+
+    const birthInput = birthInputFromState({ birthDate, gender, knowsTime, birthTime });
+    if (!birthInput) {
+      setStep("date");
+      return;
+    }
+
     setStep("loading");
     setError(null);
 
-    const [year, month, day] = birthDate.split("-").map(Number);
-    const [hour, minute] = knowsTime && birthTime
-      ? birthTime.split(":").map(Number)
-      : [null, null];
-
-    // 서버가 아예 응답하지 않는 경우까지 대비한 클라이언트 측 안전장치.
-    // 인위적으로 로딩을 늘리는 지연은 넣지 않는다 — 실제 계산에 걸리는
-    // 시간만큼만 기다린다.
     const controller = new AbortController();
     const clientTimeout = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
 
@@ -132,12 +213,7 @@ export default function DiagnosisPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          year,
-          month,
-          day,
-          hour,
-          minute,
-          gender,
+          ...birthInput,
           focus,
           mbti: mbti !== "모름" ? mbti : undefined,
         }),
@@ -148,22 +224,27 @@ export default function DiagnosisPage() {
       const data: FullSajuDiagnosis = await res.json();
       setDiagnosis(data);
       setStep("result");
+
       try {
-        const toStore: StoredSession = { focus, birthDate, gender, knowsTime, birthTime, mbti, diagnosis: data };
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+        const toStore: StoredFreeSession = {
+          focus,
+          birthDate,
+          gender,
+          knowsTime,
+          birthTime,
+          mbti,
+          diagnosis: data,
+        };
+        sessionStorage.setItem(FREE_STORAGE_KEY, JSON.stringify(toStore));
       } catch {
-        // 저장 실패(용량 초과, 프라이빗 모드 등)해도 이번 화면 표시엔 지장 없다.
+        // 저장 실패는 현재 결과 표시를 막지 않는다.
       }
     } catch (err) {
-      // 입력값(생년월일)을 다시 그리는 "date" 스텝으로 조용히 되돌리면,
-      // 사용자는 자기가 입력한 값이 사라졌다고 오해하고 버튼이 안 먹힌다고
-      // 생각하기 쉽다 — 전용 에러 스텝에서 같은 입력값 그대로 재시도할 수
-      // 있게 한다. 타임아웃(AbortError)과 그 외 실패를 구분해 안내한다.
       const isTimeout = err instanceof DOMException && err.name === "AbortError";
       setError(
         isTimeout
           ? "서버 응답이 평소보다 오래 걸리고 있어요. 네트워크 상태를 확인하고 다시 시도해주세요."
-          : "진단 계산 중 문제가 생겼어요. 다시 시도해주세요.",
+          : "사주 계산 중 문제가 생겼어요. 다시 시도해주세요.",
       );
       setStep("error");
     } finally {
@@ -171,18 +252,151 @@ export default function DiagnosisPage() {
     }
   }
 
-  // "error"는 별도 갈래(재시도용)라 진행바 기준 스텝 순서에는 없다 —
-  // 직전까지 진행한 위치(loading 직전, 즉 personality)만큼 채워서 보여준다.
-  const progressStep = step === "error" ? "personality" : step;
-  const progress = ((STEP_ORDER.indexOf(progressStep) + 1) / STEP_ORDER.length) * 100;
+  async function handleFetchQuestionAnswer() {
+    if (!focus) {
+      setStep("focus");
+      return;
+    }
+    if (question.trim().length < 2) {
+      setError("궁금한 내용을 조금만 더 적어주세요.");
+      setStep("question");
+      return;
+    }
+
+    const birthInput = birthInputFromState({ birthDate, gender, knowsTime, birthTime });
+    if (!birthInput) {
+      setStep("date");
+      return;
+    }
+
+    setStep("answering");
+    setError(null);
+
+    const controller = new AbortController();
+    const clientTimeout = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
+
+    try {
+      const res = await fetch("/api/reality-answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...birthInput,
+          question: question.trim(),
+          focusHint: focus,
+          mbti: mbti !== "모름" ? mbti : undefined,
+        }),
+        signal: controller.signal,
+      });
+
+      const data = (await res.json()) as RealityAnswerEngineResult & { error?: string };
+      if (!res.ok) throw new Error(data.error || "사주답변을 만들지 못했습니다.");
+
+      if (data.status === "needs_clarification") {
+        setError(data.reason);
+        setStep("question");
+        return;
+      }
+
+      setQuestionAnswer(data.answer);
+      setStep("answer");
+
+      try {
+        const toStore: StoredQuestionSession = {
+          focus,
+          question: question.trim(),
+          birthDate,
+          gender,
+          knowsTime,
+          birthTime,
+          mbti,
+          answer: data.answer,
+        };
+        sessionStorage.setItem(QUESTION_STORAGE_KEY, JSON.stringify(toStore));
+      } catch {
+        // 저장 실패는 현재 결과 표시를 막지 않는다.
+      }
+    } catch (err) {
+      const isTimeout = err instanceof DOMException && err.name === "AbortError";
+      setError(
+        isTimeout
+          ? "답과 시기를 보는 데 평소보다 오래 걸리고 있어요. 잠시 후 다시 시도해주세요."
+          : err instanceof Error
+            ? err.message
+            : "사주답변을 만들지 못했습니다.",
+      );
+      setStep("error");
+    } finally {
+      clearTimeout(clientTimeout);
+    }
+  }
+
+  const progressLabel =
+    mode === "question"
+      ? step === "focus"
+        ? "분야 선택 · 1 / 5"
+        : step === "question"
+          ? "내 질문 · 2 / 5"
+          : step === "date"
+            ? "출생정보 · 3 / 5"
+            : step === "time"
+              ? "출생정보 · 4 / 5"
+              : step === "personality"
+                ? "MBTI · 5 / 5 · 선택사항"
+                : "답과 시기 보는 중"
+      : undefined;
+
+  const progress =
+    mode === "question"
+      ? step === "focus"
+        ? 20
+        : step === "question"
+          ? 40
+          : step === "date"
+            ? 60
+            : step === "time"
+              ? 80
+              : 100
+      : step === "focus"
+        ? 25
+        : step === "date"
+          ? 50
+          : step === "time"
+            ? 75
+            : 100;
+
+  const answerBirthInput = birthInputFromState({ birthDate, gender, knowsTime, birthTime });
 
   return (
-    <StepShell stepKey={step} progress={progress}>
+    <StepShell stepKey={step} progress={progress} progressLabel={progressLabel}>
       {step === "focus" && (
         <SajuFocusStep
           value={focus}
-          onChange={setFocus}
-          onNext={() => setStep("date")}
+          onChange={(value) => {
+            setFocus(value);
+            setError(null);
+          }}
+          onNext={() => setStep(mode === "question" ? "question" : "date")}
+          mode={mode}
+        />
+      )}
+
+      {step === "question" && focus && (
+        <QuestionFirstStep
+          focus={focus}
+          value={question}
+          error={error}
+          onChange={(value) => {
+            setQuestion(value);
+            setError(null);
+          }}
+          onNext={() => {
+            if (birthDate) {
+              void handleFetchQuestionAnswer();
+            } else {
+              setStep("date");
+            }
+          }}
+          onBack={() => setStep("focus")}
         />
       )}
 
@@ -193,7 +407,7 @@ export default function DiagnosisPage() {
           gender={gender}
           onGenderChange={setGender}
           onNext={() => setStep("time")}
-          onBack={() => setStep("focus")}
+          onBack={() => setStep(mode === "question" ? "question" : "focus")}
         />
       )}
 
@@ -212,17 +426,28 @@ export default function DiagnosisPage() {
         <PersonalityStep
           mbti={mbti}
           onMbtiChange={setMbti}
-          onNext={handleFetchDiagnosis}
+          onNext={() => {
+            if (mode === "question") void handleFetchQuestionAnswer();
+            else void handleFetchDiagnosis();
+          }}
           onBack={() => setStep("time")}
         />
       )}
 
       {step === "loading" && <LoadingStep />}
+      {step === "answering" && <LoadingStep mode="question" />}
 
       {step === "error" && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <p className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive">{error}</p>
-          <Button size="lg" onClick={handleFetchDiagnosis} className="h-13 w-full max-w-xs rounded-full text-base">
+          <Button
+            size="lg"
+            onClick={() => {
+              if (mode === "question") void handleFetchQuestionAnswer();
+              else void handleFetchDiagnosis();
+            }}
+            className="h-13 w-full max-w-xs rounded-full text-base"
+          >
             다시 시도하기
           </Button>
           <button
@@ -246,6 +471,17 @@ export default function DiagnosisPage() {
             다른 생년월일로 다시 보기
           </button>
         </>
+      )}
+
+      {step === "answer" && focus && questionAnswer && answerBirthInput && (
+        <QuestionAnswerResult
+          focus={focus}
+          question={question}
+          birthInput={answerBirthInput}
+          mbti={mbti === "모름" ? null : mbti}
+          answer={questionAnswer}
+          onAskAgain={askAgain}
+        />
       )}
     </StepShell>
   );
