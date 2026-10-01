@@ -59,12 +59,12 @@ export function PalmEntryCard({
       <div className="flex-1">
         <p className="text-sm leading-snug font-medium">
           {variant === "answerEnhance"
-            ? "손금까지 함께 보면 더 입체적으로 볼 수 있어요"
+            ? "같은 질문에 손금까지 더해볼까요?"
             : "손금에서는 어떤 내가 보일까요?"}
         </p>
         <p className="mt-1 text-xs opacity-80">
           {variant === "answerEnhance"
-            ? "선택사항 · 지금 받은 질문과 사주 흐름에 손금 분석을 더해봅니다"
+            ? "선택사항 · 질문은 그대로 두고, 손금에서 보이는 현재 모습을 종합답에 더합니다"
             : "사진 한 장으로 독립된 두 번째 분석"}
         </p>
         <span className="mt-2 inline-flex rounded-full bg-background/20 px-3 py-1 text-sm font-semibold">
