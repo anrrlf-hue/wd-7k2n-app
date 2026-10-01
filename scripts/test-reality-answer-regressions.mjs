@@ -41,7 +41,6 @@ const questionMod = await import(pathToFileURL(path.join(root, "src/lib/reality-
 const evidenceMod = await import(pathToFileURL(path.join(root, "src/lib/reality-evidence.ts")).href);
 const builderMod = await import(pathToFileURL(path.join(root, "src/lib/reality-answer-builder.ts")).href);
 const contractMod = await import(pathToFileURL(path.join(root, "src/lib/reality-answer-contract.ts")).href);
-const personalityMod = await import(pathToFileURL(path.join(root, "src/lib/personality-check.ts")).href);
 const managementMod = await import(pathToFileURL(path.join(root, "src/lib/reality-management.ts")).href);
 const focusMod = await import(pathToFileURL(path.join(root, "src/lib/saju-focus.ts")).href);
 
@@ -59,15 +58,8 @@ const facts = factsMod.computeSajuFacts({
 });
 
 const personality = {
-  mbti: null,
-  check: personalityMod.scorePersonalityCheck({
-    speed: 2,
-    plan: 2,
-    change: 2,
-    autonomy: 2,
-    emotionExpression: 4,
-    socialEnergy: 3,
-  }),
+  mbti: "ISFJ",
+  check: null,
 };
 
 const cases = [
@@ -136,6 +128,12 @@ for (const [id, raw, expectedDomain] of cases) {
   assert((answer.timing.windows?.length ?? 0) >= 1, `${id}: answer must include timing windows`);
   assert(answer.timing.precision === "monthly", `${id}: expected monthly timing precision`);
   assert(/20\d{2}년/.test(answer.timing.windows[0].label), `${id}: timing window has no year`);
+  for (const window of answer.timing.windows) {
+    assert(window.meaning?.length > 10, `${id}: timing meaning missing`);
+    assert(window.positive?.length > 10, `${id}: positive timing interpretation missing`);
+    assert(window.caution?.length > 10, `${id}: timing caution missing`);
+    assert(!/(세운|월운|십성)/.test(window.reason), `${id}: technical timing jargon leaked to customer copy`);
+  }
 
   if (expectedDomain === "wellbeing") {
     assert(answer.safetyNote?.includes("질병 진단"), "R09: health safety note missing");
