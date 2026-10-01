@@ -22,7 +22,7 @@ function level(personality: PersonalityInput | null | undefined, key: string): s
 }
 
 function timingFor(question: RealityQuestion, facts: SajuFacts): RealityTiming {
-  const outlook = buildSajuTimingOutlook(facts, question.domain);
+  const outlook = buildSajuTimingOutlook(facts, question.domain, undefined, question.timeScope);
 
   if (outlook) {
     return {
