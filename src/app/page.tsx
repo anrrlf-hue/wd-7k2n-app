@@ -30,17 +30,18 @@ export default function Home() {
           전체 사주 무료로 보기
         </Link>
 
-        <div className={styles.benefitThirdCopy}>
-          당신의 궁금증에
-          <br />
-          답과 시기를 짚어드립니다
+        <div className={styles.benefitThirdCardCover} aria-hidden="true">
+          <strong>
+            당신의 궁금증에
+            <br />
+            답과 시기를 짚어드립니다
+          </strong>
+          <span>
+            질문에 맞춰 답을 먼저 드리고
+            <br />
+            눈여겨볼 시기를 함께 봅니다.
+          </span>
         </div>
-
-        <section className={styles.questionPromise}>
-          <p className={styles.questionPromiseEyebrow}>궁금한 건 직접 물어보세요</p>
-          <strong>답과 시기를 함께 봅니다</strong>
-          <p>연애·인간관계 · 일·직업·사업 · 돈·재물 · 생활·건강</p>
-        </section>
         <Link
           href="/management"
           aria-label="기존 이용자 내 관리"
