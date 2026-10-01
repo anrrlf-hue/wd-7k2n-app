@@ -72,6 +72,28 @@
   outline: 3px solid #fff0b8;
   outline-offset: 2px;
 }
+.freeSajuLink {
+  position: absolute;
+  z-index: 12;
+  top: 39.25%;
+  left: 8%;
+  width: 41%;
+  min-height: 2.5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,.88);
+  font-size: clamp(8px, 2.15vw, 10px);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+.freeSajuLink:focus-visible {
+  outline: 2px solid #fff0b8;
+  outline-offset: 2px;
+  border-radius: 999px;
+}
 .benefitThirdCopy {
   position: absolute;
   z-index: 13;
@@ -95,7 +117,10 @@
 }
 @media (max-width: 360px) {
   .diagnosisCta {
-    font-size: 11px;
+    font-size: 10px;
+  }
+  .freeSajuLink {
+    font-size: 8px;
   }
   .benefitThirdCopy {
     top: 65.25%;
