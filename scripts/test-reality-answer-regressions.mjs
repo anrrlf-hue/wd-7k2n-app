@@ -134,6 +134,14 @@ for (const [id, raw, expectedDomain] of cases) {
     assert(window.caution?.length > 10, `${id}: timing caution missing`);
     assert(!/(세운|월운|십성)/.test(window.reason), `${id}: technical timing jargon leaked to customer copy`);
   }
+  if ((answer.timing.windows?.length ?? 0) > 1) {
+    const meanings = answer.timing.windows.map((window) => window.meaning);
+    const positives = answer.timing.windows.map((window) => window.positive);
+    const cautions = answer.timing.windows.map((window) => window.caution);
+    assert(new Set(meanings).size === meanings.length, `${id}: timing meanings are duplicated across windows`);
+    assert(new Set(positives).size === positives.length, `${id}: timing positives are duplicated across windows`);
+    assert(new Set(cautions).size === cautions.length, `${id}: timing cautions are duplicated across windows`);
+  }
 
   if (expectedDomain === "wellbeing") {
     assert(answer.safetyNote?.includes("질병 진단"), "R09: health safety note missing");
@@ -188,6 +196,8 @@ console.log("PASS T01 direct love answer + timing");
 const funnelSource = fs.readFileSync(path.join(root, "src/components/palm/reality-answer-funnel.tsx"), "utf8");
 const reportSectionSource = fs.readFileSync(path.join(root, "src/components/diagnosis/report-section.tsx"), "utf8");
 const myeongsikSource = fs.readFileSync(path.join(root, "src/components/diagnosis/myeongsik-section.tsx"), "utf8");
+const palmPageSource = fs.readFileSync(path.join(root, "src/components/palm/palm-page-client.tsx"), "utf8");
+const palmDetectionSource = fs.readFileSync(path.join(root, "src/lib/palm-detection.ts"), "utf8");
 assert(funnelSource.includes("SAJU_FOCUS_VALUES.map"), "UI01: question flow must use the same five Saju choices");
 assert(!funnelSource.includes("REALITY_ANSWER_DOMAINS.map"), "UI02: old seven-choice UI remains");
 assert(!funnelSource.includes("왜 이렇게 봤나요"), "UI03: why-explanation UI remains in question answer");
@@ -195,6 +205,23 @@ assert(!funnelSource.includes("answer.actions"), "UI04: action checklist remains
 assert(!reportSectionSource.includes("왜 이렇게 봤나요"), "UI05: why toggle remains in free report");
 assert(!reportSectionSource.includes("어떻게 할까요"), "UI06: how-to toggle remains in free report");
 assert(!myeongsikSource.includes("왜 이렇게 봤나요"), "UI07: Ohaeng why details remain");
+assert(
+  palmPageSource.includes("자동 확인이 끝나지 않아도 촬영할 수 있어요"),
+  "UI08: mobile palm capture must remain available when preview analysis is not ready",
+);
+assert(
+  palmPageSource.includes("60000"),
+  "UI09: palm analysis timeout must allow slower mobile model startup",
+);
+assert(
+  palmPageSource.includes("다른 사진 선택하기") && palmPageSource.includes("손금 없이 사주 결과만 계속 보기"),
+  "UI10: palm error state must offer recovery paths",
+);
+assert(
+  palmDetectionSource.includes("handLandmarkerPromise = null") &&
+    palmDetectionSource.includes("shouldSkipSecondaryPoseModel"),
+  "UI11: palm model retry/mobile pressure guards missing",
+);
 
 console.log("REALITY ANSWER REGRESSION RESULTS");
 for (const item of outputs) {

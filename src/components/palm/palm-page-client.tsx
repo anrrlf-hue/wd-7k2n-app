@@ -71,17 +71,46 @@ const HAND_SHAPE_KO: Record<PalmFacts["handShape"], string> = {
   unknown: "확인 안 됨",
 };
 
-async function fileToCanvas(file: File, maxDim = 1280): Promise<HTMLCanvasElement> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("canvas context 생성 실패");
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close?.();
-  return canvas;
+async function fileToCanvas(file: File, maxDim = 1024): Promise<HTMLCanvasElement> {
+  let bitmap: ImageBitmap | null = null;
+  let image: HTMLImageElement | null = null;
+  let objectUrl: string | null = null;
+
+  try {
+    if (typeof createImageBitmap === "function") {
+      try {
+        bitmap = await createImageBitmap(file);
+      } catch {
+        bitmap = null;
+      }
+    }
+
+    if (!bitmap) {
+      objectUrl = URL.createObjectURL(file);
+      image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const next = new Image();
+        next.onload = () => resolve(next);
+        next.onerror = () => reject(new Error("browser image decode failed"));
+        next.src = objectUrl!;
+      });
+    }
+
+    const width = bitmap?.width ?? image?.naturalWidth ?? 0;
+    const height = bitmap?.height ?? image?.naturalHeight ?? 0;
+    if (!width || !height) throw new Error("image dimensions unavailable");
+
+    const scale = Math.min(1, maxDim / Math.max(width, height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("canvas context 생성 실패");
+    ctx.drawImage((bitmap ?? image)!, 0, 0, canvas.width, canvas.height);
+    return canvas;
+  } finally {
+    bitmap?.close?.();
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
@@ -192,7 +221,9 @@ export function PalmPageClient({
     if (!video || !stream) return;
 
     video.srcObject = stream;
-    void video.play();
+    void video.play().catch(() => {
+      setCameraMessage("카메라 화면을 시작하지 못했어요. 다시 시도하거나 사진 선택을 이용해주세요.");
+    });
 
     let cancelled = false;
     const timer = window.setInterval(async () => {
@@ -226,6 +257,12 @@ export function PalmPageClient({
                 ? "좋아요. 초점이 안정되도록 잠깐만 그대로 있어주세요."
                 : assessment.message,
           );
+        }
+      } catch {
+        if (!cancelled) {
+          cameraStableFramesRef.current = 0;
+          setCameraReady(false);
+          setCameraMessage("자동 선명도 확인이 잠시 불안정해도 촬영은 가능합니다.");
         }
       } finally {
         cameraProbeBusyRef.current = false;
@@ -347,7 +384,8 @@ export function PalmPageClient({
       cameraStreamRef.current = stream;
       setCameraOpen(true);
     } catch {
-      cameraInputRef.current?.click();
+      stopLiveCamera();
+      setErrorMsg("카메라를 열 수 없어요. 브라우저의 카메라 권한을 허용하거나 아래 ‘사진 선택하기’를 이용해주세요.");
     }
   }
 
@@ -359,8 +397,8 @@ export function PalmPageClient({
     try {
       const facts = await withTimeout(
         analyzePalmFromCanvas(canvas),
-        30000,
-        "손금 분석이 오래 걸리고 있어요. 사진을 다시 촬영하거나 선택해주세요.",
+        60000,
+        "손금 분석 준비가 오래 걸리고 있어요. 다시 촬영하거나 사진 선택으로 시도해주세요.",
       );
       setPalmFacts(facts);
 
@@ -400,8 +438,12 @@ export function PalmPageClient({
     try {
       const canvas = await fileToCanvas(file);
       await processPalmCanvas(canvas, URL.createObjectURL(file));
-    } catch {
-      setErrorMsg("사진을 불러오지 못했어요. 다른 사진으로 다시 시도해주세요.");
+    } catch (err) {
+      setErrorMsg(
+        err instanceof Error && err.message.includes("손금 분석")
+          ? err.message
+          : "사진을 불러오지 못했어요. JPG·PNG 사진으로 다시 시도하거나 카메라 촬영을 이용해주세요.",
+      );
       setStage("error");
     }
   }
@@ -503,21 +545,24 @@ export function PalmPageClient({
                   취소
                 </Button>
               </div>
-              {cameraReady && (
-                <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 px-4 pt-3 pb-4 backdrop-blur">
-                  <div className="mx-auto flex w-full max-w-sm justify-center">
-                    <Button
-                      type="button"
-                      aria-label="손금 사진 촬영"
-                      onClick={captureLiveCamera}
-                      className="primary-cta flex size-20 flex-col gap-1 rounded-full p-0 shadow-xl"
-                    >
-                      <Camera className="size-5" />
-                      <span className="text-xs font-semibold">촬영</span>
-                    </Button>
-                  </div>
+              <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 px-4 pt-3 pb-4 backdrop-blur">
+                <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-2">
+                  <Button
+                    type="button"
+                    aria-label="손금 사진 촬영"
+                    onClick={captureLiveCamera}
+                    className="primary-cta flex size-20 flex-col gap-1 rounded-full p-0 shadow-xl"
+                  >
+                    <Camera className="size-5" />
+                    <span className="text-xs font-semibold">촬영</span>
+                  </Button>
+                  {!cameraReady && (
+                    <p className="text-center text-xs leading-5 text-muted-foreground">
+                      자동 확인이 끝나지 않아도 촬영할 수 있어요. 결과가 흐리면 다시 안내합니다.
+                    </p>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           ) : (
             <>
@@ -531,6 +576,11 @@ export function PalmPageClient({
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   처음 촬영할 때만 카메라 사용 권한이 뜹니다. <span className="font-medium text-foreground">허용</span>을 눌러주세요.
                 </p>
+                {errorMsg && (
+                  <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm leading-6 text-destructive">
+                    {errorMsg}
+                  </p>
+                )}
               </div>
 
               <div className="mt-6 flex flex-col gap-3">
@@ -643,10 +693,22 @@ export function PalmPageClient({
           <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
             {errorMsg ?? "문제가 발생했어요."}
           </div>
-          <div className="mt-auto pt-8">
+          <div className="mt-auto flex flex-col gap-3 pt-8">
             <Button size="lg" onClick={reset} className="h-13 w-full rounded-full text-base">
-              다시 시도하기
+              다시 촬영하기
             </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => galleryInputRef.current?.click()}
+              className="h-13 w-full rounded-full text-base"
+            >
+              <ImagePlus className="size-4" />
+              다른 사진 선택하기
+            </Button>
+            <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">
+              손금 없이 사주 결과만 계속 보기
+            </button>
           </div>
         </div>
       )}
