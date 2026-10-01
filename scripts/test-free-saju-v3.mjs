@@ -109,8 +109,7 @@ assert(homeSource.includes("전체 사주 무료로 보기"), "free Saju seconda
 assert(homeSource.includes("/diagnosis?mode=question"), "primary CTA must enter question-first mode");
 assert(homeSource.includes("/diagnosis?mode=free"), "secondary CTA must preserve free Saju mode");
 assert(
-  homeSource.includes("당신의 궁금증에") &&
-    homeSource.includes("답과 시기를 짚어드립니다"),
+  homeSource.includes("궁금한 질문에 답과 시기를 짚어드립니다"),
   "third first-screen benefit was not updated",
 );
 assert(diagnosisSource.includes('type Step ='), "diagnosis step state missing");
