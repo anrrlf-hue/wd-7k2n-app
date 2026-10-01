@@ -5,18 +5,18 @@ import styles from "./page.module.css";
 const BENEFITS = [
   {
     icon: MoonStar,
-    title: "사주를 현실 언어로 풀어드립니다",
-    description: "복잡한 사주를 지금의 삶에 맞는 말로 쉽고 명확하게 해석합니다.",
-  },
-  {
-    icon: Hand,
-    title: "손금과 함께 입체적으로 봅니다",
-    description: "사주는 흐름과 시기를, 손금은 지금 드러난 모습을 보완해 함께 봅니다.",
+    title: "무료 사주를 넓게 봅니다",
+    description: "성향·연애·일·재물·생활과 큰 흐름을 한 번에 먼저 살펴봅니다.",
   },
   {
     icon: Clock3,
-    title: "궁금한 질문에 답과 시기를 짚어드립니다",
-    description: "질문에 먼저 답하고, 눈여겨볼 흐름과 시기를 함께 짚어드립니다.",
+    title: "궁금한 건 시기까지 묻습니다",
+    description: "무료 사주를 본 뒤 같은 정보로 질문에 대한 답과 시기를 이어봅니다.",
+  },
+  {
+    icon: Hand,
+    title: "원하면 손금까지 더합니다",
+    description: "사주는 흐름과 시기를, 손금은 지금 드러난 모습을 보완해 함께 봅니다.",
   },
 ];
 
@@ -37,25 +37,25 @@ export default function Home() {
         />
 
         <div className={styles.heroPromise}>
-          <span>타고난 흐름을 읽고,</span>
-          <strong>궁금한 질문에 답과 시기를</strong>
-          <span>함께 짚어드립니다.</span>
+          <span>내 사주를 먼저 보고,</span>
+          <strong>궁금한 것은 답과 시기까지</strong>
+          <span>한 흐름으로 이어봅니다.</span>
         </div>
 
         <Link
-          href="/diagnosis?mode=question"
-          aria-label="내 궁금증 답과 시기 보기"
-          className={styles.diagnosisCta}
+          href="/diagnosis?mode=free&focus=overall&start=free"
+          aria-label="내 사주 무료로 보기"
+          className={styles.primarySajuCta}
         >
-          내 궁금증 답과 시기 보기 <span aria-hidden="true">→</span>
+          내 사주 무료로 보기 <span aria-hidden="true">→</span>
         </Link>
 
         <Link
-          href="/diagnosis?mode=free"
-          aria-label="전체 사주 무료로 보기"
-          className={styles.freeSajuLink}
+          href="/diagnosis?mode=question"
+          aria-label="궁금한 것 바로 물어보기"
+          className={styles.questionLink}
         >
-          전체 사주 무료로 보기
+          궁금한 것 바로 물어보기
         </Link>
 
         <section className={styles.benefitPanel} aria-label="운돈이 특별한 이유">

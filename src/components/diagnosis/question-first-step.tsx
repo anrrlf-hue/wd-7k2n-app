@@ -33,10 +33,12 @@ export function QuestionFirstStep({
   onChange,
   onNext,
   onBack,
+  hasBirthInfo = false,
 }: {
   focus: SajuFocus;
   value: string;
   error?: string | null;
+  hasBirthInfo?: boolean;
   onChange: (value: string) => void;
   onNext: () => void;
   onBack: () => void;
@@ -52,7 +54,9 @@ export function QuestionFirstStep({
         그대로 적어주세요
       </h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
-        질문에 대한 답과 함께, 가장 먼저 눈여겨볼 시기와 그때 나타날 수 있는 흐름까지 같이 봅니다.
+        {hasBirthInfo
+          ? "방금 본 무료 사주의 출생정보를 그대로 이어서, 질문에 대한 답과 시기를 바로 봅니다."
+          : "질문에 대한 답과 함께, 가장 먼저 눈여겨볼 시기와 그때 나타날 수 있는 흐름까지 같이 봅니다."}
       </p>
 
       <label className="mt-6 block">
@@ -94,7 +98,7 @@ export function QuestionFirstStep({
           onClick={onNext}
           className="h-13 flex-1 rounded-full text-base"
         >
-          내 정보 입력하기
+          {hasBirthInfo ? "답과 시기 보기" : "내 정보 입력하기"}
         </Button>
       </div>
     </div>

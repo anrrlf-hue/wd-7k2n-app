@@ -122,6 +122,25 @@ export default function DiagnosisPage() {
             return;
           }
         }
+
+        if (params.get("from") === "free") {
+          const freeRaw = sessionStorage.getItem(FREE_STORAGE_KEY);
+          if (freeRaw) {
+            const saved = JSON.parse(freeRaw) as StoredFreeSession;
+            if (saved?.diagnosis) {
+              const nextFocus = urlFocus ?? parseSajuFocus(String(saved.focus ?? saved.diagnosis.focus ?? "overall"));
+              setFocus(nextFocus);
+              setBirthDate(saved.birthDate);
+              setGender(saved.gender);
+              setKnowsTime(saved.knowsTime);
+              setBirthTime(saved.birthTime);
+              setMbti(saved.mbti);
+              setStep("question");
+              return;
+            }
+          }
+        }
+
         setFocus(urlFocus);
         setStep("focus");
         return;
@@ -129,8 +148,10 @@ export default function DiagnosisPage() {
 
       const raw = sessionStorage.getItem(FREE_STORAGE_KEY);
       if (!raw) {
-        setFocus(urlFocus);
-        setStep("focus");
+        const directFreeStart = params.get("start") === "free";
+        const nextFocus = urlFocus ?? (directFreeStart ? "overall" : null);
+        setFocus(nextFocus);
+        setStep(directFreeStart && nextFocus ? "date" : "focus");
         return;
       }
 
@@ -385,6 +406,7 @@ export default function DiagnosisPage() {
           focus={focus}
           value={question}
           error={error}
+          hasBirthInfo={Boolean(birthDate)}
           onChange={(value) => {
             setQuestion(value);
             setError(null);

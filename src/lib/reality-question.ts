@@ -2,6 +2,7 @@ import {
   REALITY_ANSWER_DOMAINS,
   type RealityAnswerDomain,
   type RealityAnswerIntent,
+  type RealityTimeScope,
 } from "@/lib/reality-answer-contract";
 
 export interface RealityQuestionParseResult {
@@ -11,6 +12,7 @@ export interface RealityQuestionParseResult {
   decisionPoint: string | null;
   confidence: "high" | "medium" | "low";
   matchedKeywords: string[];
+  timeScope: RealityTimeScope | null;
 }
 
 const DOMAIN_KEYWORDS: Record<RealityAnswerDomain, string[]> = {
@@ -54,6 +56,99 @@ const DOMAIN_PRIORITY: RealityAnswerDomain[] = [
 
 function normalize(value: string): string {
   return value.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function currentKst(referenceDate?: Date): { year: number; month: number } {
+  const date = referenceDate ?? new Date();
+  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return { year: kst.getUTCFullYear(), month: kst.getUTCMonth() + 1 };
+}
+
+function addMonths(year: number, month: number, delta: number): { year: number; month: number } {
+  const index = year * 12 + (month - 1) + delta;
+  return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+}
+
+export function parseRealityTimeScope(raw: string, referenceDate?: Date): RealityTimeScope | null {
+  const text = normalize(raw);
+  const now = currentKst(referenceDate);
+
+  const explicitYearMonth = text.match(/(20\d{2})년\s*(1[0-2]|0?[1-9])월/);
+  if (explicitYearMonth) {
+    const year = Number(explicitYearMonth[1]);
+    const month = Number(explicitYearMonth[2]);
+    return { kind: "month", label: `${year}년 ${month}월`, startYear: year, startMonth: month, endYear: year, endMonth: month };
+  }
+
+  const explicitYear = text.match(/(20\d{2})년/);
+  if (explicitYear) {
+    const year = Number(explicitYear[1]);
+    const half = text.includes("상반기") ? 1 : text.includes("하반기") ? 2 : 0;
+    if (half === 1) return { kind: "half_year", label: `${year}년 상반기`, startYear: year, startMonth: 1, endYear: year, endMonth: 6 };
+    if (half === 2) return { kind: "half_year", label: `${year}년 하반기`, startYear: year, startMonth: 7, endYear: year, endMonth: 12 };
+    return { kind: "year", label: `${year}년`, startYear: year, startMonth: 1, endYear: year, endMonth: 12 };
+  }
+
+  const yearFromRelative =
+    /내후년/.test(text) ? now.year + 2 :
+    /(내년|다음\s*해)/.test(text) ? now.year + 1 :
+    /(올해|금년)/.test(text) ? now.year :
+    now.year;
+
+  if (/상반기/.test(text)) {
+    return {
+      kind: "half_year",
+      label: yearFromRelative === now.year ? "올해 상반기" : `${yearFromRelative}년 상반기`,
+      startYear: yearFromRelative,
+      startMonth: 1,
+      endYear: yearFromRelative,
+      endMonth: 6,
+    };
+  }
+  if (/하반기/.test(text)) {
+    return {
+      kind: "half_year",
+      label: yearFromRelative === now.year ? "올해 하반기" : `${yearFromRelative}년 하반기`,
+      startYear: yearFromRelative,
+      startMonth: 7,
+      endYear: yearFromRelative,
+      endMonth: 12,
+    };
+  }
+
+  if (/(이번\s*달|이달)/.test(text)) {
+    return { kind: "month", label: "이번 달", startYear: now.year, startMonth: now.month, endYear: now.year, endMonth: now.month };
+  }
+  if (/(다음\s*달|내달)/.test(text)) {
+    const next = addMonths(now.year, now.month, 1);
+    return { kind: "month", label: "다음 달", startYear: next.year, startMonth: next.month, endYear: next.year, endMonth: next.month };
+  }
+
+  const monthsAhead = text.match(/(?:앞으로\s*)?(\d{1,2})개월\s*(?:안|내|동안)?/);
+  if (monthsAhead) {
+    const count = Math.max(1, Math.min(24, Number(monthsAhead[1])));
+    const end = addMonths(now.year, now.month, count - 1);
+    return {
+      kind: "month_range",
+      label: `앞으로 ${count}개월`,
+      startYear: now.year,
+      startMonth: now.month,
+      endYear: end.year,
+      endMonth: end.month,
+    };
+  }
+
+  if (/(내후년)/.test(text)) {
+    return { kind: "year", label: "내후년", startYear: now.year + 2, startMonth: 1, endYear: now.year + 2, endMonth: 12 };
+  }
+  if (/(내년|다음\s*해)/.test(text)) {
+    return { kind: "year", label: "내년", startYear: now.year + 1, startMonth: 1, endYear: now.year + 1, endMonth: 12 };
+  }
+  if (/(올해|금년)/.test(text)) {
+    return { kind: "year", label: "올해", startYear: now.year, startMonth: now.month, endYear: now.year, endMonth: 12 };
+  }
+
+  return null;
 }
 
 function classifyDomain(raw: string): {
@@ -185,6 +280,7 @@ export function parseRealityQuestion(raw: string): RealityQuestionParseResult {
   const classified = classifyDomain(cleaned);
   const intent = classifyIntent(cleaned);
   const decisionPoint = decisionPointFor(cleaned, classified.domain);
+  const timeScope = parseRealityTimeScope(cleaned);
 
   const confidence =
     classified.score >= 6 ? "high" : classified.score >= 2 ? "medium" : "low";
@@ -196,6 +292,7 @@ export function parseRealityQuestion(raw: string): RealityQuestionParseResult {
     decisionPoint,
     confidence,
     matchedKeywords: classified.matchedKeywords,
+    timeScope,
   };
 }
 

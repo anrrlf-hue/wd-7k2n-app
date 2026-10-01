@@ -153,6 +153,7 @@ function toQuestion(
     domain,
     intent: parse.intent,
     decisionPoint,
+    timeScope: parse.timeScope,
   };
 }
 
@@ -176,7 +177,7 @@ export async function getRealityAnswer(
     palm: options.palm,
     personality: options.personality,
   });
-  const timingOutlook = buildSajuTimingOutlook(facts, question.domain);
+  const timingOutlook = buildSajuTimingOutlook(facts, question.domain, undefined, question.timeScope);
 
   const fallback = buildRealityAnswerFallback({
     question,

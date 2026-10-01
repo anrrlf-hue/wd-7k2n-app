@@ -44,8 +44,8 @@
 }
 
 .hotspot:focus-visible,
-.diagnosisCta:focus-visible,
-.freeSajuLink:focus-visible {
+.primarySajuCta:focus-visible,
+.questionLink:focus-visible {
   outline: 3px solid #fff0b8;
   outline-offset: 2px;
 }
@@ -95,7 +95,7 @@
   letter-spacing: -.025em;
 }
 
-.diagnosisCta {
+.primarySajuCta {
   position: absolute;
   z-index: 16;
   top: 33.85%;
@@ -115,7 +115,7 @@
   box-shadow: 0 4px 14px rgba(19, 24, 43, .16);
 }
 
-.freeSajuLink {
+.questionLink {
   position: absolute;
   z-index: 16;
   top: 39.25%;

@@ -98,24 +98,33 @@ assert(resultSource.includes("나의 종합 사주"), "broad overall Saju UI mis
 assert(resultSource.includes("연애·결혼에서의 나"), "love section missing from free result");
 assert(resultSource.includes("생활 리듬과 스트레스 패턴"), "life rhythm section missing from free result");
 assert(!resultSource.includes("나의 재물사주"), "money-only free-result heading remains");
+assert(resultSource.includes("무료 사주 다음"), "free Saju must lead naturally into the question/timing step");
+assert(resultSource.includes("내 질문 답과 시기 보기"), "post-free question CTA missing");
+assert(resultSource.includes("원하면 손금까지 더해볼 수 있어요"), "palm must remain an optional deeper step");
 
 const homeSource = fs.readFileSync(path.join(root, "src/app/page.tsx"), "utf8");
 const diagnosisSource = fs.readFileSync(path.join(root, "src/app/diagnosis/page.tsx"), "utf8");
 const focusStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/saju-focus-step.tsx"), "utf8");
 
 assert(!homeSource.includes("LandingFocusSelector"), "focus choices must not cover the first landing screen");
-assert(homeSource.includes("내 궁금증 답과 시기 보기"), "question-first primary CTA missing");
-assert(homeSource.includes("전체 사주 무료로 보기"), "free Saju secondary CTA missing");
-assert(homeSource.includes("/diagnosis?mode=question"), "primary CTA must enter question-first mode");
-assert(homeSource.includes("/diagnosis?mode=free"), "secondary CTA must preserve free Saju mode");
+assert(homeSource.includes("내 사주 무료로 보기"), "free Saju primary CTA missing");
+assert(homeSource.includes("궁금한 것 바로 물어보기"), "question secondary CTA missing");
 assert(
-  homeSource.includes("궁금한 질문에 답과 시기를 짚어드립니다"),
-  "third first-screen benefit was not updated",
+  homeSource.includes("/diagnosis?mode=free&focus=overall&start=free"),
+  "primary CTA must start the broad free Saju flow directly",
+);
+assert(homeSource.includes("/diagnosis?mode=question"), "question CTA must preserve direct question mode");
+assert(
+  homeSource.includes("궁금한 건 시기까지 묻습니다") &&
+    homeSource.includes("원하면 손금까지 더합니다"),
+  "homepage value sequence must be Saju -> question/timing -> optional palm",
 );
 assert(diagnosisSource.includes('type Step ='), "diagnosis step state missing");
 assert(diagnosisSource.includes('| "question"'), "question-first step missing from diagnosis flow");
 assert(diagnosisSource.includes('/api/reality-answer'), "question-first flow must call the answer/timing API");
 assert(diagnosisSource.includes('mode === "question"'), "question-first mode routing missing");
+assert(diagnosisSource.includes('params.get("start") === "free"'), "direct free Saju start routing missing");
+assert(diagnosisSource.includes('params.get("from") === "free"'), "free-to-question handoff routing missing");
 assert(focusStepSource.includes("어떤 사주가"), "diagnosis focus chooser missing");
 assert(focusStepSource.includes("전체 사주"), "overall Saju choice missing");
 
@@ -124,8 +133,9 @@ const questionResultSource = fs.readFileSync(path.join(root, "src/components/dia
 const palmEntrySource = fs.readFileSync(path.join(root, "src/components/diagnosis/palm-entry-card.tsx"), "utf8");
 assert(questionStepSource.includes("지금 가장 궁금한 것을"), "direct question input screen missing");
 assert(questionStepSource.includes("답과 함께"), "question promise copy missing");
+assert(questionStepSource.includes("hasBirthInfo") && questionStepSource.includes("답과 시기 보기"), "post-free question must reuse birth info");
 assert(questionResultSource.includes("눈여겨볼 시기"), "answer result timing section missing");
-assert(palmEntrySource.includes("손금까지 함께 보면 더 입체적으로"), "optional palm enhancement CTA missing");
+assert(palmEntrySource.includes("같은 질문에 손금까지 더해볼까요"), "optional palm enhancement CTA missing");
 assert(questionResultSource.includes("전체 사주 무료로 보기"), "free Saju escape hatch missing from question answer");
 
 const personalityStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/personality-step.tsx"), "utf8");
@@ -164,5 +174,5 @@ assert(!reportSectionSource.includes("왜 이렇게 봤나요"), "why-explanatio
 assert(!reportSectionSource.includes("어떻게 할까요"), "action-guidance toggle remains in free report");
 assert(resultSource.includes("다른 영역은 한눈에"), "focused reading should summarize other areas instead of repeating full sections");
 
-console.log("PASS FREE SAJU V8: question-first business funnel + preserved free Saju + MBTI-only UI");
+console.log("PASS FREE SAJU V9: Saju-first entry + seamless question/timing + optional palm + MBTI-only UI");
 hooks.deregister?.();

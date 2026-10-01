@@ -37,11 +37,21 @@ export const REALITY_ANSWER_INTENTS = [
 
 export type RealityAnswerIntent = (typeof REALITY_ANSWER_INTENTS)[number];
 
+export interface RealityTimeScope {
+  kind: "year" | "half_year" | "month" | "month_range";
+  label: string;
+  startYear: number;
+  startMonth: number;
+  endYear: number;
+  endMonth: number;
+}
+
 export interface RealityQuestion {
   raw: string;
   domain: RealityAnswerDomain;
   intent: RealityAnswerIntent;
   decisionPoint: string;
+  timeScope?: RealityTimeScope | null;
 }
 
 export type RealityEvidenceSource =

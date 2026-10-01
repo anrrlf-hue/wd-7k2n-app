@@ -1,5 +1,5 @@
 import { calculateSajuSimple } from "@fullstackfamily/manseryeok";
-import type { RealityAnswerDomain } from "@/lib/reality-answer-contract";
+import type { RealityAnswerDomain, RealityTimeScope } from "@/lib/reality-answer-contract";
 import type { SajuFacts, TenGodGroup } from "@/lib/saju-facts";
 import { TEN_GOD_GROUP } from "@/lib/saju-facts";
 
@@ -325,14 +325,19 @@ export function buildSajuTimingOutlook(
   facts: SajuFacts,
   domain: RealityAnswerDomain,
   referenceDate?: Date,
+  timeScope?: RealityTimeScope | null,
 ): SajuTimingOutlook | null {
   if (!facts.hasTimeInput) return null;
 
   const current = currentKstYearMonth(referenceDate);
   const weights = weightsFor(domain, facts.gender);
   const years: { year: number; score: number; groups: TenGodGroup[] }[] = [];
+  const startYear = Math.max(current.year, timeScope?.startYear ?? current.year);
+  const endYear = Math.min(current.year + 4, timeScope?.endYear ?? current.year + 4);
 
-  for (let year = current.year; year <= current.year + 4; year += 1) {
+  if (startYear > endYear) return null;
+
+  for (let year = startYear; year <= endYear; year += 1) {
     const yearPillar = hanjaPillarsForDate(year, 6, 15).yearPillar;
     const groups = pillarGroups(facts.dayStem, yearPillar);
     let score = scoreGroups(groups, weights);
@@ -349,7 +354,9 @@ export function buildSajuTimingOutlook(
   }
 
   const rankedYears = [...years].sort((a, b) => b.score - a.score || a.year - b.year);
-  const candidateYears = rankedYears.filter((x) => x.score > 0).slice(0, 2);
+  const candidateYears = timeScope
+    ? rankedYears.slice(0, Math.min(2, rankedYears.length))
+    : rankedYears.filter((x) => x.score > 0).slice(0, 2);
   if (candidateYears.length === 0) return null;
 
   type RawWindow = {
@@ -366,9 +373,15 @@ export function buildSajuTimingOutlook(
   for (const candidate of candidateYears) {
     const months: { month: number; score: number; groups: TenGodGroup[] }[] = [];
     for (let month = 1; month <= 12; month += 1) {
+      if (candidate.year === current.year && month < current.month) continue;
       if (
-        candidate.year === current.year &&
-        (month < current.month || (month === current.month && current.day > 15))
+        timeScope &&
+        (
+          candidate.year < timeScope.startYear ||
+          candidate.year > timeScope.endYear ||
+          (candidate.year === timeScope.startYear && month < timeScope.startMonth) ||
+          (candidate.year === timeScope.endYear && month > timeScope.endMonth)
+        )
       ) continue;
       const monthPillar = hanjaPillarsForDate(candidate.year, month, 15).monthPillar;
       const groups = pillarGroups(facts.dayStem, monthPillar);
@@ -376,10 +389,10 @@ export function buildSajuTimingOutlook(
       months.push({ month, score, groups });
     }
 
-    const bestMonths = months
-      .sort((a, b) => b.score - a.score || a.month - b.month)
-      .filter((x) => x.score > candidate.score)
-      .slice(0, 2);
+    const sortedMonths = months.sort((a, b) => b.score - a.score || a.month - b.month);
+    const bestMonths = timeScope
+      ? sortedMonths.slice(0, timeScope.kind === "month" ? 1 : 2)
+      : sortedMonths.filter((x) => x.score > candidate.score).slice(0, 2);
 
     if (bestMonths.length === 0) {
       rawWindows.push({
@@ -423,8 +436,9 @@ export function buildSajuTimingOutlook(
 
   const summary =
     top.length === 1
-      ? top[0].label + "이 가장 눈에 띄는 시기입니다."
-      : "가장 강하게 보이는 시기는 " +
+      ? (timeScope ? timeScope.label + " 안에서는 " : "") + top[0].label + "이 가장 눈에 띄는 시기입니다."
+      : (timeScope ? timeScope.label + " 안에서 " : "") +
+        "가장 강하게 보이는 시기는 " +
         top[0].label +
         "이고, 이어서 " +
         top.slice(1).map((x) => x.label).join(", ") +
@@ -434,7 +448,8 @@ export function buildSajuTimingOutlook(
     precision: top.some((x) => x.month) ? "monthly" : "yearly",
     summary,
     windows: top,
-    basis:
-      "표시된 월은 하루를 찍는 예언이 아니라, 대운·세운·월운을 함께 봤을 때 그 주제가 상대적으로 강해지는 '그 달 전후의 흐름'입니다.",
+    basis: timeScope
+      ? `질문에 적은 ‘${timeScope.label}’ 범위 안에서 대운·세운·월운을 함께 비교했습니다. 표시된 월은 하루를 찍는 예언이 아니라 그 달 전후의 흐름입니다.`
+      : "표시된 월은 하루를 찍는 예언이 아니라, 대운·세운·월운을 함께 봤을 때 그 주제가 상대적으로 강해지는 '그 달 전후의 흐름'입니다.",
   };
 }
