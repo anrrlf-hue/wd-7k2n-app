@@ -66,7 +66,14 @@ export interface RealityAction {
 
 export interface RealityTimingWindow {
   label: string;
+  /** 짧은 시기 요약. 과거 저장기록 호환용으로 유지한다. */
   reason: string;
+  /** 이 시기에 질문과 관련해 어떤 변화가 들어올 수 있는지. */
+  meaning?: string;
+  /** 흐름이 자연스럽게 풀릴 때 기대해볼 수 있는 모습. */
+  positive?: string;
+  /** 같은 시기에 과하게 해석하거나 서두르지 않기 위해 볼 점. */
+  caution?: string;
 }
 
 export interface RealityTiming {
@@ -152,7 +159,13 @@ export function validateRealityAnswer(answer: RealityAnswer): RealityAnswerValid
     answer.choose,
     answer.timing.now,
     answer.timing.nextCheckpoint,
-    ...(answer.timing.windows ?? []).flatMap((window) => [window.label, window.reason]),
+    ...(answer.timing.windows ?? []).flatMap((window) => [
+      window.label,
+      window.reason,
+      window.meaning ?? "",
+      window.positive ?? "",
+      window.caution ?? "",
+    ]),
   ].join("\n");
 
   if (
