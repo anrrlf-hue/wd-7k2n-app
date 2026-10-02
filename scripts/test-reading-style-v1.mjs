@@ -136,6 +136,8 @@ const answer = builderMod.buildRealityAnswerFallback({
   facts,
   evidence,
   personality: null,
+  palmContext,
+  questionPlan: questionEngineMod.buildQuestionEnginePlan("사업 어때?", { focusHint: "work" }),
 });
 const plan = questionEngineMod.buildQuestionEnginePlan("사업 어때?");
 const view = styleMod.buildReadingStyleV1View(answer, plan.nextQuestions);
@@ -153,13 +155,41 @@ assert(
   "S03: actual palm evidence was not woven into the integrated future reading",
 );
 assert(
-  /오른손에서 일의 방향/.test(answer.report.solutionReading),
-  "S04: bilateral fate-line difference was not translated into a natural story",
+  /오른손 두뇌선/.test(answer.report.solutionReading) &&
+    /왼손 두뇌선/.test(answer.report.solutionReading) &&
+    /서로 다르게 관찰/.test(answer.report.solutionReading),
+  "S04: differing bilateral palm observations were collapsed into one hand story",
+);
+assert(
+  !/(현재 생활에서 스스로|타고난 모습)/.test(answer.report.solutionReading),
+  "S04b: rigid left/right life-role mapping leaked into palm integration",
 );
 assert(
   !/(손금으로 .*시기|손금에서 .*20\d{2}년)/.test(answer.report.solutionReading),
   "S05: palm bridge invented timing",
 );
+assert(!/이후 후보 시기는/.test(answer.report.solutionReading), "S05b: strength-ranked timing described as chronology");
+
+const oneHandContext = {
+  dominantHand: "right",
+  primary: palmContext.right,
+  right: palmContext.right,
+  left: null,
+};
+const oneHandEvidence = evidenceMod.selectRealityEvidence(facts, "work_business", {
+  palmContext: oneHandContext,
+  palm: palmLines,
+});
+const oneHandStory = styleMod.buildPalmEvidenceBridge(
+  "work_business",
+  oneHandEvidence,
+  oneHandContext,
+);
+assert(
+  /다른 손의 관찰값이 없어 양손 비교는 하지 않습니다/.test(oneHandStory ?? ""),
+  "S05c: single-hand observation still fabricates bilateral comparison",
+);
+assert(!/^양손/.test(oneHandStory ?? ""), "S05d: single-hand narrative starts as bilateral");
 
 assert(view.personalTitle === "당신에게는 이렇게 나타나요", "S06: personal section title drifted");
 assert(view.currentTitle === "지금은 이런 흐름입니다", "S07: current section title drifted");
@@ -200,5 +230,5 @@ assert(
   "UI05: short one-word questions are still blocked in direct question mode",
 );
 
-console.log("PASS READING STYLE V1: direct answer + personal story + integrated palm + timing + caution + next question");
+console.log("PASS READING STYLE V1: direct answer + observed-hand fidelity + timing wording + caution + next question");
 hooks.deregister?.();
