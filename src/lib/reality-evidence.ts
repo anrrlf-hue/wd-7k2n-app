@@ -5,6 +5,7 @@ import type {
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 import type { PersonalityInput } from "@/lib/personality-check";
 import type { SajuFacts } from "@/lib/saju-facts";
+import type { RealityPalmContext, RealityPalmHandContext } from "@/lib/reality-palm-context";
 
 function add(
   items: RealityEvidence[],
@@ -67,6 +68,119 @@ function addPalmLine(
   add(items, "palm", label, palmLineDetail(line));
 }
 
+function handLabel(hand: RealityPalmHandContext | null, fallback: "왼손" | "오른손"): string {
+  if (!hand) return fallback;
+  if (hand.handSide === "left") return "왼손";
+  if (hand.handSide === "right") return "오른손";
+  return fallback;
+}
+
+function secondaryLineText(
+  hand: RealityPalmHandContext | null,
+  key: "fate" | "sun" | "wealth",
+): string {
+  const signal = hand?.secondaryLines?.[key];
+  if (!signal) return "미확인";
+  const status =
+    signal.status === "clear" ? "선명" : signal.status === "faint" ? "희미" : "확인 안 됨";
+  if (key === "fate" && signal.corroborated) return `${status}·교차확인`;
+  return status;
+}
+
+function bilateralMajorLine(
+  context: RealityPalmContext,
+  key: "heartLine" | "headLine" | "lifeLine",
+  label: string,
+): string | null {
+  const leftLine = context.left?.onnxLines?.[key];
+  const rightLine = context.right?.onnxLines?.[key];
+  const parts: string[] = [];
+  if (rightLine?.detected) parts.push(`오른손 ${label}: ${palmLineDetail(rightLine)}`);
+  if (leftLine?.detected) parts.push(`왼손 ${label}: ${palmLineDetail(leftLine)}`);
+  if (parts.length === 0 && context.primary?.onnxLines?.[key]?.detected) {
+    parts.push(`주요 손 ${label}: ${palmLineDetail(context.primary.onnxLines[key])}`);
+  }
+  return parts.length > 0 ? parts.join(" / ") : null;
+}
+
+function addBilateralPalmEvidence(
+  context: RealityPalmContext | null | undefined,
+  domain: RealityAnswerDomain,
+  items: RealityEvidence[],
+) {
+  if (!context) return;
+
+  const dominant =
+    context.dominantHand === "left"
+      ? "주로 쓰는 손: 왼손"
+      : context.dominantHand === "right"
+        ? "주로 쓰는 손: 오른손"
+        : "주로 쓰는 손: 미입력";
+
+  if (domain === "love" || domain === "relationship") {
+    add(items, "palm", "양손 감정선 비교", bilateralMajorLine(context, "heartLine", "감정선"));
+    if (domain === "relationship") {
+      add(items, "palm", "양손 두뇌선 비교", bilateralMajorLine(context, "headLine", "두뇌선"));
+    }
+    add(items, "palm", "양손 해석 기준", dominant);
+    return;
+  }
+
+  if (domain === "career" || domain === "work_business") {
+    add(items, "palm", "양손 두뇌선 비교", bilateralMajorLine(context, "headLine", "두뇌선"));
+    const left = context.left;
+    const right = context.right;
+    add(
+      items,
+      "palm",
+      "양손 일·성과선 비교",
+      [
+        `${handLabel(right, "오른손")} 운명선 ${secondaryLineText(right, "fate")} · 태양선 ${secondaryLineText(right, "sun")} · 재물선 ${secondaryLineText(right, "wealth")}`,
+        `${handLabel(left, "왼손")} 운명선 ${secondaryLineText(left, "fate")} · 태양선 ${secondaryLineText(left, "sun")} · 재물선 ${secondaryLineText(left, "wealth")}`,
+        dominant,
+      ].join(" / "),
+    );
+    return;
+  }
+
+  if (domain === "money") {
+    add(items, "palm", "양손 돈 판단선 비교", bilateralMajorLine(context, "headLine", "두뇌선"));
+    add(items, "palm", "양손 생활 지속선 비교", bilateralMajorLine(context, "lifeLine", "생명선"));
+    const left = context.left;
+    const right = context.right;
+    add(
+      items,
+      "palm",
+      "양손 재물선 비교",
+      `오른손 재물선 ${secondaryLineText(right, "wealth")} · 운명선 ${secondaryLineText(right, "fate")} / 왼손 재물선 ${secondaryLineText(left, "wealth")} · 운명선 ${secondaryLineText(left, "fate")} / ${dominant}`,
+    );
+    return;
+  }
+
+  if (domain === "wellbeing") {
+    add(
+      items,
+      "palm",
+      "양손 생활 리듬 참고",
+      bilateralMajorLine(context, "lifeLine", "생명선"),
+    );
+    add(items, "palm", "양손 해석 기준", `${dominant} · 건강 상태나 수명 판단 근거로 사용하지 않음`);
+    return;
+  }
+
+  add(items, "palm", "양손 두뇌선 비교", bilateralMajorLine(context, "headLine", "두뇌선"));
+  add(items, "palm", "양손 감정선 비교", bilateralMajorLine(context, "heartLine", "감정선"));
+  add(items, "palm", "양손 생명선 비교", bilateralMajorLine(context, "lifeLine", "생명선"));
+  const left = context.left;
+  const right = context.right;
+  add(
+    items,
+    "palm",
+    "양손 보조선 비교",
+    `오른손 운명선 ${secondaryLineText(right, "fate")} · 태양선 ${secondaryLineText(right, "sun")} · 재물선 ${secondaryLineText(right, "wealth")} / 왼손 운명선 ${secondaryLineText(left, "fate")} · 태양선 ${secondaryLineText(left, "sun")} · 재물선 ${secondaryLineText(left, "wealth")} / ${dominant}`,
+  );
+}
+
 function palmEvidence(
   palm: OnnxPalmLines | null | undefined,
   domain: RealityAnswerDomain,
@@ -108,6 +222,7 @@ export function selectRealityEvidence(
   domain: RealityAnswerDomain,
   options: {
     palm?: OnnxPalmLines | null;
+    palmContext?: RealityPalmContext | null;
     personality?: PersonalityInput | null;
   } = {},
 ): RealityEvidence[] {
@@ -191,6 +306,8 @@ export function selectRealityEvidence(
     }
     personalityEvidence(options.personality, items, ["speed", "plan", "autonomy", "change"]);
   }
+
+  addBilateralPalmEvidence(options.palmContext, domain, items);
 
   return items;
 }
