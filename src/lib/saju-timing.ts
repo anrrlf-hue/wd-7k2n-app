@@ -235,6 +235,13 @@ function signalPositiveFor(
     }
     return fallback;
   }
+  if (domain === "overall") {
+    if (signal === "비겁") return "새 사람·협업·경쟁 구도가 실제 관계 변화나 새로운 역할로 이어지는지 보세요.";
+    if (signal === "식상") return "말·제안·실행이 실제 결과나 새로운 선택으로 이어지는지 보세요.";
+    if (signal === "재성") return "보상·거래·돈과 관련된 움직임이 실제 생활 변화와 연결되는지 보세요.";
+    if (signal === "관성") return "역할·책임·공식적인 변화가 실제로 확정되는지 보세요.";
+    if (signal === "인성") return "준비·배움·도움이 다음 선택을 더 분명하게 만드는지 보세요.";
+  }
   return fallback;
 }
 
@@ -291,6 +298,13 @@ function signalCautionFor(
       return "일정이 다시 많아질 때 회복 시간을 뒤로 미루는 패턴을 반복하지 마세요.";
     }
     return fallback;
+  }
+  if (domain === "overall") {
+    if (signal === "비겁") return "사람이 많아질수록 비교·경쟁·역할 충돌까지 한꺼번에 끌어안지 않게 보세요.";
+    if (signal === "식상") return "움직임이 많아져도 일을 너무 넓게 벌여 중요한 한두 가지가 흐려지지 않게 보세요.";
+    if (signal === "재성") return "돈과 기회가 같이 움직여도 실제 조건을 확인하기 전에 결과를 낙관하지 마세요.";
+    if (signal === "관성") return "역할이나 책임이 커질 때 이름보다 실제 권한·부담·조건을 먼저 보세요.";
+    if (signal === "인성") return "준비와 검토가 길어져 실제 선택을 계속 뒤로 미루지는 마세요.";
   }
   return fallback;
 }
