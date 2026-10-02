@@ -965,6 +965,9 @@ export function PalmPageClient({
           personalityInput={personalityInput}
           palmLines={palmFacts?.onnxLines ?? null}
           palmFacts={palmFacts}
+          leftPalmFacts={leftPalmFacts}
+          rightPalmFacts={rightPalmFacts}
+          dominantHand={dominantHand}
           resumeKey={resumeKey}
           initialFocus={focus}
           initialQuestion={initialQuestion}
