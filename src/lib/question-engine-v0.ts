@@ -330,9 +330,9 @@ export function buildQuestionEnginePlan(
 
   let domain: RealityAnswerDomain;
   if (parse.domain) {
-    domain = context.focusHint
-      ? realityDomainForSajuFocus(context.focusHint, parse.domain)
-      : parse.domain;
+    // 사용자가 실제 질문에서 분야를 분명히 말했다면 이전 탭 선택보다 질문 자체를 우선한다.
+    // 예: 일 탭에 있더라도 "그럼 돈은?"이라고 물으면 돈 질문으로 전환한다.
+    domain = parse.domain;
   } else if (context.previousDomain) {
     domain = context.previousDomain;
   } else if (context.focusHint) {
