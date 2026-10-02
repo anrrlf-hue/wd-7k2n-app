@@ -10,6 +10,8 @@ import type { BirthInput } from "@/lib/saju";
 import type { MbtiType } from "@/lib/mbti-facts";
 import { SAJU_FOCUS_LABELS, type SajuFocus } from "@/lib/saju-focus";
 import { saveRealityAnswer } from "@/lib/reality-management";
+import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
+import { buildReadingStyleV1View } from "@/lib/reading-style-v1";
 
 function TimingWindows({ answer }: { answer: RealityAnswer }) {
   if (!answer.timing.windows?.length) {
@@ -82,16 +84,21 @@ export function QuestionAnswerResult({
   birthInput,
   mbti,
   answer,
+  questionPlan,
   onAskAgain,
+  onAskFollowUp,
 }: {
   focus: SajuFocus;
   question: string;
   birthInput: BirthInput;
   mbti: MbtiType | null;
   answer: RealityAnswer;
+  questionPlan?: QuestionEnginePlan | null;
   onAskAgain: () => void;
+  onAskFollowUp?: (question: string, focus: SajuFocus) => void;
 }) {
   const [saved, setSaved] = useState(false);
+  const style = buildReadingStyleV1View(answer, questionPlan?.nextQuestions ?? []);
 
   function handleSave() {
     saveRealityAnswer({ birthInput, answer });
@@ -111,52 +118,74 @@ export function QuestionAnswerResult({
         <p className="mt-2 text-xl leading-8 font-semibold">{answer.headline}</p>
       </section>
 
-      <TimingWindows answer={answer} />
+      <section className="mt-5 space-y-3">
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="font-semibold">{style.personalTitle}</h2>
+          <p className="mt-3 text-base leading-8 text-muted-foreground">
+            {style.personalMeaning}
+          </p>
+        </div>
 
-      {answer.report && (
-        <section className="mt-5 space-y-3">
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <h2 className="font-semibold">이 질문을 사주로 풀면</h2>
-            <p className="mt-3 text-base leading-8 text-muted-foreground">
-              {answer.report.questionReading}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <h2 className="font-semibold">지금의 흐름</h2>
-            <p className="mt-3 text-base leading-8 text-muted-foreground">
-              {answer.report.currentFlow}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
-            <h2 className="font-semibold">앞으로 어떻게 나타날 수 있나요?</h2>
-            <p className="mt-3 text-base leading-8 text-muted-foreground">
-              {answer.report.solutionReading}
-            </p>
-          </div>
-        </section>
-      )}
-
-      <section className="mt-5 rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-semibold">반복해서 나타나기 쉬운 흐름</h2>
-        <p className="mt-2 text-base leading-7 text-muted-foreground">{answer.repeatingPattern}</p>
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="font-semibold">{style.currentTitle}</h2>
+          <p className="mt-3 text-base leading-8 text-muted-foreground">
+            {style.currentFlow}
+          </p>
+        </div>
       </section>
 
-      <section className="mt-4 rounded-2xl border border-(--gold-soft) bg-card p-5">
-        <p className="text-sm text-muted-foreground">가장 중요하게 볼 점</p>
-        <p className="mt-2 text-base leading-7 font-semibold">{answer.choose}</p>
+      <TimingWindows answer={answer} />
+
+      <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
+        <h2 className="font-semibold">{style.futureTitle}</h2>
+        <p className="mt-3 text-base leading-8 text-muted-foreground">
+          {style.futureMeaning}
+        </p>
+      </section>
+
+      <section className="mt-5 rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-semibold">{style.patternTitle}</h2>
+        <p className="mt-2 text-base leading-7 text-muted-foreground">{style.pattern}</p>
       </section>
 
       <section className="mt-4 rounded-2xl border border-border bg-card p-5">
-        <p className="text-sm text-muted-foreground">조심해서 볼 점</p>
-        <p className="mt-2 text-base leading-7">{answer.avoid}</p>
+        <p className="text-sm font-semibold">{style.cautionTitle}</p>
+        <p className="mt-2 text-base leading-7 text-muted-foreground">{style.caution}</p>
+        {style.realityChecks.length > 0 && (
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="text-xs font-semibold text-foreground/70">현실에서 같이 볼 것</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {style.realityChecks.join(" · ")}
+            </p>
+          </div>
+        )}
       </section>
 
       {answer.safetyNote && (
         <p className="mt-4 rounded-2xl bg-accent p-4 text-sm leading-6 text-muted-foreground">
           {answer.safetyNote}
         </p>
+      )}
+
+      {style.nextQuestions.length > 0 && onAskFollowUp && (
+        <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
+          <p className="section-eyebrow">{style.nextTitle}</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            방금 풀이에서 자연스럽게 이어지는 질문만 골랐습니다.
+          </p>
+          <div className="mt-3 grid gap-2">
+            {style.nextQuestions.slice(0, 3).map((item) => (
+              <button
+                key={item.label + item.question}
+                type="button"
+                onClick={() => onAskFollowUp(item.question, item.focus)}
+                className="min-h-12 rounded-xl border border-border bg-accent px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:border-(--gold)"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       <div className="mt-6">
