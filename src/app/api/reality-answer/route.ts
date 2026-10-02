@@ -7,6 +7,8 @@ import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { scorePersonalityCheck } from "@/lib/personality-check";
 import { SAJU_FOCUS_VALUES, type SajuFocus } from "@/lib/saju-focus";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
+import { REALITY_ANSWER_DOMAINS } from "@/lib/reality-answer-contract";
+import { buildQuestionEnginePlan } from "@/lib/question-engine-v0";
 
 const onnxLineDetailSchema = z.object({
   detected: z.boolean(),
@@ -29,7 +31,9 @@ const onnxPalmLinesSchema = z.object({
 });
 
 const bodySchema = z.object({
-  question: z.string().trim().min(2).max(500),
+  question: z.string().trim().min(1).max(500),
+  previousQuestion: z.string().trim().max(500).nullable().optional(),
+  previousDomain: z.enum(REALITY_ANSWER_DOMAINS).nullable().optional(),
   focusHint: z.enum(SAJU_FOCUS_VALUES).nullable().optional(),
   year: z.number().int().min(1900).max(2035),
   month: z.number().int().min(1).max(12),
@@ -74,14 +78,21 @@ export async function POST(request: Request) {
         : null,
     };
 
+    const questionPlan = buildQuestionEnginePlan(parsed.data.question, {
+      focusHint: (parsed.data.focusHint ?? null) as SajuFocus | null,
+      previousQuestion: parsed.data.previousQuestion ?? null,
+      previousDomain: parsed.data.previousDomain ?? null,
+    });
+
     const result = await getRealityAnswer(parsed.data.question, facts, {
       timeoutMs: 9000,
       personality,
       palm: (parsed.data.palmLines ?? null) as OnnxPalmLines | null,
-      focusHint: (parsed.data.focusHint ?? null) as SajuFocus | null,
+      focusHint: questionPlan.focus,
+      domainHint: questionPlan.domain,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, questionPlan });
   } catch (error) {
     return NextResponse.json(
       {
