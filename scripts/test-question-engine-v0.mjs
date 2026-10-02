@@ -37,6 +37,8 @@ const hooks = registerHooks({
 });
 
 const mod = await import(pathToFileURL(path.join(root, "src/lib/question-engine-v0.ts")).href);
+const factsMod = await import(pathToFileURL(path.join(root, "src/lib/saju-facts.ts")).href);
+const evidenceMod = await import(pathToFileURL(path.join(root, "src/lib/reality-evidence.ts")).href);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -151,11 +153,68 @@ for (const key of ["saju.officer_stars", "saju.wealth_stars", "palm.fate", "palm
   assert(businessSignals.has(key), `SIGNAL02: business plan missing ${key}`);
 }
 
+const facts = factsMod.computeSajuFacts({
+  year: 1990,
+  month: 5,
+  day: 15,
+  hour: 14,
+  minute: 30,
+  gender: "남",
+});
+const line = (curve = "직선에 가까움", length = "김", depthStrength = "강함") => ({
+  detected: true,
+  length,
+  curve,
+  depthStrength,
+  start: { x: 0.1, y: 0.2 },
+  end: { x: 0.8, y: 0.8 },
+  branchDetected: null,
+});
+const palmLines = {
+  modelExecuted: true,
+  heartLine: line("완만한 곡선", "보통", "보통"),
+  headLine: line(),
+  lifeLine: line("완만한 곡선", "김", "보통"),
+  fateLine: { presence: "unknown", note: "" },
+  mounts: "unknown",
+  marks: "unknown",
+};
+const clear = (note, corroborated = undefined) => ({
+  status: "clear",
+  strength: 0.7,
+  span: 0.65,
+  note,
+  ...(corroborated === undefined ? {} : { corroborated }),
+});
+const palmContext = {
+  dominantHand: "right",
+  primary: { handSide: "right", handShape: "rectangular", onnxLines: palmLines, secondaryLines: {
+    fate: clear("fate", true), sun: clear("sun"), wealth: clear("wealth"),
+  }},
+  right: { handSide: "right", handShape: "rectangular", onnxLines: palmLines, secondaryLines: {
+    fate: clear("fate", true), sun: clear("sun"), wealth: clear("wealth"),
+  }},
+  left: { handSide: "left", handShape: "square", onnxLines: palmLines, secondaryLines: {
+    fate: { ...clear("fate"), status: "faint", corroborated: false },
+    sun: { ...clear("sun"), status: "faint" },
+    wealth: clear("wealth"),
+  }},
+};
+const businessEvidence = evidenceMod.selectRealityEvidence(facts, "work_business", { palmContext });
+const businessEvidenceText = businessEvidence.map((x) => `${x.label}: ${x.detail}`).join("\n");
+assert(/양손 일·성과선 비교/.test(businessEvidenceText), "PALM01: bilateral work evidence missing");
+assert(/운명선/.test(businessEvidenceText) && /태양선/.test(businessEvidenceText), "PALM01: fate/sun evidence missing");
+const moneyEvidence = evidenceMod.selectRealityEvidence(facts, "money", { palmContext });
+const moneyEvidenceText = moneyEvidence.map((x) => `${x.label}: ${x.detail}`).join("\n");
+assert(/양손 재물선 비교/.test(moneyEvidenceText), "PALM02: bilateral wealth evidence missing");
+assert(/재물선/.test(moneyEvidenceText) && /운명선/.test(moneyEvidenceText), "PALM02: wealth/fate detail missing");
+
 const routeSource = fs.readFileSync(path.join(root, "src/app/api/reality-answer/route.ts"), "utf8");
 assert(routeSource.includes("buildQuestionEnginePlan"), "API01: reality answer route does not run question engine v0");
 assert(routeSource.includes("previousQuestion") && routeSource.includes("previousDomain"), "API02: previous question context not accepted");
 assert(routeSource.includes("domainHint: questionPlan.domain"), "API03: resolved domain is not passed to answer engine");
 assert(routeSource.includes('min(1)'), "API04: one-character questions are still rejected");
+assert(routeSource.includes("palmContext"), "API05: bilateral palm context not accepted by question API");
 
 const funnelSource = fs.readFileSync(path.join(root, "src/components/palm/reality-answer-funnel.tsx"), "utf8");
 assert(funnelSource.includes("이어서 보면 좋은 질문"), "UI01: follow-up question UI missing");
@@ -163,6 +222,7 @@ assert(funnelSource.includes("askFollowUp"), "UI02: follow-up click handler miss
 assert(funnelSource.includes("previousQuestion") && funnelSource.includes("previousDomain"), "UI03: conversation context not sent");
 assert(funnelSource.includes("trimmed.length < 1"), "UI04: one-character questions are still blocked");
 assert(funnelSource.includes("길게 설명하지 않아도 됩니다"), "UI05: short-question guidance missing");
+assert(funnelSource.includes("buildRealityPalmContext"), "UI06: bilateral palm context is not sent from question UI");
 
-console.log("PASS QUESTION ENGINE V0: 50/50 questions + context inheritance + explicit override + signal plan + follow-up UI");
+console.log("PASS QUESTION ENGINE V0: 50/50 questions + context inheritance + explicit override + signal plan + bilateral palm evidence + follow-up UI");
 hooks.deregister?.();
