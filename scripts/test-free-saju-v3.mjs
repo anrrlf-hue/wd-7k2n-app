@@ -121,7 +121,7 @@ assert(resultSource.includes("나의 종합 사주"), "broad overall Saju UI mis
 assert(resultSource.includes("연애·결혼에서의 나"), "love section missing from free result");
 assert(resultSource.includes("생활 리듬과 스트레스 패턴"), "life rhythm section missing from free result");
 assert(!resultSource.includes("나의 재물사주"), "money-only free-result heading remains");
-assert(resultSource.includes("무료 사주 다음"), "free Saju must lead naturally into the question/timing step");
+assert(resultSource.includes("사주를 더 이어서 보면"), "free Saju must lead naturally into the question/timing step");
 assert(resultSource.includes("내 질문 답과 시기 보기"), "post-free question CTA missing");
 assert(resultSource.includes("원하면 손금까지 더해볼 수 있어요"), "palm must remain an optional deeper step");
 

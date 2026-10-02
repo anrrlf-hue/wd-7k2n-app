@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
+import { PersonCompareCard } from "@/components/diagnosis/person-compare-card";
 import { ReportSection, ParagraphSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
 import { WealthTypeSection } from "@/components/diagnosis/wealth-type-section";
 import { MyeongsikSection } from "@/components/diagnosis/myeongsik-section";
@@ -160,10 +161,9 @@ function FocusedFreeReport({
   );
 }
 
-/** 1차 무료 결과. 결제 제안/잠금 카드/무료 경계 표시는 이 화면에 절대
- * 두지 않는다 — 무료 콘텐츠는 손금+최종 통합 리포트까지 이어지고, 결제
- * 선택은 그 모든 무료 콘텐츠가 끝난 뒤 손금 결과 화면에서 딱 한 번만
- * 나온다. 이 화면의 유일한 다음 행동은 손금으로 넘어가는 것이다. */
+/** 1차 무료 결과. 본인 사주를 충분히 본 뒤에만 질문·사람 비교·손금으로
+ * 자연스럽게 이어지게 한다. 사람 비교는 중간 풀이를 가로막는 별도 진단이
+ * 아니라 "내 사주를 관계 속에서 이어보기" 선택지로만 노출한다. */
 export function ResultStep({
   diagnosis,
 }: {
@@ -280,13 +280,13 @@ export function ResultStep({
       <section className="mt-8 rounded-3xl border border-(--gold-soft) bg-card p-5">
         <div className="flex items-center gap-2 text-(--gold)">
           <Clock3 className="size-4" />
-          <p className="section-eyebrow">무료 사주 다음</p>
+          <p className="section-eyebrow">사주를 더 이어서 보면</p>
         </div>
         <h2 className="mt-2 text-xl leading-8 font-semibold">
           이제 가장 궁금한 것을<br />직접 물어보세요
         </h2>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          방금 본 생년월일·출생시간을 다시 입력하지 않고, 같은 사주를 기준으로 질문에 대한 답과 시기를 이어서 봅니다.
+          방금 본 생년월일·출생시간을 다시 입력하지 않고, 같은 사주를 기준으로 질문에 대한 답과 시기를 이어서 봅니다. 사람과의 관계가 궁금하다면 아래에서 두 사람의 사주를 함께 볼 수도 있습니다.
         </p>
         <Button asChild size="lg" className="mt-5 h-14 w-full rounded-full text-base">
           <Link href={`/diagnosis?mode=question&focus=${focus}&from=free`}>
@@ -294,6 +294,8 @@ export function ResultStep({
           </Link>
         </Button>
       </section>
+
+      <PersonCompareCard me={diagnosis.birthInput} />
 
       <div className="mt-7">
         <p className="flex items-center gap-1.5 text-sm font-medium">
