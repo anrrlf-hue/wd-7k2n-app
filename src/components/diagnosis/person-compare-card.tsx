@@ -364,7 +364,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
             disabled={sharing}
             className="mt-5 h-12 w-full rounded-full"
           >
-            {navigator.share ? <Share2 className="size-4" /> : <Copy className="size-4" />}
+            {typeof navigator !== "undefined" && navigator.share ? <Share2 className="size-4" /> : <Copy className="size-4" />}
             {sharing ? "공유 준비 중..." : shareDone ? "결과를 복사했습니다" : "이 결과 함께 보기"}
           </Button>
           <p className="mt-2 text-center text-xs leading-5 text-muted-foreground">
