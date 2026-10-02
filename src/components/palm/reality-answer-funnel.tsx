@@ -49,10 +49,10 @@ function palmSummaryForFocus(facts: PalmFacts | null | undefined, focus: SajuFoc
   if (!facts?.onnxLines) return null;
   const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines);
   const preferred: Record<SajuFocus, Array<(typeof sections)[number]["key"]>> = {
-    overall: ["together", "headLine", "heartLine", "lifeLine"],
+    overall: ["secondaryTogether", "together", "fate", "sun", "wealthLine", "headLine", "heartLine", "lifeLine"],
     love_relationship: ["heartLine", "together"],
-    work: ["fate", "headLine", "together"],
-    money: ["wealth", "headLine", "lifeLine"],
+    work: ["fate", "sun", "secondaryTogether", "headLine", "together"],
+    money: ["wealthLine", "secondaryTogether", "wealth", "headLine", "lifeLine"],
     wellbeing: ["lifeLine", "together"],
   };
 
