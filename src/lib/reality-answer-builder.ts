@@ -327,7 +327,7 @@ function solutionReadingFor(
 
   if (question.domain === "career" || question.domain === "work_business") {
     if (plan?.topic === "partnership") {
-      return `${timingText} 동업 질문에서는 이 시기를 '두 사람이 반드시 시작해야 하는 날짜'로 보지 않고, 역할·계약·돈 관리 기준을 맞춰보기 좋은 변화 구간으로 참고합니다. 실제 시작 여부는 상대방의 사주와 현실 조건을 함께 봐야 합니다.`;
+      return `${timingText} 동업 질문에서는 이 시기를 정해진 시작 날짜로 보지 않고, 역할·계약·돈 관리 기준을 맞춰보기 좋은 변화 구간으로 참고합니다. 실제 시작 여부는 상대방의 사주와 현실 조건을 함께 봐야 합니다.`;
     }
     return `${timingText} 이 시기에는 일의 이동, 역할 변화, 제안이나 기회가 평소보다 눈에 띄기 쉬운 흐름으로 볼 수 있습니다. 실제 변화의 형태는 회사 상황과 시장 조건에 따라 달라질 수 있습니다.`;
   }
