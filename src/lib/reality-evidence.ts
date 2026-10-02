@@ -256,12 +256,14 @@ export function selectRealityEvidence(
     if (facts.wealthStarPillars.length > 0) {
       add(items, "saju", "재성 위치", facts.wealthStarPillars.join(", "));
     }
-    add(
-      items,
-      "saju",
-      "재성 대운 출현",
-      `전체 대운에서 재성 신호 ${facts.wealthOpportunityDaeunCount}회`,
-    );
+    if (facts.wealthOpportunityDaeunCount !== null) {
+      add(
+        items,
+        "saju",
+        "재성 대운 출현",
+        `전체 대운에서 재성 신호 ${facts.wealthOpportunityDaeunCount}회`,
+      );
+    }
     personalityEvidence(options.personality, items, ["change", "plan", "speed"]);
   }
 
