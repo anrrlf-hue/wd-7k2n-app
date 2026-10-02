@@ -188,7 +188,7 @@ const oneHandStory = styleMod.buildPalmEvidenceBridge(
   oneHandContext,
 );
 assert(
-  /다른 손의 관찰값이 없어 양손 비교는 하지 않습니다/.test(oneHandStory ?? ""),
+  /다른 손의 관찰값이 없어 촬영된 이 손만 해석합니다/.test(oneHandStory ?? ""),
   "S05c: single-hand observation still fabricates bilateral comparison",
 );
 assert(!/^양손/.test(oneHandStory ?? ""), "S05d: single-hand narrative starts as bilateral");
