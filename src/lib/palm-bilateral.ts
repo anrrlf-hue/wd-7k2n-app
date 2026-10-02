@@ -166,13 +166,14 @@ type Theme = "work" | "recognition" | "money" | "decision" | "stability";
 function themeScores(left: PalmFacts, right: PalmFacts): Array<{ theme: Theme; score: number }> {
   const hands = [left, right];
   const sum = (fn: (f: PalmFacts) => number) => hands.reduce((acc, h) => acc + fn(h), 0);
-  return [
+  const scores: Array<{ theme: Theme; score: number }> = [
     { theme: "work", score: sum((f) => secondaryScore(f, "fate")) },
     { theme: "recognition", score: sum((f) => secondaryScore(f, "sun")) },
     { theme: "money", score: sum((f) => secondaryScore(f, "wealth")) },
     { theme: "decision", score: sum((f) => detailScore(f.onnxLines?.headLine)) },
     { theme: "stability", score: sum((f) => detailScore(f.onnxLines?.lifeLine)) },
-  ].sort((a, b) => b.score - a.score);
+  ];
+  return scores.sort((a, b) => b.score - a.score);
 }
 
 const THEME_TITLE: Record<Theme, string> = {
