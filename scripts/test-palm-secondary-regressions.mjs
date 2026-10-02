@@ -30,6 +30,7 @@ const hooks = registerHooks({
 });
 const palm = await import(pathToFileURL(path.join(root, "src/lib/palm-line-features.ts")).href);
 const reading = await import(pathToFileURL(path.join(root, "src/lib/palm-observation-text.ts")).href);
+const bilateral = await import(pathToFileURL(path.join(root, "src/lib/palm-bilateral.ts")).href);
 
 function image(width = 128, height = 128, value = 180) {
   const data = new Uint8ClampedArray(width * height * 4);
@@ -247,4 +248,90 @@ if (!funnelSource.includes('money: ["wealthLine", "secondaryTogether", "wealth"'
   throw new Error("money question flow does not prioritize the detected wealth line");
 }
 console.log("PASS palm reading expansion: preserve existing lines + add sun/wealth + whole-hand overview + connected story + faint guard + question reuse");
+
+const rightPalm = {
+  handSide: "right",
+  imageQuality: "good",
+  handShape: "rectangular",
+  majorLines: ["생명선", "감정선", "두뇌선"],
+  lineFeatures: [],
+  onnxLines: sampleLines,
+  secondaryLines: clearSecondary,
+  confidence: 0.9,
+  warnings: [],
+};
+const leftPalm = {
+  ...rightPalm,
+  handSide: "left",
+  handShape: "square",
+  onnxLines: {
+    ...sampleLines,
+    headLine: { ...sampleLines.headLine, depthStrength: "보통", length: "보통" },
+    heartLine: { ...sampleLines.heartLine, depthStrength: "강함" },
+  },
+  secondaryLines: {
+    fate: { ...clearSecondary.fate, status: "faint", corroborated: false, strength: 0.35 },
+    sun: { ...clearSecondary.sun, status: "faint", strength: 0.3 },
+    wealth: { ...clearSecondary.wealth, status: "clear", strength: 0.72 },
+  },
+};
+
+const bilateralReading = bilateral.buildPalmBilateralReading(leftPalm, rightPalm, "right");
+if (!/오른손/.test(bilateralReading.summary) || bilateralReading.items.length < 4) {
+  throw new Error("bilateral palm comparison missing dominant-hand summary/items");
+}
+if (!bilateralReading.items.some((item) => /일·성과·재물/.test(item.title))) {
+  throw new Error("bilateral work/money comparison missing");
+}
+
+const fakeSajuFacts = {
+  currentAge: 44,
+  daeunList: [
+    { ageRange: "41~50", ganzhi: "甲子", stemTenGod: "편재", branchTenGod: "식신", isCurrent: true },
+    { ageRange: "51~60", ganzhi: "乙丑", stemTenGod: "정관", branchTenGod: "정인", isCurrent: false },
+    { ageRange: "61~70", ganzhi: "丙寅", stemTenGod: "상관", branchTenGod: "편재", isCurrent: false },
+  ],
+};
+const timeline = bilateral.buildPalmFutureTimeline(fakeSajuFacts, leftPalm, rightPalm);
+if (timeline.windows.length !== 4) throw new Error("future palm timeline must expose four broad windows");
+if (timeline.windows.some((window) => window.startAge <= fakeSajuFacts.currentAge)) {
+  throw new Error("future palm timeline leaked past/current age");
+}
+if (timeline.windows[0].ageLabel !== "45~49세") {
+  throw new Error(`future palm timeline did not anchor to actual current age: ${timeline.windows[0].ageLabel}`);
+}
+if (!timeline.windows.some((window) => window.sajuReading)) {
+  throw new Error("future palm timeline did not combine Saju daeun context");
+}
+const futureText = timeline.windows.map((window) => window.combined).join(" ");
+if (/반드시|확정|무조건|정확히 \d+세/.test(futureText)) {
+  throw new Error("future palm timeline overclaimed exact future events");
+}
+if (!/과거는 제외/.test(timeline.note)) {
+  throw new Error("future palm timeline must explicitly exclude past readings");
+}
+
+const palmPageSource = fs.readFileSync(path.join(root, "src/components/palm/palm-page-client.tsx"), "utf8");
+for (const required of [
+  '1 / 2 · 오른손',
+  '2 / 2 · 왼손',
+  '평소 주로 쓰는 손',
+  'leftPalmFacts',
+  'rightPalmFacts',
+  'PalmBilateralSection',
+  'PalmFutureTimelineSection',
+]) {
+  if (!palmPageSource.includes(required)) throw new Error(`dual-palm UI missing: ${required}`);
+}
+
+const routeSource = fs.readFileSync(path.join(root, "src/app/api/palm/interpret/route.ts"), "utf8");
+for (const required of ["leftPalmFacts", "rightPalmFacts", "dominantHand", "bilateralReading", "futurePalmTimeline"]) {
+  if (!routeSource.includes(required)) throw new Error(`dual-palm API missing: ${required}`);
+}
+const detectionSource = fs.readFileSync(path.join(root, "src/lib/palm-detection.ts"), "utf8");
+if (!detectionSource.includes("handSpanRatio < 0.62") || !detectionSource.includes("handSpanRatio > 0.92")) {
+  throw new Error("detailed palm framing guard is missing");
+}
+
+console.log("PASS dual-palm capture + bilateral comparison + future-only age timeline + API + detailed framing guard");
 hooks.deregister?.();

@@ -10,6 +10,7 @@ import { buildFortuneCandidates, selectPrimaryCandidate } from "@/lib/fortune-ca
 import { buildTripleCompare } from "@/lib/triple-compare";
 import { buildLifetimeStory, buildComprehensiveVerdict } from "@/lib/real-world-personalization";
 import { classifyWealthType } from "@/lib/wealth-type";
+import { buildPalmBilateralReading, buildPalmFutureTimeline, type DominantHand } from "@/lib/palm-bilateral";
 
 // 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe/ONNX로
 // 이미 분석해 만든 PalmFacts(구조화 JSON)만 받는다. palmFacts가 없으면
@@ -51,11 +52,14 @@ const secondaryLineSignalSchema = z.object({
   strength: z.number().min(0).max(1),
   span: z.number().min(0).max(1),
   note: z.string(),
+  modelConfidence: z.number().min(0).max(1).nullable().optional(),
+  modelVerticalSpan: z.number().min(0).max(1).nullable().optional(),
+  corroborated: z.boolean().optional(),
 });
 
 const palmFactsSchema = z.object({
   handSide: z.enum(["left", "right", "unknown"]),
-  imageQuality: z.enum(["good", "no_hand_detected", "too_dark", "hand_cropped"]),
+  imageQuality: z.enum(["good", "no_hand_detected", "too_dark", "too_blurry", "overexposed", "hand_cropped"]),
   handShape: z.enum(["square", "rectangular", "elongated", "slender", "unknown"]),
   majorLines: z.array(z.enum(["생명선", "감정선", "두뇌선"])),
   lineFeatures: z.array(
@@ -86,8 +90,11 @@ const bodySchema = z.object({
   hour: z.number().int().min(0).max(23).nullable(),
   minute: z.number().int().min(0).max(59).nullable(),
   gender: z.enum(["남", "여"]),
-  /** 없으면(null/undefined) "손금 없이 계속 보기" 요청으로 처리한다. */
+  /** 기존 단일손 요청과 하위호환을 위해 유지한다. 양손 촬영에서는 주로 쓰는 손을 primary로 넣는다. */
   palmFacts: palmFactsSchema.nullable().optional(),
+  leftPalmFacts: palmFactsSchema.nullable().optional(),
+  rightPalmFacts: palmFactsSchema.nullable().optional(),
+  dominantHand: z.enum(["left", "right"]).optional(),
   personalityAnswers: z.record(z.string(), z.number().min(1).max(5)).optional(),
   mbti: z.enum(MBTI_TYPES).optional(),
 });
@@ -103,7 +110,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const palmFacts = (parsed.data.palmFacts ?? null) as PalmFacts | null;
+  const leftPalmFacts = (parsed.data.leftPalmFacts ?? null) as PalmFacts | null;
+  const rightPalmFacts = (parsed.data.rightPalmFacts ?? null) as PalmFacts | null;
+  const dominantHand = (parsed.data.dominantHand ?? "right") as DominantHand;
+  const bilateralReady = Boolean(leftPalmFacts && rightPalmFacts);
+  const bilateralPrimary =
+    dominantHand === "left" ? leftPalmFacts ?? rightPalmFacts : rightPalmFacts ?? leftPalmFacts;
+  const palmFacts = ((parsed.data.palmFacts ?? bilateralPrimary) ?? null) as PalmFacts | null;
   const palmSkipped = palmFacts === null;
 
   if (palmFacts?.pipelineDiagnostics) {
@@ -122,15 +135,22 @@ export async function POST(request: Request) {
     );
   }
 
-  if (palmFacts && !isPalmFactsUsable(palmFacts)) {
-    return NextResponse.json({
-      usable: false,
-      palmSkipped: false,
-      warnings:
-        palmFacts.warnings.length > 0
-          ? palmFacts.warnings
-          : ["손금선이 충분히 읽히지 않았어요. 손바닥 전체가 보이게 밝은 곳에서 다시 촬영해주세요."],
-    });
+  for (const [hand, facts] of [
+    ["left", leftPalmFacts],
+    ["right", rightPalmFacts],
+    ["primary", palmFacts],
+  ] as const) {
+    if (facts && !isPalmFactsUsable(facts)) {
+      return NextResponse.json({
+        usable: false,
+        palmSkipped: false,
+        hand,
+        warnings:
+          facts.warnings.length > 0
+            ? facts.warnings
+            : ["손금선이 충분히 읽히지 않았어요. 손바닥 전체가 보이게 밝은 곳에서 다시 촬영해주세요."],
+      });
+    }
   }
 
   try {
@@ -158,11 +178,24 @@ export async function POST(request: Request) {
     // 이미 만들어둔 신호만 재조합한다.
     const verdict = buildComprehensiveVerdict(deepFacts, personality, onnxLines);
     const primaryCandidateId = selectPrimaryCandidate(deepFacts, fortuneCandidates).id;
+    const bilateralReading =
+      bilateralReady && leftPalmFacts && rightPalmFacts
+        ? buildPalmBilateralReading(leftPalmFacts, rightPalmFacts, dominantHand)
+        : null;
+    const futurePalmTimeline =
+      bilateralReady && leftPalmFacts && rightPalmFacts
+        ? buildPalmFutureTimeline(deepFacts, leftPalmFacts, rightPalmFacts)
+        : null;
 
     return NextResponse.json({
       usable: true,
       palmSkipped,
       palmFacts,
+      leftPalmFacts,
+      rightPalmFacts,
+      dominantHand,
+      bilateralReading,
+      futurePalmTimeline,
       freeReport: { source: freeReportResult.source, report: freeReportResult.report },
       fortuneCandidates,
       tripleCompare,

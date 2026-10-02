@@ -16,7 +16,7 @@ import {
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
 import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
-import { PalmReadingSections, TripleCompareSection } from "@/components/palm/palm-reading-sections";
+import { PalmReadingSections, PalmBilateralSection, PalmFutureTimelineSection, TripleCompareSection } from "@/components/palm/palm-reading-sections";
 import { RealityAnswerFunnel } from "@/components/palm/reality-answer-funnel";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { CompareItem } from "@/lib/triple-compare";
@@ -24,6 +24,7 @@ import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import type { WealthTypeResult } from "@/lib/wealth-type";
 import type { SajuFocus } from "@/lib/saju-focus";
 import { track } from "@/lib/analytics";
+import type { DominantHand, PalmBilateralReading, PalmFutureTimeline } from "@/lib/palm-bilateral";
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
 
@@ -54,6 +55,11 @@ function readSessionJson<T>(key: string): T | null {
 interface PalmResumeState {
   stage: "result" | "saju_only";
   palmFacts: PalmFacts | null;
+  leftPalmFacts?: PalmFacts | null;
+  rightPalmFacts?: PalmFacts | null;
+  dominantHand?: DominantHand;
+  bilateralReading?: PalmBilateralReading | null;
+  futurePalmTimeline?: PalmFutureTimeline | null;
   finalReport: FreeSajuReport | null;
   tripleCompare: CompareItem[];
   verdict: ReportParagraph | null;
@@ -71,7 +77,7 @@ const HAND_SHAPE_KO: Record<PalmFacts["handShape"], string> = {
   unknown: "확인 안 됨",
 };
 
-async function fileToCanvas(file: File, maxDim = 1024): Promise<HTMLCanvasElement> {
+async function fileToCanvas(file: File, maxDim = 1280): Promise<HTMLCanvasElement> {
   let bitmap: ImageBitmap | null = null;
   let image: HTMLImageElement | null = null;
   let objectUrl: string | null = null;
@@ -167,7 +173,15 @@ export function PalmPageClient({
   const resumeKey = realityJourneyKey(birthInput, focus);
   const [stage, setStage] = useState<Stage>("upload");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [rightPreviewUrl, setRightPreviewUrl] = useState<string | null>(null);
+  const [leftPreviewUrl, setLeftPreviewUrl] = useState<string | null>(null);
+  const [captureHand, setCaptureHand] = useState<DominantHand>("right");
+  const [dominantHand, setDominantHand] = useState<DominantHand | null>(null);
+  const [rightPalmFacts, setRightPalmFacts] = useState<PalmFacts | null>(null);
+  const [leftPalmFacts, setLeftPalmFacts] = useState<PalmFacts | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
+  const [bilateralReading, setBilateralReading] = useState<PalmBilateralReading | null>(null);
+  const [futurePalmTimeline, setFuturePalmTimeline] = useState<PalmFutureTimeline | null>(null);
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
   const [tripleCompare, setTripleCompare] = useState<CompareItem[]>([]);
   const [verdict, setVerdict] = useState<ReportParagraph | null>(null);
@@ -201,6 +215,11 @@ export function PalmPageClient({
       if (cancelled) return;
       setStage(saved.stage);
       setPalmFacts(saved.palmFacts);
+      setLeftPalmFacts(saved.leftPalmFacts ?? null);
+      setRightPalmFacts(saved.rightPalmFacts ?? null);
+      setDominantHand(saved.dominantHand ?? null);
+      setBilateralReading(saved.bilateralReading ?? null);
+      setFuturePalmTimeline(saved.futurePalmTimeline ?? null);
       setFinalReport(saved.finalReport ?? null);
       setTripleCompare(saved.tripleCompare ?? []);
       setVerdict(saved.verdict ?? null);
@@ -297,6 +316,11 @@ export function PalmPageClient({
     const saved: PalmResumeState = {
       stage,
       palmFacts,
+      leftPalmFacts,
+      rightPalmFacts,
+      dominantHand: dominantHand ?? undefined,
+      bilateralReading,
+      futurePalmTimeline,
       finalReport,
       tripleCompare,
       verdict,
@@ -310,6 +334,11 @@ export function PalmPageClient({
     resumeKey,
     stage,
     palmFacts,
+    leftPalmFacts,
+    rightPalmFacts,
+    dominantHand,
+    bilateralReading,
+    futurePalmTimeline,
     finalReport,
     tripleCompare,
     verdict,
@@ -319,8 +348,21 @@ export function PalmPageClient({
     chapter,
   ]);
 
-  async function fetchReport(facts: PalmFacts | null) {
-    if (!birthInput) {
+  async function fetchReport(
+    facts: PalmFacts | null,
+    leftFacts: PalmFacts | null = leftPalmFacts,
+    rightFacts: PalmFacts | null = rightPalmFacts,
+  ) {
+    function retryCurrentHand() {
+    stopLiveCamera();
+    setErrorMsg(null);
+    setRetakeAttempts(0);
+    setPalmFacts(null);
+    replacePreview(null);
+    setStage("upload");
+  }
+
+  if (!birthInput) {
       setErrorMsg("생년월일 정보를 찾을 수 없어요. 사주 결과 화면에서 다시 들어와주세요.");
       setStage("error");
       return;
@@ -332,6 +374,9 @@ export function PalmPageClient({
         body: JSON.stringify({
           ...birthInput,
           palmFacts: facts,
+          leftPalmFacts: leftFacts,
+          rightPalmFacts: rightFacts,
+          dominantHand: dominantHand ?? undefined,
           personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
           mbti: personalityInput?.mbti ?? undefined,
         }),
@@ -349,19 +394,21 @@ export function PalmPageClient({
       return;
     }
 
+    setBilateralReading(data.bilateralReading ?? null);
+    setFuturePalmTimeline(data.futurePalmTimeline ?? null);
     setFinalReport(data.freeReport?.report ?? null);
     setTripleCompare(data.tripleCompare ?? []);
     setVerdict(data.verdict ?? null);
     setWealthType(data.wealthType ?? null);
-    track("free_report_completed", { palmSkipped: Boolean(data.palmSkipped) });
+    track("free_report_completed", {
+      palmSkipped: Boolean(data.palmSkipped),
+      bilateral: Boolean(leftFacts && rightFacts),
+    });
     setStage(data.palmSkipped ? "saju_only" : "result");
   }
 
   function replacePreview(next: string | null) {
-    setPreviewUrl((old) => {
-      if (old?.startsWith("blob:")) URL.revokeObjectURL(old);
-      return next;
-    });
+    setPreviewUrl(next);
   }
 
   function stopLiveCamera() {
@@ -375,6 +422,10 @@ export function PalmPageClient({
 
   async function openLiveCamera() {
     setErrorMsg(null);
+    if (!dominantHand) {
+      setErrorMsg("먼저 평소 주로 쓰는 손을 선택해주세요.");
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       cameraInputRef.current?.click();
       return;
@@ -404,11 +455,14 @@ export function PalmPageClient({
     replacePreview(preview);
 
     try {
-      const facts = await withTimeout(
+      const analyzed = await withTimeout(
         analyzePalmFromCanvas(canvas),
         60000,
         "손금 분석 준비가 오래 걸리고 있어요. 다시 촬영하거나 사진 선택으로 시도해주세요.",
       );
+      // 사용자가 화면 안내에 맞춰 오른손/왼손을 순서대로 찍으므로 그 촬영 단계의
+      // 손 방향을 결과에 고정한다. 카메라 미러링에 따라 handedness가 뒤집히는 문제를 피한다.
+      const facts: PalmFacts = { ...analyzed, handSide: captureHand };
       setPalmFacts(facts);
 
       if (!isPalmFactsUsable(facts)) {
@@ -417,8 +471,32 @@ export function PalmPageClient({
         return;
       }
 
+      if (captureHand === "right") {
+        setRightPalmFacts(facts);
+        setRightPreviewUrl(preview);
+        setCaptureHand("left");
+        setRetakeAttempts(0);
+        replacePreview(null);
+        setStage("upload");
+        return;
+      }
+
+      const nextLeft = facts;
+      const nextRight = rightPalmFacts;
+      setLeftPalmFacts(nextLeft);
+      setLeftPreviewUrl(preview);
+
+      if (!nextRight) {
+        setErrorMsg("오른손 분석 정보가 없어 오른손부터 다시 촬영해주세요.");
+        setCaptureHand("right");
+        setStage("upload");
+        return;
+      }
+
+      const primary = dominantHand === "left" ? nextLeft : nextRight;
+      setPalmFacts(primary);
       setStage("loading");
-      await fetchReport(facts);
+      await fetchReport(primary, nextLeft, nextRight);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "분석 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
       setStage("error");
@@ -444,9 +522,13 @@ export function PalmPageClient({
   }
 
   async function handleFile(file: File) {
+    if (!dominantHand) {
+      setErrorMsg("먼저 평소 주로 쓰는 손을 선택해주세요.");
+      return;
+    }
     try {
       const canvas = await fileToCanvas(file);
-      await processPalmCanvas(canvas, URL.createObjectURL(file));
+      await processPalmCanvas(canvas, canvas.toDataURL("image/jpeg", 0.9));
     } catch (err) {
       setErrorMsg(
         err instanceof Error && err.message.includes("손금 분석")
@@ -464,11 +546,20 @@ export function PalmPageClient({
     setErrorMsg(null);
     setStage("loading");
     try {
-      await fetchReport(null);
+      await fetchReport(null, null, null);
     } catch {
       setErrorMsg("분석 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
       setStage("error");
     }
+  }
+
+  function retryCurrentHand() {
+    stopLiveCamera();
+    setErrorMsg(null);
+    setRetakeAttempts(0);
+    setPalmFacts(null);
+    replacePreview(null);
+    setStage("upload");
   }
 
   function reset() {
@@ -482,7 +573,15 @@ export function PalmPageClient({
     setReadingOpen(true);
     setChapter(2);
     setStage("upload");
+    setCaptureHand("right");
+    setDominantHand(null);
+    setRightPalmFacts(null);
+    setLeftPalmFacts(null);
+    setRightPreviewUrl(null);
+    setLeftPreviewUrl(null);
     setPalmFacts(null);
+    setBilateralReading(null);
+    setFuturePalmTimeline(null);
     setFinalReport(null);
     setTripleCompare([]);
     setVerdict(null);
@@ -523,6 +622,12 @@ export function PalmPageClient({
         <div className="mt-6 flex flex-1 flex-col">
           {cameraOpen ? (
             <div className="pb-28">
+              <div className="mb-4 rounded-2xl border border-(--gold-soft) bg-card p-4 text-center">
+                <p className="section-eyebrow">{captureHand === "right" ? "1 / 2 · 오른손 촬영" : "2 / 2 · 왼손 촬영"}</p>
+                <p className="mt-1 text-base font-semibold">
+                  {captureHand === "right" ? "오른손 손바닥을 정면으로 보여주세요" : "이제 왼손 손바닥을 정면으로 보여주세요"}
+                </p>
+              </div>
               <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-3xl border border-(--gold-soft) bg-black">
                 <video
                   ref={cameraVideoRef}
@@ -538,7 +643,8 @@ export function PalmPageClient({
               <canvas ref={cameraProbeCanvasRef} className="hidden" />
               <div className="mt-4 rounded-2xl border border-border bg-card p-4">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  손바닥 전체가 점선 안에 들어오게 맞추고, 손가락을 살짝 편 채 잠깐 멈춰주세요.
+                  손바닥이 화면의 70~85% 정도 차지하게 가까이 맞추고, 손가락 끝부터 손목 주름까지 모두 보이게 해주세요.
+                  카메라와 손바닥을 최대한 평행하게 두고 반사광이 생기지 않게 한 뒤 잠깐 멈춰주세요.
                 </p>
                 <p className={`mt-2 text-base font-medium leading-7 ${cameraReady ? "text-(--gold)" : "text-foreground"}`}>
                   {cameraMessage}
@@ -576,11 +682,55 @@ export function PalmPageClient({
           ) : (
             <>
               <JourneyScene scene="palm" companion="palm-guide" />
+
+              {!rightPalmFacts && (
+                <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-4">
+                  <p className="text-sm font-semibold text-foreground">평소 주로 쓰는 손을 먼저 알려주세요</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    양손 차이를 해석할 때 참고하며, 한쪽을 무조건 타고난 운으로 단정하지 않습니다.
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={dominantHand === "right" ? "default" : "outline"}
+                      onClick={() => setDominantHand("right")}
+                      className="h-11 rounded-xl"
+                    >
+                      오른손
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={dominantHand === "left" ? "default" : "outline"}
+                      onClick={() => setDominantHand("left")}
+                      className="h-11 rounded-xl"
+                    >
+                      왼손
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {rightPalmFacts && rightPreviewUrl && captureHand === "left" && (
+                <div className="mt-5 flex items-center gap-3 rounded-2xl border border-(--gold-soft) bg-card p-4">
+                  <div className="size-14 overflow-hidden rounded-xl border border-(--gold-soft)">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={rightPreviewUrl} alt="오른손 촬영 완료" className="size-full object-cover" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-(--gold)">오른손 분석 완료</p>
+                    <p className="mt-1 text-sm text-muted-foreground">이제 왼손 한 장만 더 찍으면 양손 비교까지 봅니다.</p>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-5">
-                <p className="text-base leading-7 text-muted-foreground">
-                  밝은 곳에서 손바닥 전체를 담아주세요.
-                  <br />
-                  손가락을 살짝 펴면 촬영 전에 선명도를 먼저 확인해요.
+                <p className="section-eyebrow">{captureHand === "right" ? "1 / 2 · 오른손" : "2 / 2 · 왼손"}</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">
+                  {captureHand === "right" ? "먼저 오른손을 찍어주세요" : "이제 왼손을 찍어주세요"}
+                </p>
+                <p className="mt-2 text-base leading-7 text-muted-foreground">
+                  밝은 곳에서 손바닥을 화면의 70~85% 정도로 크게 담고, 손가락 끝부터 손목 주름까지 모두 나오게 해주세요.
+                  손바닥은 카메라와 평행하게, 손가락은 자연스럽게 펴고 반사광이 없게 찍는 것이 가장 좋습니다.
                 </p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   처음 촬영할 때만 카메라 사용 권한이 뜹니다. <span className="font-medium text-foreground">허용</span>을 눌러주세요.
@@ -596,6 +746,7 @@ export function PalmPageClient({
                 <Button
                   size="lg"
                   onClick={openLiveCamera}
+                  disabled={!dominantHand}
                   className="primary-cta h-14 w-full rounded-full text-base"
                 >
                   <Camera className="size-4" />
@@ -604,6 +755,7 @@ export function PalmPageClient({
                 <Button
                   size="lg"
                   variant="outline"
+                  disabled={!dominantHand}
                   onClick={() => galleryInputRef.current?.click()}
                   className="h-13 w-full rounded-full text-base"
                 >
@@ -662,7 +814,9 @@ export function PalmPageClient({
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           />
           <p className="text-base text-muted-foreground">
-            {stage === "detecting" ? "손과 손금선을 확인하는 중이에요" : "리포트를 만드는 중이에요"}
+            {stage === "detecting"
+              ? `${captureHand === "right" ? "오른손" : "왼손"}의 손 모양과 손금선을 확인하는 중이에요`
+              : "양손 손금과 생년월일의 앞으로 흐름을 함께 정리하는 중이에요"}
           </p>
         </div>
       )}
@@ -684,9 +838,9 @@ export function PalmPageClient({
             </ul>
           </div>
           <div className="mt-auto flex flex-col gap-3 pt-8">
-            <Button size="lg" onClick={reset} className="h-13 w-full rounded-full text-base">
+            <Button size="lg" onClick={retryCurrentHand} className="h-13 w-full rounded-full text-base">
               <RotateCcw className="size-4" />
-              다시 촬영하기
+              {captureHand === "right" ? "오른손 다시 촬영하기" : "왼손 다시 촬영하기"}
             </Button>
             {retakeAttempts >= 2 && (
               <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">
@@ -703,8 +857,8 @@ export function PalmPageClient({
             {errorMsg ?? "문제가 발생했어요."}
           </div>
           <div className="mt-auto flex flex-col gap-3 pt-8">
-            <Button size="lg" onClick={reset} className="h-13 w-full rounded-full text-base">
-              다시 촬영하기
+            <Button size="lg" onClick={retryCurrentHand} className="h-13 w-full rounded-full text-base">
+              {captureHand === "right" ? "오른손 다시 촬영하기" : "왼손 다시 촬영하기"}
             </Button>
             <Button
               size="lg"
@@ -732,28 +886,59 @@ export function PalmPageClient({
             transition={{ duration: 0.4 }}
             className="mystic-ring rounded-2xl border border-(--gold-soft) bg-card p-5"
           >
-            <div className="flex items-center gap-3">
-              {previewUrl && (
-                <div className="size-14 shrink-0 overflow-hidden rounded-xl border border-(--gold-soft)">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={previewUrl} alt="" className="size-full object-cover" />
+            {leftPalmFacts && rightPalmFacts ? (
+              <>
+                <p className="section-eyebrow">양손 분석 완료</p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-accent p-3">
+                    {rightPreviewUrl && (
+                      <div className="aspect-square overflow-hidden rounded-lg border border-(--gold-soft)">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={rightPreviewUrl} alt="오른손" className="size-full object-cover" />
+                      </div>
+                    )}
+                    <p className="mt-2 text-sm font-semibold">오른손{dominantHand === "right" ? " · 주로 쓰는 손" : ""}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[rightPalmFacts.handShape]}</p>
+                  </div>
+                  <div className="rounded-xl bg-accent p-3">
+                    {leftPreviewUrl && (
+                      <div className="aspect-square overflow-hidden rounded-lg border border-(--gold-soft)">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={leftPreviewUrl} alt="왼손" className="size-full object-cover" />
+                      </div>
+                    )}
+                    <p className="mt-2 text-sm font-semibold">왼손{dominantHand === "left" ? " · 주로 쓰는 손" : ""}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[leftPalmFacts.handShape]}</p>
+                  </div>
                 </div>
-              )}
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  {palmFacts.handSide === "left" ? "왼손" : palmFacts.handSide === "right" ? "오른손" : "손"} ·{" "}
-                  {HAND_SHAPE_KO[palmFacts.handShape]}
-                </p>
-              </div>
-            </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {palmFacts.handSide === "left" ? "왼손" : palmFacts.handSide === "right" ? "오른손" : "손"} ·{" "}
+                {HAND_SHAPE_KO[palmFacts.handShape]}
+              </p>
+            )}
           </motion.div>
 
-          {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소이자, 사주와
-           * 독립된 두 번째 분석이다(§3): 실제 손 관측 -> 손금 자체 해석 ->
-           * (그 다음에야) 사주와의 비교. "사주 문단 + 손에도 같은 모습이
-           * 보여요" 식으로 섞지 않는다. */}
           <div className="mt-5">
-            <PalmReadingSections facts={palmFacts} />
+            {rightPalmFacts && leftPalmFacts ? (
+              <>
+                <PalmReadingSections
+                  facts={rightPalmFacts}
+                  title={dominantHand === "right" ? "오른손 — 주로 쓰는 손" : "오른손에서 보이는 흐름"}
+                  step="2"
+                />
+                <PalmReadingSections
+                  facts={leftPalmFacts}
+                  title={dominantHand === "left" ? "왼손 — 주로 쓰는 손" : "왼손에서 보이는 흐름"}
+                  step="2"
+                />
+                <PalmBilateralSection reading={bilateralReading} />
+                <PalmFutureTimelineSection timeline={futurePalmTimeline} />
+              </>
+            ) : (
+              <PalmReadingSections facts={palmFacts} />
+            )}
             <TripleCompareSection items={tripleCompare} />
           </div>
 
