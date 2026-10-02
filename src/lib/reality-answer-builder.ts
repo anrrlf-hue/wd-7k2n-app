@@ -201,7 +201,6 @@ function repeatingPatternFor(
 function questionReadingFor(
   question: RealityQuestion,
   facts: SajuFacts,
-  personality: PersonalityInput | null | undefined,
 ): string {
   const elementTone: Record<string, string> = {
     목: "성장할 방향과 다음 가능성이 보일 때 마음이 움직이는 편입니다.",
@@ -211,22 +210,21 @@ function questionReadingFor(
     수: "상황을 충분히 읽고 여러 가능성을 비교할 때 감각이 살아나는 편입니다.",
   };
   const opening = elementTone[facts.dayElement] ?? "상황을 읽고 자기 기준을 세울 때 강점이 살아나는 편입니다.";
-  const pattern = repeatingPatternFor(question, facts, personality);
 
   if (question.domain === "love") {
-    return `${opening} 연애에서는 마음이 생기는 것과 실제 관계가 시작되는 속도가 꼭 같지는 않은 편입니다. ${pattern} 그래서 인연운이 들어오는 시기에는 새로운 만남 자체뿐 아니라 기존 관계가 갑자기 가까워지는 모습으로도 나타날 수 있습니다.`;
+    return `${opening} 연애에서는 마음이 생기는 것과 실제 관계가 시작되는 속도가 꼭 같지는 않은 편입니다. 인연운이 들어오는 시기에는 새로운 만남 자체뿐 아니라 기존 관계가 갑자기 가까워지는 모습으로도 나타날 수 있습니다.`;
   }
 
   if (question.domain === "relationship") {
-    return `${opening} 사람관계에서는 가까워질수록 서로의 방식 차이가 더 또렷하게 보이는 편입니다. ${pattern} 관계운이 움직이는 시기에는 새로운 사람이 들어오기도 하고, 기존 관계의 거리감이나 역할이 달라지는 모습으로 나타날 수도 있습니다.`;
+    return `${opening} 사람관계에서는 가까워질수록 서로의 방식 차이가 더 또렷하게 보이는 편입니다. 관계운이 움직이는 시기에는 새로운 사람이 들어오기도 하고, 기존 관계의 거리감이나 역할이 달라지는 모습으로 나타날 수도 있습니다.`;
   }
 
   if (question.domain === "career") {
-    return `${opening} 일에서는 단순히 직장을 옮기는 것보다 어떤 역할에서 내 힘을 제대로 쓰는지가 중요하게 나타나는 편입니다. ${pattern} 이동운이 강한 때에는 실제 이직뿐 아니라 역할 변경, 새로운 제안, 준비하던 기회의 가시화로 나타날 수 있습니다.`;
+    return `${opening} 일에서는 단순히 직장을 옮기는 것보다 어떤 역할에서 내 힘을 제대로 쓰는지가 중요하게 나타나는 편입니다. 이동운이 강한 때에는 실제 이직뿐 아니라 역할 변경, 새로운 제안, 준비하던 기회의 가시화로 나타날 수 있습니다.`;
   }
 
   if (question.domain === "work_business") {
-    return `${opening} 직장·사업에서는 내 판단으로 움직일 수 있는 범위와 결과가 눈에 보일 때 힘이 붙는 편입니다. ${pattern} 흐름이 강해지는 시기에는 새 역할, 사업 기회, 고객이나 제안이 늘어나는 형태처럼 여러 방식으로 나타날 수 있습니다.`;
+    return `${opening} 직장·사업에서는 내 판단으로 움직일 수 있는 범위와 결과가 눈에 보일 때 힘이 붙는 편입니다. 흐름이 강해지는 시기에는 새 역할, 사업 기회, 고객이나 제안이 늘어나는 형태처럼 여러 방식으로 나타날 수 있습니다.`;
   }
 
   if (question.domain === "money") {
@@ -234,14 +232,14 @@ function questionReadingFor(
       facts.wealthStarCount + facts.outputStarCount > facts.officerStarCount + facts.resourceStarCount
         ? "재물에서는 기회를 발견하고 움직이는 힘이 먼저 드러나는 편입니다."
         : "재물에서는 크게 움직이기보다 흐름을 안정적으로 이어가는 쪽이 더 잘 맞는 편입니다.";
-    return `${opening} ${moneyTone} ${pattern} 재물운이 강해지는 시기에는 수입 자체뿐 아니라 새로운 일거리, 거래, 보상, 돈과 관련된 결정이 많아지는 방식으로 나타날 수 있습니다.`;
+    return `${opening} ${moneyTone} 재물운이 강해지는 시기에는 수입 자체뿐 아니라 새로운 일거리, 거래, 보상, 돈과 관련된 결정이 많아지는 방식으로 나타날 수 있습니다.`;
   }
 
   if (question.domain === "wellbeing") {
-    return `${opening} 생활·건강에서는 질병을 맞히는 방식이 아니라 에너지를 쓰고 회복하는 리듬을 봅니다. ${pattern} 흐름이 크게 바뀌는 때에는 일정, 수면, 활동량, 스트레스 체감이 평소와 달라지는 모습으로 느껴질 수 있습니다.`;
+    return `${opening} 생활·건강에서는 질병을 맞히는 방식이 아니라 에너지를 쓰고 회복하는 리듬을 봅니다. 흐름이 크게 바뀌는 때에는 일정, 수면, 활동량, 스트레스 체감이 평소와 달라지는 모습으로 느껴질 수 있습니다.`;
   }
 
-  return `${opening} 전체 사주에서는 한 분야만 떼기보다 관계·일·재물·생활의 흐름이 어느 시기에 함께 바뀌는지를 봅니다. ${pattern} 변화운이 강한 구간은 실제 사건 하나보다 여러 영역에서 생각과 선택이 동시에 달라지는 형태로 나타날 수 있습니다.`;
+  return `${opening} 전체 사주에서는 한 분야만 떼기보다 관계·일·재물·생활의 흐름이 어느 시기에 함께 바뀌는지를 봅니다. 변화운이 강한 구간은 실제 사건 하나보다 여러 영역에서 생각과 선택이 동시에 달라지는 형태로 나타날 수 있습니다.`;
 }
 
 function currentFlowReadingFor(question: RealityQuestion, facts: SajuFacts): string {
@@ -271,7 +269,6 @@ function currentFlowReadingFor(question: RealityQuestion, facts: SajuFacts): str
 function solutionReadingFor(
   question: RealityQuestion,
   timing: RealityTiming,
-  repeatingPattern: string,
 ): string {
   const first = timingLead(timing);
   const timingText = first
@@ -279,22 +276,22 @@ function solutionReadingFor(
     : "연도·월까지 좁힌 시기보다 현재 큰 흐름을 중심으로 보는 편이 맞습니다.";
 
   if (question.domain === "love" || question.domain === "relationship") {
-    return `${timingText} 이 시기에 관계가 꼭 시작되거나 끝난다는 뜻은 아니지만, 만남과 관계 변화가 평소보다 부각되기 쉬운 구간으로 볼 수 있습니다. ${repeatingPattern} 실제 결과는 상대방의 의사와 만남 환경에 따라 달라질 수 있습니다.`;
+    return `${timingText} 이 시기에 관계가 꼭 시작되거나 끝난다는 뜻은 아니지만, 만남과 관계 변화가 평소보다 부각되기 쉬운 구간으로 볼 수 있습니다. 실제 결과는 상대방의 의사와 만남 환경에 따라 달라질 수 있습니다.`;
   }
 
   if (question.domain === "career" || question.domain === "work_business") {
-    return `${timingText} 이 시기에는 일의 이동, 역할 변화, 제안이나 기회가 평소보다 눈에 띄기 쉬운 흐름으로 볼 수 있습니다. ${repeatingPattern} 실제 변화의 형태는 회사 상황과 시장 조건에 따라 달라질 수 있습니다.`;
+    return `${timingText} 이 시기에는 일의 이동, 역할 변화, 제안이나 기회가 평소보다 눈에 띄기 쉬운 흐름으로 볼 수 있습니다. 실제 변화의 형태는 회사 상황과 시장 조건에 따라 달라질 수 있습니다.`;
   }
 
   if (question.domain === "money") {
-    return `${timingText} 재물운이 강하다는 것은 돈이 자동으로 늘어난다는 뜻보다 돈과 관련된 기회·보상·결정이 더 많이 움직일 수 있다는 의미에 가깝습니다. ${repeatingPattern} 실제 금액의 결과는 소득과 지출, 계약과 시장 상황에 따라 달라질 수 있습니다.`;
+    return `${timingText} 재물운이 강하다는 것은 돈이 자동으로 늘어난다는 뜻보다 돈과 관련된 기회·보상·결정이 더 많이 움직일 수 있다는 의미에 가깝습니다. 실제 금액의 결과는 소득과 지출, 계약과 시장 상황에 따라 달라질 수 있습니다.`;
   }
 
   if (question.domain === "wellbeing") {
-    return `${timingText} 생활 리듬의 변화가 크게 느껴질 수 있는 구간으로 참고할 수 있습니다. ${repeatingPattern} 질병이나 치료 시기를 뜻하는 것은 아니며 실제 증상은 사주와 분리해 확인해야 합니다.`;
+    return `${timingText} 생활 리듬의 변화가 크게 느껴질 수 있는 구간으로 참고할 수 있습니다. 질병이나 치료 시기를 뜻하는 것은 아니며 실제 증상은 사주와 분리해 확인해야 합니다.`;
   }
 
-  return `${timingText} 이 구간은 한 가지 사건을 예고한다기보다 관계·일·재물·생활 중 여러 영역에서 변화가 겹쳐 보일 수 있는 시기입니다. ${repeatingPattern} 실제로 어떤 변화가 나타나는지는 현재 생활 조건에 따라 달라질 수 있습니다.`;
+  return `${timingText} 이 구간은 한 가지 사건을 예고한다기보다 관계·일·재물·생활 중 여러 영역에서 변화가 겹쳐 보일 수 있는 시기입니다. 실제로 어떤 변화가 나타나는지는 현재 생활 조건에 따라 달라질 수 있습니다.`;
 }
 
 function cautionFor(question: RealityQuestion): string {
@@ -344,9 +341,9 @@ export function buildRealityAnswerFallback(input: RealityAnswerBuildInput): Real
   const timing = timingFor(input.question, input.facts);
   const repeatingPattern = repeatingPatternFor(input.question, input.facts, input.personality);
   const report = {
-    questionReading: questionReadingFor(input.question, input.facts, input.personality),
+    questionReading: questionReadingFor(input.question, input.facts),
     currentFlow: currentFlowReadingFor(input.question, input.facts),
-    solutionReading: solutionReadingFor(input.question, timing, repeatingPattern),
+    solutionReading: solutionReadingFor(input.question, timing),
     timingReading: timing.windows?.length
       ? timing.now + " " + timing.windows.map((window) =>
           window.label + ": " + (window.meaning ?? window.reason) +
