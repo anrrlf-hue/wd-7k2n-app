@@ -51,6 +51,7 @@ export function buildFreeConsultationSections(report: FreeSajuReport): FreeConsu
         textOf(report.jobOrientation),
         textOf(report.teamStrength),
         textOf(report.soloStrength),
+        textOf(report.opportunityStyle),
       ]),
     },
     {
@@ -62,6 +63,8 @@ export function buildFreeConsultationSections(report: FreeSajuReport): FreeConsu
         textOf(report.earningStyle),
         textOf(report.keepingStyle),
         textOf(report.leakPattern),
+        textOf(report.bigMoneyAffinity),
+        textOf(report.peopleAndMoney),
       ]),
     },
     {
