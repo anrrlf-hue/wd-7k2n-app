@@ -9,6 +9,7 @@ import { SAJU_FOCUS_VALUES, type SajuFocus } from "@/lib/saju-focus";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 import { REALITY_ANSWER_DOMAINS } from "@/lib/reality-answer-contract";
 import { buildQuestionEnginePlan } from "@/lib/question-engine-v0";
+import type { RealityPalmContext } from "@/lib/reality-palm-context";
 
 const onnxLineDetailSchema = z.object({
   detected: z.boolean(),
@@ -30,6 +31,34 @@ const onnxPalmLinesSchema = z.object({
   marks: z.literal("unknown"),
 });
 
+const secondaryLineSignalSchema = z.object({
+  status: z.enum(["clear", "faint", "not_seen"]),
+  strength: z.number().min(0).max(1),
+  span: z.number().min(0).max(1),
+  note: z.string(),
+  modelConfidence: z.number().min(0).max(1).nullable().optional(),
+  modelVerticalSpan: z.number().min(0).max(1).nullable().optional(),
+  corroborated: z.boolean().optional(),
+});
+
+const palmHandContextSchema = z.object({
+  handSide: z.enum(["left", "right", "unknown"]),
+  handShape: z.enum(["square", "rectangular", "elongated", "slender", "unknown"]),
+  onnxLines: onnxPalmLinesSchema.nullable(),
+  secondaryLines: z.object({
+    fate: secondaryLineSignalSchema,
+    sun: secondaryLineSignalSchema,
+    wealth: secondaryLineSignalSchema,
+  }).optional(),
+});
+
+const palmContextSchema = z.object({
+  dominantHand: z.enum(["left", "right"]).nullable(),
+  primary: palmHandContextSchema.nullable(),
+  left: palmHandContextSchema.nullable(),
+  right: palmHandContextSchema.nullable(),
+});
+
 const bodySchema = z.object({
   question: z.string().trim().min(1).max(500),
   previousQuestion: z.string().trim().max(500).nullable().optional(),
@@ -42,6 +71,7 @@ const bodySchema = z.object({
   minute: z.number().int().min(0).max(59).nullable(),
   gender: z.enum(["남", "여"]),
   palmLines: onnxPalmLinesSchema.nullable().optional(),
+  palmContext: palmContextSchema.nullable().optional(),
   personalityAnswers: z.record(z.string(), z.number().min(1).max(5)).optional(),
   mbti: z.enum(MBTI_TYPES).optional(),
 });
@@ -88,6 +118,7 @@ export async function POST(request: Request) {
       timeoutMs: 9000,
       personality,
       palm: (parsed.data.palmLines ?? null) as OnnxPalmLines | null,
+      palmContext: (parsed.data.palmContext ?? null) as RealityPalmContext | null,
       focusHint: questionPlan.focus,
       domainHint: questionPlan.domain,
     });
