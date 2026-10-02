@@ -101,7 +101,7 @@ function topicFor(raw: string, domain: RealityAnswerDomain): QuestionTopic {
     return "career_growth";
   }
   if (domain === "career") {
-    if (/(이직|퇴사|취업|면접|직장\s*옮|직업\s*바꾸)/.test(text)) return "career_move";
+    if (/(이직|퇴사|취업|면접|직장\s*옮|회사\s*옮|직업\s*바꾸)/.test(text)) return "career_move";
     return "career_growth";
   }
   if (domain === "money") {
