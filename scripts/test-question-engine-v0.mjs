@@ -217,7 +217,10 @@ assert(routeSource.includes('min(1)'), "API04: one-character questions are still
 assert(routeSource.includes("palmContext"), "API05: bilateral palm context not accepted by question API");
 
 const funnelSource = fs.readFileSync(path.join(root, "src/components/palm/reality-answer-funnel.tsx"), "utf8");
-assert(funnelSource.includes("이어서 보면 좋은 질문"), "UI01: follow-up question UI missing");
+assert(
+  funnelSource.includes("style?.nextTitle") || funnelSource.includes("이어서 무엇이 더 궁금하세요?"),
+  "UI01: follow-up question UI missing",
+);
 assert(funnelSource.includes("askFollowUp"), "UI02: follow-up click handler missing");
 assert(funnelSource.includes("previousQuestion") && funnelSource.includes("previousDomain"), "UI03: conversation context not sent");
 assert(funnelSource.includes("trimmed.length < 1"), "UI04: one-character questions are still blocked");
