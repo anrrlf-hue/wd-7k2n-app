@@ -195,26 +195,41 @@ const clearSecondary = {
   },
 };
 
-const richSections = reading.buildPalmReadingSections(sampleLines, clearSecondary);
+const richSections = reading.buildPalmReadingSections(sampleLines, clearSecondary, {
+  handShape: "rectangular",
+  handSide: "right",
+});
 const richKeys = richSections.map((section) => section.key);
-for (const key of ["heartLine", "headLine", "lifeLine", "fate", "sun", "wealthLine", "together", "secondaryTogether", "wealth"]) {
+for (const key of ["overview", "heartLine", "headLine", "lifeLine", "fate", "sun", "wealthLine", "together", "secondaryTogether", "coreStory", "wealth"]) {
   if (!richKeys.includes(key)) throw new Error(`missing palm reading section: ${key}`);
 }
 const sunSection = richSections.find((section) => section.key === "sun");
 const wealthLineSection = richSections.find((section) => section.key === "wealthLine");
 const comboSection = richSections.find((section) => section.key === "secondaryTogether");
+const overviewSection = richSections.find((section) => section.key === "overview");
+const coreStorySection = richSections.find((section) => section.key === "coreStory");
+if (!/오른손/.test(overviewSection?.text ?? "") || !/현실 감각|현실/.test(overviewSection?.text ?? "")) {
+  throw new Error("whole-hand overview missing side/shape interpretation");
+}
+if (!/두뇌선|운명선/.test(coreStorySection?.text ?? "") || !/연결/.test(coreStorySection?.text ?? "")) {
+  throw new Error("connected core story missing cross-line interpretation");
+}
 if (!/성과|인정|평판/.test(sunSection?.text ?? "")) throw new Error("sun line reading lacks recognition/performance interpretation");
 if (!/수입|거래|보상|돈/.test(wealthLineSection?.text ?? "")) throw new Error("wealth line reading lacks money-opportunity interpretation");
 if (!/운명선.*태양선.*재물선|일의 방향/.test(comboSection?.text ?? "")) throw new Error("secondary-line combination reading missing");
 const richText = richSections.map((section) => section.text).join("\n");
 if (/(반드시 성공|수익 보장|부자가 된다|무조건)/.test(richText)) throw new Error("deterministic success/money claim leaked into palm reading");
+if (/수명|몇 살까지|질병|의학적/.test(richText)) throw new Error("health/lifespan overclaim leaked into palm reading");
 
 const faintSecondary = {
   ...clearSecondary,
   sun: { status: "faint", strength: 0.35, span: 0.3, note: "태양선 후보 faint" },
   wealth: { status: "faint", strength: 0.3, span: 0.28, note: "재물선 후보 faint" },
 };
-const cautiousSections = reading.buildPalmReadingSections(sampleLines, faintSecondary);
+const cautiousSections = reading.buildPalmReadingSections(sampleLines, faintSecondary, {
+  handShape: "square",
+  handSide: "left",
+});
 const cautiousKeys = cautiousSections.map((section) => section.key);
 if (cautiousKeys.includes("sun") || cautiousKeys.includes("wealthLine")) {
   throw new Error("faint secondary line was promoted to a customer interpretation");
@@ -231,5 +246,5 @@ if (!funnelSource.includes('work: ["fate", "sun", "secondaryTogether"')) {
 if (!funnelSource.includes('money: ["wealthLine", "secondaryTogether", "wealth"')) {
   throw new Error("money question flow does not prioritize the detected wealth line");
 }
-console.log("PASS palm reading expansion: preserve major/fate + add clear sun/wealth + combination + faint guard + question reuse");
+console.log("PASS palm reading expansion: preserve existing lines + add sun/wealth + whole-hand overview + connected story + faint guard + question reuse");
 hooks.deregister?.();
