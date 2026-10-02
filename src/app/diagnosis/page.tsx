@@ -109,21 +109,25 @@ export default function DiagnosisPage() {
       setMode(nextMode);
 
       if (nextMode === "question") {
-        const raw = sessionStorage.getItem(QUESTION_STORAGE_KEY);
-        if (raw) {
-          const saved = JSON.parse(raw) as StoredQuestionSession;
-          if (saved?.answer && saved?.focus) {
-            setFocus(parseSajuFocus(saved.focus));
-            setQuestion(saved.question);
-            setBirthDate(saved.birthDate);
-            setGender(saved.gender);
-            setKnowsTime(saved.knowsTime);
-            setBirthTime(saved.birthTime);
-            setMbti(saved.mbti);
-            setQuestionAnswer(saved.answer);
-            setQuestionPlan(saved.questionPlan ?? null);
-            setStep("answer");
-            return;
+        // 무료 결과에서 넘어온 경우에는 오래된 질문 세션보다 방금 본 무료 사주를 우선한다.
+        // 그래야 CTA를 누른 즉시 같은 출생정보로 새 질문을 시작할 수 있다.
+        if (params.get("from") !== "free") {
+          const raw = sessionStorage.getItem(QUESTION_STORAGE_KEY);
+          if (raw) {
+            const saved = JSON.parse(raw) as StoredQuestionSession;
+            if (saved?.answer && saved?.focus) {
+              setFocus(parseSajuFocus(saved.focus));
+              setQuestion(saved.question);
+              setBirthDate(saved.birthDate);
+              setGender(saved.gender);
+              setKnowsTime(saved.knowsTime);
+              setBirthTime(saved.birthTime);
+              setMbti(saved.mbti);
+              setQuestionAnswer(saved.answer);
+              setQuestionPlan(saved.questionPlan ?? null);
+              setStep("answer");
+              return;
+            }
           }
         }
 
