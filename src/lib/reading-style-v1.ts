@@ -217,7 +217,7 @@ function contextMajorLineStory(
   const note = dominantNote(context);
 
   if (rightCurve && leftCurve && rightCurve !== leftCurve) {
-    return `오른손 ${label}은 ${right.line}, 왼손 ${label}은 ${left.line}로 서로 다르게 관찰됩니다. 두 손이 다르므로 한쪽 특징을 양손 전체 성향처럼 단정하지 않습니다.${note ? ` ${note}` : ""}`;
+    return `오른손 ${label}은 ${right.line}이고, 왼손 ${label}은 ${left.line}으로 서로 다르게 관찰됩니다. 두 손이 다르므로 한쪽 특징을 양손 전체 성향처럼 단정하지 않습니다.${note ? ` ${note}` : ""}`;
   }
 
   return `양손 ${label}에서 비슷한 흐름이 확인됩니다. 오른손은 ${right.line}, 왼손은 ${left.line}입니다.${note ? ` ${note}` : ""}`;
@@ -259,8 +259,7 @@ function contextSecondaryStory(
     return `${palmHandName(rows[0].side)}에서 ${rows[0].text}으로 관찰됩니다. 다른 손은 관찰값이 없어 강약을 비교하지 않습니다.`;
   }
 
-  const note = dominantNote(context);
-  return `${rows.map((row) => `${palmHandName(row.side)}은 ${row.text}`).join(", ")}.${note ? ` ${note}` : ""} 한쪽을 타고난 모습이나 현재 모습으로 고정하지 않고, 관찰된 차이 자체만 참고합니다.`;
+  return `${rows.map((row) => `${palmHandName(row.side)}은 ${row.text}`).join(", ")}. 한쪽을 타고난 모습이나 현재 모습으로 고정하지 않고, 관찰된 차이 자체만 참고합니다.`;
 }
 
 function contextPalmStory(
