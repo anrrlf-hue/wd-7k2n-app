@@ -98,6 +98,7 @@ const business = compareMod.buildPersonCompareResult(
 const businessText = [...business.roles, ...business.friction].map((x) => `${x.title} ${x.text}`).join("\n");
 assert(/역할/.test(businessText), "B01: business comparison must include role split");
 assert(/지분|돈 관리|의사결정권/.test(businessText), "B02: business comparison must include real-world partnership checks");
+assert(!/나님/.test([business.headline, businessText].join("\n")), "B03: unnatural '나님' copy leaked");
 
 const love = compareMod.buildPersonCompareResult(
   { name: "나", facts: meFacts },
