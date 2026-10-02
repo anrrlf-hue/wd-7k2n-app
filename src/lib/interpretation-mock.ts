@@ -48,7 +48,9 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
     outputStarCount === peerStarCount ? "tie" : outputStarCount > peerStarCount ? "output" : "peer";
 
   const summary =
-    `이 사주는 ${dayStrengthLabel(dayStrength)}이고, ${geukguk}을 타고났습니다. ` +
+    (facts.dayStrengthReliable
+      ? `이 사주는 ${dayStrengthLabel(dayStrength)}이고, ${geukguk} 흐름을 참고할 수 있습니다. `
+      : "출생시간이 없어 신강신약과 격국의 정밀 판정은 확정하지 않습니다. ") +
     `가장 강한 기운은 ${dominantElement}이고, 재물은 ${wLevel === "없음" ? "직접 드러나 있지는 않습니다" : wLevel === "보통" ? "적당히 자리 잡고 있습니다" : "뚜렷하게 자리 잡고 있습니다"}. ` +
     `원래 ${activeCompare === "peer" ? "직접 실행하며 내 몫을 만들어가는" : activeCompare === "output" ? "생각을 결과물로 만들어 보여주는" : "구상과 실행을 함께 엮는"} 쪽에 가깝습니다.`;
 
@@ -62,7 +64,9 @@ export function buildMockInterpretation(facts: SajuFacts): Interpretation {
   const earning_style = workCore.sections.earningStyle.text;
 
   const keeping_style =
-    dayStrength === "strong"
+    !facts.dayStrengthReliable
+      ? "출생시간이 없어 재물 선택에서 밀고 나가는 힘과 주변을 살피는 힘 중 어느 쪽이 더 강한지는 단정하지 않습니다. 실제 돈 판단은 현실 조건과 함께 봐야 합니다."
+      : dayStrength === "strong"
       ? "자기 기준이 뚜렷해 쉽게 흔들리지 않습니다. 다만 그 확신이 지나치면 남의 조언을 듣지 않고 밀어붙이다 지키는 힘을 스스로 깎아먹기 쉽습니다."
       : dayStrength === "weak"
         ? "주변 상황에 영향을 잘 받는 사주입니다. 혼자 판단하기보다 믿을 만한 사람이나 체계를 곁에 두는 것이 지키는 힘으로 이어집니다."
