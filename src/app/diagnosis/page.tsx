@@ -316,6 +316,8 @@ export default function DiagnosisPage() {
           ...birthInput,
           question: effectiveQuestion,
           focusHint: effectiveFocus,
+          previousQuestion: questionAnswer?.question.raw ?? questionPlan?.raw ?? null,
+          previousDomain: questionAnswer?.question.domain ?? questionPlan?.domain ?? null,
           mbti: mbti !== "모름" ? mbti : undefined,
         }),
         signal: controller.signal,
