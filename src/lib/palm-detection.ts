@@ -638,10 +638,23 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
     };
   }
 
-  if (handSpanRatio < 0.52) {
+  if (handSpanRatio < 0.62) {
     return {
       ready: false,
-      message: "손금선이 더 선명하게 보이도록 손을 조금만 가까이 가져와주세요.",
+      message: "손금선을 더 자세히 볼 수 있게 손바닥을 조금 더 가까이 가져와주세요.",
+      handDetected: true,
+      cropped: false,
+      brightness,
+      sharpness,
+      highlightRatio: highlights,
+      handSpanRatio,
+    };
+  }
+
+  if (handSpanRatio > 0.92) {
+    return {
+      ready: false,
+      message: "손끝과 손목 주름이 모두 보이도록 손을 아주 조금만 멀리해주세요.",
       handDetected: true,
       cropped: false,
       brightness,
