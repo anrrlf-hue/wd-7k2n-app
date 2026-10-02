@@ -613,6 +613,12 @@ export function PalmPageClient({
         <div className="mt-6 flex flex-1 flex-col">
           {cameraOpen ? (
             <div className="pb-28">
+              <div className="mb-4 rounded-2xl border border-(--gold-soft) bg-card p-4 text-center">
+                <p className="section-eyebrow">{captureHand === "right" ? "1 / 2 · 오른손 촬영" : "2 / 2 · 왼손 촬영"}</p>
+                <p className="mt-1 text-base font-semibold">
+                  {captureHand === "right" ? "오른손 손바닥을 정면으로 보여주세요" : "이제 왼손 손바닥을 정면으로 보여주세요"}
+                </p>
+              </div>
               <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-3xl border border-(--gold-soft) bg-black">
                 <video
                   ref={cameraVideoRef}
@@ -628,7 +634,8 @@ export function PalmPageClient({
               <canvas ref={cameraProbeCanvasRef} className="hidden" />
               <div className="mt-4 rounded-2xl border border-border bg-card p-4">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  손바닥 전체가 점선 안에 들어오게 맞추고, 손가락을 살짝 편 채 잠깐 멈춰주세요.
+                  손바닥이 화면의 70~85% 정도 차지하게 가까이 맞추고, 손가락 끝부터 손목 주름까지 모두 보이게 해주세요.
+                  카메라와 손바닥을 최대한 평행하게 두고 반사광이 생기지 않게 한 뒤 잠깐 멈춰주세요.
                 </p>
                 <p className={`mt-2 text-base font-medium leading-7 ${cameraReady ? "text-(--gold)" : "text-foreground"}`}>
                   {cameraMessage}
@@ -666,11 +673,55 @@ export function PalmPageClient({
           ) : (
             <>
               <JourneyScene scene="palm" companion="palm-guide" />
+
+              {!rightPalmFacts && (
+                <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-4">
+                  <p className="text-sm font-semibold text-foreground">평소 주로 쓰는 손을 먼저 알려주세요</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    양손 차이를 해석할 때 참고하며, 한쪽을 무조건 타고난 운으로 단정하지 않습니다.
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={dominantHand === "right" ? "default" : "outline"}
+                      onClick={() => setDominantHand("right")}
+                      className="h-11 rounded-xl"
+                    >
+                      오른손
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={dominantHand === "left" ? "default" : "outline"}
+                      onClick={() => setDominantHand("left")}
+                      className="h-11 rounded-xl"
+                    >
+                      왼손
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {rightPalmFacts && rightPreviewUrl && captureHand === "left" && (
+                <div className="mt-5 flex items-center gap-3 rounded-2xl border border-(--gold-soft) bg-card p-4">
+                  <div className="size-14 overflow-hidden rounded-xl border border-(--gold-soft)">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={rightPreviewUrl} alt="오른손 촬영 완료" className="size-full object-cover" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-(--gold)">오른손 분석 완료</p>
+                    <p className="mt-1 text-sm text-muted-foreground">이제 왼손 한 장만 더 찍으면 양손 비교까지 봅니다.</p>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-5">
-                <p className="text-base leading-7 text-muted-foreground">
-                  밝은 곳에서 손바닥 전체를 담아주세요.
-                  <br />
-                  손가락을 살짝 펴면 촬영 전에 선명도를 먼저 확인해요.
+                <p className="section-eyebrow">{captureHand === "right" ? "1 / 2 · 오른손" : "2 / 2 · 왼손"}</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">
+                  {captureHand === "right" ? "먼저 오른손을 찍어주세요" : "이제 왼손을 찍어주세요"}
+                </p>
+                <p className="mt-2 text-base leading-7 text-muted-foreground">
+                  밝은 곳에서 손바닥을 화면의 70~85% 정도로 크게 담고, 손가락 끝부터 손목 주름까지 모두 나오게 해주세요.
+                  손바닥은 카메라와 평행하게, 손가락은 자연스럽게 펴고 반사광이 없게 찍는 것이 가장 좋습니다.
                 </p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   처음 촬영할 때만 카메라 사용 권한이 뜹니다. <span className="font-medium text-foreground">허용</span>을 눌러주세요.
@@ -686,6 +737,7 @@ export function PalmPageClient({
                 <Button
                   size="lg"
                   onClick={openLiveCamera}
+                  disabled={!dominantHand}
                   className="primary-cta h-14 w-full rounded-full text-base"
                 >
                   <Camera className="size-4" />
@@ -694,6 +746,7 @@ export function PalmPageClient({
                 <Button
                   size="lg"
                   variant="outline"
+                  disabled={!dominantHand}
                   onClick={() => galleryInputRef.current?.click()}
                   className="h-13 w-full rounded-full text-base"
                 >
@@ -752,7 +805,9 @@ export function PalmPageClient({
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           />
           <p className="text-base text-muted-foreground">
-            {stage === "detecting" ? "손과 손금선을 확인하는 중이에요" : "리포트를 만드는 중이에요"}
+            {stage === "detecting"
+              ? `${captureHand === "right" ? "오른손" : "왼손"}의 손 모양과 손금선을 확인하는 중이에요`
+              : "양손 손금과 생년월일의 앞으로 흐름을 함께 정리하는 중이에요"}
           </p>
         </div>
       )}
@@ -774,9 +829,9 @@ export function PalmPageClient({
             </ul>
           </div>
           <div className="mt-auto flex flex-col gap-3 pt-8">
-            <Button size="lg" onClick={reset} className="h-13 w-full rounded-full text-base">
+            <Button size="lg" onClick={retryCurrentHand} className="h-13 w-full rounded-full text-base">
               <RotateCcw className="size-4" />
-              다시 촬영하기
+              {captureHand === "right" ? "오른손 다시 촬영하기" : "왼손 다시 촬영하기"}
             </Button>
             {retakeAttempts >= 2 && (
               <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">
