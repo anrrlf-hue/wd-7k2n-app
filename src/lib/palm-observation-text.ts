@@ -29,7 +29,16 @@ export function buildRealObservationText(facts: PalmFacts): string {
 }
 
 export interface PalmReadingSection {
-  key: "heartLine" | "headLine" | "lifeLine" | "fate" | "together" | "wealth";
+  key:
+    | "heartLine"
+    | "headLine"
+    | "lifeLine"
+    | "fate"
+    | "sun"
+    | "wealthLine"
+    | "together"
+    | "secondaryTogether"
+    | "wealth";
   title: string;
   observation: string;
   summary: string;
@@ -79,6 +88,123 @@ function fateReading(signal: NonNullable<PalmFacts["secondaryLines"]>["fate"]): 
   parts.push("손금에서는 이런 선을 일과 진로의 흐름을 스스로 이어가려는 힘과 연결해 보는 편입니다.");
   parts.push("한 방향을 오래 붙드는 힘이 장점이 될 수 있지만, 방향을 바꿔야 할 때도 기존 흐름을 너무 오래 끌고 가지 않는지가 중요할 수 있습니다.");
   return parts.join(" ");
+}
+
+function secondaryObservation(
+  label: string,
+  signal: NonNullable<PalmFacts["secondaryLines"]>["sun"],
+): string {
+  if (signal.status === "clear") {
+    return `${label} 후보가 원본 사진과 보정 영상에서 함께 이어져 확인됐습니다.`;
+  }
+  if (signal.status === "faint") {
+    return `${label} 후보가 일부 보이지만 별도 풀이에 사용할 만큼 뚜렷하지는 않습니다.`;
+  }
+  return `${label} 후보는 이번 사진에서 충분히 확인되지 않았습니다.`;
+}
+
+function sunReading(
+  signal: NonNullable<PalmFacts["secondaryLines"]>["sun"],
+  lines: OnnxPalmLines,
+  fateClear: boolean,
+): string {
+  const parts: string[] = [];
+
+  parts.push(
+    signal.span >= 0.55
+      ? "약지 아래로 이어지는 태양선 후보가 비교적 길게 잡힙니다."
+      : "약지 아래에서 태양선 후보가 또렷하게 이어지는 구간이 보입니다.",
+  );
+  parts.push(
+    "전통 손금에서는 태양선을 내가 만든 결과가 밖으로 드러나고, 인정·평판·표현으로 연결되는 방식을 보는 선으로 해석합니다.",
+  );
+
+  if (lines.headLine.detected) {
+    if (lines.headLine.curve === "직선에 가까움") {
+      parts.push(
+        "두뇌선이 직선에 가까워, 아이디어 자체보다 정리된 결과·실적·완성도를 보여줄 때 평가를 받는 흐름과 더 잘 맞습니다.",
+      );
+    } else if (lines.headLine.curve === "완만한 곡선") {
+      parts.push(
+        "두뇌선이 곡선형이라, 정해진 방식만 따르기보다 아이디어·표현·창의적인 결과물을 밖으로 보여줄 때 강점이 살아나는 쪽으로 볼 수 있습니다.",
+      );
+    }
+  }
+
+  if (fateClear) {
+    parts.push(
+      "운명선도 함께 확인되면, 일의 방향을 잡는 힘과 그 결과가 밖에서 인정받는 방식이 서로 연결되는 조합으로 봅니다.",
+    );
+  }
+
+  parts.push(
+    "이 선은 유명해지거나 성공을 보장한다는 뜻이 아니라, 성과를 어떻게 드러내고 평가받는지를 보는 전통적 해석입니다.",
+  );
+  return parts.join(" ");
+}
+
+function wealthLineReading(
+  signal: NonNullable<PalmFacts["secondaryLines"]>["wealth"],
+  lines: OnnxPalmLines,
+  fateClear: boolean,
+): string {
+  const parts: string[] = [];
+
+  parts.push(
+    signal.span >= 0.5
+      ? "새끼손가락 아래쪽의 재물선 후보가 비교적 길게 이어지는 모습입니다."
+      : "새끼손가락 아래쪽에서 재물선 후보가 또렷하게 이어지는 구간이 보입니다.",
+  );
+  parts.push(
+    "전통 손금에서 재물선은 돈이 저절로 들어온다는 뜻보다, 수입 기회·거래·보상을 알아보고 다루는 방식과 연결해 보는 선입니다.",
+  );
+
+  if (lines.headLine.detected) {
+    if (lines.headLine.curve === "직선에 가까움") {
+      parts.push(
+        "두뇌선이 직선에 가까워, 돈과 관련된 선택에서는 감보다 숫자·조건·비교 기준을 세울수록 강점이 살아나는 편으로 읽을 수 있습니다.",
+      );
+    } else if (lines.headLine.curve === "완만한 곡선") {
+      parts.push(
+        "두뇌선이 곡선형이라, 한 가지 고정된 방식보다 아이디어·사람·기회를 연결하면서 새로운 수입 가능성을 찾는 쪽으로 볼 수 있습니다.",
+      );
+    }
+  }
+
+  if (fateClear) {
+    parts.push(
+      "운명선도 함께 확인되면, 일이나 진로의 변화가 돈과 관련된 기회·보상 문제와 함께 움직이는 조합으로 해석할 수 있습니다.",
+    );
+  }
+
+  parts.push(
+    "재물선이 보여도 실제 수입·투자 결과를 뜻하지 않으며, 금액과 성과는 현실 조건을 따로 확인해야 합니다.",
+  );
+  return parts.join(" ");
+}
+
+function secondaryCombinationReading(
+  secondaryLines: NonNullable<PalmFacts["secondaryLines"]>,
+): string | null {
+  const fate = secondaryLines.fate.status === "clear" && secondaryLines.fate.corroborated;
+  const sun = secondaryLines.sun.status === "clear";
+  const wealth = secondaryLines.wealth.status === "clear";
+  const count = [fate, sun, wealth].filter(Boolean).length;
+  if (count < 2) return null;
+
+  if (fate && sun && wealth) {
+    return "운명선·태양선·재물선 후보가 함께 확인됩니다. 전통 손금에서는 일의 방향, 성과가 드러나는 방식, 돈과 관련된 기회가 따로 떨어지기보다 서로 연결되어 움직이는 성향으로 봅니다. 다만 세 선이 함께 보여도 성공이나 수입을 보장한다는 뜻은 아니며, 실제 결과는 현재의 선택과 환경에 따라 달라집니다.";
+  }
+  if (fate && sun) {
+    return "운명선과 태양선 후보가 함께 확인됩니다. 전통 손금에서는 내가 잡은 일의 방향이 결과물·평판·인정으로 이어지는 방식을 중요하게 보는 조합입니다. 방향을 오래 유지하는 것만큼 결과를 밖으로 보여주는 방식도 중요할 수 있습니다.";
+  }
+  if (fate && wealth) {
+    return "운명선과 재물선 후보가 함께 확인됩니다. 전통 손금에서는 일과 진로의 흐름이 돈과 관련된 기회·거래·보상 문제와 연결되기 쉬운 조합으로 봅니다. 좋은 흐름처럼 보여도 실제 금액과 계약 조건은 따로 확인해야 합니다.";
+  }
+  if (sun && wealth) {
+    return "태양선과 재물선 후보가 함께 확인됩니다. 전통 손금에서는 만든 결과가 밖에서 평가받고, 그 평가가 일거리·보상·거래 기회로 연결되는 방식을 중요하게 보는 조합입니다. 인정과 실제 수익은 같은 뜻이 아니므로 둘을 구분해서 보는 것이 좋습니다.";
+  }
+  return null;
 }
 
 function wealthReading(lines: OnnxPalmLines): string {
@@ -179,19 +305,78 @@ export function buildPalmReadingSections(
     });
   }
 
-  if (heart.detected && head.detected) {
-    const text =
-      heart.curve === head.curve
-        ? "마음을 표현하는 방식과 생각을 정리하는 방식의 결이 비슷한 편입니다. 그래서 내가 느끼는 것과 실제 선택이 비교적 한 방향으로 움직일 수 있습니다. 반대로 확신이 생기면 다른 시각을 늦게 받아들일 수도 있으니 큰 결정에서는 한 사람의 다른 의견을 들어보는 것이 좋습니다."
-        : "마음을 쓰는 방식과 판단하는 방식이 서로 다른 결을 보입니다. 관계에서는 감정적으로 반응하면서도 중요한 결정에서는 냉정해지거나, 반대로 마음은 조심스럽지만 생각은 자유롭게 펼치는 모습이 함께 나타날 수 있습니다. 이 차이는 모순이라기보다 상황에 따라 다른 강점을 쓰는 방식에 가깝습니다.";
+  const fateClear = Boolean(
+    secondaryLines?.fate.status === "clear" && secondaryLines.fate.corroborated,
+  );
 
+  if (secondaryLines?.sun.status === "clear") {
+    const text = sunReading(secondaryLines.sun, lines, fateClear);
     sections.push({
-      key: "together",
-      title: "세 선을 함께 보면 — 내 안의 균형",
-      observation: `${observation("감정선", heart)} ${observation("두뇌선", head)}`,
+      key: "sun",
+      title: "태양선 — 성과·인정이 드러나는 방식",
+      observation: secondaryObservation("태양선", secondaryLines.sun),
       summary: text,
       text,
     });
+  }
+
+  if (secondaryLines?.wealth.status === "clear") {
+    const text = wealthLineReading(secondaryLines.wealth, lines, fateClear);
+    sections.push({
+      key: "wealthLine",
+      title: "재물선 — 돈과 기회를 다루는 방식",
+      observation: secondaryObservation("재물선", secondaryLines.wealth),
+      summary: text,
+      text,
+    });
+  }
+
+  if (heart.detected && head.detected) {
+    const parts = [
+      heart.curve === head.curve
+        ? "마음을 표현하는 방식과 생각을 정리하는 방식의 결이 비슷한 편입니다. 그래서 내가 느끼는 것과 실제 선택이 비교적 한 방향으로 움직일 수 있습니다."
+        : "마음을 쓰는 방식과 판단하는 방식이 서로 다른 결을 보입니다. 관계에서는 감정적으로 반응하면서도 중요한 결정에서는 냉정해지거나, 반대로 마음은 조심스럽지만 생각은 자유롭게 펼치는 모습이 함께 나타날 수 있습니다.",
+    ];
+    if (life.detected) {
+      if (life.length === "김") {
+        parts.push("생명선도 길게 이어져, 마음과 판단으로 정한 방향을 생활 속에서 오래 이어가는 힘을 함께 보는 편입니다.");
+      } else if (life.length === "짧음") {
+        parts.push("생명선은 비교적 짧게 잡혀, 마음과 판단이 정해져도 생활 방식은 상황 변화에 맞춰 빠르게 바꾸는 쪽으로 볼 수 있습니다.");
+      } else {
+        parts.push("생명선까지 함께 보면 감정·판단·생활 리듬을 한쪽으로 몰기보다 상황에 맞춰 조절하는 모습이 더 잘 드러납니다.");
+      }
+    }
+    parts.push("강점이 한 방향으로 너무 세게 몰릴 때는 다른 시각을 한 번 더 확인하는 것이 균형을 잡는 데 도움이 됩니다.");
+    const text = parts.join(" ");
+
+    sections.push({
+      key: "together",
+      title: "주요 선을 함께 보면 — 내 안의 균형",
+      observation: [observation("감정선", heart), observation("두뇌선", head), life.detected ? observation("생명선", life) : ""]
+        .filter(Boolean)
+        .join(" "),
+      summary: text,
+      text,
+    });
+  }
+
+  if (secondaryLines) {
+    const combinedText = secondaryCombinationReading(secondaryLines);
+    if (combinedText) {
+      const observed = [
+        fateClear ? "운명선" : null,
+        secondaryLines.sun.status === "clear" ? "태양선" : null,
+        secondaryLines.wealth.status === "clear" ? "재물선" : null,
+      ].filter((item): item is string => Boolean(item));
+
+      sections.push({
+        key: "secondaryTogether",
+        title: "보조선을 함께 보면 — 일·성과·재물의 연결",
+        observation: `${observed.join("·")} 후보가 이번 사진에서 함께 확인됐습니다.`,
+        summary: combinedText,
+        text: combinedText,
+      });
+    }
   }
 
   const wealthText = wealthReading(lines);
