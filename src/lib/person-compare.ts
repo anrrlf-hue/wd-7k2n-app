@@ -27,6 +27,11 @@ export interface PersonCompareSection {
   text: string;
 }
 
+export interface PersonCompareFollowUp {
+  question: string;
+  answer: string;
+}
+
 export interface PersonCompareResult {
   purpose: PersonComparePurpose;
   purposeLabel: string;
@@ -39,6 +44,7 @@ export interface PersonCompareResult {
   roles: PersonCompareSection[];
   timing: PersonCompareSection[];
   nextQuestions: string[];
+  followUps: PersonCompareFollowUp[];
   shareText: string;
   note: string;
 }
@@ -78,6 +84,10 @@ function safeName(value: string, fallback: string): string {
 
 function personLabel(name: string): string {
   return name === "나" ? "나" : `${name}님`;
+}
+
+function subjectLabel(name: string): string {
+  return name === "나" ? "나는" : `${name}님은`;
 }
 
 function dayBranch(facts: SajuFacts): string | null {
@@ -175,32 +185,31 @@ function businessRoles(me: PersonCompareInput, other: PersonCompareInput): Perso
   const meRoles = strongestRoles(me.facts);
   const otherRoles = strongestRoles(other.facts);
   const meTop = meRoles[0];
-  let otherTop = otherRoles[0];
-  if (otherTop === meTop) {
-    otherTop = otherRoles.find((role) => role !== meTop) ?? otherTop;
+  const otherTop = otherRoles[0];
+
+  if (meTop === otherTop) {
+    return [
+      {
+        title: "두 사람에게 공통으로 강한 역할",
+        text: `두 사람 모두 ${WORK_ROLE_LABELS[meTop]} 쪽 신호가 가장 강하게 잡힙니다. 같은 계산 근거에서 한 사람만 다른 역할로 밀어내는 것은 근거가 없으므로, 사주만으로 서로 다른 직책을 지정하지 않습니다.`,
+      },
+      {
+        title: "역할을 실제로 나눈다면",
+        text: "겹치는 강점은 공통 자산으로 두고, 실제 경험·선호·보유 고객·숫자 관리 능력을 기준으로 책임 영역을 나누는 편이 맞습니다. 한 사람은 방향을 정하고 다른 사람은 검증하는 식의 분담은 실행 제안일 뿐, 사주가 특정 사람에게 강제로 배정한 역할은 아닙니다.",
+      },
+    ];
   }
 
-  const overlap = meRoles[0] === otherRoles[0];
-  const sections: PersonCompareSection[] = [
+  return [
     {
       title: "역할을 나눈다면",
-      text: `${personLabel(me.name)} 쪽은 ${WORK_ROLE_LABELS[meTop]}, ${personLabel(other.name)} 쪽은 ${WORK_ROLE_LABELS[otherTop]} 역할을 먼저 맡아보는 구성이 자연스럽습니다. 이건 직책을 정하는 판정이 아니라 두 사람의 사주에서 상대적으로 강하게 드러나는 업무 성향을 분리해 본 것입니다.`,
+      text: `${subjectLabel(me.name)} ${WORK_ROLE_LABELS[meTop]}, ${subjectLabel(other.name)} ${WORK_ROLE_LABELS[otherTop]} 쪽이 각각 상대적으로 먼저 보입니다. 두 사람의 계산 결과가 실제로 다를 때만 이 차이를 참고하며, 최종 역할은 경험과 선호를 함께 봐야 합니다.`,
     },
-  ];
-
-  if (overlap) {
-    sections.push({
-      title: "겹치는 역할은 분리",
-      text: `두 사람 모두 ${WORK_ROLE_LABELS[meRoles[0]]} 쪽 신호가 강해, 같이 일하면 같은 문제에 둘 다 개입하려는 상황이 생길 수 있습니다. 최종 결정권을 업무별로 나누거나, 한 사람은 방향을 정하고 다른 사람은 검증하는 방식이 더 깔끔합니다.`,
-    });
-  } else {
-    sections.push({
+    {
       title: "보완해서 쓰는 방법",
       text: "두 사람의 강한 역할이 완전히 같지 않아, 한 사람이 모든 일을 같이 하기보다 각자의 책임 영역을 분명히 할수록 보완 관계가 살아날 수 있습니다.",
-    });
-  }
-
-  return sections;
+    },
+  ];
 }
 
 function relationshipRoles(me: PersonCompareInput, other: PersonCompareInput, purpose: PersonComparePurpose): PersonCompareSection[] {
@@ -212,7 +221,7 @@ function relationshipRoles(me: PersonCompareInput, other: PersonCompareInput, pu
     return [
       {
         title: "관계에서 역할을 보면",
-        text: `${personLabel(me.name)} 쪽은 ${me.facts.outputStarCount >= me.facts.resourceStarCount ? "표현하고 움직이는 편" : "생각을 정리하고 확인하는 편"}이 상대적으로 강하고, ${personLabel(other.name)} 쪽은 ${other.facts.outputStarCount >= other.facts.resourceStarCount ? "표현하고 움직이는 편" : "생각을 정리하고 확인하는 편"}이 상대적으로 강합니다. 둘이 같은 속도를 요구하기보다 표현 방식이 다를 수 있다는 전제로 대화하는 편이 좋습니다.`,
+        text: `${subjectLabel(me.name)} ${me.facts.outputStarCount >= me.facts.resourceStarCount ? "표현하고 움직이는 편" : "생각을 정리하고 확인하는 편"}이 상대적으로 강하고, ${subjectLabel(other.name)} ${other.facts.outputStarCount >= other.facts.resourceStarCount ? "표현하고 움직이는 편" : "생각을 정리하고 확인하는 편"}이 상대적으로 강합니다. 둘이 같은 속도를 요구하기보다 표현 방식이 다를 수 있다는 전제로 대화하는 편이 좋습니다.`,
       },
     ];
   }
@@ -250,13 +259,13 @@ function timingSections(me: PersonCompareInput, other: PersonCompareInput, purpo
   if (purpose === "business_partner" || purpose === "work_colleague") {
     return [{
       title: "지금 같이 움직인다면",
-      text: `${personLabel(me.name)} 쪽은 현재 ${meText} 흐름, ${personLabel(other.name)} 쪽은 ${otherText} 흐름이 강조됩니다. 두 사람의 시기가 같다는 이유만으로 시작 시점을 정하지 말고, 한쪽은 확장하고 다른 쪽은 정리·검증하는 식으로 현재 흐름을 역할에 반영해 보는 것이 좋습니다.`,
+      text: `${subjectLabel(me.name)} 현재 ${meText} 흐름, ${subjectLabel(other.name)} ${otherText} 흐름이 강조됩니다. 두 사람의 시기가 같다는 이유만으로 시작 시점을 정하지 말고, 한쪽은 확장하고 다른 쪽은 정리·검증하는 식으로 현재 흐름을 역할에 반영해 보는 것이 좋습니다.`,
     }];
   }
 
   return [{
     title: "지금 두 사람의 흐름",
-    text: `${personLabel(me.name)} 쪽은 현재 ${meText}, ${personLabel(other.name)} 쪽은 ${otherText} 흐름이 상대적으로 강조됩니다. 서로 같은 시기에 같은 반응을 해야 한다고 보기보다, 지금 각자가 무엇에 더 민감한지를 이해하는 참고로 보는 편이 자연스럽습니다.`,
+    text: `${subjectLabel(me.name)} 현재 ${meText}, ${subjectLabel(other.name)} ${otherText} 흐름이 상대적으로 강조됩니다. 서로 같은 시기에 같은 반응을 해야 한다고 보기보다, 지금 각자가 무엇에 더 민감한지를 이해하는 참고로 보는 편이 자연스럽습니다.`,
   }];
 }
 
@@ -279,6 +288,44 @@ function nextQuestionsFor(purpose: PersonComparePurpose): string[] {
   }
   return ["서로 편하게 지내려면 어떤 점을 알아야 하나?", "중요한 일을 같이 할 때 역할을 어떻게 나누면 좋나?", "지금 두 사람의 관계 흐름은 어떤가?"];
 }
+function buildPersonCompareFollowUps(
+  purpose: PersonComparePurpose,
+  roles: PersonCompareSection[],
+  friction: PersonCompareSection[],
+  timing: PersonCompareSection[],
+): PersonCompareFollowUp[] {
+  const roleAnswer = roles.map((item) => item.text).join(" ");
+  const frictionAnswer = friction.map((item) => item.text).join(" ");
+  const timingAnswer = timing.map((item) => item.text).join(" ");
+
+  if (purpose === "business_partner") {
+    return [
+      { question: "같이 사업하면 누가 무엇을 맡는 게 좋은가?", answer: roleAnswer },
+      { question: "둘이 돈 관리는 어떻게 나누는 게 좋은가?", answer: friction.find((item) => item.title.includes("동업"))?.text ?? frictionAnswer },
+      { question: "지금 같이 시작해도 되는 흐름인가?", answer: timingAnswer },
+    ];
+  }
+  if (purpose === "work_colleague") {
+    return [
+      { question: "같이 일할 때 역할은 어떻게 나누면 좋은가?", answer: roleAnswer },
+      { question: "의견이 부딪힐 때 누가 최종 결정을 맡는 게 좋은가?", answer: frictionAnswer },
+      { question: "둘이 성과를 내기 좋은 방식은 무엇인가?", answer: roleAnswer },
+    ];
+  }
+  if (purpose === "love_marriage") {
+    return [
+      { question: "둘이 자주 부딪힐 수 있는 지점은 어디인가?", answer: frictionAnswer },
+      { question: "결혼 생활에서는 어떤 역할 차이가 생길 수 있나?", answer: roleAnswer },
+      { question: "지금 관계 흐름은 서로 같은 방향인가?", answer: timingAnswer },
+    ];
+  }
+  return [
+    { question: "서로 편하게 지내려면 어떤 점을 알아야 하나?", answer: roleAnswer },
+    { question: "중요한 일을 같이 할 때 역할을 어떻게 나누면 좋나?", answer: roleAnswer },
+    { question: "지금 두 사람의 관계 흐름은 어떤가?", answer: timingAnswer },
+  ];
+}
+
 
 export function buildPersonCompareResult(
   meInput: PersonCompareInput,
@@ -323,6 +370,7 @@ export function buildPersonCompareResult(
   const timing = timingSections(me, other, purpose);
   const headline = purposeHeadline(purpose, me.name, other.name);
   const nextQuestions = nextQuestionsFor(purpose);
+  const followUps = buildPersonCompareFollowUps(purpose, roles, friction, timing);
   const shareText = [
     `[운·돈 · 나와 이 사람]`,
     `${me.name} × ${other.name} · ${PERSON_COMPARE_PURPOSE_LABELS[purpose]}`,
@@ -343,6 +391,7 @@ export function buildPersonCompareResult(
     roles,
     timing,
     nextQuestions,
+    followUps,
     shareText,
     note: "사주 비교는 전통 해석을 바탕으로 한 참고입니다. 사람의 관계와 실제 성과를 보장하거나 특정 사람을 선택·배제하는 판단을 대신하지 않습니다.",
   };
