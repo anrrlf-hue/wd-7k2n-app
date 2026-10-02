@@ -257,9 +257,15 @@ function timingSections(me: PersonCompareInput, other: PersonCompareInput, purpo
   const otherText = [...new Set(otherGroups)].map((g) => label[g]).join("·");
 
   if (purpose === "business_partner" || purpose === "work_colleague") {
+    if (meText === otherText) {
+      return [{
+        title: "지금 같이 움직인다면",
+        text: `두 사람 모두 현재 ${meText} 흐름이 강조됩니다. 현재 흐름까지 같은 경우 사주만으로 한쪽을 확장, 다른 쪽을 정리·검증 역할로 나눌 근거는 없습니다. 실제 역할은 경험·선호·고객 접점·숫자 관리 능력처럼 현실에서 확인되는 차이로 정하는 편이 맞습니다.`,
+      }];
+    }
     return [{
       title: "지금 같이 움직인다면",
-      text: `${subjectLabel(me.name)} 현재 ${meText} 흐름, ${subjectLabel(other.name)} ${otherText} 흐름이 강조됩니다. 두 사람의 시기가 같다는 이유만으로 시작 시점을 정하지 말고, 한쪽은 확장하고 다른 쪽은 정리·검증하는 식으로 현재 흐름을 역할에 반영해 보는 것이 좋습니다.`,
+      text: `${subjectLabel(me.name)} 현재 ${meText} 흐름, ${subjectLabel(other.name)} ${otherText} 흐름이 강조됩니다. 두 사람의 현재 흐름이 실제로 다를 때만 그 차이를 역할 분담의 참고로 쓰고, 시작 여부와 최종 역할은 현실 조건을 함께 봐야 합니다.`,
     }];
   }
 
