@@ -324,5 +324,14 @@ for (const required of [
   if (!palmPageSource.includes(required)) throw new Error(`dual-palm UI missing: ${required}`);
 }
 
-console.log("PASS dual-palm capture + bilateral comparison + future-only age timeline");
+const routeSource = fs.readFileSync(path.join(root, "src/app/api/palm/interpret/route.ts"), "utf8");
+for (const required of ["leftPalmFacts", "rightPalmFacts", "dominantHand", "bilateralReading", "futurePalmTimeline"]) {
+  if (!routeSource.includes(required)) throw new Error(`dual-palm API missing: ${required}`);
+}
+const detectionSource = fs.readFileSync(path.join(root, "src/lib/palm-detection.ts"), "utf8");
+if (!detectionSource.includes("handSpanRatio < 0.62") || !detectionSource.includes("handSpanRatio > 0.92")) {
+  throw new Error("detailed palm framing guard is missing");
+}
+
+console.log("PASS dual-palm capture + bilateral comparison + future-only age timeline + API + detailed framing guard");
 hooks.deregister?.();
