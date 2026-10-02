@@ -94,7 +94,10 @@ function currentGroups(facts: SajuFacts): TenGodGroup[] {
 
 function strongestRoles(facts: SajuFacts): WorkRole[] {
   const scores: Record<WorkRole, number> = {
-    direction: facts.resourceStarCount * 2 + facts.officerStarCount + (facts.dayStrength === "strong" ? 1 : 0),
+    direction:
+      facts.resourceStarCount * 2 +
+      facts.officerStarCount +
+      (facts.dayStrengthReliable && facts.dayStrength === "strong" ? 1 : 0),
     execution: facts.outputStarCount * 2 + facts.peerStarCount,
     relationship: facts.wealthStarCount * 2 + facts.outputStarCount + facts.peerStarCount,
     stability: facts.officerStarCount * 2 + facts.resourceStarCount,
