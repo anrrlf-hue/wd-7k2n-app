@@ -133,11 +133,11 @@ const apiSource = fs.readFileSync(path.join(root, "src/app/api/person-compare/ro
 assert(resultSource.includes("PersonCompareCard"), "UI01: result page does not include person comparison");
 assert(resultSource.includes("사주를 더 이어서 보면"), "UI02: person comparison is not placed in the Saju continuation area");
 assert(
-  resultSource.indexOf("사주를 더 이어서 보면") < resultSource.indexOf("PersonCompareCard"),
+  resultSource.indexOf("사주를 더 이어서 보면") < resultSource.indexOf("<PersonCompareCard"),
   "UI03: person comparison should come after the Saju continuation bridge",
 );
 assert(
-  resultSource.indexOf("PersonCompareCard") < resultSource.indexOf("원하면 손금까지 더해볼 수 있어요"),
+  resultSource.indexOf("<PersonCompareCard") < resultSource.indexOf("원하면 손금까지 더해볼 수 있어요"),
   "UI04: person comparison should appear before optional palm expansion",
 );
 for (const phrase of ["나와 이 사람", "이 사람과 나 보기", "두 사람 함께 보기", "다른 사람과 비교해보기"]) {
