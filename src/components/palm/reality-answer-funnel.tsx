@@ -47,12 +47,15 @@ const INCLUDED = [
 
 function palmSummaryForFocus(facts: PalmFacts | null | undefined, focus: SajuFocus): string | null {
   if (!facts?.onnxLines) return null;
-  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines);
+  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines, {
+    handShape: facts.handShape,
+    handSide: facts.handSide,
+  });
   const preferred: Record<SajuFocus, Array<(typeof sections)[number]["key"]>> = {
-    overall: ["secondaryTogether", "together", "fate", "sun", "wealthLine", "headLine", "heartLine", "lifeLine"],
+    overall: ["coreStory", "secondaryTogether", "overview", "together", "fate", "sun", "wealthLine", "headLine", "heartLine", "lifeLine"],
     love_relationship: ["heartLine", "together"],
-    work: ["fate", "sun", "secondaryTogether", "headLine", "together"],
-    money: ["wealthLine", "secondaryTogether", "wealth", "headLine", "lifeLine"],
+    work: ["fate", "sun", "secondaryTogether", "coreStory", "headLine", "together"],
+    money: ["wealthLine", "secondaryTogether", "wealth", "coreStory", "headLine", "lifeLine"],
     wellbeing: ["lifeLine", "together"],
   };
 

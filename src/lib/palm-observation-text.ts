@@ -21,6 +21,112 @@ function observation(label: string, d: OnnxLineDetail): string {
   return `${label}의 위치는 보이지만 세부 모양은 이번 사진에서 선명하게 확인되지 않았습니다.`;
 }
 
+function clarityReading(d: OnnxLineDetail): string | null {
+  if (!d.detected) return null;
+  if (d.depthStrength === "강함") {
+    return "사진에서도 이 선이 비교적 뚜렷하게 잡혀, 이 주제가 다른 특징보다 눈에 띄는 편입니다.";
+  }
+  if (d.depthStrength === "약함") {
+    return "선은 확인되지만 비교적 가늘게 잡혀, 강한 단정거리보다 보조적인 성향으로 보는 편이 자연스럽습니다.";
+  }
+  return null;
+}
+
+export interface PalmReadingContext {
+  handShape?: PalmFacts["handShape"];
+  handSide?: PalmFacts["handSide"];
+}
+
+function handOverviewReading(context?: PalmReadingContext): string | null {
+  const shape = context?.handShape;
+  if (!shape || shape === "unknown") return null;
+
+  const side =
+    context?.handSide === "left"
+      ? "이번 사진은 왼손으로 인식됐습니다. "
+      : context?.handSide === "right"
+        ? "이번 사진은 오른손으로 인식됐습니다. "
+        : "";
+
+  const shapeText: Record<Exclude<PalmFacts["handShape"], "unknown">, string> = {
+    square:
+      "손바닥 폭과 길이의 균형이 비교적 단단한 형태입니다. 전통 손금에서는 생각만 오래 끌기보다 현실에서 정리하고 처리하는 힘이 있는 손으로 봅니다.",
+    rectangular:
+      "손바닥은 비교적 단단한데 손가락 길이가 있는 형태입니다. 전통 손금에서는 현실 감각과 생각의 깊이를 같이 쓰는 손으로 봅니다.",
+    elongated:
+      "손바닥이 길고 손가락은 상대적으로 짧은 형태입니다. 전통 손금에서는 전체 흐름을 길게 보기보다 상황을 빠르게 읽고 움직이는 쪽으로 풀이합니다.",
+    slender:
+      "손바닥과 손가락이 모두 길쭉한 형태입니다. 전통 손금에서는 세부를 오래 관찰하고 생각을 안에서 충분히 정리한 뒤 움직이는 쪽으로 봅니다.",
+  };
+
+  return `${side}${shapeText[shape]}`;
+}
+
+function coreStoryReading(
+  lines: OnnxPalmLines,
+  secondaryLines?: PalmFacts["secondaryLines"],
+): string | null {
+  const parts: string[] = [];
+  const head = lines.headLine;
+  const heart = lines.heartLine;
+  const life = lines.lifeLine;
+  const fateClear = Boolean(
+    secondaryLines?.fate.status === "clear" && secondaryLines.fate.corroborated,
+  );
+  const sunClear = secondaryLines?.sun.status === "clear";
+  const wealthClear = secondaryLines?.wealth.status === "clear";
+
+  if (head.detected) {
+    if (head.length === "김" && head.curve === "완만한 곡선") {
+      parts.push("생각을 깊게 확장하면서 직감과 아이디어까지 함께 쓰는 두뇌선이 중심에 있습니다.");
+    } else if (head.length === "김" && head.curve === "직선에 가까움") {
+      parts.push("한 번 판단을 시작하면 충분히 따져보고 기준을 세운 뒤 결론 내리려는 두뇌선이 중심에 있습니다.");
+    } else if (head.curve === "완만한 곡선") {
+      parts.push("정답 하나만 찾기보다 상황과 아이디어를 함께 보려는 두뇌선이 눈에 띕니다.");
+    } else if (head.curve === "직선에 가까움") {
+      parts.push("감보다 기준과 순서를 세워 판단하려는 두뇌선이 눈에 띕니다.");
+    }
+  }
+
+  if (heart.detected && head.detected) {
+    parts.push(
+      heart.curve === head.curve
+        ? "감정을 쓰는 방식과 판단하는 방식의 결이 비슷해서, 마음이 정해지면 행동도 한 방향으로 모이기 쉬운 조합입니다."
+        : "감정을 쓰는 방식과 판단하는 방식의 결이 달라, 사람 문제에서는 마음이 움직여도 중요한 선택에서는 다시 머리로 확인하는 모습이 함께 나타날 수 있습니다.",
+    );
+  }
+
+  if (life.detected) {
+    if (life.length === "김") {
+      parts.push("생명선도 길게 잡혀, 한 번 정한 생활 방식이나 목표를 오래 이어가는 힘을 같이 보는 편입니다.");
+    } else if (life.length === "짧음") {
+      parts.push("생명선은 비교적 짧게 잡혀, 한 방향만 오래 붙들기보다 상황 변화에 맞춰 생활 방식을 바꾸는 편으로 볼 수 있습니다.");
+    }
+  }
+
+  if (fateClear) {
+    parts.push(
+      "여기에 운명선이 함께 확인돼, 생각으로만 끝내기보다 결국 자기 일·진로의 방향으로 연결하려는 흐름이 더해집니다.",
+    );
+  }
+  if (sunClear) {
+    parts.push(
+      "태양선 후보까지 보이면 만든 결과를 밖으로 보여주고 평가받는 과정이 중요한 손으로 읽을 수 있습니다.",
+    );
+  }
+  if (wealthClear) {
+    parts.push(
+      "재물선 후보까지 보이면 일의 결과를 거래·보상·수입 기회로 연결하는 방식에도 관심이 실리는 손으로 봅니다.",
+    );
+  }
+
+  if (parts.length === 0) return null;
+  parts.push(
+    "전통 손금식으로 한 번에 보면, 한 선의 좋고 나쁨보다 생각·관계·생활·일의 흐름이 어떻게 연결되는지가 이 손의 핵심입니다.",
+  );
+  return parts.join(" ");
+}
+
 export function buildRealObservationText(facts: PalmFacts): string {
   if (!facts.onnxLines) return "손바닥 전체가 밝고 선명하게 나오도록 다시 촬영해 주세요.";
   return (["heartLine", "headLine", "lifeLine"] as const)
@@ -30,6 +136,7 @@ export function buildRealObservationText(facts: PalmFacts): string {
 
 export interface PalmReadingSection {
   key:
+    | "overview"
     | "heartLine"
     | "headLine"
     | "lifeLine"
@@ -38,6 +145,7 @@ export interface PalmReadingSection {
     | "wealthLine"
     | "together"
     | "secondaryTogether"
+    | "coreStory"
     | "wealth";
   title: string;
   observation: string;
@@ -52,6 +160,8 @@ function heartReading(d: OnnxLineDetail): string {
   if (d.length === "짧음") parts.push("관계에서 내 공간과 기준을 중요하게 여기고, 쉽게 마음을 다 보여주지는 않는 편으로 읽힙니다.");
   if (d.curve === "완만한 곡선") parts.push("마음을 느끼는 것에서 끝나지 않고 표정이나 말로 반응해주는 편이라, 친해질수록 따뜻함이 더 잘 드러날 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("감정을 크게 드러내기보다 약속을 지키거나 필요한 일을 챙기는 방식으로 마음을 보여주는 쪽에 가깝습니다.");
+  const clarity = clarityReading(d);
+  if (clarity) parts.push(clarity);
   parts.push("관계에서는 내가 얼마나 좋아하는지보다, 상대가 내 표현 방식을 제대로 알아듣고 있는지가 더 중요할 수 있습니다.");
   return parts.join(" ");
 }
@@ -63,6 +173,8 @@ function headReading(d: OnnxLineDetail): string {
   if (d.length === "짧음") parts.push("복잡하게 오래 고민하기보다 핵심을 잡고 빨리 움직이는 쪽에 가까울 수 있습니다.");
   if (d.curve === "완만한 곡선") parts.push("정답 하나만 찾기보다 직감과 아이디어를 함께 쓰는 편이라 새로운 방식이나 창의적인 해결책에 강점이 생길 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("기준과 근거를 세워 판단하는 편이라 숫자, 비교, 순서를 정리하면 결정이 빨라질 수 있습니다.");
+  const clarity = clarityReading(d);
+  if (clarity) parts.push(clarity);
   parts.push("중요한 선택에서는 평소 강점이 과해져 너무 오래 고민하거나 반대로 너무 빨리 결론 내리는지만 살펴보면 좋습니다.");
   return parts.join(" ");
 }
@@ -74,6 +186,8 @@ function lifeReading(d: OnnxLineDetail): string {
   if (d.length === "짧음") parts.push("한 가지 생활 패턴을 오래 유지하기보다 변화가 생길 때 빠르게 맞춰가는 쪽에 가까울 수 있습니다.");
   if (d.curve === "완만한 곡선") parts.push("익숙한 환경 안에서도 활동 반경을 넓히거나 새로운 경험을 받아들이는 편으로 볼 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("에너지를 여러 곳에 흩기보다 필요한 곳에 집중해서 쓰는 편으로 볼 수 있습니다.");
+  const clarity = clarityReading(d);
+  if (clarity) parts.push(clarity);
   parts.push("생활 리듬에서는 한 가지 흐름을 오래 이어가는 편인지, 변화에 맞춰 빠르게 전환하는 편인지가 함께 드러납니다.");
   return parts.join(" ");
 }
@@ -253,10 +367,22 @@ function wealthReading(lines: OnnxPalmLines): string {
 export function buildPalmReadingSections(
   lines: OnnxPalmLines | null | undefined,
   secondaryLines?: PalmFacts["secondaryLines"],
+  context?: PalmReadingContext,
 ): PalmReadingSection[] {
   if (!lines?.modelExecuted) return [];
 
   const sections: PalmReadingSection[] = [];
+  const overview = handOverviewReading(context);
+  if (overview) {
+    sections.push({
+      key: "overview",
+      title: "먼저 보이는 전체 인상",
+      observation: context?.handSide === "left" ? "왼손 사진 기준" : context?.handSide === "right" ? "오른손 사진 기준" : "이번 손 사진 기준",
+      summary: overview,
+      text: overview,
+    });
+  }
+
   const heart = lines.heartLine;
   const head = lines.headLine;
   const life = lines.lifeLine;
@@ -379,6 +505,17 @@ export function buildPalmReadingSections(
     }
   }
 
+  const coreStory = coreStoryReading(lines, secondaryLines);
+  if (coreStory) {
+    sections.push({
+      key: "coreStory",
+      title: "한 번에 정리하면 — 이 손의 핵심",
+      observation: "확인된 주요선과 보조선을 서로 연결해서 본 종합풀이입니다.",
+      summary: coreStory,
+      text: coreStory,
+    });
+  }
+
   const wealthText = wealthReading(lines);
   sections.push({
     key: "wealth",
@@ -392,7 +529,10 @@ export function buildPalmReadingSections(
 }
 
 export function buildTraditionalReadingText(facts: PalmFacts): string {
-  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines);
+  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines, {
+    handShape: facts.handShape,
+    handSide: facts.handSide,
+  });
   return sections.length
     ? sections.map((s) => s.text).join(" ")
     : "손의 주요 선이 보이도록 밝은 곳에서 손바닥 전체를 다시 촬영해 주세요.";
