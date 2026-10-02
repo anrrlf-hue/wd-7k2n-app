@@ -131,21 +131,143 @@ const SIGNAL_LABEL: Record<TenGodGroup, string> = {
   인성: "준비·지원·배움",
 };
 
-const SIGNAL_POSITIVE: Record<TenGodGroup, string> = {
-  비겁: "사람을 통해 연결이 생기거나 협업·소개·경쟁 구도가 실제 기회로 이어지는지 보세요.",
-  식상: "말·제안·발표·콘텐츠·실행이 실제 반응이나 성과로 이어지는지 보세요.",
-  재성: "수입·보상·거래 조건이 구체적인 숫자와 결과로 확인되는 움직임을 눈여겨보세요.",
-  관성: "계약·합격·직책·승인처럼 공식적으로 확정되는 변화가 나타나는지 보세요.",
-  인성: "도움이 되는 사람·자료·준비·자격이 실제 다음 기회와 연결되는지 보세요.",
-};
+function signalLabelFor(domain: RealityAnswerDomain, signal: TenGodGroup): string {
+  if (domain === "love") {
+    if (signal === "재성" || signal === "관성") return "관계의 진전·약속";
+    if (signal === "식상") return "연락·표현·대화";
+    if (signal === "비겁") return "모임·소개·주변 연결";
+    return "마음 정리·도움·소개";
+  }
+  if (domain === "relationship") {
+    if (signal === "비겁") return "사람·모임·관계 변화";
+    if (signal === "관성") return "약속·경계·관계 정리";
+    if (signal === "인성") return "도움·소개·관계 회복";
+    if (signal === "식상") return "대화·표현·교류";
+    return "관계 속 이해관계";
+  }
+  if (domain === "career") {
+    if (signal === "관성") return "채용·직책·공식 변화";
+    if (signal === "인성") return "준비·자격·지원";
+    if (signal === "식상") return "면접·표현·성과";
+    return SIGNAL_LABEL[signal];
+  }
+  if (domain === "work_business") {
+    if (signal === "식상") return "실행·성과·시장 반응";
+    if (signal === "재성") return "고객·매출·거래";
+    if (signal === "비겁") return "협업·경쟁·독립";
+    if (signal === "관성") return "계약·책임·조직 변화";
+    return "준비·자료·지원";
+  }
+  if (domain === "money") {
+    if (signal === "재성") return "수입·보상·거래";
+    if (signal === "식상") return "성과·일거리·수입 기회";
+    if (signal === "관성") return "급여·계약·보상 체계";
+    if (signal === "인성") return "정보·준비·판단";
+    return "사람·협업·분배";
+  }
+  if (domain === "wellbeing") {
+    if (signal === "인성") return "휴식·회복·정리";
+    if (signal === "식상") return "활동량·일정 변화";
+    return "생활 리듬 변화";
+  }
+  return SIGNAL_LABEL[signal];
+}
 
-const SIGNAL_CAUTION: Record<TenGodGroup, string> = {
-  비겁: "사람이 많아지는 만큼 역할·이해관계·경쟁 조건을 분명히 하지 않으면 에너지가 분산될 수 있어요.",
-  식상: "움직임이 빨라지는 만큼 일을 너무 많이 벌이거나 말이 결과보다 앞서지 않게 확인하세요.",
-  재성: "좋아 보이는 기회라도 금액·조건·현금흐름을 확인하기 전에는 수익을 확정해서 보지 마세요.",
-  관성: "공식 제안이나 계약이 들어와도 책임 범위와 조건을 먼저 확인해야 부담이 커지는 것을 막을 수 있어요.",
-  인성: "준비와 검토가 도움 되는 시기지만, 준비만 늘리며 실제 결정을 계속 미루지는 마세요.",
-};
+function signalPositiveFor(
+  domain: RealityAnswerDomain,
+  signal: TenGodGroup,
+  fallback: string,
+): string {
+  if (domain === "love") {
+    if (signal === "재성" || signal === "관성") return "연락이나 만남이 실제 약속·관계 진전으로 이어지는지 살펴보세요.";
+    if (signal === "식상") return "연락·대화·표현이 자연스럽게 늘고 서로의 마음을 확인할 장면이 생기는지 보세요.";
+    if (signal === "비겁") return "모임·지인·소개처럼 사람을 통한 새로운 연결이 생기는지 살펴보세요.";
+    if (signal === "인성") return "소개나 도움을 통해 관계가 편안하게 이어지고 마음을 정리할 여지가 생기는지 보세요.";
+    return fallback;
+  }
+  if (domain === "relationship") {
+    if (signal === "비겁") return "새 사람을 만나거나 기존 관계의 역할·거리가 자연스럽게 달라지는지 보세요.";
+    if (signal === "관성") return "애매했던 약속이나 관계의 경계가 더 분명해지는지 살펴보세요.";
+    if (signal === "인성") return "소개·도움·대화를 통해 관계가 회복되거나 새로운 연결이 이어지는지 보세요.";
+    if (signal === "식상") return "대화와 교류가 늘면서 오해가 풀리거나 관계의 방향이 선명해지는지 보세요.";
+    return fallback;
+  }
+  if (domain === "career") {
+    if (signal === "관성") return "채용·합격·직책·역할 변경처럼 공식적인 변화가 실제로 확인되는지 보세요.";
+    if (signal === "인성") return "준비해온 공부·자격·경력이 지원이나 기회와 연결되는지 보세요.";
+    if (signal === "식상") return "면접·발표·성과처럼 내가 보여준 것이 실제 반응으로 돌아오는지 보세요.";
+    return fallback;
+  }
+  if (domain === "work_business") {
+    if (signal === "식상") return "아이디어·제안·실행이 고객 반응이나 실제 성과로 이어지는지 보세요.";
+    if (signal === "재성") return "고객 문의·매출·거래 조건처럼 돈과 연결된 움직임이 구체화되는지 보세요.";
+    if (signal === "비겁") return "협업·소개·경쟁 구도가 실제 기회나 독립 움직임으로 이어지는지 보세요.";
+    if (signal === "관성") return "계약·책임·조직 변화가 실제 조건으로 확정되는지 보세요.";
+    if (signal === "인성") return "자료·준비·도움이 실행할 기회를 만드는 데 실제로 쓰이는지 보세요.";
+    return fallback;
+  }
+  if (domain === "money") {
+    if (signal === "재성") return "수입·보상·거래 조건이 구체적인 금액과 결과로 확인되는지 보세요.";
+    if (signal === "식상") return "새 일거리나 성과가 실제 수입 기회로 이어지는지 보세요.";
+    if (signal === "관성") return "급여·계약·보상 체계처럼 정해진 돈의 흐름이 구체적으로 바뀌는지 보세요.";
+    if (signal === "인성") return "정보와 준비가 돈과 관련된 판단을 더 분명하게 만드는지 보세요.";
+    return fallback;
+  }
+  if (domain === "wellbeing") {
+    if (signal === "인성") return "수면·휴식·혼자 정리하는 시간이 확보되면서 생활 리듬이 안정되는지 보세요.";
+    if (signal === "식상") return "활동량과 일정이 자연스럽게 늘고, 움직인 뒤에도 회복 리듬이 유지되는지 보세요.";
+    return fallback;
+  }
+  return fallback;
+}
+
+function signalCautionFor(
+  domain: RealityAnswerDomain,
+  signal: TenGodGroup,
+  fallback: string,
+): string {
+  if (domain === "love") {
+    if (signal === "재성" || signal === "관성") return "관계가 진전되는 느낌만으로 상대의 마음이나 결혼 가능성을 미리 확정하지 마세요.";
+    if (signal === "식상") return "연락과 표현이 많아져도 말의 분위기만으로 관계를 너무 빨리 단정하지 마세요.";
+    if (signal === "비겁") return "주변의 비교나 경쟁 분위기 때문에 내 관계의 속도를 억지로 맞추지 마세요.";
+    if (signal === "인성") return "생각과 해석만 늘리며 실제 표현이나 대화를 계속 미루지는 마세요.";
+    return fallback;
+  }
+  if (domain === "relationship") {
+    if (signal === "비겁") return "사람이 많아지는 만큼 비교·편가르기·역할 충돌에 휘말리지 않도록 거리를 조절하세요.";
+    if (signal === "관성") return "관계를 분명히 하려는 마음이 강해져도 상대에게 결론을 서두르게 하지는 마세요.";
+    if (signal === "인성") return "상대 사정을 이해하려다 내 불편과 경계를 계속 뒤로 미루지 마세요.";
+    if (signal === "식상") return "대화가 많아져도 감정이 앞선 말로 관계 전체를 단정하지 마세요.";
+    return fallback;
+  }
+  if (domain === "career") {
+    if (signal === "관성") return "공식 제안이 들어와도 직책 이름보다 역할·보상·책임 범위를 먼저 확인하세요.";
+    if (signal === "인성") return "준비와 자격을 더 쌓는 것만으로 결정을 계속 미루지는 마세요.";
+    if (signal === "식상") return "성과를 보여주려다 너무 많은 지원·면접·업무를 한꺼번에 벌이지 마세요.";
+    return fallback;
+  }
+  if (domain === "work_business") {
+    if (signal === "식상") return "움직임이 빨라져도 일을 너무 많이 벌이거나 말이 실제 결과보다 앞서지 않게 보세요.";
+    if (signal === "재성") return "매출 가능성만 보고 비용·현금흐름·거래 조건을 확인하기 전에 규모를 키우지 마세요.";
+    if (signal === "비겁") return "협업이나 경쟁이 커질수록 역할·지분·책임을 애매하게 두지 마세요.";
+    if (signal === "관성") return "계약이나 조직 변화가 보여도 책임 범위와 실제 권한을 먼저 확인하세요.";
+    if (signal === "인성") return "준비와 검토가 길어져 실제 실행 시점을 놓치지는 마세요.";
+    return fallback;
+  }
+  if (domain === "money") {
+    if (signal === "재성") return "좋아 보이는 기회라도 금액·조건·현금흐름을 확인하기 전에는 수익을 확정해서 보지 마세요.";
+    if (signal === "식상") return "새 수입 기회를 여러 개 동시에 잡아 시간과 돈이 분산되지 않게 보세요.";
+    if (signal === "관성") return "급여·계약 조건이 좋아 보여도 세부 조건과 고정 의무를 먼저 확인하세요.";
+    if (signal === "인성") return "정보를 더 찾는 것만으로 결정을 계속 미루거나, 반대로 한 정보만 믿고 움직이지 마세요.";
+    return fallback;
+  }
+  if (domain === "wellbeing") {
+    if (signal === "인성") return "쉬는 시간이 걱정·정보 탐색·준비로 다시 채워져 실제 휴식이 사라지지 않게 보세요.";
+    if (signal === "식상") return "활동량이 늘어도 수면과 회복 시간을 줄여가며 속도를 유지하지는 마세요.";
+    return fallback;
+  }
+  return fallback;
+}
 
 const DOMAIN_FALLBACK: Record<RealityAnswerDomain, {
   reason: string;
@@ -204,7 +326,9 @@ function choosePrimarySignal(
   used: Set<TenGodGroup>,
 ): TenGodGroup | null {
   const rank = (groups: TenGodGroup[]) =>
-    [...new Set(groups)].sort((a, b) => (weights[b] ?? 0) - (weights[a] ?? 0));
+    [...new Set(groups)]
+      .filter((group) => (weights[group] ?? 0) > 0)
+      .sort((a, b) => (weights[b] ?? 0) - (weights[a] ?? 0));
 
   const candidates = [...rank(monthGroups), ...rank(yearGroups)].filter(
     (group, index, all) => all.indexOf(group) === index,
@@ -226,28 +350,28 @@ function timingWindowCopy(
 
   const role =
     rank === 0
-      ? "세 후보 중 가장 강하게 잡히는 구간입니다."
+      ? "후보 가운데 가장 강하게 잡히는 구간입니다."
       : rank === 1
-        ? "첫 흐름 뒤에 결과를 확인하거나 다음 움직임이 이어지기 쉬운 두 번째 구간입니다."
-        : "앞선 흐름이 약했다면 같은 주제가 다시 살아날 수 있는 후속 구간입니다.";
+        ? "두 번째로 강하게 잡히는 구간입니다."
+        : "세 번째로 눈여겨볼 구간입니다.";
   const roleMeaning =
     rank === 0
-      ? "이때는 변화가 ‘처음 크게 보이는 장면’을 눈여겨보는 게 핵심입니다."
+      ? "이때는 이 질문과 관련된 변화가 가장 또렷하게 드러나는 장면을 보세요."
       : rank === 1
-        ? "이때는 앞서 시작된 변화가 실제 결과로 이어지는지 확인하는 성격이 더 강합니다."
-        : "이때는 앞서 미뤄졌거나 놓친 주제가 다시 움직이는 후속 성격이 더 강합니다.";
+        ? "가장 강한 후보와는 다른 방식으로 같은 주제가 드러날 수 있는 구간입니다."
+        : "앞선 두 후보와 비교해 어떤 방식의 변화가 실제로 나타나는지 보는 구간입니다.";
   const positiveLead =
     rank === 0
       ? "가장 강한 구간에서는"
       : rank === 1
-        ? "두 번째 구간에서는"
-        : "후속 구간에서는";
+        ? "두 번째 후보에서는"
+        : "세 번째 후보에서는";
   const cautionLead =
     rank === 0
-      ? "첫 움직임이 강해도"
+      ? "흐름이 강하게 보여도"
       : rank === 1
-        ? "앞선 흐름이 이어진다고 보여도"
-        : "다시 기회가 보인다고 해도";
+        ? "두 번째 후보가 눈에 띄어도"
+        : "세 번째 후보까지 비슷한 움직임이 보여도";
 
   if (!signal) {
     return {
@@ -258,7 +382,7 @@ function timingWindowCopy(
     };
   }
 
-  const signalLabel = SIGNAL_LABEL[signal];
+  const signalLabel = signalLabelFor(domain, signal);
   const domainMeaning = (() => {
     switch (domain) {
       case "love":
@@ -298,8 +422,8 @@ function timingWindowCopy(
   return {
     reason: `${role} 이번 구간은 ${signalLabel} 신호가 상대적으로 더 두드러집니다.`,
     meaning: `${domainMeaning} ${roleMeaning}`,
-    positive: `${positiveLead} ${SIGNAL_POSITIVE[signal]}`,
-    caution: `${cautionLead} ${signal === "재성" && domain === "love" ? base.caution : SIGNAL_CAUTION[signal]}`,
+    positive: `${positiveLead} ${signalPositiveFor(domain, signal, base.positive)}`,
+    caution: `${cautionLead} ${signalCautionFor(domain, signal, base.caution)}`,
   };
 }
 
@@ -440,9 +564,9 @@ export function buildSajuTimingOutlook(
       : (timeScope ? timeScope.label + " 안에서 " : "") +
         "가장 강하게 보이는 시기는 " +
         top[0].label +
-        "이고, 이어서 " +
+        "이고, 다른 후보는 " +
         top.slice(1).map((x) => x.label).join(", ") +
-        "에도 같은 주제가 다시 살아날 수 있습니다.";
+        "입니다.";
 
   return {
     precision: top.some((x) => x.month) ? "monthly" : "yearly",
