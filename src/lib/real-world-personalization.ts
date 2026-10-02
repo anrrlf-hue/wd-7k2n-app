@@ -412,12 +412,18 @@ export function buildComprehensiveVerdict(
   const evidenceParts: string[] = [`일간 ${facts.dayStemKo}(${facts.dayElement})`, `격국 ${facts.geukguk}`];
 
   const imagery = dayStemImagery(facts.dayStemKo);
-  sentences.push(`당신은 ${imagery.image}처럼 ${imagery.core} 사람입니다. ${dayStrengthLabel(facts.dayStrength)}의 기질이 깔려 있어, 평소에는 유연해 보여도 중요한 순간에는 자기 방식이 분명해질 수 있습니다.`);
+  sentences.push(
+    facts.dayStrengthReliable
+      ? `당신은 ${imagery.image}처럼 ${imagery.core} 사람입니다. ${dayStrengthLabel(facts.dayStrength)}의 기질이 깔려 있어, 중요한 순간의 자기 기준이 어떻게 드러나는지 함께 볼 수 있습니다.`
+      : `당신은 ${imagery.image}처럼 ${imagery.core} 사람입니다. 출생시간이 없어 자기주도성의 강약은 한쪽으로 단정하지 않고, 확인되는 일간·오행·십성 구조만 이어서 봅니다.`,
+  );
 
   sentences.push(
-    facts.wealthOpportunityDaeunCount > 0
-      ? "삶의 흐름을 길게 보면 재물과 기회가 부각되는 구간이 몇 차례 들어옵니다. 다만 그 시기 자체보다, 그때 어떤 기준으로 선택하느냐가 더 중요합니다."
-      : "한 번의 큰 기회를 기다리기보다, 잘하는 일과 전문성을 오래 쌓아 현실적인 성과로 연결하는 쪽이 더 잘 맞습니다.",
+    facts.wealthOpportunityDaeunCount === null
+      ? "출생시간이 없어 평생 대운의 재물 기회 횟수는 확정하지 않습니다. 지금은 확인되는 일·재물 구조를 중심으로 봅니다."
+      : facts.wealthOpportunityDaeunCount > 0
+        ? "삶의 흐름을 길게 보면 재물과 기회가 부각되는 구간이 몇 차례 들어옵니다. 다만 그 시기 자체보다, 그때 어떤 기준으로 선택하느냐가 더 중요합니다."
+        : "한 번의 큰 기회를 기다리기보다, 잘하는 일과 전문성을 오래 쌓아 현실적인 성과로 연결하는 쪽이 더 잘 맞습니다.",
   );
 
   const currentPeriod = facts.daeunAnalysis?.find((d) => d.isCurrent) ?? null;
