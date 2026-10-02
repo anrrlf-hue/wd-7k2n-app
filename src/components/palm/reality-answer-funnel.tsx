@@ -18,6 +18,7 @@ import {
 import { track } from "@/lib/analytics";
 import { saveRealityAnswer } from "@/lib/reality-management";
 import type { QuestionEnginePlan, QuestionFollowUp } from "@/lib/question-engine-v0";
+import { buildRealityPalmContext, type RealityDominantHand } from "@/lib/reality-palm-context";
 
 type FunnelStage = "intro" | "question" | "preview" | "result";
 
@@ -168,6 +169,9 @@ export function RealityAnswerFunnel({
   personalityInput,
   palmLines,
   palmFacts,
+  leftPalmFacts,
+  rightPalmFacts,
+  dominantHand,
   resumeKey,
   onStart,
   onChapterChange,
@@ -178,6 +182,9 @@ export function RealityAnswerFunnel({
   personalityInput?: PersonalityInputEcho;
   palmLines?: OnnxPalmLines | null;
   palmFacts?: PalmFacts | null;
+  leftPalmFacts?: PalmFacts | null;
+  rightPalmFacts?: PalmFacts | null;
+  dominantHand?: RealityDominantHand | null;
   resumeKey: string;
   onStart: () => void;
   initialFocus?: SajuFocus;
@@ -238,6 +245,12 @@ export function RealityAnswerFunnel({
           previousQuestion: previous?.raw ?? null,
           previousDomain: previous?.domain ?? null,
           palmLines: palmFacts?.onnxLines ?? palmLines ?? null,
+          palmContext: buildRealityPalmContext({
+            primary: palmFacts ?? null,
+            left: leftPalmFacts ?? null,
+            right: rightPalmFacts ?? null,
+            dominantHand: dominantHand ?? null,
+          }),
           personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
           mbti: personalityInput?.mbti ?? undefined,
         }),
