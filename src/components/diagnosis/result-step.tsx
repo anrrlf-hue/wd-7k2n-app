@@ -1,7 +1,6 @@
 "use client";
 
 import { CompanionHeading } from "@/components/brand-companion";
-import Link from "next/link";
 import { Clock3, Hand } from "lucide-react";
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
@@ -293,9 +292,9 @@ export function ResultStep({
           방금 본 생년월일·출생시간을 다시 입력하지 않고, 같은 사주를 기준으로 질문에 대한 답과 시기를 이어서 봅니다. 사람과의 관계가 궁금하다면 아래에서 두 사람의 사주를 함께 볼 수도 있습니다.
         </p>
         <Button asChild size="lg" className="mt-5 h-14 w-full rounded-full text-base">
-          <Link href={`/diagnosis?mode=question&focus=${focus}&from=free`}>
+          <a href={`/diagnosis?mode=question&focus=${focus}&from=free`}>
             내 질문 답과 시기 보기
-          </Link>
+          </a>
         </Button>
       </section>
 
