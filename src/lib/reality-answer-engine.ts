@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   validateRealityAnswer,
   type RealityAnswer,
+  type RealityAnswerDomain,
   type RealityQuestion,
 } from "@/lib/reality-answer-contract";
 import { buildRealityAnswerFallback } from "@/lib/reality-answer-builder";
@@ -40,6 +41,8 @@ export interface RealityAnswerEngineOptions {
   palm?: OnnxPalmLines | null;
   /** 사용자에게 보이는 5개 사주 선택. 내부 세부분류는 질문 내용으로 자동 결정한다. */
   focusHint?: SajuFocus | null;
+  /** 질문 엔진이 짧은 후속질문의 문맥까지 해석한 내부 세부분류. */
+  domainHint?: RealityAnswerDomain | null;
 }
 
 export type RealityAnswerEngineResult =
@@ -139,10 +142,13 @@ function hasUnsupportedTimingMention(
 function toQuestion(
   parse: RealityQuestionParseResult,
   focusHint?: SajuFocus | null,
+  domainHint?: RealityAnswerDomain | null,
 ): RealityQuestion | null {
-  const domain = focusHint
-    ? realityDomainForSajuFocus(focusHint, parse.domain)
-    : parse.domain;
+  const domain = domainHint ?? (
+    focusHint
+      ? realityDomainForSajuFocus(focusHint, parse.domain)
+      : parse.domain
+  );
   if (!domain) return null;
 
   const decisionPoint = decisionPointFor(parse.raw, domain);
@@ -163,7 +169,7 @@ export async function getRealityAnswer(
   options: RealityAnswerEngineOptions = {},
 ): Promise<RealityAnswerEngineResult> {
   const parse = parseRealityQuestion(rawQuestion);
-  const question = toQuestion(parse, options.focusHint);
+  const question = toQuestion(parse, options.focusHint, options.domainHint);
 
   if (!question) {
     return {
