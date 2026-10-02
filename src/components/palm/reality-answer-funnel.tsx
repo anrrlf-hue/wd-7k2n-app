@@ -343,7 +343,7 @@ export function RealityAnswerFunnel({
           <p className="section-eyebrow">내 질문</p>
           <h2 className="mt-2 text-2xl leading-snug font-semibold">무엇이 가장 궁금하세요?</h2>
           <p className="mt-3 text-base leading-7 text-muted-foreground">
-            처음과 같은 5개 분야에서 고르고, 궁금한 내용을 평소 말하듯 적어주세요.
+            길게 설명하지 않아도 됩니다. “돈”, “사업”, “동업은?”, “내년 이직?”처럼 평소 말하듯 짧게 적어도 앞의 질문과 사주 흐름을 이어서 봅니다.
           </p>
 
           <div className="mt-5 grid grid-cols-2 gap-2">
@@ -520,6 +520,28 @@ export function RealityAnswerFunnel({
               {answer.safetyNote}
             </p>
           )}
+
+          {questionPlan?.nextQuestions?.length ? (
+            <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
+              <p className="section-eyebrow">이어서 보면 좋은 질문</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                방금 답에서 다음으로 자연스럽게 이어지는 질문만 골랐습니다.
+              </p>
+              <div className="mt-3 grid gap-2">
+                {questionPlan.nextQuestions.slice(0, 3).map((item) => (
+                  <button
+                    key={item.label + item.question}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => askFollowUp(item)}
+                    className="min-h-12 rounded-xl border border-border bg-accent px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:border-(--gold)"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           {savedRecordId && (
             <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
