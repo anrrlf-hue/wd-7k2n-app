@@ -546,7 +546,7 @@ export function PalmPageClient({
     setErrorMsg(null);
     setStage("loading");
     try {
-      await fetchReport(null);
+      await fetchReport(null, null, null);
     } catch {
       setErrorMsg("분석 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
       setStage("error");
