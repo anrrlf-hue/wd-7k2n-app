@@ -65,6 +65,14 @@ function currentFlow(facts: SajuFacts, domain: FocusedSajuDomain): ReportParagra
 }
 
 function conflictPattern(facts: SajuFacts): ReportParagraph {
+  if (!facts.dayStrengthReliable) {
+    return {
+      text:
+        "출생시간이 없어 갈등에서 밀고 나가는 힘과 맞춰가는 힘 중 어느 쪽이 더 강한지는 단정하지 않습니다. 대신 현재 확인되는 관계 기준과 표현 방식만으로 넓게 봅니다. 실제 갈등에서는 내가 원하는 것과 상대가 원하는 것을 말로 분리해 확인하는 편이 좋습니다.",
+      evidence: "출생시간 미상으로 신강신약 확정하지 않음. 관계 결과가 아니라 본인의 관계 기준만 해석.",
+    };
+  }
+
   if (facts.dayStrength === "strong") {
     return {
       text:
