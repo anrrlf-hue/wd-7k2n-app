@@ -177,6 +177,7 @@ function signalPositiveFor(
   domain: RealityAnswerDomain,
   signal: TenGodGroup,
   fallback: string,
+  rank: number,
 ): string {
   if (domain === "love") {
     if (signal === "재성" || signal === "관성") return "연락이나 만남이 실제 약속·관계 진전으로 이어지는지 살펴보세요.";
@@ -199,23 +200,39 @@ function signalPositiveFor(
     return fallback;
   }
   if (domain === "work_business") {
-    if (signal === "식상") return "아이디어·제안·실행이 고객 반응이나 실제 성과로 이어지는지 보세요.";
-    if (signal === "재성") return "고객 문의·매출·거래 조건처럼 돈과 연결된 움직임이 구체화되는지 보세요.";
+    if (signal === "식상") return rank === 0
+      ? "아이디어·제안·실행이 고객 반응이나 실제 성과로 이어지는지 보세요."
+      : "처음 나온 반응이 반복 가능한 성과나 다음 기회로 이어지는지 보세요.";
+    if (signal === "재성") return rank === 0
+      ? "고객 문의·매출·거래 조건처럼 돈과 연결된 움직임이 구체화되는지 보세요."
+      : "한 번의 매출보다 거래가 반복되거나 조건이 안정되는지 보세요.";
     if (signal === "비겁") return "협업·소개·경쟁 구도가 실제 기회나 독립 움직임으로 이어지는지 보세요.";
     if (signal === "관성") return "계약·책임·조직 변화가 실제 조건으로 확정되는지 보세요.";
     if (signal === "인성") return "자료·준비·도움이 실행할 기회를 만드는 데 실제로 쓰이는지 보세요.";
     return fallback;
   }
   if (domain === "money") {
-    if (signal === "재성") return "수입·보상·거래 조건이 구체적인 금액과 결과로 확인되는지 보세요.";
-    if (signal === "식상") return "새 일거리나 성과가 실제 수입 기회로 이어지는지 보세요.";
+    if (signal === "재성") return rank === 0
+      ? "수입·보상·거래 조건이 구체적인 금액과 결과로 확인되는지 보세요."
+      : "한 번 들어온 돈보다 같은 흐름이 반복되거나 남는 구조로 이어지는지 보세요.";
+    if (signal === "식상") return rank === 0
+      ? "새 일거리나 성과가 실제 수입 기회로 이어지는지 보세요."
+      : "성과가 일회성 반응에 그치지 않고 다음 일거리나 보상으로 연결되는지 보세요.";
     if (signal === "관성") return "급여·계약·보상 체계처럼 정해진 돈의 흐름이 구체적으로 바뀌는지 보세요.";
     if (signal === "인성") return "정보와 준비가 돈과 관련된 판단을 더 분명하게 만드는지 보세요.";
     return fallback;
   }
   if (domain === "wellbeing") {
-    if (signal === "인성") return "수면·휴식·혼자 정리하는 시간이 확보되면서 생활 리듬이 안정되는지 보세요.";
-    if (signal === "식상") return "활동량과 일정이 자연스럽게 늘고, 움직인 뒤에도 회복 리듬이 유지되는지 보세요.";
+    if (signal === "인성") {
+      if (rank === 0) return "수면·휴식·혼자 정리하는 시간이 확보되면서 생활 리듬이 안정되는지 보세요.";
+      if (rank === 1) return "하루 일정 사이에 비워두는 시간과 회복 루틴이 실제로 지켜지는지 보세요.";
+      return "주변 일정이 바뀌어도 내 휴식 시간을 다시 확보할 수 있는지 보세요.";
+    }
+    if (signal === "식상") {
+      if (rank === 0) return "활동량과 일정이 자연스럽게 늘고, 움직인 뒤에도 회복 리듬이 유지되는지 보세요.";
+      if (rank === 1) return "늘어난 활동이 일시적인 과부하가 아니라 생활 리듬 안에 자리 잡는지 보세요.";
+      return "바쁜 일정 속에서도 수면과 쉬는 시간이 함께 유지되는지 보세요.";
+    }
     return fallback;
   }
   return fallback;
@@ -225,6 +242,7 @@ function signalCautionFor(
   domain: RealityAnswerDomain,
   signal: TenGodGroup,
   fallback: string,
+  rank: number,
 ): string {
   if (domain === "love") {
     if (signal === "재성" || signal === "관성") return "관계가 진전되는 느낌만으로 상대의 마음이나 결혼 가능성을 미리 확정하지 마세요.";
@@ -262,8 +280,16 @@ function signalCautionFor(
     return fallback;
   }
   if (domain === "wellbeing") {
-    if (signal === "인성") return "쉬는 시간이 걱정·정보 탐색·준비로 다시 채워져 실제 휴식이 사라지지 않게 보세요.";
-    if (signal === "식상") return "활동량이 늘어도 수면과 회복 시간을 줄여가며 속도를 유지하지는 마세요.";
+    if (signal === "인성") {
+      if (rank === 0) return "쉬는 시간이 걱정·정보 탐색·준비로 다시 채워져 실제 휴식이 사라지지 않게 보세요.";
+      if (rank === 1) return "일정이 비어도 새로운 할 일을 계속 채워 넣어 회복 시간을 다시 없애지는 마세요.";
+      return "주변 상황이 바뀔 때마다 휴식 시간을 가장 먼저 줄이는 패턴이 반복되지 않게 보세요.";
+    }
+    if (signal === "식상") {
+      if (rank === 0) return "활동량이 늘어도 수면과 회복 시간을 줄여가며 속도를 유지하지는 마세요.";
+      if (rank === 1) return "바쁜 흐름이 익숙해졌다는 이유로 피로 신호를 무시하지 마세요.";
+      return "일정이 다시 많아질 때 회복 시간을 뒤로 미루는 패턴을 반복하지 마세요.";
+    }
     return fallback;
   }
   return fallback;
@@ -366,19 +392,14 @@ function timingWindowCopy(
       : rank === 1
         ? "두 번째 후보에서는"
         : "세 번째 후보에서는";
-  const cautionLead =
-    rank === 0
-      ? "흐름이 강하게 보여도"
-      : rank === 1
-        ? "두 번째 후보가 눈에 띄어도"
-        : "세 번째 후보까지 비슷한 움직임이 보여도";
+
 
   if (!signal) {
     return {
       reason: `${role} ${base.reason}`,
       meaning: `${base.meaning} ${roleMeaning}`,
       positive: `${positiveLead} ${base.positive}`,
-      caution: `${cautionLead} ${base.caution}`,
+      caution: base.caution,
     };
   }
 
@@ -422,8 +443,8 @@ function timingWindowCopy(
   return {
     reason: `${role} 이번 구간은 ${signalLabel} 신호가 상대적으로 더 두드러집니다.`,
     meaning: `${domainMeaning} ${roleMeaning}`,
-    positive: `${positiveLead} ${signalPositiveFor(domain, signal, base.positive)}`,
-    caution: `${cautionLead} ${signalCautionFor(domain, signal, base.caution)}`,
+    positive: `${positiveLead} ${signalPositiveFor(domain, signal, base.positive, rank)}`,
+    caution: signalCautionFor(domain, signal, base.caution, rank),
   };
 }
 
