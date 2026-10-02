@@ -77,7 +77,7 @@ const HAND_SHAPE_KO: Record<PalmFacts["handShape"], string> = {
   unknown: "확인 안 됨",
 };
 
-async function fileToCanvas(file: File, maxDim = 1024): Promise<HTMLCanvasElement> {
+async function fileToCanvas(file: File, maxDim = 1280): Promise<HTMLCanvasElement> {
   let bitmap: ImageBitmap | null = null;
   let image: HTMLImageElement | null = null;
   let objectUrl: string | null = null;
