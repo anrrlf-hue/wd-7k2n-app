@@ -161,7 +161,9 @@ assert(
   "S04: differing bilateral palm observations were collapsed into one hand story",
 );
 assert(
-  !/(현재 생활에서 스스로|타고난 모습)/.test(answer.report.solutionReading),
+  !/(현재 생활에서 스스로 방향을 정하려는|기본적으로 가지고 있던 일의 기준을 현재 생활에서)/.test(
+    answer.report.solutionReading,
+  ),
   "S04b: rigid left/right life-role mapping leaked into palm integration",
 );
 assert(
