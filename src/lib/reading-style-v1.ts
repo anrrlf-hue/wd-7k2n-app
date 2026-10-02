@@ -201,7 +201,7 @@ function contextMajorLineStory(
 
   if (observed.length === 1) {
     const only = observed[0];
-    return `${palmHandName(only.side)} ${label}에서는 ${only.line}이 관찰됩니다. 다른 손의 관찰값이 없어 양손 비교는 하지 않습니다.`;
+    return `${palmHandName(only.side)} ${label}에서는 ${only.line}이 관찰됩니다. 다른 손의 관찰값이 없어 촬영된 이 손만 해석합니다.`;
   }
 
   const right = observed.find((item) => item.side === "right");
