@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   validateRealityAnswer,
   type RealityAnswer,
+  type RealityAnswerDomain,
   type RealityQuestion,
 } from "@/lib/reality-answer-contract";
 import { buildRealityAnswerFallback } from "@/lib/reality-answer-builder";
@@ -14,6 +15,7 @@ import { decisionPointFor, parseRealityQuestion, type RealityQuestionParseResult
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 import type { PersonalityInput } from "@/lib/personality-check";
 import type { SajuFacts } from "@/lib/saju-facts";
+import type { RealityPalmContext } from "@/lib/reality-palm-context";
 import { realityDomainForSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 import { buildSajuTimingOutlook } from "@/lib/saju-timing";
 
@@ -38,8 +40,11 @@ export interface RealityAnswerEngineOptions {
   timeoutMs?: number;
   personality?: PersonalityInput | null;
   palm?: OnnxPalmLines | null;
+  palmContext?: RealityPalmContext | null;
   /** 사용자에게 보이는 5개 사주 선택. 내부 세부분류는 질문 내용으로 자동 결정한다. */
   focusHint?: SajuFocus | null;
+  /** 질문 엔진이 짧은 후속질문의 문맥까지 해석한 내부 세부분류. */
+  domainHint?: RealityAnswerDomain | null;
 }
 
 export type RealityAnswerEngineResult =
@@ -139,10 +144,13 @@ function hasUnsupportedTimingMention(
 function toQuestion(
   parse: RealityQuestionParseResult,
   focusHint?: SajuFocus | null,
+  domainHint?: RealityAnswerDomain | null,
 ): RealityQuestion | null {
-  const domain = focusHint
-    ? realityDomainForSajuFocus(focusHint, parse.domain)
-    : parse.domain;
+  const domain = domainHint ?? (
+    focusHint
+      ? realityDomainForSajuFocus(focusHint, parse.domain)
+      : parse.domain
+  );
   if (!domain) return null;
 
   const decisionPoint = decisionPointFor(parse.raw, domain);
@@ -163,7 +171,7 @@ export async function getRealityAnswer(
   options: RealityAnswerEngineOptions = {},
 ): Promise<RealityAnswerEngineResult> {
   const parse = parseRealityQuestion(rawQuestion);
-  const question = toQuestion(parse, options.focusHint);
+  const question = toQuestion(parse, options.focusHint, options.domainHint);
 
   if (!question) {
     return {
@@ -175,6 +183,7 @@ export async function getRealityAnswer(
 
   const evidence = selectRealityEvidence(facts, question.domain, {
     palm: options.palm,
+    palmContext: options.palmContext,
     personality: options.personality,
   });
   const timingOutlook = buildSajuTimingOutlook(facts, question.domain, undefined, question.timeScope);

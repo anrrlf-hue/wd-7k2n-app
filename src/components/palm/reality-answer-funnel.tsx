@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { RealityAnswer } from "@/lib/reality-answer-contract";
+import type { RealityAnswer, RealityAnswerDomain } from "@/lib/reality-answer-contract";
 import type { RealityAnswerEngineResult } from "@/lib/reality-answer-engine";
 import type { OnnxPalmLines, PalmFacts } from "@/lib/palm-facts";
 import { buildPalmReadingSections } from "@/lib/palm-observation-text";
@@ -17,6 +17,8 @@ import {
 } from "@/lib/saju-focus";
 import { track } from "@/lib/analytics";
 import { saveRealityAnswer } from "@/lib/reality-management";
+import type { QuestionEnginePlan, QuestionFollowUp } from "@/lib/question-engine-v0";
+import { buildRealityPalmContext, type RealityDominantHand } from "@/lib/reality-palm-context";
 
 type FunnelStage = "intro" | "question" | "preview" | "result";
 
@@ -27,6 +29,8 @@ interface RealityFunnelResume {
   domain?: string | null;
   question: string;
   answer: RealityAnswer | null;
+  questionPlan?: QuestionEnginePlan | null;
+  history?: Array<{ raw: string; domain: RealityAnswerDomain }>;
 }
 
 const EXAMPLES: Record<SajuFocus, string> = {
@@ -165,6 +169,9 @@ export function RealityAnswerFunnel({
   personalityInput,
   palmLines,
   palmFacts,
+  leftPalmFacts,
+  rightPalmFacts,
+  dominantHand,
   resumeKey,
   onStart,
   onChapterChange,
@@ -175,6 +182,9 @@ export function RealityAnswerFunnel({
   personalityInput?: PersonalityInputEcho;
   palmLines?: OnnxPalmLines | null;
   palmFacts?: PalmFacts | null;
+  leftPalmFacts?: PalmFacts | null;
+  rightPalmFacts?: PalmFacts | null;
+  dominantHand?: RealityDominantHand | null;
   resumeKey: string;
   onStart: () => void;
   initialFocus?: SajuFocus;
@@ -188,6 +198,12 @@ export function RealityAnswerFunnel({
   const [focus, setFocus] = useState<SajuFocus>(initialFocus ?? storedFocus);
   const [question, setQuestion] = useState(initialQuestion ?? stored?.question ?? "");
   const [answer, setAnswer] = useState<RealityAnswer | null>(initialQuestion ? null : stored?.answer ?? null);
+  const [questionPlan, setQuestionPlan] = useState<QuestionEnginePlan | null>(
+    initialQuestion ? null : stored?.questionPlan ?? null,
+  );
+  const [history, setHistory] = useState<Array<{ raw: string; domain: RealityAnswerDomain }>>(
+    initialQuestion ? [] : stored?.history ?? [],
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
@@ -196,9 +212,9 @@ export function RealityAnswerFunnel({
   useEffect(() => {
     sessionStorage.setItem(
       storageKey,
-      JSON.stringify({ stage, focus, question, answer } satisfies RealityFunnelResume),
+      JSON.stringify({ stage, focus, question, answer, questionPlan, history } satisfies RealityFunnelResume),
     );
-  }, [storageKey, stage, focus, question, answer]);
+  }, [storageKey, stage, focus, question, answer, questionPlan, history]);
 
   useEffect(() => {
     if (stage === "intro") return;
@@ -207,12 +223,14 @@ export function RealityAnswerFunnel({
 
   const placeholder = useMemo(() => EXAMPLES[focus], [focus]);
 
-  async function submitQuestion(questionOverride?: string) {
+  async function submitQuestion(questionOverride?: string, focusOverride?: SajuFocus) {
     const trimmed = (questionOverride ?? question).trim();
-    if (trimmed.length < 2) {
-      setError("궁금한 내용을 조금만 더 적어주세요.");
+    if (trimmed.length < 1) {
+      setError("궁금한 내용을 적어주세요.");
       return;
     }
+    const effectiveFocus = focusOverride ?? focus;
+    const previous = history.length > 0 ? history[history.length - 1] : null;
 
     setLoading(true);
     setError(null);
@@ -223,13 +241,24 @@ export function RealityAnswerFunnel({
         body: JSON.stringify({
           ...birthInput,
           question: trimmed,
-          focusHint: focus,
+          focusHint: effectiveFocus,
+          previousQuestion: previous?.raw ?? null,
+          previousDomain: previous?.domain ?? null,
           palmLines: palmFacts?.onnxLines ?? palmLines ?? null,
+          palmContext: buildRealityPalmContext({
+            primary: palmFacts ?? null,
+            left: leftPalmFacts ?? null,
+            right: rightPalmFacts ?? null,
+            dominantHand: dominantHand ?? null,
+          }),
           personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
           mbti: personalityInput?.mbti ?? undefined,
         }),
       });
-      const data = (await response.json()) as RealityAnswerEngineResult & { error?: string };
+      const data = (await response.json()) as RealityAnswerEngineResult & {
+        error?: string;
+        questionPlan?: QuestionEnginePlan;
+      };
       if (!response.ok) throw new Error(data.error || "사주답변을 만들지 못했습니다.");
 
       if (data.status === "needs_clarification") {
@@ -238,10 +267,20 @@ export function RealityAnswerFunnel({
       }
 
       setAnswer(data.answer);
+      if (data.questionPlan) {
+        setQuestionPlan(data.questionPlan);
+        setFocus(data.questionPlan.focus);
+      }
+      setHistory((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.raw === data.answer.question.raw && last.domain === data.answer.question.domain) return prev;
+        return [...prev, { raw: data.answer.question.raw, domain: data.answer.question.domain }].slice(-8);
+      });
+      setQuestion(data.answer.question.raw);
       setStage("preview");
       onChapterChange(4);
       track("reality_answer_preview_viewed", {
-        focus,
+        focus: data.questionPlan?.focus ?? effectiveFocus,
         domain: data.answer.question.domain,
         source: data.source,
       });
@@ -268,9 +307,17 @@ export function RealityAnswerFunnel({
 
   function resetQuestion() {
     setAnswer(null);
+    setQuestionPlan(null);
     setError(null);
     setStage("question");
     onChapterChange(4);
+  }
+
+  function askFollowUp(item: QuestionFollowUp) {
+    setQuestion(item.question);
+    setFocus(item.focus);
+    setError(null);
+    void submitQuestion(item.question, item.focus);
   }
 
   return (
@@ -309,7 +356,7 @@ export function RealityAnswerFunnel({
           <p className="section-eyebrow">내 질문</p>
           <h2 className="mt-2 text-2xl leading-snug font-semibold">무엇이 가장 궁금하세요?</h2>
           <p className="mt-3 text-base leading-7 text-muted-foreground">
-            처음과 같은 5개 분야에서 고르고, 궁금한 내용을 평소 말하듯 적어주세요.
+            길게 설명하지 않아도 됩니다. “돈”, “사업”, “동업은?”, “내년 이직?”처럼 평소 말하듯 짧게 적어도 앞의 질문과 사주 흐름을 이어서 봅니다.
           </p>
 
           <div className="mt-5 grid grid-cols-2 gap-2">
@@ -486,6 +533,28 @@ export function RealityAnswerFunnel({
               {answer.safetyNote}
             </p>
           )}
+
+          {questionPlan?.nextQuestions?.length ? (
+            <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
+              <p className="section-eyebrow">이어서 보면 좋은 질문</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                방금 답에서 다음으로 자연스럽게 이어지는 질문만 골랐습니다.
+              </p>
+              <div className="mt-3 grid gap-2">
+                {questionPlan.nextQuestions.slice(0, 3).map((item) => (
+                  <button
+                    key={item.label + item.question}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => askFollowUp(item)}
+                    className="min-h-12 rounded-xl border border-border bg-accent px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:border-(--gold)"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           {savedRecordId && (
             <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
