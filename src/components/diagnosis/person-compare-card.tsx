@@ -47,6 +47,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
   const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shareDone, setShareDone] = useState(false);
+  const [selectedFollowUp, setSelectedFollowUp] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const otherBirth = useMemo(
@@ -88,6 +89,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
         throw new Error(data.error || "두 사람의 사주를 비교하지 못했습니다.");
       }
       setResult(data.result);
+      setSelectedFollowUp(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "두 사람의 사주를 비교하지 못했습니다.");
     } finally {
@@ -125,6 +127,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
     setResult(null);
     setError(null);
     setShareDone(false);
+    setSelectedFollowUp(null);
   }
 
   if (!open) {
@@ -349,13 +352,28 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
 
           <section className="mt-5 rounded-2xl bg-accent p-4">
             <p className="section-eyebrow">이어서 궁금해질 수 있는 것</p>
-            <div className="mt-3 space-y-2">
-              {result.nextQuestions.map((question) => (
-                <p key={question} className="text-sm leading-6 text-foreground/85">
-                  · {question}
-                </p>
+            <div className="mt-3 grid gap-2">
+              {result.followUps.map((item) => (
+                <button
+                  key={item.question}
+                  type="button"
+                  onClick={() => setSelectedFollowUp(item.question)}
+                  className="min-h-11 rounded-xl border border-border bg-card px-3 py-2 text-left text-sm font-medium text-foreground"
+                >
+                  {item.question}
+                </button>
               ))}
             </div>
+            {selectedFollowUp && (
+              <div className="mt-3 rounded-xl border border-(--gold-soft) bg-card p-4">
+                <p className="text-sm font-semibold">
+                  {selectedFollowUp}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {result.followUps.find((item) => item.question === selectedFollowUp)?.answer}
+                </p>
+              </div>
+            )}
           </section>
 
           <p className="mt-4 text-xs leading-5 text-muted-foreground">{result.note}</p>
