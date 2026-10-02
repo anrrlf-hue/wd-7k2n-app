@@ -848,8 +848,8 @@ export function PalmPageClient({
             {errorMsg ?? "문제가 발생했어요."}
           </div>
           <div className="mt-auto flex flex-col gap-3 pt-8">
-            <Button size="lg" onClick={reset} className="h-13 w-full rounded-full text-base">
-              다시 촬영하기
+            <Button size="lg" onClick={retryCurrentHand} className="h-13 w-full rounded-full text-base">
+              {captureHand === "right" ? "오른손 다시 촬영하기" : "왼손 다시 촬영하기"}
             </Button>
             <Button
               size="lg"
@@ -877,28 +877,59 @@ export function PalmPageClient({
             transition={{ duration: 0.4 }}
             className="mystic-ring rounded-2xl border border-(--gold-soft) bg-card p-5"
           >
-            <div className="flex items-center gap-3">
-              {previewUrl && (
-                <div className="size-14 shrink-0 overflow-hidden rounded-xl border border-(--gold-soft)">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={previewUrl} alt="" className="size-full object-cover" />
+            {leftPalmFacts && rightPalmFacts ? (
+              <>
+                <p className="section-eyebrow">양손 분석 완료</p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-accent p-3">
+                    {rightPreviewUrl && (
+                      <div className="aspect-square overflow-hidden rounded-lg border border-(--gold-soft)">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={rightPreviewUrl} alt="오른손" className="size-full object-cover" />
+                      </div>
+                    )}
+                    <p className="mt-2 text-sm font-semibold">오른손{dominantHand === "right" ? " · 주로 쓰는 손" : ""}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[rightPalmFacts.handShape]}</p>
+                  </div>
+                  <div className="rounded-xl bg-accent p-3">
+                    {leftPreviewUrl && (
+                      <div className="aspect-square overflow-hidden rounded-lg border border-(--gold-soft)">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={leftPreviewUrl} alt="왼손" className="size-full object-cover" />
+                      </div>
+                    )}
+                    <p className="mt-2 text-sm font-semibold">왼손{dominantHand === "left" ? " · 주로 쓰는 손" : ""}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[leftPalmFacts.handShape]}</p>
+                  </div>
                 </div>
-              )}
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  {palmFacts.handSide === "left" ? "왼손" : palmFacts.handSide === "right" ? "오른손" : "손"} ·{" "}
-                  {HAND_SHAPE_KO[palmFacts.handShape]}
-                </p>
-              </div>
-            </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {palmFacts.handSide === "left" ? "왼손" : palmFacts.handSide === "right" ? "오른손" : "손"} ·{" "}
+                {HAND_SHAPE_KO[palmFacts.handShape]}
+              </p>
+            )}
           </motion.div>
 
-          {/* 손금은 유료 보너스가 아니라 무료 핵심 구성요소이자, 사주와
-           * 독립된 두 번째 분석이다(§3): 실제 손 관측 -> 손금 자체 해석 ->
-           * (그 다음에야) 사주와의 비교. "사주 문단 + 손에도 같은 모습이
-           * 보여요" 식으로 섞지 않는다. */}
           <div className="mt-5">
-            <PalmReadingSections facts={palmFacts} />
+            {rightPalmFacts && leftPalmFacts ? (
+              <>
+                <PalmReadingSections
+                  facts={rightPalmFacts}
+                  title={dominantHand === "right" ? "오른손 — 주로 쓰는 손" : "오른손에서 보이는 흐름"}
+                  step="2"
+                />
+                <PalmReadingSections
+                  facts={leftPalmFacts}
+                  title={dominantHand === "left" ? "왼손 — 주로 쓰는 손" : "왼손에서 보이는 흐름"}
+                  step="2"
+                />
+                <PalmBilateralSection reading={bilateralReading} />
+                <PalmFutureTimelineSection timeline={futurePalmTimeline} />
+              </>
+            ) : (
+              <PalmReadingSections facts={palmFacts} />
+            )}
             <TripleCompareSection items={tripleCompare} />
           </div>
 
