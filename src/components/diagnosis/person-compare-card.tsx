@@ -53,6 +53,9 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
     () => otherBirthFromForm({ birthDate, gender, knowsTime, birthTime }),
     [birthDate, gender, knowsTime, birthTime],
   );
+  const shareAvailable =
+    typeof navigator !== "undefined" &&
+    typeof (navigator as Navigator & { share?: unknown }).share === "function";
 
   async function compare() {
     if (!otherBirth) {
@@ -364,7 +367,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
             disabled={sharing}
             className="mt-5 h-12 w-full rounded-full"
           >
-            {typeof navigator !== "undefined" && navigator.share ? <Share2 className="size-4" /> : <Copy className="size-4" />}
+            {shareAvailable ? <Share2 className="size-4" /> : <Copy className="size-4" />}
             {sharing ? "공유 준비 중..." : shareDone ? "결과를 복사했습니다" : "이 결과 함께 보기"}
           </Button>
           <p className="mt-2 text-center text-xs leading-5 text-muted-foreground">
