@@ -115,11 +115,11 @@ assert(
 );
 
 const resultSource = fs.readFileSync(path.join(root, "src/components/diagnosis/result-step.tsx"), "utf8");
-assert(resultSource.includes("집중풀이"), "focused deep-dive UI missing");
-assert(resultSource.includes("이 분야는 전체 사주보다 더 깊게 봅니다"), "focused-vs-overall distinction missing");
-assert(resultSource.includes("나의 종합 사주"), "broad overall Saju UI missing");
-assert(resultSource.includes("연애·결혼에서의 나"), "love section missing from free result");
-assert(resultSource.includes("생활 리듬과 스트레스 패턴"), "life rhythm section missing from free result");
+assert(resultSource.includes("을 중심으로 보면"), "focused deep-dive UI missing");
+assert(resultSource.includes("지금 궁금한 부분부터 깊게 풀어볼게요"), "focused-vs-overall distinction missing");
+assert(resultSource.includes("내 사주를 이어서 보면"), "broad overall Saju UI missing");
+assert(resultSource.includes("관계에서는 이렇게 나타나요") || resultSource.includes("buildFreeConsultationSections"), "relationship consultation section missing from free result");
+assert(resultSource.includes("에너지를 쓰고 회복하는 방식도 보입니다") || resultSource.includes("buildFreeConsultationSections"), "life rhythm consultation section missing from free result");
 assert(!resultSource.includes("나의 재물사주"), "money-only free-result heading remains");
 assert(resultSource.includes("사주를 더 이어서 보면"), "free Saju must lead naturally into the question/timing step");
 assert(resultSource.includes("내 질문 답과 시기 보기"), "post-free question CTA missing");
@@ -184,7 +184,7 @@ assert(!personalityIds.includes("savingConsistency"), "finance-biased saving que
 
 const myeongsikSource = fs.readFileSync(path.join(root, "src/components/diagnosis/myeongsik-section.tsx"), "utf8");
 assert(
-  myeongsikSource.includes("오행에서 이렇게 볼 수 있어요"),
+  myeongsikSource.includes("오행은 이렇게 참고하면 돼요"),
   "Ohaeng guidance must be visible without a tap",
 );
 assert(

@@ -10,14 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
 import { PersonCompareCard } from "@/components/diagnosis/person-compare-card";
-import { ReportSection, ParagraphSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
+import { ReportSection } from "@/components/diagnosis/report-section";
 import { WealthTypeSection } from "@/components/diagnosis/wealth-type-section";
 import { MyeongsikSection } from "@/components/diagnosis/myeongsik-section";
 import { DaeunFlowSection } from "@/components/diagnosis/daeun-flow-section";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
 import type { FullSajuDiagnosis } from "@/lib/saju";
 import type { FreeSajuReport } from "@/lib/free-report-schema";
-import { SAJU_FOCUS_LABELS, SAJU_FOCUS_SHORT_DESCRIPTIONS, type SajuFocus } from "@/lib/saju-focus";
+import { SAJU_FOCUS_LABELS } from "@/lib/saju-focus";
+import { buildFreeConsultationSections } from "@/lib/free-consultation-style-v1";
 
 const revealVariants = {
   hidden: {},
@@ -41,16 +42,6 @@ function splitLeadSentence(text: string): { headline: string; rest: string } {
   if (!match) return { headline: text, rest: "" };
   return { headline: match[1], rest: match[2] };
 }
-
-const BROAD_SECTIONS = [
-  ["타고난 성향", "temperament"],
-  ["연애·결혼에서의 나", "loveStyle"],
-  ["사람과 관계를 맺는 방식", "relationshipStyle"],
-  ["일할 때 힘이 나는 방식", "jobOrientation"],
-  ["돈·재물을 다루는 기본 성향", "wealthStructure"],
-  ["생활 리듬과 스트레스 패턴", "lifeRhythm"],
-  ["의사결정 스타일", "decisionStyle"],
-] as const;
 
 function firstSentence(text: string): string {
   const match = text.match(/^(.+?[.!?요])(?:\s|$)/);
@@ -89,43 +80,52 @@ function OtherAreasSummary({
   );
 }
 
-function BroadFreeReport({
+function ConsultationFreeReport({
   report,
   wealthType,
 }: {
   report: FreeSajuReport;
   wealthType: FullSajuDiagnosis["wealthType"];
 }) {
+  const sections = buildFreeConsultationSections(report);
+
   return (
-    <div className="mt-3">
-      {BROAD_SECTIONS.map(([title, key], index) => (
-        <div key={key}>
-          <ParagraphSection
-            step={"②-" + String(index + 1)}
-            title={title}
-            paragraph={report[key]}
-          />
-          {key === "wealthStructure" && <WealthTypeSection result={wealthType} />}
-        </div>
-      ))}
-
-      <ReportSection title="조심할 반복 패턴">
-        <div className="space-y-2.5">
-          {report.cautions.map((item, index) => (
-            <EvidenceItemCard
-              key={item.title}
-              index={index + 1}
-              title={item.title}
-              detail={item.detail}
-              evidence={item.evidence}
-            />
-          ))}
-        </div>
-      </ReportSection>
-
-      {report.realWorldPersonalization && (
-        <ParagraphSection title="현실에서는 이렇게 나타나요" paragraph={report.realWorldPersonalization} />
-      )}
+    <div className="mt-5 space-y-4">
+      {sections.map((section) => {
+        const highlighted = section.key === "now" || section.key === "future";
+        const caution = section.key === "cautions";
+        return (
+          <div key={section.key}>
+            <section
+              className={
+                "rounded-3xl border bg-card p-5 " +
+                (highlighted
+                  ? "border-(--gold-soft)"
+                  : caution
+                    ? "border-border"
+                    : "border-border")
+              }
+            >
+              {section.eyebrow && <p className="section-eyebrow">{section.eyebrow}</p>}
+              <h2 className="mt-2 text-xl leading-8 font-semibold">{section.title}</h2>
+              <div className="mt-3 space-y-3">
+                {section.paragraphs.map((paragraph, index) => (
+                  <p
+                    key={index}
+                    className={
+                      "text-base leading-8 " +
+                      (index === 0 ? "text-foreground/90" : "text-muted-foreground")
+                    }
+                  >
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </section>
+            {section.key === "money" && <WealthTypeSection result={wealthType} />}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -137,24 +137,33 @@ function FocusedFreeReport({
 }) {
   return (
     <section className="mt-6">
-      <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
-        <p className="section-eyebrow">집중풀이 · {SAJU_FOCUS_LABELS[focusedReport.focus]}</p>
+      <div className="rounded-3xl border border-(--gold-soft) bg-card p-5">
+        <p className="section-eyebrow">{SAJU_FOCUS_LABELS[focusedReport.focus]}을 중심으로 보면</p>
         <h2 className="mt-2 text-xl leading-8 font-semibold">
-          이 분야는 전체 사주보다 더 깊게 봅니다
+          지금 궁금한 부분부터 깊게 풀어볼게요
         </h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {focusedReport.intro}
         </p>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-4 space-y-4">
         {focusedReport.sections.map((section, index) => (
-          <ParagraphSection
+          <section
             key={section.title}
-            step={"①-" + String(index + 1)}
-            title={section.title}
-            paragraph={section.paragraph}
-          />
+            className={
+              "rounded-3xl border bg-card p-5 " +
+              (index >= focusedReport.sections.length - 2 ? "border-(--gold-soft)" : "border-border")
+            }
+          >
+            <p className="section-eyebrow">
+              {index === 0 ? "먼저 보면" : index === 3 ? "지금은" : index === 4 ? "앞으로는" : "이어서 보면"}
+            </p>
+            <h3 className="mt-2 text-lg leading-7 font-semibold">{section.title}</h3>
+            <p className="mt-3 text-base leading-8 text-muted-foreground">
+              {section.paragraph.text}
+            </p>
+          </section>
         ))}
       </div>
     </section>
@@ -250,22 +259,17 @@ export function ResultStep({
           {focusedReport ? (
             <FocusedFreeReport focusedReport={focusedReport} />
           ) : (
-            <section className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
-              <p className="section-eyebrow">전체 사주</p>
-              <h2 className="mt-2 text-xl leading-8 font-semibold">내 사주를 넓게 한 번에 봅니다</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                성향·관계·일·재물·생활 리듬과 현재 흐름을 한쪽에 치우치지 않고 살펴봅니다.
-              </p>
-            </section>
+            <div className="mt-7">
+              <p className="section-eyebrow">내 사주를 이어서 보면</p>
+              <h2 className="mt-2 text-xl leading-8 font-semibold">
+                성향부터 관계·일·돈·앞으로의 흐름까지 하나로 이어봅니다
+              </h2>
+              <ConsultationFreeReport report={report} wealthType={wealthType} />
+            </div>
           )}
 
-          {focusedReport ? (
+          {focusedReport && (
             <OtherAreasSummary report={report} focus={focusedReport.focus} />
-          ) : (
-            <div className="mt-7">
-              <p className="section-eyebrow">나의 종합 사주</p>
-              <BroadFreeReport report={report} wealthType={wealthType} />
-            </div>
           )}
         </>
       ) : (

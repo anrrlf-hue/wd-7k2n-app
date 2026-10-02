@@ -34,7 +34,7 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
   const advice = elementAdvice(view);
 
   return (
-    <ReportSection title="내 사주의 기본 구조">
+    <ReportSection title="내 사주표">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[280px] border-collapse text-center text-base">
           <thead>
@@ -71,7 +71,7 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
         </p>
       )}
 
-      <p className="mt-5 text-base font-medium">오행 분포</p>
+      <p className="mt-5 text-base font-medium">내 사주의 오행 분포</p>
       <div className="mt-2 flex gap-3">
         {FIVE_ELEMENT_ORDER.map((el) => (
           <div key={el} className="flex flex-col items-center gap-0.5">
@@ -82,7 +82,7 @@ export function MyeongsikSection({ view }: { view: MyeongsikView | null }) {
       </div>
 
       <div className="mt-4 rounded-2xl bg-accent p-4">
-        <p className="text-sm font-semibold">오행에서 이렇게 볼 수 있어요</p>
+        <p className="text-sm font-semibold">오행은 이렇게 참고하면 돼요</p>
         <div className="mt-2 space-y-2 text-[15px] leading-7 text-accent-foreground">
           {advice.map((item, index) => (
             <p key={index}>{item}</p>
