@@ -83,6 +83,41 @@ export interface QuestionEngineContext {
 function normalize(value: string): string {
   return value.replace(/\s+/g, " ").trim().toLowerCase();
 }
+function lastIndexOfAny(text: string, tokens: string[]): number {
+  let best = -1;
+  for (const token of tokens) best = Math.max(best, text.lastIndexOf(token));
+  return best;
+}
+
+function centeredDomain(
+  raw: string,
+  parsedDomain: RealityAnswerDomain | null,
+  focusHint?: SajuFocus | null,
+): RealityAnswerDomain | null {
+  const text = normalize(raw);
+
+  // 복합 질문에서는 사용자가 뒤에서 실제로 묻는 대상을 우선한다.
+  // 예: "빚이 있고 사업을 접었어요. 돈은 언제 좋아지나요?"는 사업 이력이 아니라 돈 질문이다.
+  const moneyIndex = lastIndexOfAny(text, ["돈", "재물", "수입", "소득", "빚", "부채", "대출", "저축", "투자", "수익"]);
+  const workIndex = lastIndexOfAny(text, ["사업", "창업", "동업", "파트너", "직장", "회사", "장사", "매출"]);
+  if (moneyIndex >= 0 && workIndex >= 0) {
+    if (focusHint === "money" || moneyIndex > workIndex) return "money";
+    if (focusHint === "work" && workIndex > moneyIndex) return "work_business";
+  }
+
+  return parsedDomain;
+}
+
+function hasTopicMarker(raw: string, domain: RealityAnswerDomain): boolean {
+  const text = normalize(raw);
+  if (domain === "work_business") return /(동업|파트너|공동사업|사업|창업|독립|장사|고객|매출|승진|역할)/.test(text);
+  if (domain === "career") return /(이직|퇴사|취업|면접|직업|직장\s*옮|회사\s*옮)/.test(text);
+  if (domain === "money") return /(돈|재물|수입|소득|저축|지출|투자|주식|코인|부동산|빚|부채|대출)/.test(text);
+  if (domain === "love") return /(연애|결혼|재회|이별|인연|배우자|남친|여친|소개팅|썸)/.test(text);
+  if (domain === "relationship") return /(인간관계|친구|가족|동료|갈등|관계)/.test(text);
+  if (domain === "wellbeing") return /(건강|피곤|피로|수면|스트레스|생활|리듬|휴식)/.test(text);
+  return /(전체|앞으로|미래|변화|운세)/.test(text);
+}
 
 function focusForDomain(domain: RealityAnswerDomain): SajuFocus {
   if (domain === "love" || domain === "relationship") return "love_relationship";
@@ -328,11 +363,12 @@ export function buildQuestionEnginePlan(
   const parse = parseRealityQuestion(raw);
   const inheritedContext = !parse.domain && Boolean(context.previousDomain);
 
+  const centered = centeredDomain(raw, parse.domain, context.focusHint);
+
   let domain: RealityAnswerDomain;
-  if (parse.domain) {
-    // 사용자가 실제 질문에서 분야를 분명히 말했다면 이전 탭 선택보다 질문 자체를 우선한다.
-    // 예: 일 탭에 있더라도 "그럼 돈은?"이라고 물으면 돈 질문으로 전환한다.
-    domain = parse.domain;
+  if (centered) {
+    // 실제 질문에서 명시한 새 주제가 있으면 이전 문맥보다 우선한다.
+    domain = centered;
   } else if (context.previousDomain) {
     domain = context.previousDomain;
   } else if (context.focusHint) {
@@ -342,7 +378,13 @@ export function buildQuestionEnginePlan(
   }
 
   const focus = focusForDomain(domain);
-  const topic = topicFor(raw, domain);
+  const inheritedTopic =
+    inheritedContext &&
+    context.previousQuestion &&
+    !hasTopicMarker(raw, domain)
+      ? topicFor(context.previousQuestion, domain)
+      : null;
+  const topic = inheritedTopic ?? topicFor(raw, domain);
   const timingStrategy = timingStrategyFor(raw, parse.intent, parse.timeScope);
 
   return {
