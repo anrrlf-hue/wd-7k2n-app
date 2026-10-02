@@ -4,25 +4,32 @@ import type { PalmFacts } from "@/lib/palm-facts";
 import type { CompareItem } from "@/lib/triple-compare";
 
 export function PalmReadingSections({ facts }: { facts: PalmFacts }) {
-  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines);
+  const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines, {
+    handShape: facts.handShape,
+    handSide: facts.handSide,
+  });
   return (
     <ReportSection step="2" title="손금에서 보이는 나의 모습">
       <div className="space-y-6">
         {sections.map((section) => {
           const highlighted =
+            section.key === "overview" ||
             section.key === "fate" ||
             section.key === "sun" ||
             section.key === "wealthLine" ||
             section.key === "secondaryTogether" ||
+            section.key === "coreStory" ||
             section.key === "wealth";
           const showObservation =
+            section.key === "overview" ||
             section.key === "heartLine" ||
             section.key === "headLine" ||
             section.key === "lifeLine" ||
             section.key === "fate" ||
             section.key === "sun" ||
             section.key === "wealthLine" ||
-            section.key === "secondaryTogether";
+            section.key === "secondaryTogether" ||
+            section.key === "coreStory";
 
           return (
             <div
