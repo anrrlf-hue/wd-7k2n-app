@@ -15,6 +15,7 @@ import { decisionPointFor, parseRealityQuestion, type RealityQuestionParseResult
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 import type { PersonalityInput } from "@/lib/personality-check";
 import type { SajuFacts } from "@/lib/saju-facts";
+import type { RealityPalmContext } from "@/lib/reality-palm-context";
 import { realityDomainForSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 import { buildSajuTimingOutlook } from "@/lib/saju-timing";
 
@@ -39,6 +40,7 @@ export interface RealityAnswerEngineOptions {
   timeoutMs?: number;
   personality?: PersonalityInput | null;
   palm?: OnnxPalmLines | null;
+  palmContext?: RealityPalmContext | null;
   /** 사용자에게 보이는 5개 사주 선택. 내부 세부분류는 질문 내용으로 자동 결정한다. */
   focusHint?: SajuFocus | null;
   /** 질문 엔진이 짧은 후속질문의 문맥까지 해석한 내부 세부분류. */
@@ -181,6 +183,7 @@ export async function getRealityAnswer(
 
   const evidence = selectRealityEvidence(facts, question.domain, {
     palm: options.palm,
+    palmContext: options.palmContext,
     personality: options.personality,
   });
   const timingOutlook = buildSajuTimingOutlook(facts, question.domain, undefined, question.timeScope);
