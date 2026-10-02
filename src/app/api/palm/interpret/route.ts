@@ -52,6 +52,9 @@ const secondaryLineSignalSchema = z.object({
   strength: z.number().min(0).max(1),
   span: z.number().min(0).max(1),
   note: z.string(),
+  modelConfidence: z.number().min(0).max(1).nullable().optional(),
+  modelVerticalSpan: z.number().min(0).max(1).nullable().optional(),
+  corroborated: z.boolean().optional(),
 });
 
 const palmFactsSchema = z.object({
