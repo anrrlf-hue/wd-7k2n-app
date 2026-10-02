@@ -224,5 +224,12 @@ if (!cautiousKeys.includes("heartLine") || !cautiousKeys.includes("headLine") ||
   throw new Error("existing three major-line readings were lost");
 }
 
-console.log("PASS palm reading expansion: preserve major/fate + add clear sun/wealth + combination + faint guard");
+const funnelSource = fs.readFileSync(path.join(root, "src/components/palm/reality-answer-funnel.tsx"), "utf8");
+if (!funnelSource.includes('work: ["fate", "sun", "secondaryTogether"')) {
+  throw new Error("work question flow does not reuse new sun/secondary palm readings");
+}
+if (!funnelSource.includes('money: ["wealthLine", "secondaryTogether", "wealth"')) {
+  throw new Error("money question flow does not prioritize the detected wealth line");
+}
+console.log("PASS palm reading expansion: preserve major/fate + add clear sun/wealth + combination + faint guard + question reuse");
 hooks.deregister?.();
