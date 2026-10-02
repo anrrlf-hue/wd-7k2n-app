@@ -18,6 +18,7 @@ import type { SajuFacts } from "@/lib/saju-facts";
 import type { RealityPalmContext } from "@/lib/reality-palm-context";
 import { realityDomainForSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 import { buildSajuTimingOutlook } from "@/lib/saju-timing";
+import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
 
 const RealityAnswerDraftSchema = z.object({
   headline: z.string().min(10),
@@ -45,6 +46,8 @@ export interface RealityAnswerEngineOptions {
   focusHint?: SajuFocus | null;
   /** 질문 엔진이 짧은 후속질문의 문맥까지 해석한 내부 세부분류. */
   domainHint?: RealityAnswerDomain | null;
+  /** 질문 엔진이 고른 세부 주제/후속 문맥을 실제 답 작성에도 사용한다. */
+  questionPlan?: QuestionEnginePlan | null;
 }
 
 export type RealityAnswerEngineResult =
@@ -193,6 +196,8 @@ export async function getRealityAnswer(
     facts,
     evidence,
     personality: options.personality,
+    palmContext: options.palmContext,
+    questionPlan: options.questionPlan ?? null,
   });
 
   let raw: unknown = null;
@@ -201,7 +206,7 @@ export async function getRealityAnswer(
   try {
     raw = await callClaude(
       REALITY_ANSWER_SYSTEM_PROMPT,
-      buildRealityAnswerUserPrompt(question, evidence, timingOutlook),
+      buildRealityAnswerUserPrompt(question, evidence, timingOutlook, options.questionPlan ?? null),
       options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     );
     if (!raw) fallbackReason = "no-api-key";

@@ -1,5 +1,6 @@
 import type { RealityEvidence, RealityQuestion } from "@/lib/reality-answer-contract";
 import type { SajuTimingOutlook } from "@/lib/saju-timing";
+import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
 
 export const REALITY_ANSWER_SYSTEM_PROMPT = `당신은 사용자가 궁금해한 것을 사주로 직접 풀어주는 에디터입니다.
 
@@ -49,6 +50,7 @@ export function buildRealityAnswerUserPrompt(
   question: RealityQuestion,
   evidence: RealityEvidence[],
   timingOutlook?: SajuTimingOutlook | null,
+  questionPlan?: QuestionEnginePlan | null,
 ): string {
   const timingSection = timingOutlook
     ? `## 계산된 시기 후보
@@ -70,6 +72,10 @@ ${question.raw}
 - 분야: ${question.domain}
 - 질문 의도: ${question.intent}
 - 질문의 핵심: ${question.decisionPoint}
+${questionPlan ? `- 세부 주제: ${questionPlan.topic}
+- 해석된 질문: ${questionPlan.resolvedQuestion}
+- 이전 질문: ${questionPlan.previousQuestion ?? "없음"}
+- 후속 문맥 상속: ${questionPlan.inheritedContext ? "예" : "아니오"}` : ""}
 
 ## 사용 가능한 사주 근거
 ${evidence.length > 0

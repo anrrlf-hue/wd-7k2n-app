@@ -100,6 +100,31 @@ assert(/역할/.test(businessText), "B01: business comparison must include role 
 assert(/지분|돈 관리|의사결정권/.test(businessText), "B02: business comparison must include real-world partnership checks");
 assert(!/나님/.test([business.headline, businessText].join("\n")), "B03: unnatural '나님' copy leaked");
 
+const identicalA = compareMod.buildPersonCompareResult(
+  { name: "나", facts: meFacts },
+  { name: "동일생일B", facts: meFacts },
+  "business_partner",
+);
+const identicalB = compareMod.buildPersonCompareResult(
+  { name: "동일생일B", facts: meFacts },
+  { name: "나", facts: meFacts },
+  "business_partner",
+);
+const identicalRolesA = identicalA.roles.map((x) => x.text).join("\n");
+const identicalRolesB = identicalB.roles.map((x) => x.text).join("\n");
+assert(
+  identicalRolesA.includes("두 사람 모두") &&
+    identicalRolesA.includes("사주만으로 서로 다른 직책을 지정하지 않습니다"),
+  "B04: identical Saju still receives fabricated complementary roles",
+);
+assert(identicalRolesA === identicalRolesB, "B05: identical Saju role reading changes with input order");
+assert(identicalA.followUps.length === 3, "B06: comparison follow-up answers missing");
+const identicalTiming = identicalA.timing.map((x) => x.text).join("\n");
+assert(
+  /사주만으로 한쪽을 확장, 다른 쪽을 정리·검증 역할로 나눌 근거는 없습니다/.test(identicalTiming),
+  "B07: identical current flow still invents complementary timing roles",
+);
+
 const love = compareMod.buildPersonCompareResult(
   { name: "나", facts: meFacts },
   { name: "상대", facts: otherFacts },
@@ -145,8 +170,10 @@ for (const phrase of ["나와 이 사람", "이 사람과 나 보기", "두 사�
   assert(compareCardSource.includes(phrase), `UI05: missing natural compare copy: ${phrase}`);
 }
 assert(compareCardSource.includes("공유 문구에는 두 사람의 생년월일을 넣지 않습니다"), "UI06: share privacy copy missing");
+assert(compareCardSource.includes("setSelectedFollowUp"), "UI07: comparison follow-ups are still static text");
+assert(compareCardSource.includes("result.followUps.map"), "UI08: comparison follow-up buttons are not rendered");
 assert(apiSource.includes("buildPersonCompareResult"), "API01: person compare route is not using deterministic engine");
 assert(!apiSource.includes("ANTHROPIC") && !apiSource.includes("OPENAI"), "API02: person compare V0 should not call an external model");
 
-console.log("PASS PERSON COMPARE V0: 4 relationship modes + roles + timing guard + natural placement + safe sharing");
+console.log("PASS PERSON COMPARE V0: 4 modes + identical-profile symmetry + interactive follow-ups + timing guard + safe sharing");
 hooks.deregister?.();

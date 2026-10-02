@@ -26,7 +26,7 @@ export function buildInterpretationUserPrompt(facts: SajuFacts): string {
 ${facts.compactText}
 
 ## 이번 해석에서 특히 참고할 구조화 필드
-- 일간: ${facts.dayStemKo}(${facts.dayElement}) / 강약: ${facts.dayStrength}(${facts.dayStrengthScore})
+- 일간: ${facts.dayStemKo}(${facts.dayElement}) / 강약: ${facts.dayStrengthReliable ? `${facts.dayStrength}(${facts.dayStrengthScore})` : "미확인(출생시간 없음 — 임시 시각 계산값 사용 금지)"}
 - 격국: ${facts.geukguk} / 용신: ${facts.yongsin.join(", ")}
 - 오행 분포: ${JSON.stringify(facts.fiveElements)} (가장 강한 오행: ${facts.dominantElement})
 - 재성(편재+정재) 개수: ${facts.wealthStarCount} (${facts.wealthStarTypes.join(", ") || "없음"})

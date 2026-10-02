@@ -55,6 +55,8 @@ export interface SajuFacts {
   dayStemKo: string;
   dayElement: string;
   dayStrength: "strong" | "weak" | "neutral";
+  /** 출생시간이 없으면 ssaju 호출용 임시 12시가 강약 계산에 섞이므로 false. */
+  dayStrengthReliable: boolean;
   dayStrengthScore: number;
   /** dayStrength(3단계)가 파생되어 나온 세분화된 등급. oh-my-saju 판정이
    * 성공하면 그 원본 등급("태왕"|"신강"|"약한 신강"|"중화"|"신약"|"태약"|
@@ -87,7 +89,7 @@ export interface SajuFacts {
   missingElements: string[];
   /** 대운 전체 중 재성(편재/정재)이 천간이나 지지에 나타나는 회차 수.
    * "정확한 시기"가 아니라 "인생 전체에 이런 흐름이 몇 번 있다"는 구조적 사실로만 쓴다 */
-  wealthOpportunityDaeunCount: number;
+  wealthOpportunityDaeunCount: number | null;
   /** 12운성 중 건록/제왕(정점)이 놓인 자리 — "기회를 잡는 방식"의 근거 */
   peakStagePillars: PillarFact["pillar"][];
   pillars: PillarFact[];
@@ -326,6 +328,7 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     dayStemKo: result.pillarDetails.day.stemKo,
     dayElement: result.pillarDetails.day.element.stem,
     dayStrength: result.advanced.dayStrength.strength,
+    dayStrengthReliable: input.hour !== null,
     dayStrengthScore: result.advanced.dayStrength.score,
     dayStrengthGrade:
       result.advanced.dayStrength.strength === "strong"
@@ -348,7 +351,7 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     outputStarPillars,
     officerStarPillars,
     missingElements,
-    wealthOpportunityDaeunCount: input.hour === null ? 0 : wealthOpportunityDaeunCount,
+    wealthOpportunityDaeunCount: input.hour === null ? null : wealthOpportunityDaeunCount,
     peakStagePillars,
     pillars,
     keyRelations,

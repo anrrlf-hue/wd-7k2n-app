@@ -209,12 +209,50 @@ const moneyEvidenceText = moneyEvidence.map((x) => `${x.label}: ${x.detail}`).jo
 assert(/양손 재물선 비교/.test(moneyEvidenceText), "PALM02: bilateral wealth evidence missing");
 assert(/재물선/.test(moneyEvidenceText) && /운명선/.test(moneyEvidenceText), "PALM02: wealth/fate detail missing");
 
+const astraPartnership = mod.buildQuestionEnginePlan("동업은?", { focusHint: "work" });
+assert(
+  astraPartnership.domain === "work_business" && astraPartnership.topic === "partnership",
+  "ASTRA-Q1: partnership question classification failed",
+);
+const astraWhen = mod.buildQuestionEnginePlan("그럼 언제?", {
+  focusHint: "work",
+  previousQuestion: "동업은?",
+  previousDomain: "work_business",
+});
+assert(astraWhen.inheritedContext === true, "ASTRA-Q2: generic follow-up did not inherit context");
+assert(astraWhen.topic === "partnership", "ASTRA-Q2: partnership topic was lost on '그럼 언제?'");
+
+const astraBusinessMoney = mod.buildQuestionEnginePlan("사업에서 돈 흐름이 좋아지는 시기는 언제인가요?", {
+  focusHint: "money",
+  previousQuestion: "사업 어때?",
+  previousDomain: "work_business",
+});
+assert(
+  astraBusinessMoney.domain === "money" && astraBusinessMoney.topic === "money_flow",
+  "ASTRA-Q3: explicit money question stayed trapped in business domain",
+);
+const astraDebtMoney = mod.buildQuestionEnginePlan("저는 지금 빚이 1억이고 사업을 접었어요. 돈은 언제 좋아지나요?", {
+  focusHint: "money",
+});
+assert(
+  astraDebtMoney.domain === "money" && astraDebtMoney.topic === "money_flow",
+  "ASTRA-Q4: historical business context overrode the actual money question",
+);
+
 const routeSource = fs.readFileSync(path.join(root, "src/app/api/reality-answer/route.ts"), "utf8");
 assert(routeSource.includes("buildQuestionEnginePlan"), "API01: reality answer route does not run question engine v0");
 assert(routeSource.includes("previousQuestion") && routeSource.includes("previousDomain"), "API02: previous question context not accepted");
 assert(routeSource.includes("domainHint: questionPlan.domain"), "API03: resolved domain is not passed to answer engine");
+assert(routeSource.includes("questionPlan,"), "API03b: resolved question plan is not passed to answer engine");
 assert(routeSource.includes('min(1)'), "API04: one-character questions are still rejected");
 assert(routeSource.includes("palmContext"), "API05: bilateral palm context not accepted by question API");
+
+const diagnosisSource = fs.readFileSync(path.join(root, "src/app/diagnosis/page.tsx"), "utf8");
+assert(
+  diagnosisSource.includes("previousQuestion: questionAnswer?.question.raw") &&
+    diagnosisSource.includes("previousDomain: questionAnswer?.question.domain"),
+  "UI00: direct question flow does not send prior conversation context",
+);
 
 const funnelSource = fs.readFileSync(path.join(root, "src/components/palm/reality-answer-funnel.tsx"), "utf8");
 assert(
@@ -227,5 +265,5 @@ assert(funnelSource.includes("trimmed.length < 1"), "UI04: one-character questio
 assert(funnelSource.includes("길게 설명하지 않아도 됩니다"), "UI05: short-question guidance missing");
 assert(funnelSource.includes("buildRealityPalmContext"), "UI06: bilateral palm context is not sent from question UI");
 
-console.log("PASS QUESTION ENGINE V0: 50/50 questions + context inheritance + explicit override + signal plan + bilateral palm evidence + follow-up UI");
+console.log("PASS QUESTION ENGINE V0: 50/50 questions + Astra continuity cases + mixed-domain centering + signal plan + bilateral palm evidence + follow-up UI");
 hooks.deregister?.();

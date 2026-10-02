@@ -117,9 +117,11 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
     id: "wealth_timing",
     label: "재물의 다음 흐름",
     reason:
-      wealthOpportunityDaeunCount > 0
-        ? "평생 대운을 보면 재물 기운이 겹치는 시기가 여러 차례 옵니다. 그 시기를 미리 짚어두면 도움이 됩니다."
-        : "재물이 원국에 직접 드러나 있지는 않지만, 그래서 오히려 시기와 방식을 잡아드리는 게 더 중요합니다.",
+      wealthOpportunityDaeunCount === null
+        ? "출생시간이 없어 평생 대운의 재물 신호 횟수는 확인하지 않습니다. 현재 확인되는 원국 구조만 봅니다."
+        : wealthOpportunityDaeunCount > 0
+          ? "평생 대운을 보면 재물 기운이 겹치는 시기가 여러 차례 옵니다. 그 시기를 미리 짚어두면 도움이 됩니다."
+          : "재물이 원국에 직접 드러나 있지는 않지만, 그래서 오히려 시기와 방식을 잡아드리는 게 더 중요합니다.",
     alreadyCovered: true,
     bornWay:
       wealthStarCount === 0
@@ -326,7 +328,9 @@ export function buildFortuneCandidates(facts: SajuFacts, onnxLines?: OnnxPalmLin
  * 언제든 바꿔 볼 수 있다(추천은 순서만 바꿀 뿐 선택지를 줄이지 않는다). */
 export function selectPrimaryCandidate(facts: SajuFacts, candidates: FortuneCandidate[]): FortuneCandidate {
   const strongSignal: Record<FortuneInterestId, boolean> = {
-    wealth_timing: facts.wealthOpportunityDaeunCount > 0,
+    wealth_timing:
+      facts.wealthOpportunityDaeunCount !== null &&
+      facts.wealthOpportunityDaeunCount > 0,
     career_business: deriveCareerLeaning(facts) !== "balanced",
     change_opportunity: deriveDaeunShift(facts) || facts.peakStagePillars.length > 0,
   };

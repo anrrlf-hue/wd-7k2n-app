@@ -121,6 +121,7 @@ export async function POST(request: Request) {
       palmContext: (parsed.data.palmContext ?? null) as RealityPalmContext | null,
       focusHint: questionPlan.focus,
       domainHint: questionPlan.domain,
+      questionPlan,
     });
 
     return NextResponse.json({ ...result, questionPlan });

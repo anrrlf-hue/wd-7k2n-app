@@ -26,7 +26,9 @@ function selfSignal(level: PersonalityCheckLevel | undefined, left: string, righ
 export function buildTripleCompare(facts: SajuFacts, palm: OnnxPalmLines | null, check: PersonalityCheckFacts | null): CompareItem[] {
   const balanced = facts.officerStarCount + facts.resourceStarCount === facts.peerStarCount + facts.outputStarCount;
   const decision: CompareItem["signals"] = {
-    saju: { state: facts.dayStrength === "neutral" ? "NEUTRAL" : "NOT_COMPARABLE", meaning: facts.dayStrength === "neutral" ? "사주의 강약 해석은 중립" : "사주의 강약은 결정 속도를 측정한 값이 아님" },
+    saju: facts.dayStrengthReliable
+      ? { state: facts.dayStrength === "neutral" ? "NEUTRAL" : "NOT_COMPARABLE", meaning: facts.dayStrength === "neutral" ? "사주의 강약 해석은 중립" : "사주의 강약은 결정 속도를 측정한 값이 아님" }
+      : { state: "UNKNOWN", meaning: "출생시간 미상으로 사주의 강약을 확정하지 않음" },
     palm: { state: palm?.headLine.detected ? "NOT_COMPARABLE" : "UNKNOWN", meaning: palm?.headLine.detected ? "관찰된 두뇌선 모양은 전통적으로 사고방식에 연결하며, 빠르기·느리기와 비교하지 않음" : "두뇌선 관찰값 미확인" },
     self: selfSignal(check?.levels.speed, "빠르게 결정", "신중하게 결정"),
   };
@@ -39,11 +41,13 @@ export function buildTripleCompare(facts: SajuFacts, palm: OnnxPalmLines | null,
   const readings = buildPalmReadingSections(palm);
   const head = readings.find(r => r.key === "headLine");
   const heart = readings.find(r => r.key === "heartLine");
-  const decisionParts = [facts.dayStrength === "neutral"
-    ? "사주에서는 자기 기준과 주변 상황을 함께 보는 편으로 나타납니다. 선택에 따라 혼자 정할 때와 의견을 더 들을 때가 나뉠 수 있습니다."
-    : facts.dayStrength === "strong"
-      ? "사주에서는 스스로 납득할 기준을 세우고 방향을 잡는 성향이 강하게 나타납니다. 내 기준에 맞는지가 선택의 중요한 조건이 됩니다."
-      : "사주에서는 상황과 주변의 지원을 충분히 살핀 뒤 판단하는 성향이 나타납니다. 믿을 만한 정보와 도움을 모으는 과정이 중요합니다."];
+  const decisionParts = [!facts.dayStrengthReliable
+    ? "출생시간이 없어 사주의 강약으로 결정 성향을 한쪽으로 단정하지 않습니다. 확인되는 다른 사주 요소와 손금·직접 응답을 각각 따로 봅니다."
+    : facts.dayStrength === "neutral"
+      ? "사주에서는 자기 기준과 주변 상황을 함께 보는 편으로 나타납니다. 선택에 따라 혼자 정할 때와 의견을 더 들을 때가 나뉠 수 있습니다."
+      : facts.dayStrength === "strong"
+        ? "사주에서는 스스로 납득할 기준을 세우고 방향을 잡는 성향이 강하게 나타납니다. 내 기준에 맞는지가 선택의 중요한 조건이 됩니다."
+        : "사주에서는 상황과 주변의 지원을 충분히 살핀 뒤 판단하는 성향이 나타납니다. 믿을 만한 정보와 도움을 모으는 과정이 중요합니다."];
   if (head) decisionParts.push(`손금에서는 ${head.observation} ${head.summary}`);
   if (decision.self.state === "NEUTRAL") decisionParts.push("직접 답한 결정 속도는 ‘중간’입니다. 중요한 선택과 일상적인 선택에서 속도가 어떻게 달라지는지 함께 떠올려 보세요.");
   else if (decision.self.state === "DIRECTIONAL") decisionParts.push(check?.levels.speed === "왼쪽"

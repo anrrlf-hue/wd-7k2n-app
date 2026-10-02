@@ -4,6 +4,7 @@ import type {
   RealityEvidence,
 } from "@/lib/reality-answer-contract";
 import type { QuestionFollowUp } from "@/lib/question-engine-v0";
+import type { RealityPalmContext, RealityPalmHandContext } from "@/lib/reality-palm-context";
 
 export const READING_STYLE_V1_ORDER = [
   "direct_answer",
@@ -58,10 +59,10 @@ function majorLineStory(
   if (domain === "career" || domain === "work_business" || domain === "money") {
     if (head) {
       if (has(head, /직선에 가까움/)) {
-        return "양손의 두뇌선에서는 생각을 오래 흩어놓기보다 기준을 세워 정리하고 결정하는 쪽이 더 두드러집니다. 그래서 기회가 와도 막연한 기대보다 조건·역할·숫자를 분명히 했을 때 현재의 강점이 더 잘 살아날 수 있습니다.";
+        return "관찰된 두뇌선에서는 생각을 오래 흩어놓기보다 기준을 세워 정리하고 결정하는 쪽이 두드러집니다. 양손 여부가 확인되지 않으면 한 손 관찰로만 해석합니다.";
       }
       if (has(head, /완만한 곡선/)) {
-        return "양손의 두뇌선에서는 정답 하나만 고집하기보다 여러 가능성을 연결해서 보는 쪽이 더 두드러집니다. 그래서 일이나 돈 문제에서도 기존 방식만 반복하기보다 새로운 조합이나 다른 방법을 찾을 때 현재의 강점이 살아날 수 있습니다.";
+        return "관찰된 두뇌선에서는 정답 하나만 고집하기보다 여러 가능성을 연결해서 보는 쪽이 두드러집니다. 양손 여부가 확인되지 않으면 한 손 관찰로만 해석합니다.";
       }
     }
   }
@@ -144,12 +145,145 @@ function secondaryLineStory(
   return null;
 }
 
+function palmHandName(side: "left" | "right" | "unknown"): string {
+  return side === "left" ? "왼손" : side === "right" ? "오른손" : "촬영한 손";
+}
+
+function contextHands(
+  context: RealityPalmContext,
+): Array<{ side: "left" | "right" | "unknown"; hand: RealityPalmHandContext }> {
+  const hands: Array<{ side: "left" | "right" | "unknown"; hand: RealityPalmHandContext }> = [];
+  if (context.right) hands.push({ side: "right", hand: context.right });
+  if (context.left) hands.push({ side: "left", hand: context.left });
+  if (hands.length === 0 && context.primary) {
+    hands.push({ side: context.primary.handSide, hand: context.primary });
+  }
+  return hands;
+}
+
+function dominantNote(context: RealityPalmContext): string | null {
+  if (!context.dominantHand) return null;
+  return `주로 쓰는 손은 ${context.dominantHand === "right" ? "오른손" : "왼손"}입니다.`;
+}
+
+function lineCurveText(
+  hand: RealityPalmHandContext,
+  key: "headLine" | "heartLine" | "lifeLine",
+): string | null {
+  const line = hand.onnxLines?.[key];
+  if (!line?.detected) return null;
+  const parts = [
+    line.curve,
+    line.length ? `길이 ${line.length}` : null,
+    line.depthStrength ? `선명도 ${line.depthStrength}` : null,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
+function contextMajorLineStory(
+  domain: RealityAnswerDomain,
+  context: RealityPalmContext,
+): string | null {
+  const key =
+    domain === "love" || domain === "relationship"
+      ? "heartLine"
+      : domain === "wellbeing"
+        ? "lifeLine"
+        : "headLine";
+  const label =
+    key === "heartLine" ? "감정선" : key === "lifeLine" ? "생명선" : "두뇌선";
+
+  const observed = contextHands(context)
+    .map((item) => ({ ...item, line: lineCurveText(item.hand, key) }))
+    .filter((item): item is typeof item & { line: string } => Boolean(item.line));
+
+  if (observed.length === 0) return null;
+
+  if (observed.length === 1) {
+    const only = observed[0];
+    return `${palmHandName(only.side)} ${label}에서는 ${only.line}이 관찰됩니다. 다른 손의 관찰값이 없어 촬영된 이 손만 해석합니다.`;
+  }
+
+  const right = observed.find((item) => item.side === "right");
+  const left = observed.find((item) => item.side === "left");
+  if (!right || !left) {
+    return observed
+      .map((item) => `${palmHandName(item.side)} ${label}: ${item.line}`)
+      .join(" / ");
+  }
+
+  const rightCurve = right.hand.onnxLines?.[key]?.curve ?? null;
+  const leftCurve = left.hand.onnxLines?.[key]?.curve ?? null;
+  const note = dominantNote(context);
+
+  if (rightCurve && leftCurve && rightCurve !== leftCurve) {
+    return `오른손 ${label}은 ${right.line}이고, 왼손 ${label}은 ${left.line}으로 서로 다르게 관찰됩니다. 두 손이 다르므로 한쪽 특징을 양손 전체 성향처럼 단정하지 않습니다.${note ? ` ${note}` : ""}`;
+  }
+
+  return `양손 ${label}에서 비슷한 흐름이 확인됩니다. 오른손은 ${right.line}, 왼손은 ${left.line}입니다.${note ? ` ${note}` : ""}`;
+}
+
+function secondaryStatus(
+  hand: RealityPalmHandContext,
+  key: "fate" | "sun" | "wealth",
+): "선명" | "희미" | "확인 안 됨" | "미확인" {
+  const signal = hand.secondaryLines?.[key];
+  if (!signal) return "미확인";
+  if (signal.status === "clear") return "선명";
+  if (signal.status === "faint") return "희미";
+  return "확인 안 됨";
+}
+
+function contextSecondaryStory(
+  domain: RealityAnswerDomain,
+  context: RealityPalmContext,
+): string | null {
+  const hands = contextHands(context);
+  if (hands.length === 0) return null;
+
+  const keys: Array<["fate" | "sun" | "wealth", string]> =
+    domain === "money"
+      ? [["wealth", "재물선"], ["fate", "운명선"]]
+      : domain === "career" || domain === "work_business"
+        ? [["fate", "운명선"], ["sun", "태양선"], ["wealth", "재물선"]]
+        : [];
+
+  if (keys.length === 0) return null;
+
+  const rows = hands.map((item) => ({
+    side: item.side,
+    text: keys.map(([key, label]) => `${label} ${secondaryStatus(item.hand, key)}`).join(" · "),
+  }));
+
+  if (rows.length === 1) {
+    return `${palmHandName(rows[0].side)}에서 ${rows[0].text}으로 관찰됩니다. 다른 손은 관찰값이 없어 강약을 비교하지 않습니다.`;
+  }
+
+  return `${rows.map((row) => `${palmHandName(row.side)}은 ${row.text}`).join(", ")}. 한쪽을 타고난 모습이나 현재 모습으로 고정하지 않고, 관찰된 차이 자체만 참고합니다.`;
+}
+
+function contextPalmStory(
+  domain: RealityAnswerDomain,
+  context: RealityPalmContext,
+): string | null {
+  const major = contextMajorLineStory(domain, context);
+  const secondary = contextSecondaryStory(domain, context);
+  const parts = [major, secondary].filter((item): item is string => Boolean(item));
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
 export function buildPalmEvidenceBridge(
   domain: RealityAnswerDomain,
   evidence: RealityEvidence[],
+  context: RealityPalmContext | null = null,
 ): string | null {
   const palmEvidence = evidence.filter((entry) => entry.source === "palm");
-  if (palmEvidence.length === 0) return null;
+  if (palmEvidence.length === 0 && !context) return null;
+
+  if (context) {
+    const structured = contextPalmStory(domain, context);
+    if (structured) return structured;
+  }
 
   const major = majorLineStory(domain, palmEvidence);
   const secondary = secondaryLineStory(domain, palmEvidence);
