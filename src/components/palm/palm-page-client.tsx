@@ -16,7 +16,7 @@ import {
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
 import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
-import { PalmReadingSections, TripleCompareSection } from "@/components/palm/palm-reading-sections";
+import { PalmReadingSections, PalmBilateralSection, PalmFutureTimelineSection, TripleCompareSection } from "@/components/palm/palm-reading-sections";
 import { RealityAnswerFunnel } from "@/components/palm/reality-answer-funnel";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { CompareItem } from "@/lib/triple-compare";
@@ -24,6 +24,7 @@ import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import type { WealthTypeResult } from "@/lib/wealth-type";
 import type { SajuFocus } from "@/lib/saju-focus";
 import { track } from "@/lib/analytics";
+import type { DominantHand, PalmBilateralReading, PalmFutureTimeline } from "@/lib/palm-bilateral";
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
 
@@ -54,6 +55,11 @@ function readSessionJson<T>(key: string): T | null {
 interface PalmResumeState {
   stage: "result" | "saju_only";
   palmFacts: PalmFacts | null;
+  leftPalmFacts?: PalmFacts | null;
+  rightPalmFacts?: PalmFacts | null;
+  dominantHand?: DominantHand;
+  bilateralReading?: PalmBilateralReading | null;
+  futurePalmTimeline?: PalmFutureTimeline | null;
   finalReport: FreeSajuReport | null;
   tripleCompare: CompareItem[];
   verdict: ReportParagraph | null;
@@ -167,7 +173,15 @@ export function PalmPageClient({
   const resumeKey = realityJourneyKey(birthInput, focus);
   const [stage, setStage] = useState<Stage>("upload");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [rightPreviewUrl, setRightPreviewUrl] = useState<string | null>(null);
+  const [leftPreviewUrl, setLeftPreviewUrl] = useState<string | null>(null);
+  const [captureHand, setCaptureHand] = useState<DominantHand>("right");
+  const [dominantHand, setDominantHand] = useState<DominantHand | null>(null);
+  const [rightPalmFacts, setRightPalmFacts] = useState<PalmFacts | null>(null);
+  const [leftPalmFacts, setLeftPalmFacts] = useState<PalmFacts | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
+  const [bilateralReading, setBilateralReading] = useState<PalmBilateralReading | null>(null);
+  const [futurePalmTimeline, setFuturePalmTimeline] = useState<PalmFutureTimeline | null>(null);
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
   const [tripleCompare, setTripleCompare] = useState<CompareItem[]>([]);
   const [verdict, setVerdict] = useState<ReportParagraph | null>(null);
@@ -201,6 +215,11 @@ export function PalmPageClient({
       if (cancelled) return;
       setStage(saved.stage);
       setPalmFacts(saved.palmFacts);
+      setLeftPalmFacts(saved.leftPalmFacts ?? null);
+      setRightPalmFacts(saved.rightPalmFacts ?? null);
+      setDominantHand(saved.dominantHand ?? null);
+      setBilateralReading(saved.bilateralReading ?? null);
+      setFuturePalmTimeline(saved.futurePalmTimeline ?? null);
       setFinalReport(saved.finalReport ?? null);
       setTripleCompare(saved.tripleCompare ?? []);
       setVerdict(saved.verdict ?? null);
@@ -297,6 +316,11 @@ export function PalmPageClient({
     const saved: PalmResumeState = {
       stage,
       palmFacts,
+      leftPalmFacts,
+      rightPalmFacts,
+      dominantHand: dominantHand ?? undefined,
+      bilateralReading,
+      futurePalmTimeline,
       finalReport,
       tripleCompare,
       verdict,
@@ -310,6 +334,11 @@ export function PalmPageClient({
     resumeKey,
     stage,
     palmFacts,
+    leftPalmFacts,
+    rightPalmFacts,
+    dominantHand,
+    bilateralReading,
+    futurePalmTimeline,
     finalReport,
     tripleCompare,
     verdict,
