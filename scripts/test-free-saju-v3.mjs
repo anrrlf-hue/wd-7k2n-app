@@ -100,6 +100,42 @@ assert(focusMod.parseSajuFocus("career") === "work", "legacy career focus mappin
 assert(focusMod.parseSajuFocus("work_business") === "work", "legacy business focus mapping failed");
 assert(focusMod.parseSajuFocus("unknown") === "overall", "unknown focus must fall back to overall");
 
+const unknownFacts = factsMod.computeSajuFacts({
+  year: 1995,
+  month: 7,
+  day: 15,
+  hour: null,
+  minute: null,
+  gender: "여",
+});
+assert(unknownFacts.dayStrengthReliable === false, "ASTRA-T1: unknown-time strength marked reliable");
+assert(unknownFacts.wealthOpportunityDaeunCount === null, "ASTRA-T2: unknown Daeun count collapsed to zero");
+const unknownReport = reportMod.buildFreeSajuReport(unknownFacts);
+const unknownText = [
+  unknownReport.snapshot.text,
+  unknownReport.temperament.text,
+  unknownReport.loveStyle.text,
+  unknownReport.keepingStyle.text,
+  unknownReport.bigMoneyAffinity.text,
+  unknownReport.decisionStyle.text,
+].join("\n");
+assert(
+  !unknownText.includes("자기 기준이 분명하고 한번 방향을 잡으면 쉽게 흔들리지 않습니다"),
+  "ASTRA-T3: provisional noon strength leaked into unknown-time snapshot",
+);
+assert(
+  !unknownText.includes("결정을 쉽게 남에게 맡기는 편은 아닙니다"),
+  "ASTRA-T4: provisional noon strength leaked into unknown-time decision style",
+);
+assert(
+  /출생시간|확정하지|단정하지/.test(unknownText),
+  "ASTRA-T5: unknown-time uncertainty is not preserved in customer copy",
+);
+assert(
+  !/대운 중 재성 겹침 0회/.test(unknownReport.bigMoneyAffinity.evidence),
+  "ASTRA-T6: unknown Daeun opportunity count exposed as zero",
+);
+
 for (const focus of ["love_relationship", "work", "money", "wellbeing"]) {
   const focused = focusReportMod.buildFocusedSajuReport(facts, report, focus);
   assert(focused, "focused report missing: " + focus);
@@ -124,6 +160,10 @@ assert(!resultSource.includes("나의 재물사주"), "money-only free-result he
 assert(resultSource.includes("사주를 더 이어서 보면"), "free Saju must lead naturally into the question/timing step");
 assert(resultSource.includes("내 질문 답과 시기 보기"), "post-free question CTA missing");
 assert(resultSource.includes("원하면 손금까지 더해볼 수 있어요"), "palm must remain an optional deeper step");
+assert(
+  resultSource.includes('<a href={`/diagnosis?mode=question&focus=${focus}&from=free`}'),
+  "ASTRA-U1: free-to-question CTA is not a real navigation",
+);
 
 const homeSource = fs.readFileSync(path.join(root, "src/app/page.tsx"), "utf8");
 const diagnosisSource = fs.readFileSync(path.join(root, "src/app/diagnosis/page.tsx"), "utf8");
@@ -148,6 +188,10 @@ assert(diagnosisSource.includes('/api/reality-answer'), "question-first flow mus
 assert(diagnosisSource.includes('mode === "question"'), "question-first mode routing missing");
 assert(diagnosisSource.includes('params.get("start") === "free"'), "direct free Saju start routing missing");
 assert(diagnosisSource.includes('params.get("from") === "free"'), "free-to-question handoff routing missing");
+assert(
+  diagnosisSource.includes('params.get("from") !== "free"'),
+  "ASTRA-U2: stale question session still outranks free-to-question handoff",
+);
 assert(focusStepSource.includes("어떤 사주가"), "diagnosis focus chooser missing");
 assert(focusStepSource.includes("전체 사주"), "overall Saju choice missing");
 
@@ -197,5 +241,5 @@ assert(!reportSectionSource.includes("왜 이렇게 봤나요"), "why-explanatio
 assert(!reportSectionSource.includes("어떻게 할까요"), "action-guidance toggle remains in free report");
 assert(resultSource.includes("다른 영역은 한눈에"), "focused reading should summarize other areas instead of repeating full sections");
 
-console.log("PASS FREE SAJU V9: Saju-first entry + seamless question/timing + optional palm + MBTI-only UI");
+console.log("PASS FREE SAJU V9: Saju-first + unknown-time guards + real free-to-question handoff + optional palm");
 hooks.deregister?.();
