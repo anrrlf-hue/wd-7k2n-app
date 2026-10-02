@@ -17,6 +17,7 @@ import {
 } from "@/lib/saju-focus";
 import { track } from "@/lib/analytics";
 import { saveRealityAnswer } from "@/lib/reality-management";
+import { buildReadingStyleV1View } from "@/lib/reading-style-v1";
 import type { QuestionEnginePlan, QuestionFollowUp } from "@/lib/question-engine-v0";
 import { buildRealityPalmContext, type RealityDominantHand } from "@/lib/reality-palm-context";
 
@@ -320,6 +321,10 @@ export function RealityAnswerFunnel({
     void submitQuestion(item.question, item.focus);
   }
 
+  const style = answer
+    ? buildReadingStyleV1View(answer, questionPlan?.nextQuestions ?? [])
+    : null;
+
   return (
     <div id="reality-answer-funnel" ref={topRef} className="mt-8 scroll-mt-6">
       {stage === "intro" && (
@@ -477,55 +482,51 @@ export function RealityAnswerFunnel({
             <p className="mt-2 text-xl leading-8 font-semibold">{answer.headline}</p>
           </section>
 
-          <TimingBlock answer={answer} />
+          {style && (
+            <section className="mt-5 space-y-3">
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <h3 className="text-lg font-semibold">{style.personalTitle}</h3>
+                <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
+                  {style.personalMeaning}
+                </p>
+              </div>
 
-          {answer.report && (
-            <section className="mt-5">
-              <p className="section-eyebrow">{palmFacts ? "사주와 손금을 함께 본 풀이" : "내 질문 사주풀이"}</p>
-              <div className="mt-3 space-y-3">
-                <div className="rounded-2xl border border-border bg-card p-5">
-                  <h3 className="text-lg font-semibold">사주로 보면</h3>
-                  <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
-                    {answer.report.questionReading}
-                  </p>
-                </div>
-                <PalmContribution facts={palmFacts} focus={focus} />
-                <div className="rounded-2xl border border-border bg-card p-5">
-                  <h3 className="text-lg font-semibold">현재 사주 흐름</h3>
-                  <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
-                    {answer.report.currentFlow}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
-                  <h3 className="text-lg font-semibold">{palmFacts ? "둘을 함께 보면" : "앞으로 어떻게 나타날 수 있나요?"}</h3>
-                  <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
-                    {answer.report.solutionReading}
-                  </p>
-                </div>
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <h3 className="text-lg font-semibold">{style.currentTitle}</h3>
+                <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
+                  {style.currentFlow}
+                </p>
               </div>
             </section>
           )}
 
+          <TimingBlock answer={answer} />
+
+          {style && (
+            <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
+              <h3 className="text-lg font-semibold">{style.futureTitle}</h3>
+              <p className="mt-3 whitespace-pre-line text-base leading-8 text-muted-foreground">
+                {style.futureMeaning}
+              </p>
+            </section>
+          )}
+
           <section className="mt-5 rounded-2xl border border-border bg-card p-5">
-            <h3 className="font-semibold">반복해서 나타나기 쉬운 흐름</h3>
+            <h3 className="font-semibold">{style?.patternTitle ?? "이런 패턴은 반복될 수 있어요"}</h3>
             <p className="mt-2 text-base leading-7 text-muted-foreground">{answer.repeatingPattern}</p>
           </section>
 
-          <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
-            <p className="text-sm text-muted-foreground">가장 중요하게 볼 점</p>
-            <p className="mt-2 text-base leading-7 font-semibold">{answer.choose}</p>
-          </section>
-
           <section className="mt-4 rounded-2xl border border-border bg-card p-5">
-            <p className="text-sm text-muted-foreground">주의해서 볼 점</p>
-            <p className="mt-2 text-base leading-7">{answer.avoid}</p>
-          </section>
-
-          <section className="mt-5 rounded-2xl border border-border bg-card p-5">
-            <h3 className="font-semibold">결과를 달라지게 할 수 있는 현실 변수</h3>
-            <ul className="mt-3 space-y-2 text-base leading-7 text-muted-foreground">
-              {answer.realityChecks.map((item) => <li key={item}>· {item}</li>)}
-            </ul>
+            <p className="text-sm font-semibold">{style?.cautionTitle ?? "여기서는 이것만 조심해서 보세요"}</p>
+            <p className="mt-2 text-base leading-7 text-muted-foreground">{answer.avoid}</p>
+            {answer.realityChecks.length > 0 && (
+              <div className="mt-3 border-t border-border pt-3">
+                <p className="text-xs font-semibold text-foreground/70">현실에서 같이 볼 것</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {answer.realityChecks.join(" · ")}
+                </p>
+              </div>
+            )}
           </section>
 
           {answer.safetyNote && (
@@ -536,7 +537,7 @@ export function RealityAnswerFunnel({
 
           {questionPlan?.nextQuestions?.length ? (
             <section className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-5">
-              <p className="section-eyebrow">이어서 보면 좋은 질문</p>
+              <p className="section-eyebrow">{style?.nextTitle ?? "이어서 무엇이 더 궁금하세요?"}</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 방금 답에서 다음으로 자연스럽게 이어지는 질문만 골랐습니다.
               </p>

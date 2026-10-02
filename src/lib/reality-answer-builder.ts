@@ -8,6 +8,8 @@ import { daeunFlavor } from "@/lib/fortune-candidates";
 import type { PersonalityInput } from "@/lib/personality-check";
 import type { SajuFacts } from "@/lib/saju-facts";
 import { buildSajuTimingOutlook } from "@/lib/saju-timing";
+import { deriveSajuWorkCore } from "@/lib/saju-work-core";
+import { buildPalmEvidenceBridge } from "@/lib/reading-style-v1";
 
 export interface RealityAnswerBuildInput {
   question: RealityQuestion;
@@ -84,15 +86,30 @@ function directAnswerFor(question: RealityQuestion, facts: SajuFacts, timing: Re
   }
 
   if (question.domain === "career") {
+    const core = deriveSajuWorkCore(facts);
+    const lead = core.roles && core.autonomy
+      ? "일에서는 역할과 책임이 분명하면서도, 그 안에서 내 방식으로 움직일 여지가 있을 때 힘이 더 잘 붙는 편입니다."
+      : core.autonomy
+        ? "일에서는 정해진 방식만 따르기보다 직접 해보면서 자기 방법을 만드는 쪽에서 힘이 더 잘 붙는 편입니다."
+        : "일에서는 해야 할 역할과 기준이 분명할수록 안정적으로 힘을 쓰는 편입니다.";
     return first
-      ? `취업·이직과 같은 일의 이동 흐름은 ${first}을 먼저 눈여겨볼 수 있습니다.`
-      : "취업·이직의 정확한 월을 좁히기는 어렵지만, 일의 큰 변화 흐름은 볼 수 있습니다.";
+      ? `${lead} 취업·이직과 같은 변화는 ${first}을 먼저 눈여겨볼 수 있습니다.`
+      : `${lead} 정확한 월을 좁히기는 어렵지만, 일의 큰 변화 흐름은 볼 수 있습니다.`;
   }
 
   if (question.domain === "work_business") {
+    const core = deriveSajuWorkCore(facts);
+    const qIsBusiness = /(사업|창업|독립|장사|동업)/.test(q);
+    const lead = qIsBusiness
+      ? core.autonomy
+        ? "사업을 묻는다면, 남이 정해놓은 방식을 그대로 반복하기보다 내가 판단하고 방법을 바꿀 수 있는 구조에서 강점이 더 잘 살아나는 편입니다."
+        : "사업 자체를 좋고 나쁨으로 단정하기보다, 맡을 역할과 책임이 분명하고 실제로 끝까지 운영할 수 있는 구조인지가 더 중요하게 보입니다."
+      : core.roles && core.autonomy
+        ? "직장에서는 책임 범위는 분명하되, 실행 방법까지 모두 정해진 환경보다 내 판단을 쓸 수 있는 역할에서 힘이 더 잘 붙는 편입니다."
+        : core.theme;
     return first
-      ? `직장·사업에서 변화나 기회가 부각되는 시기는 ${first}을 먼저 눈여겨볼 수 있습니다.`
-      : "직장·사업의 정확한 시기를 좁히기는 어렵지만, 현재 큰 흐름은 볼 수 있습니다.";
+      ? `${lead} 변화나 기회가 부각되는 시기는 ${first}을 먼저 눈여겨볼 수 있습니다.`
+      : `${lead} 정확한 시기를 좁히기는 어렵지만, 현재 큰 흐름은 볼 수 있습니다.`;
   }
 
   if (question.domain === "money") {
@@ -340,10 +357,12 @@ function realityChecksFor(question: RealityQuestion): string[] {
 export function buildRealityAnswerFallback(input: RealityAnswerBuildInput): RealityAnswer {
   const timing = timingFor(input.question, input.facts);
   const repeatingPattern = repeatingPatternFor(input.question, input.facts, input.personality);
+  const palmBridge = buildPalmEvidenceBridge(input.question.domain, input.evidence);
+  const baseSolution = solutionReadingFor(input.question, timing);
   const report = {
     questionReading: questionReadingFor(input.question, input.facts),
     currentFlow: currentFlowReadingFor(input.question, input.facts),
-    solutionReading: solutionReadingFor(input.question, timing),
+    solutionReading: palmBridge ? `${baseSolution} ${palmBridge}` : baseSolution,
     timingReading: timing.windows?.length
       ? timing.now + " " + timing.windows.map((window) =>
           window.label + ": " + (window.meaning ?? window.reason) +
