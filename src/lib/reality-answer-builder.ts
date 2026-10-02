@@ -10,12 +10,16 @@ import type { SajuFacts } from "@/lib/saju-facts";
 import { buildSajuTimingOutlook } from "@/lib/saju-timing";
 import { deriveSajuWorkCore } from "@/lib/saju-work-core";
 import { buildPalmEvidenceBridge } from "@/lib/reading-style-v1";
+import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
+import type { RealityPalmContext } from "@/lib/reality-palm-context";
 
 export interface RealityAnswerBuildInput {
   question: RealityQuestion;
   facts: SajuFacts;
   evidence: RealityEvidence[];
   personality?: PersonalityInput | null;
+  palmContext?: RealityPalmContext | null;
+  questionPlan?: QuestionEnginePlan | null;
 }
 
 function level(personality: PersonalityInput | null | undefined, key: string): string | null {
@@ -60,7 +64,12 @@ function timingLead(timing: RealityTiming): string | null {
   return timing.windows?.[0]?.label ?? null;
 }
 
-function directAnswerFor(question: RealityQuestion, facts: SajuFacts, timing: RealityTiming): string {
+function directAnswerFor(
+  question: RealityQuestion,
+  facts: SajuFacts,
+  timing: RealityTiming,
+  plan?: QuestionEnginePlan | null,
+): string {
   const first = timingLead(timing);
   const q = question.raw;
 
@@ -99,7 +108,19 @@ function directAnswerFor(question: RealityQuestion, facts: SajuFacts, timing: Re
 
   if (question.domain === "work_business") {
     const core = deriveSajuWorkCore(facts);
-    const qIsBusiness = /(사업|창업|독립|장사|동업)/.test(q);
+
+    if (plan?.topic === "partnership") {
+      const roleLead = /(역할|누가 무엇|분담)/.test(q)
+        ? "동업을 한다면 사주만으로 상대의 몫까지 정하기보다, 내 쪽 강점은 살리고 역할·돈 관리·최종 결정권을 실제 경험에 맞춰 나누는 것이 핵심입니다."
+        : /(혼자|동업)/.test(q)
+          ? "혼자 할지 동업할지를 한 사람의 사주만으로 정답처럼 고르기는 어렵습니다. 다만 내 판단권이 필요한 편이라 동업한다면 역할과 최종 결정권이 겹치지 않는 구조가 중요합니다."
+          : "동업은 맞다·안 맞다보다 두 사람이 역할과 결정권을 어떻게 나누느냐가 더 중요합니다.";
+      return first
+        ? `${roleLead} 함께 움직일 시기를 본다면 ${first}을 먼저 눈여겨볼 수 있습니다.`
+        : `${roleLead} 출생시간이 없거나 시기 근거가 부족하면 정확한 월까지 좁히지 않습니다.`;
+    }
+
+    const qIsBusiness = /(사업|창업|독립|장사)/.test(q);
     const lead = qIsBusiness
       ? core.autonomy
         ? "사업을 묻는다면, 남이 정해놓은 방식을 그대로 반복하기보다 내가 판단하고 방법을 바꿀 수 있는 구조에서 강점이 더 잘 살아나는 편입니다."
@@ -218,6 +239,7 @@ function repeatingPatternFor(
 function questionReadingFor(
   question: RealityQuestion,
   facts: SajuFacts,
+  plan?: QuestionEnginePlan | null,
 ): string {
   const elementTone: Record<string, string> = {
     목: "성장할 방향과 다음 가능성이 보일 때 마음이 움직이는 편입니다.",
@@ -241,6 +263,9 @@ function questionReadingFor(
   }
 
   if (question.domain === "work_business") {
+    if (plan?.topic === "partnership") {
+      return `${opening} 동업에서는 내 판단을 쓸 수 있는 공간이 필요하더라도 상대의 역할까지 대신 정하려 들면 충돌이 커질 수 있습니다. 그래서 두 사람의 사주가 모두 있어야 상대 비교가 가능하고, 내 사주만으로는 내가 맡을 때 편한 방식과 동업에서 필요한 경계까지만 보는 것이 맞습니다.`;
+    }
     return `${opening} 직장·사업에서는 내 판단으로 움직일 수 있는 범위와 결과가 눈에 보일 때 힘이 붙는 편입니다. 흐름이 강해지는 시기에는 새 역할, 사업 기회, 고객이나 제안이 늘어나는 형태처럼 여러 방식으로 나타날 수 있습니다.`;
   }
 
@@ -286,10 +311,14 @@ function currentFlowReadingFor(question: RealityQuestion, facts: SajuFacts): str
 function solutionReadingFor(
   question: RealityQuestion,
   timing: RealityTiming,
+  plan?: QuestionEnginePlan | null,
 ): string {
   const first = timingLead(timing);
+  const otherWindows = (timing.windows ?? []).slice(1).map((x) => x.label);
   const timingText = first
-    ? `${first}을 가장 먼저 눈여겨볼 수 있고, 이후 후보 시기는 ${(timing.windows ?? []).slice(1).map((x) => x.label).join(", ") || "현재 큰 흐름"}입니다.`
+    ? otherWindows.length > 0
+      ? `${first}을 가장 강하게 눈여겨볼 수 있고, 다른 후보로는 ${otherWindows.join(", ")}이 있습니다.`
+      : `${first}을 가장 강하게 눈여겨볼 수 있습니다.`
     : "연도·월까지 좁힌 시기보다 현재 큰 흐름을 중심으로 보는 편이 맞습니다.";
 
   if (question.domain === "love" || question.domain === "relationship") {
@@ -297,6 +326,9 @@ function solutionReadingFor(
   }
 
   if (question.domain === "career" || question.domain === "work_business") {
+    if (plan?.topic === "partnership") {
+      return `${timingText} 동업 질문에서는 이 시기를 '두 사람이 반드시 시작해야 하는 날짜'로 보지 않고, 역할·계약·돈 관리 기준을 맞춰보기 좋은 변화 구간으로 참고합니다. 실제 시작 여부는 상대방의 사주와 현실 조건을 함께 봐야 합니다.`;
+    }
     return `${timingText} 이 시기에는 일의 이동, 역할 변화, 제안이나 기회가 평소보다 눈에 띄기 쉬운 흐름으로 볼 수 있습니다. 실제 변화의 형태는 회사 상황과 시장 조건에 따라 달라질 수 있습니다.`;
   }
 
@@ -357,10 +389,14 @@ function realityChecksFor(question: RealityQuestion): string[] {
 export function buildRealityAnswerFallback(input: RealityAnswerBuildInput): RealityAnswer {
   const timing = timingFor(input.question, input.facts);
   const repeatingPattern = repeatingPatternFor(input.question, input.facts, input.personality);
-  const palmBridge = buildPalmEvidenceBridge(input.question.domain, input.evidence);
-  const baseSolution = solutionReadingFor(input.question, timing);
+  const palmBridge = buildPalmEvidenceBridge(
+    input.question.domain,
+    input.evidence,
+    input.palmContext ?? null,
+  );
+  const baseSolution = solutionReadingFor(input.question, timing, input.questionPlan);
   const report = {
-    questionReading: questionReadingFor(input.question, input.facts),
+    questionReading: questionReadingFor(input.question, input.facts, input.questionPlan),
     currentFlow: currentFlowReadingFor(input.question, input.facts),
     solutionReading: palmBridge ? `${baseSolution} ${palmBridge}` : baseSolution,
     timingReading: timing.windows?.length
@@ -381,7 +417,7 @@ export function buildRealityAnswerFallback(input: RealityAnswerBuildInput): Real
 
   return {
     question: input.question,
-    headline: directAnswerFor(input.question, input.facts, timing),
+    headline: directAnswerFor(input.question, input.facts, timing, input.questionPlan),
     report,
     whyNow: report.currentFlow,
     repeatingPattern,
