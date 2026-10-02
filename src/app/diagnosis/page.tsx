@@ -16,6 +16,7 @@ import type { MbtiType } from "@/lib/mbti-facts";
 import { parseSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 import type { RealityAnswer } from "@/lib/reality-answer-contract";
 import type { RealityAnswerEngineResult } from "@/lib/reality-answer-engine";
+import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
 
 type JourneyMode = "free" | "question";
 type Step =
@@ -53,6 +54,7 @@ interface StoredQuestionSession {
   birthTime: string;
   mbti: MbtiType | "모름";
   answer: RealityAnswer;
+  questionPlan?: QuestionEnginePlan | null;
 }
 
 function journeyModeFromLocation(): JourneyMode {
@@ -95,6 +97,7 @@ export default function DiagnosisPage() {
   const [mbti, setMbti] = useState<MbtiType | "모름">("모름");
   const [diagnosis, setDiagnosis] = useState<FullSajuDiagnosis | null>(null);
   const [questionAnswer, setQuestionAnswer] = useState<RealityAnswer | null>(null);
+  const [questionPlan, setQuestionPlan] = useState<QuestionEnginePlan | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -118,6 +121,7 @@ export default function DiagnosisPage() {
             setBirthTime(saved.birthTime);
             setMbti(saved.mbti);
             setQuestionAnswer(saved.answer);
+            setQuestionPlan(saved.questionPlan ?? null);
             setStep("answer");
             return;
           }
@@ -195,6 +199,7 @@ export default function DiagnosisPage() {
     setMbti("모름");
     setDiagnosis(null);
     setQuestionAnswer(null);
+    setQuestionPlan(null);
     setError(null);
     setStep("focus");
   }
@@ -207,6 +212,7 @@ export default function DiagnosisPage() {
     }
     setQuestion("");
     setQuestionAnswer(null);
+    setQuestionPlan(null);
     setError(null);
     setStep(focus ? "question" : "focus");
   }
@@ -273,13 +279,19 @@ export default function DiagnosisPage() {
     }
   }
 
-  async function handleFetchQuestionAnswer() {
-    if (!focus) {
+  async function handleFetchQuestionAnswer(
+    questionOverride?: string,
+    focusOverride?: SajuFocus,
+  ) {
+    const effectiveFocus = focusOverride ?? focus;
+    const effectiveQuestion = (questionOverride ?? question).trim();
+
+    if (!effectiveFocus) {
       setStep("focus");
       return;
     }
-    if (question.trim().length < 2) {
-      setError("궁금한 내용을 조금만 더 적어주세요.");
+    if (effectiveQuestion.length < 1) {
+      setError("궁금한 내용을 적어주세요.");
       setStep("question");
       return;
     }
@@ -302,14 +314,17 @@ export default function DiagnosisPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...birthInput,
-          question: question.trim(),
-          focusHint: focus,
+          question: effectiveQuestion,
+          focusHint: effectiveFocus,
           mbti: mbti !== "모름" ? mbti : undefined,
         }),
         signal: controller.signal,
       });
 
-      const data = (await res.json()) as RealityAnswerEngineResult & { error?: string };
+      const data = (await res.json()) as RealityAnswerEngineResult & {
+        error?: string;
+        questionPlan?: QuestionEnginePlan;
+      };
       if (!res.ok) throw new Error(data.error || "사주답변을 만들지 못했습니다.");
 
       if (data.status === "needs_clarification") {
@@ -319,18 +334,22 @@ export default function DiagnosisPage() {
       }
 
       setQuestionAnswer(data.answer);
+      setQuestionPlan(data.questionPlan ?? null);
+      setQuestion(data.answer.question.raw);
+      setFocus(data.questionPlan?.focus ?? effectiveFocus);
       setStep("answer");
 
       try {
         const toStore: StoredQuestionSession = {
-          focus,
-          question: question.trim(),
+          focus: data.questionPlan?.focus ?? effectiveFocus,
+          question: data.answer.question.raw,
           birthDate,
           gender,
           knowsTime,
           birthTime,
           mbti,
           answer: data.answer,
+          questionPlan: data.questionPlan ?? null,
         };
         sessionStorage.setItem(QUESTION_STORAGE_KEY, JSON.stringify(toStore));
       } catch {
@@ -502,7 +521,13 @@ export default function DiagnosisPage() {
           birthInput={answerBirthInput}
           mbti={mbti === "모름" ? null : mbti}
           answer={questionAnswer}
+          questionPlan={questionPlan}
           onAskAgain={askAgain}
+          onAskFollowUp={(nextQuestion, nextFocus) => {
+            setQuestion(nextQuestion);
+            setFocus(nextFocus);
+            void handleFetchQuestionAnswer(nextQuestion, nextFocus);
+          }}
         />
       )}
     </StepShell>
