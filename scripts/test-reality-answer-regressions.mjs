@@ -107,6 +107,14 @@ for (const [id, raw, expectedDomain] of cases) {
   assert(answer.report.solutionReading.length >= 80, `${id}: interpretation report too short`);
   assert(answer.realityChecks.length > 0, `${id}: reality variables missing`);
   assert(!answer.actions, `${id}: new answer must not generate action checklist`);
+  assert(
+    !answer.report.questionReading.includes(answer.repeatingPattern),
+    `${id}: repeating pattern duplicated inside question reading`,
+  );
+  assert(
+    !answer.report.solutionReading.includes(answer.repeatingPattern),
+    `${id}: repeating pattern duplicated inside solution reading`,
+  );
 
   const reportText = [
     answer.headline,
