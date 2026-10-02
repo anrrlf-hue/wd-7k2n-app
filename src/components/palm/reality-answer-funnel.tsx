@@ -113,7 +113,7 @@ function TimingBlock({ answer, compact = false }: { answer: RealityAnswer; compa
               className={compact ? "rounded-xl bg-card/70 p-3" : "rounded-xl bg-accent p-4"}
             >
               <p className="text-xs font-semibold text-(--gold)">
-                {index === 0 ? "가장 강하게 보이는 시기" : index === 1 ? "두 번째로 눈여겨볼 시기" : "한 번 더 살아나는 시기"}
+                {index === 0 ? "가장 강하게 보이는 시기" : index === 1 ? "두 번째로 눈여겨볼 시기" : "세 번째로 눈여겨볼 시기"}
               </p>
               <p className="mt-1 text-base font-semibold">{window.label}</p>
 

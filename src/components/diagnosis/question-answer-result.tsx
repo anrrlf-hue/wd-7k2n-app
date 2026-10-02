@@ -41,7 +41,7 @@ function TimingWindows({ answer }: { answer: RealityAnswer }) {
                 ? "가장 강하게 보이는 시기"
                 : index === 1
                   ? "두 번째로 눈여겨볼 시기"
-                  : "한 번 더 살아나는 시기"}
+                  : "세 번째로 눈여겨볼 시기"}
             </p>
             <p className="mt-1 text-lg font-semibold">{window.label}</p>
 

@@ -70,35 +70,8 @@ function hashStr(s: string): number {
  * 섞지 않는다 — 전문용어는 evidence 전용). */
 function compose(seed: number, parts: { claim: string; scene: string; evidence: string }): ReportParagraph {
   const { claim, scene, evidence } = parts;
-  const variant = seed % 4;
-  let text: string;
-  switch (variant) {
-    case 0:
-      text = `${scene} ${claim}`;
-      break;
-    case 1:
-      text = `${claim} 이를테면 ${scene} ${selfCheck(seed)}`;
-      break;
-    case 2:
-      text = `${scene} ${selfCheck(seed + 1)} ${claim}`;
-      break;
-    default:
-      text = `${claim} ${scene}`;
-      break;
-  }
+  const text = seed % 2 === 0 ? `${scene} ${claim}` : `${claim} ${scene}`;
   return { text: text.trim(), evidence };
-}
-
-const SELF_CHECK_POOL = [
-  "실제 경험에도 해당하는지 돌아보세요.",
-  "비슷했던 상황과 달랐던 상황은 무엇인가요?",
-  "최근 일을 떠올렸을 때 이 설명과 맞는 부분이 있나요?",
-  "실제로도 이렇게 움직이는지 확인해 보세요.",
-  "자신의 경험과 다른 부분은 그대로 구분해 주세요.",
-  "주변의 평가보다 직접 경험한 장면을 떠올려 보세요.",
-];
-function selfCheck(seed: number): string {
-  return SELF_CHECK_POOL[seed % SELF_CHECK_POOL.length];
 }
 
 function pillarNamesKo(pillars: PillarFact["pillar"][]): string {
@@ -216,7 +189,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
 
   // ② 타고난 성향
   const temperament = compose(seedFor(2), {
-    claim: `기본적으로 ${elementTemperamentPhrase(dayElement)} 편입니다. ${dayStrength === "strong" ? "한번 납득한 방향은 쉽게 바꾸지 않고, 중요한 순간일수록 자기 기준이 더 선명해집니다" : dayStrength === "weak" ? "주변 분위기와 상황을 빠르게 읽고, 필요한 만큼 자신을 조정해 흐름을 맞추는 편입니다" : "상황에 따라 태도와 속도를 유연하게 바꾸되, 극단적으로 한쪽에 치우치지는 않습니다"}.`,
+    claim: `기본적으로 ${elementTemperamentPhrase(dayElement)}입니다. ${dayStrength === "strong" ? "한번 납득한 방향은 쉽게 바꾸지 않고, 중요한 순간일수록 자기 기준이 더 선명해집니다" : dayStrength === "weak" ? "주변 분위기와 상황을 빠르게 읽고, 필요한 만큼 자신을 조정해 흐름을 맞추는 편입니다" : "상황에 따라 태도와 속도를 유연하게 바꾸되, 극단적으로 한쪽에 치우치지는 않습니다"}.`,
     scene:
       dayStrength === "strong"
         ? "주변 의견이 갈리는 순간에도 쉽게 휩쓸리기보다, 스스로 납득한 기준을 중심으로 방향을 잡는 편입니다."
@@ -394,15 +367,15 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const opportunityStyle = compose(seedFor(13), {
     claim:
       peakStagePillars.length >= 2
-        ? "힘이 정점에 오른 자리가 여러 곳이라, 기회를 감지하는 순간 몸이 먼저 반응합니다."
+        ? "기회가 보일 때 빠르게 반응하고 주도권을 잡는 힘이 여러 상황에서 드러나기 쉽습니다."
         : peakStagePillars.length === 1
-          ? "정점의 기운이 한 자리에 뚜렷해, 특정 영역에서만큼은 기회를 놓치지 않습니다."
-          : "정점 기운이 뚜렷하지 않아, 순발력보다는 꾸준함으로 기회를 만드는 쪽에 가깝습니다.",
+          ? "특정 상황에서는 기회가 왔을 때 빠르게 반응하고 주도권을 잡는 힘이 또렷해집니다."
+          : "기회를 한 번에 낚아채기보다 준비를 쌓아 실제 기회로 연결하는 쪽에 가깝습니다.",
     scene: luckySinsal
-      ? `사주에 ${이가(luckySinsal.meaning)} 있어, 그것이 기회를 여는 실제 통로가 될 수 있습니다.`
+      ? `${이가(luckySinsal.meaning)} 기회를 여는 한 통로가 될 수 있습니다.`
       : gilsin.length > 0
-        ? "사주에 길한 기운도 있어, 결정적 순간에 예상치 못한 도움을 받을 때가 있습니다."
-        : "화려한 귀인의 도움보다는 스스로 준비해온 것이 기회와 만나는 쪽에 가깝습니다.",
+        ? "결정적인 순간에는 사람이나 상황의 도움을 받아 다음 단계로 넘어가는 흐름이 나타날 수 있습니다."
+        : "외부의 도움을 기다리기보다 스스로 준비해온 것이 기회와 만날 때 힘이 붙는 편입니다.",
     evidence: `정점(건록·제왕) 자리 ${pillarNamesKo(peakStagePillars) || "없음"}, 길신 ${gilsin.join(", ") || "없음"}${luckySinsal ? `, 신살 ${luckySinsal.name}` : ""}`,
   });
 
@@ -434,7 +407,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     },
     {
       title: "귀인의 도움을 받는 힘",
-      detail: "결정적인 순간에 사람이나 상황의 도움을 받는 경우가 많습니다.",
+      detail: "중요한 순간에 사람이나 상황의 도움을 받아 다음 단계로 넘어가는 흐름이 나타날 수 있습니다.",
       evidence: `길신 ${gilsin.join(", ") || "없음"}`,
       present: gilsin.length > 0,
     },

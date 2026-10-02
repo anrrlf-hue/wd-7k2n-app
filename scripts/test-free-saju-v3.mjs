@@ -67,6 +67,29 @@ assert(!/(질병이 있다|간이 안|심장이 안|반드시 결혼|상대가.*
   [report.relationshipStyle.text, report.loveStyle.text, report.lifeRhythm.text].join("\n")
 ), "unsafe relationship/health claim leaked into free V3");
 
+const customerReportText = [
+  report.snapshot.text,
+  report.temperament.text,
+  report.relationshipStyle.text,
+  report.loveStyle.text,
+  report.lifeRhythm.text,
+  report.wealthStructure.text,
+  report.jobOrientation.text,
+  report.decisionStyle.text,
+  report.opportunityStyle.text,
+  ...report.strengths.map((item) => item.detail),
+  ...report.cautions.map((item) => item.detail),
+].join("\n");
+assert(!/편 편입니다/.test(customerReportText), "awkward duplicated grammar leaked into free Saju");
+assert(
+  !/(사주에 .*몰입|실제로도 이렇게 움직이는지 확인해 보세요|비슷했던 상황과 달랐던 상황은 무엇인가요)/.test(customerReportText),
+  "meta/self-check filler leaked into customer Saju copy",
+);
+assert(
+  !/(정점의 기운|정점 기운)/.test(report.opportunityStyle.text),
+  "abstract internal-energy wording leaked into opportunity copy",
+);
+
 assert(focusMod.SAJU_FOCUS_VALUES.length === 5, "free Saju must expose exactly five top-level choices");
 for (const focus of focusMod.SAJU_FOCUS_VALUES) {
   assert(focusMod.parseSajuFocus(focus) === focus, "focus parser failed: " + focus);

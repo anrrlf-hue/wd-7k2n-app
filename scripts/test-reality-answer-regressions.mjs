@@ -234,6 +234,46 @@ assert(
 );
 console.log("PASS T04 explicit year/month timing is constrained to that month");
 
+const loveDomain = buildScopedAnswer("올해 새로운 인연이 들어올까요?", "love");
+const loveTimingText = (loveDomain.answer.timing.windows ?? [])
+  .flatMap((window) => [window.reason, window.meaning, window.positive, window.caution])
+  .join("\n");
+assert(
+  !/(합격|직책|급여|매출|현금흐름|책임 범위)/.test(loveTimingText),
+  "T05: work/money copy leaked into love timing",
+);
+assert(
+  /(관계|연락|만남|소개|대화)/.test(loveTimingText),
+  "T05: love timing lost relationship-specific language",
+);
+console.log("PASS T05 love timing stays in the relationship domain");
+
+const wellbeingDomain = buildScopedAnswer("올해 생활 리듬이 언제 바뀌나요?", "wellbeing");
+const wellbeingTimingText = (wellbeingDomain.answer.timing.windows ?? [])
+  .flatMap((window) => [window.reason, window.meaning, window.positive, window.caution])
+  .join("\n");
+assert(
+  !/(계약|합격|직책|급여|매출|수익|현금흐름)/.test(wellbeingTimingText),
+  "T06: work/money copy leaked into wellbeing timing",
+);
+assert(
+  /(생활|휴식|수면|활동량|회복)/.test(wellbeingTimingText),
+  "T06: wellbeing timing lost lifestyle-specific language",
+);
+console.log("PASS T06 wellbeing timing stays in the lifestyle domain");
+
+const timingLanguage = [
+  ...(loveDomain.answer.timing.windows ?? []).map((window) => window.reason),
+  ...(wellbeingDomain.answer.timing.windows ?? []).map((window) => window.reason),
+  loveDomain.answer.timing.now,
+  wellbeingDomain.answer.timing.now,
+].join("\n");
+assert(
+  !/(첫 흐름 뒤|후속 구간|한 번 더 살아나는|이어져서)/.test(timingLanguage),
+  "T07: timing copy implies chronology even though windows are ranked by strength",
+);
+console.log("PASS T07 timing ranking copy does not imply false chronology");
+
 // Customer UI regression: 5 visible choices, no why/how evidence UI, no action checklist.
 const funnelSource = fs.readFileSync(path.join(root, "src/components/palm/reality-answer-funnel.tsx"), "utf8");
 const reportSectionSource = fs.readFileSync(path.join(root, "src/components/diagnosis/report-section.tsx"), "utf8");
