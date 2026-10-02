@@ -135,6 +135,10 @@ assert(
   !/대운 중 재성 겹침 0회/.test(unknownReport.bigMoneyAffinity.evidence),
   "ASTRA-T6: unknown Daeun opportunity count exposed as zero",
 );
+assert(
+  unknownReport.cautions.every((item) => !/일간\s+(강|약)/.test(item.evidence)),
+  "ASTRA-T7: unknown-time provisional strength selected a personalized caution",
+);
 
 for (const focus of ["love_relationship", "work", "money", "wellbeing"]) {
   const focused = focusReportMod.buildFocusedSajuReport(facts, report, focus);

@@ -253,6 +253,20 @@ assert(
     diagnosisSource.includes("previousDomain: questionAnswer?.question.domain"),
   "UI00: direct question flow does not send prior conversation context",
 );
+const askAgainSource = diagnosisSource.match(/function askAgain\(\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
+assert(askAgainSource.includes('setQuestion("")'), "ASTRA-UI01: ask-again flow does not open an empty input");
+assert(
+  !askAgainSource.includes("setQuestionAnswer(null)") && !askAgainSource.includes("setQuestionPlan(null)"),
+  "ASTRA-UI02: typed follow-up clears the immediately preceding question context",
+);
+const questionFirstSource = fs.readFileSync(
+  path.join(root, "src/components/diagnosis/question-first-step.tsx"),
+  "utf8",
+);
+assert(
+  questionFirstSource.includes("disabled={value.trim().length < 1}"),
+  "ASTRA-UI03: supported one-character questions are blocked in the question UI",
+);
 
 const funnelSource = fs.readFileSync(path.join(root, "src/components/palm/reality-answer-funnel.tsx"), "utf8");
 assert(

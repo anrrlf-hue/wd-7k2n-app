@@ -480,13 +480,13 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
       title: "지나친 확신",
       detail: "내 판단에 확신이 생기면 새로운 정보가 들어와도 처음 생각을 유지하려는 힘이 강해질 수 있습니다. 그래서 이미 비용을 넣은 선택을 오래 끌거나, 반대로 처음 마음에 들지 않았다는 이유만으로 실제 조건이 좋은 제안을 놓칠 수 있습니다. 큰 선택일수록 반대 근거 하나와 중단 기준 하나를 먼저 정해두는 것이 좋습니다.",
       evidence: `일간 ${dayStrengthShort(dayStrength)}`,
-      present: dayStrength === "strong",
+      present: dayStrengthReliable && dayStrength === "strong",
     },
     {
       title: "정보가 부족한 상태에서의 결정",
       detail: "충분한 기준이 잡히기 전에 혼자 답을 내리려 하면 무엇을 더 확인해야 하는지 놓치기 쉽습니다. 그러면 결정을 오래 미루다 타이밍을 놓치거나, 가장 확신 있게 말하는 사람의 의견을 그대로 따라 불리한 조건을 받아들일 수 있습니다. 선택 전에 비교할 항목을 두세 개로 고정하고, 모르는 부분만 확인하는 방식이 잘 맞습니다.",
       evidence: `일간 ${dayStrengthShort(dayStrength)}`,
-      present: dayStrength === "weak",
+      present: dayStrengthReliable && dayStrength === "weak",
     },
     {
       title: "스트레스가 큰 때의 성급한 정리",

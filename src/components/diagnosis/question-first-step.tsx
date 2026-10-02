@@ -94,7 +94,7 @@ export function QuestionFirstStep({
         </Button>
         <Button
           size="lg"
-          disabled={value.trim().length < 2}
+          disabled={value.trim().length < 1}
           onClick={onNext}
           className="h-13 flex-1 rounded-full text-base"
         >

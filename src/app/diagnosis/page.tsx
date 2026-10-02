@@ -209,14 +209,10 @@ export default function DiagnosisPage() {
   }
 
   function askAgain() {
-    try {
-      sessionStorage.removeItem(QUESTION_STORAGE_KEY);
-    } catch {
-      // 무시
-    }
+    // 같은 사람의 후속 질문에서는 직전 질문/토픽을 유지한다.
+    // questionAnswer/questionPlan은 다음 요청의 previous context로 사용되며,
+    // 다른 사람/새 대화로 시작할 때만 restart()에서 초기화한다.
     setQuestion("");
-    setQuestionAnswer(null);
-    setQuestionPlan(null);
     setError(null);
     setStep(focus ? "question" : "focus");
   }
