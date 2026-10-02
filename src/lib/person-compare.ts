@@ -76,6 +76,10 @@ function safeName(value: string, fallback: string): string {
   return cleaned || fallback;
 }
 
+function personLabel(name: string): string {
+  return name === "나" ? "나" : `${name}님`;
+}
+
 function dayBranch(facts: SajuFacts): string | null {
   return facts.pillars.find((p) => p.pillar === "day")?.branchHanja ?? null;
 }
@@ -121,7 +125,7 @@ function elementStrengthText(me: PersonCompareInput, other: PersonCompareInput):
   if (rel === "same") {
     return {
       title: "기본 결",
-      text: `${me.name}님과 ${other.name}님은 일간의 오행이 같아 기본 판단 기준이나 반응 방식에서 서로 알아듣기 쉬운 부분이 생길 수 있습니다. 반대로 비슷한 방식으로 고집이 겹치면 누가 방향을 바꿀지 정하기 어려울 수 있어 역할과 결정권을 나누는 편이 좋습니다.`,
+      text: `두 사람은 일간의 오행이 같아 기본 판단 기준이나 반응 방식에서 서로 알아듣기 쉬운 부분이 생길 수 있습니다. 반대로 비슷한 방식으로 고집이 겹치면 누가 방향을 바꿀지 정하기 어려울 수 있어 역할과 결정권을 나누는 편이 좋습니다.`,
     };
   }
   if (rel === "a_produces_b" || rel === "b_produces_a") {
@@ -129,7 +133,7 @@ function elementStrengthText(me: PersonCompareInput, other: PersonCompareInput):
     const receiver = rel === "a_produces_b" ? other.name : me.name;
     return {
       title: "서로 보완되는 흐름",
-      text: `전통 사주에서 두 일간의 오행 관계를 보면 ${giver}님의 방식이 ${receiver}님의 움직임을 받쳐주는 흐름으로 읽을 수 있습니다. 한 사람이 계속 맞춰주는 관계로 고정하기보다, 실제 관계에서는 누가 아이디어를 내고 누가 마무리하는지 자연스럽게 나눠보는 것이 좋습니다.`,
+      text: `전통 사주에서 두 일간의 오행 관계를 보면 ${personLabel(giver)} 쪽의 방식이 ${personLabel(receiver)} 쪽의 움직임을 받쳐주는 흐름으로 읽을 수 있습니다. 한 사람이 계속 맞춰주는 관계로 고정하기보다, 실제 관계에서는 누가 아이디어를 내고 누가 마무리하는지 자연스럽게 나눠보는 것이 좋습니다.`,
     };
   }
   if (rel === "a_controls_b" || rel === "b_controls_a") {
@@ -177,7 +181,7 @@ function businessRoles(me: PersonCompareInput, other: PersonCompareInput): Perso
   const sections: PersonCompareSection[] = [
     {
       title: "역할을 나눈다면",
-      text: `${me.name}님은 ${WORK_ROLE_LABELS[meTop]}, ${other.name}님은 ${WORK_ROLE_LABELS[otherTop]} 쪽을 먼저 맡아보는 구성이 자연스럽습니다. 이건 직책을 정하는 판정이 아니라 두 사람의 사주에서 상대적으로 강하게 드러나는 업무 성향을 분리해 본 것입니다.`,
+      text: `${personLabel(me.name)} 쪽은 ${WORK_ROLE_LABELS[meTop]}, ${personLabel(other.name)} 쪽은 ${WORK_ROLE_LABELS[otherTop]} 역할을 먼저 맡아보는 구성이 자연스럽습니다. 이건 직책을 정하는 판정이 아니라 두 사람의 사주에서 상대적으로 강하게 드러나는 업무 성향을 분리해 본 것입니다.`,
     },
   ];
 
@@ -205,7 +209,7 @@ function relationshipRoles(me: PersonCompareInput, other: PersonCompareInput, pu
     return [
       {
         title: "관계에서 역할을 보면",
-        text: `${me.name}님은 ${me.facts.outputStarCount >= me.facts.resourceStarCount ? "표현하고 움직이는 쪽" : "생각을 정리하고 확인하는 쪽"}이 상대적으로 강하고, ${other.name}님은 ${other.facts.outputStarCount >= other.facts.resourceStarCount ? "표현하고 움직이는 쪽" : "생각을 정리하고 확인하는 쪽"}이 상대적으로 강합니다. 둘이 같은 속도를 요구하기보다 표현 방식이 다를 수 있다는 전제로 대화하는 편이 좋습니다.`,
+        text: `${personLabel(me.name)} 쪽은 ${me.facts.outputStarCount >= me.facts.resourceStarCount ? "표현하고 움직이는 편" : "생각을 정리하고 확인하는 편"}이 상대적으로 강하고, ${personLabel(other.name)} 쪽은 ${other.facts.outputStarCount >= other.facts.resourceStarCount ? "표현하고 움직이는 편" : "생각을 정리하고 확인하는 편"}이 상대적으로 강합니다. 둘이 같은 속도를 요구하기보다 표현 방식이 다를 수 있다는 전제로 대화하는 편이 좋습니다.`,
       },
     ];
   }
@@ -243,21 +247,21 @@ function timingSections(me: PersonCompareInput, other: PersonCompareInput, purpo
   if (purpose === "business_partner" || purpose === "work_colleague") {
     return [{
       title: "지금 같이 움직인다면",
-      text: `${me.name}님은 현재 ${meText} 흐름, ${other.name}님은 ${otherText} 흐름이 강조됩니다. 두 사람의 시기가 같다는 이유만으로 시작 시점을 정하지 말고, 한쪽은 확장하고 다른 쪽은 정리·검증하는 식으로 현재 흐름을 역할에 반영해 보는 것이 좋습니다.`,
+      text: `${personLabel(me.name)} 쪽은 현재 ${meText} 흐름, ${personLabel(other.name)} 쪽은 ${otherText} 흐름이 강조됩니다. 두 사람의 시기가 같다는 이유만으로 시작 시점을 정하지 말고, 한쪽은 확장하고 다른 쪽은 정리·검증하는 식으로 현재 흐름을 역할에 반영해 보는 것이 좋습니다.`,
     }];
   }
 
   return [{
     title: "지금 두 사람의 흐름",
-    text: `${me.name}님은 현재 ${meText}, ${other.name}님은 ${otherText} 쪽 흐름이 상대적으로 강조됩니다. 서로 같은 시기에 같은 반응을 해야 한다고 보기보다, 지금 각자가 무엇에 더 민감한지를 이해하는 참고로 보는 편이 자연스럽습니다.`,
+    text: `${personLabel(me.name)} 쪽은 현재 ${meText}, ${personLabel(other.name)} 쪽은 ${otherText} 흐름이 상대적으로 강조됩니다. 서로 같은 시기에 같은 반응을 해야 한다고 보기보다, 지금 각자가 무엇에 더 민감한지를 이해하는 참고로 보는 편이 자연스럽습니다.`,
   }];
 }
 
-function purposeHeadline(purpose: PersonComparePurpose, me: string, other: string): string {
-  if (purpose === "business_partner") return `${me}님과 ${other}님은 ‘누가 더 맞는가’보다 역할을 어떻게 나누느냐가 더 중요한 조합입니다.`;
-  if (purpose === "work_colleague") return `${me}님과 ${other}님은 같이 일할 때 각자의 강한 업무 영역을 분리해서 보는 것이 핵심입니다.`;
-  if (purpose === "love_marriage") return `${me}님과 ${other}님은 감정의 크기보다 표현 방식과 생활 리듬이 어떻게 맞물리는지를 보는 것이 중요합니다.`;
-  return `${me}님과 ${other}님은 누가 더 좋은 사람이냐보다 서로 어떤 방식으로 편해지고 부딪히는지를 보는 것이 중요합니다.`;
+function purposeHeadline(purpose: PersonComparePurpose, _me: string, _other: string): string {
+  if (purpose === "business_partner") return "두 사람은 ‘누가 더 맞는가’보다 역할을 어떻게 나누느냐가 더 중요한 조합입니다.";
+  if (purpose === "work_colleague") return "두 사람은 같이 일할 때 각자의 강한 업무 영역을 분리해서 보는 것이 핵심입니다.";
+  if (purpose === "love_marriage") return "두 사람은 감정의 크기보다 표현 방식과 생활 리듬이 어떻게 맞물리는지를 보는 것이 중요합니다.";
+  return "두 사람은 누가 더 좋은 사람이냐보다 서로 어떤 방식으로 편해지고 부딪히는지를 보는 것이 중요합니다.";
 }
 
 function nextQuestionsFor(purpose: PersonComparePurpose): string[] {
