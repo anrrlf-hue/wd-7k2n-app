@@ -184,7 +184,7 @@ assert(!personalityIds.includes("savingConsistency"), "finance-biased saving que
 
 const myeongsikSource = fs.readFileSync(path.join(root, "src/components/diagnosis/myeongsik-section.tsx"), "utf8");
 assert(
-  myeongsikSource.includes("오행에서 이렇게 볼 수 있어요"),
+  myeongsikSource.includes("오행은 이렇게 참고하면 돼요"),
   "Ohaeng guidance must be visible without a tap",
 );
 assert(
