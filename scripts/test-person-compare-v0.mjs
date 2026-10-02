@@ -119,6 +119,11 @@ assert(
 );
 assert(identicalRolesA === identicalRolesB, "B05: identical Saju role reading changes with input order");
 assert(identicalA.followUps.length === 3, "B06: comparison follow-up answers missing");
+const identicalTiming = identicalA.timing.map((x) => x.text).join("\n");
+assert(
+  /사주만으로 한쪽을 확장, 다른 쪽을 정리·검증 역할로 나눌 근거는 없습니다/.test(identicalTiming),
+  "B07: identical current flow still invents complementary timing roles",
+);
 
 const love = compareMod.buildPersonCompareResult(
   { name: "나", facts: meFacts },
