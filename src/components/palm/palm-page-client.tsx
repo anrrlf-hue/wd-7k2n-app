@@ -553,6 +553,15 @@ export function PalmPageClient({
     }
   }
 
+  function retryCurrentHand() {
+    stopLiveCamera();
+    setErrorMsg(null);
+    setRetakeAttempts(0);
+    setPalmFacts(null);
+    replacePreview(null);
+    setStage("upload");
+  }
+
   function reset() {
     stopLiveCamera();
     if (resumeKey) {
