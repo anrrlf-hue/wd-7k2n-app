@@ -56,14 +56,14 @@ ${JSON.stringify(core)}
 ${facts.compactText}
 
 ## 구조화 필드
-- 일간: ${facts.dayStemKo}(${facts.dayElement}) / 강약: ${facts.dayStrength}(${facts.dayStrengthScore})
+- 일간: ${facts.dayStemKo}(${facts.dayElement}) / 강약: ${facts.dayStrengthReliable ? `${facts.dayStrength}(${facts.dayStrengthScore})` : "미확인(출생시간 없음 — 임시 시각 계산값 사용 금지)"}
 - 격국: ${facts.geukguk} / 용신: ${facts.yongsin.join(", ")}
 - 오행 분포: ${JSON.stringify(facts.fiveElements)} (최다: ${facts.dominantElement}, 없는 오행: ${facts.missingElements.join(", ") || "없음"})
 - 재성 ${facts.wealthStarCount}개(궁위: ${facts.wealthStarPillars.join(", ") || "없음"}) / 비겁 ${facts.peerStarCount}개 / 식상 ${facts.outputStarCount}개(궁위: ${facts.outputStarPillars.join(", ") || "없음"}) / 관성 ${facts.officerStarCount}개(궁위: ${facts.officerStarPillars.join(", ") || "없음"}) / 인성 ${facts.resourceStarCount}개
 - 길신: ${facts.gilsin.join(", ") || "없음"} / 흉신: ${facts.hyungsin.join(", ") || "없음"} / 귀문: ${facts.gwimunRelations.join(", ") || "없음"}
 - 공망: ${facts.gongmang.join(", ")}
 - 12운성 정점(건록·제왕) 자리: ${facts.peakStagePillars.join(", ") || "없음"}
-- 현재 대운: ${facts.currentDaeun ? `${facts.currentDaeun.ageRange}세 ${facts.currentDaeun.ganzhi}` : "정보 없음"} (전체 대운 ${facts.daeunList.length}단계, 그중 재성이 겹치는 구간 ${facts.wealthOpportunityDaeunCount}회 — "1~3년" 같은 임의 구간이 아니라 이 실제 나이 구간만 인용)
+- 현재 대운: ${facts.currentDaeun ? `${facts.currentDaeun.ageRange}세 ${facts.currentDaeun.ganzhi}` : "정보 없음"} (전체 대운 ${facts.daeunList.length}단계, 그중 재성이 겹치는 구간 ${facts.wealthOpportunityDaeunCount === null ? "미확인" : `${facts.wealthOpportunityDaeunCount}회`} — "1~3년" 같은 임의 구간이 아니라 이 실제 나이 구간만 인용)
 - 출생시간 입력 여부: ${facts.hasTimeInput ? "있음" : "없음(시주 제외)"}
 
 ## 요청 스키마 (JSON만 응답, 서술형 필드는 전부 {"text":"...", "evidence":"..."} 형태)
