@@ -141,6 +141,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     dayStemKo,
     dayElement,
     dayStrength,
+    dayStrengthReliable,
     geukguk,
     dominantElement,
     missingElements,
@@ -164,7 +165,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
 
   const core = deriveSajuWorkCore(facts);
   const baseSeed = hashStr(
-    `${dayStemKo}${dayStrength}${geukguk}${wealthStarCount}${peerStarCount}${outputStarCount}${officerStarCount}${resourceStarCount}${gwimunRelations.length}`,
+    `${dayStemKo}${dayStrengthReliable ? dayStrength : "strength-unknown"}${facts.hasTimeInput ? geukguk : "geukguk-unknown"}${wealthStarCount}${peerStarCount}${outputStarCount}${officerStarCount}${resourceStarCount}${gwimunRelations.length}`,
   );
   const seedFor = (i: number) => hashStr(`${baseSeed}:${i}`);
 
@@ -173,6 +174,23 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     outputStarCount === peerStarCount ? "tie" : outputStarCount > peerStarCount ? "output" : "peer";
   const socialCompare: "officer" | "resource" | "tie" =
     officerStarCount === resourceStarCount ? "tie" : officerStarCount > resourceStarCount ? "officer" : "resource";
+  const strengthSummary = dayStrengthReliable
+    ? dayStrength === "strong"
+      ? "자기 기준이 분명하고 한번 방향을 잡으면 쉽게 흔들리지 않습니다"
+      : dayStrength === "weak"
+        ? "주변의 흐름을 잘 읽고 필요한 도움을 받아 방향을 잡는 데 능합니다"
+        : "자기 기준과 주변 상황을 함께 보며 균형점을 찾는 감각이 있습니다"
+    : "출생시간에 따라 달라질 수 있는 자기주도성의 강약은 한쪽으로 단정하지 않습니다";
+  const strengthShadow = dayStrengthReliable
+    ? dayStrength === "strong"
+      ? "확신이 고집으로 굳지 않는지"
+      : dayStrength === "weak"
+        ? "주변 의견 속에서 내 기준을 잃지 않는지"
+        : "조정이 지나쳐 결정을 미루지 않는지"
+    : "확인되지 않은 강약을 성격 사실처럼 받아들이지 않는지";
+  const strengthEvidence = dayStrengthReliable
+    ? `신강신약 ${dayStrengthShort(dayStrength)}`
+    : "출생시간 미상으로 신강신약 확정하지 않음";
 
   // ① 한눈에 보는 나 — 일간 물상(10종)으로 열어서 갑/을처럼 같은 오행이라도
   // 서로 다른 이미지로 시작하게 한다(벤치마크: 실제 사주 서비스는 "태양처럼",
@@ -182,21 +200,24 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const snapshot: ReportParagraph = {
     text:
       `당신은 ${imagery.image}처럼 ${imagery.core} 사람입니다. ` +
-      `${dayStrength === "strong" ? "자기 기준이 분명하고 한번 방향을 잡으면 쉽게 흔들리지 않습니다" : dayStrength === "weak" ? "주변의 흐름을 잘 읽고 필요한 도움을 받아 방향을 잡는 데 능합니다" : "자기 기준과 주변 상황을 함께 보며 균형점을 찾는 감각이 있습니다"}. ` +
-      `일과 관계, 중요한 선택에서는 ${activeCompare === "output" ? "생각을 말이나 결과물로 바꿔 보여줄 때" : activeCompare === "peer" ? "직접 움직이며 내 몫을 만들어갈 때" : "구상과 실행을 함께 굴릴 때"} 힘이 붙습니다. 다만 강점이 강해질수록 ${dayStrength === "strong" ? "확신이 고집으로 굳지 않는지" : dayStrength === "weak" ? "주변 의견 속에서 내 기준을 잃지 않는지" : "조정이 지나쳐 결정을 미루지 않는지"}를 함께 살피는 것이 중요합니다.`,
-    evidence: `일간 ${dayStemKo}(${dayElement}), 격국 ${geukguk}, 비겁 ${peerStarCount}개, 식상 ${outputStarCount}개, 관성 ${officerStarCount}개, 인성 ${resourceStarCount}개, 재성 ${wealthStarCount}개. 전통적 성향 해석이며 실제 성격·관계·직업·자산 상태를 측정한 결과는 아닙니다.`,
+      `${strengthSummary}. ` +
+      `일과 관계, 중요한 선택에서는 ${activeCompare === "output" ? "생각을 말이나 결과물로 바꿔 보여줄 때" : activeCompare === "peer" ? "직접 움직이며 내 몫을 만들어갈 때" : "구상과 실행을 함께 굴릴 때"} 힘이 붙습니다. 다만 ${strengthShadow}를 함께 살피는 것이 중요합니다.`,
+    evidence: `일간 ${dayStemKo}(${dayElement}), ${facts.hasTimeInput ? `격국 ${geukguk}` : "격국 미확정"}, ${strengthEvidence}, 비겁 ${peerStarCount}개, 식상 ${outputStarCount}개, 관성 ${officerStarCount}개, 인성 ${resourceStarCount}개, 재성 ${wealthStarCount}개. 전통적 성향 해석이며 실제 성격·관계·직업·자산 상태를 측정한 결과는 아닙니다.`,
   };
 
   // ② 타고난 성향
   const temperament = compose(seedFor(2), {
-    claim: `기본적으로 ${elementTemperamentPhrase(dayElement)}입니다. ${dayStrength === "strong" ? "한번 납득한 방향은 쉽게 바꾸지 않고, 중요한 순간일수록 자기 기준이 더 선명해집니다" : dayStrength === "weak" ? "주변 분위기와 상황을 빠르게 읽고, 필요한 만큼 자신을 조정해 흐름을 맞추는 편입니다" : "상황에 따라 태도와 속도를 유연하게 바꾸되, 극단적으로 한쪽에 치우치지는 않습니다"}.`,
-    scene:
-      dayStrength === "strong"
+    claim: dayStrengthReliable
+      ? `기본적으로 ${elementTemperamentPhrase(dayElement)}입니다. ${dayStrength === "strong" ? "한번 납득한 방향은 쉽게 바꾸지 않고, 중요한 순간일수록 자기 기준이 더 선명해집니다" : dayStrength === "weak" ? "주변 분위기와 상황을 빠르게 읽고, 필요한 만큼 자신을 조정해 흐름을 맞추는 편입니다" : "상황에 따라 태도와 속도를 유연하게 바꾸되, 극단적으로 한쪽에 치우치지는 않습니다"}.`
+      : `기본적으로 ${elementTemperamentPhrase(dayElement)}입니다. 다만 출생시간에 따라 달라질 수 있는 자기주도성의 강약은 한쪽으로 단정하지 않습니다.`,
+    scene: dayStrengthReliable
+      ? dayStrength === "strong"
         ? "주변 의견이 갈리는 순간에도 쉽게 휩쓸리기보다, 스스로 납득한 기준을 중심으로 방향을 잡는 편입니다."
         : dayStrength === "weak"
           ? "혼자 결론을 서두르기보다 분위기와 사람들의 반응을 살핀 뒤 움직이는 편입니다."
-          : "상황에 따라 표현 방식이나 속도가 달라질 수 있지만, 그 변화 자체가 이 사람의 유연함에 가깝습니다.",
-    evidence: `일간 ${dayStemKo}(${dayElement}) · 신강신약 ${dayStrengthShort(dayStrength)}, 오행 최다 ${dominantElement}`,
+          : "상황에 따라 표현 방식이나 속도가 달라질 수 있지만, 그 변화 자체가 이 사람의 유연함에 가깝습니다."
+      : "출생시간 없이도 확인되는 일간과 세 기둥의 오행·십성 구조를 중심으로 성향을 넓게 봅니다.",
+    evidence: `일간 ${dayStemKo}(${dayElement}) · ${strengthEvidence}, 오행 최다 ${dominantElement}`,
   });
   // 일지(자기·내면 궁위) 12운성 — 겉으로 드러나는 태도와 별개로, 결정적인
   // 순간에 어떤 에너지 단계가 깔려 있는지를 한 겹 더 보여준다.
@@ -231,12 +252,14 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   // 연애·결혼에서의 나 — 궁합이나 상대의 마음·결혼 결과를 예측하지 않는다.
   const loveStyle: ReportParagraph = {
     text:
-      dayStrength === "strong"
+      !dayStrengthReliable
+        ? "연애에서는 상대의 마음을 내 사주만으로 대신 판단하지 않고, 내가 관계에서 중요하게 보는 기준과 표현 방식을 중심으로 봅니다. 출생시간이 없어 관계에서 밀고 나가는 힘과 맞춰가는 힘 중 어느 쪽이 더 강한지는 단정하지 않습니다. 실제 관계에서는 말과 약속이 일치하는지, 내 기준을 무리하게 양보하고 있지는 않은지를 함께 확인하는 편이 좋습니다."
+        : dayStrength === "strong"
         ? "연애에서는 마음이 생겨도 쉽게 상대에게 끌려가기보다 내 기준을 유지하려는 편입니다. 관계가 깊어질수록 약속과 태도의 일관성을 중요하게 보고, 신뢰가 깨지면 마음을 다시 여는 데 시간이 걸릴 수 있습니다. 다만 내가 이미 결론을 내린 뒤에는 상대의 설명을 들을 여지가 줄어들 수 있어, 중요한 갈등일수록 결론보다 대화를 먼저 두는 편이 좋습니다."
         : dayStrength === "weak"
           ? "연애에서는 상대의 반응과 관계의 분위기를 세심하게 살피는 편입니다. 상대를 이해하고 맞춰주는 힘이 장점이지만, 관계를 지키려다 내 기준과 불편을 뒤로 미룰 수 있습니다. 좋아하는 마음과 실제로 관계가 건강하게 이어지는지는 따로 확인하는 것이 중요합니다."
           : "연애에서는 내 마음과 상대의 반응을 함께 보며 균형을 맞추려는 편입니다. 너무 빠르게 확신하지도, 쉽게 관계를 끊지도 않는 편이라 안정감이 있지만 애매한 상태가 길어질 수 있습니다. 관계가 중요한 만큼 서로의 말보다 실제 행동과 약속이 맞는지를 확인하는 편이 좋습니다.",
-    evidence: `일간 강약 ${dayStrengthShort(dayStrength)}, 관성 ${officerStarCount}개, 인성 ${resourceStarCount}개. 상대방의 마음·궁합·결혼 여부는 판단하지 않습니다.`,
+    evidence: `${strengthEvidence}, 관성 ${officerStarCount}개, 인성 ${resourceStarCount}개. 상대방의 마음·궁합·결혼 여부는 판단하지 않습니다.`,
   };
 
   // 생활 리듬·스트레스 패턴 — 질병·장기·치료 해석 금지.
@@ -279,7 +302,12 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
 
   // ⑤ 돈을 지키는 방식
   const keepingStyle: ReportParagraph =
-    dayStrength === "strong"
+    !dayStrengthReliable
+      ? {
+          text: "재물과 관련된 선택에서 얼마나 강하게 밀고 나가는지는 출생시간에 따라 달라질 수 있어 한쪽으로 단정하지 않습니다. 대신 현재 확인되는 재성·식상·관성·인성의 비중을 중심으로, 기회를 찾는 것과 지키는 기준이 어떻게 균형을 이루는지 넓게 봅니다. 실제 큰 선택에서는 사주보다 소득·지출·계약 조건을 우선 확인해야 합니다.",
+          evidence: `출생시간 미상으로 신강신약 미확정, 재성 ${wealthStarCount}개·식상 ${outputStarCount}개·관성 ${officerStarCount}개·인성 ${resourceStarCount}개`,
+        }
+      : dayStrength === "strong"
       ? {
           text:
             `재물과 관련된 선택에서는 의외로 기준이 분명한 편입니다. 마음이 움직이는 제안을 만나도 처음 세운 원칙에 맞는지를 확인하려 하고, 한번 납득한 기준은 쉽게 바꾸지 않습니다. ` +
@@ -318,16 +346,18 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   // ⑦ 큰돈/기회와 관계된 성향
   const bigMoneyAffinity = compose(seedFor(7), {
     claim:
-      wealthOpportunityDaeunCount === 0
-        ? "재물 신호가 강하게 몰리는 시기보다, 본업과 전문성을 통해 꾸준히 현실적인 성과를 만드는 방식이 더 중요하게 읽힙니다. 크게 한 번 잡는 것보다 오래 쌓아가는 힘이 결과를 만듭니다."
-        : wealthOpportunityDaeunCount <= 2
-          ? "재물과 관련된 선택이 평소보다 중요해지는 시기가 몇 차례 들어오는 편입니다. 그때는 기회를 잡는 것보다, 내가 감당할 수 있는 조건인지 차분히 확인하는 힘이 더 중요합니다."
-          : "재물과 기회가 크게 부각되는 시기가 여러 번 들어오는 편입니다. 다만 기회가 많다는 것이 곧 결과를 뜻하지는 않습니다. 준비된 기준과 실행력이 있을 때 그 흐름을 자기 것으로 만들 수 있습니다.",
+      wealthOpportunityDaeunCount === null
+        ? "출생시간이 없어 평생 대운에서 재물 신호가 몇 차례 들어오는지는 확정하지 않습니다. 지금은 원국에서 확인되는 돈과 일의 구조만으로 큰 흐름을 봅니다."
+        : wealthOpportunityDaeunCount === 0
+          ? "재물 신호가 강하게 몰리는 시기보다, 본업과 전문성을 통해 꾸준히 현실적인 성과를 만드는 방식이 더 중요하게 읽힙니다. 크게 한 번 잡는 것보다 오래 쌓아가는 힘이 결과를 만듭니다."
+          : wealthOpportunityDaeunCount <= 2
+            ? "재물과 관련된 선택이 평소보다 중요해지는 시기가 몇 차례 들어오는 편입니다. 그때는 기회를 잡는 것보다, 내가 감당할 수 있는 조건인지 차분히 확인하는 힘이 더 중요합니다."
+            : "재물과 기회가 크게 부각되는 시기가 여러 번 들어오는 편입니다. 다만 기회가 많다는 것이 곧 결과를 뜻하지는 않습니다. 준비된 기준과 실행력이 있을 때 그 흐름을 자기 것으로 만들 수 있습니다.",
     scene:
       peakStagePillars.length > 0 && wealthStarPillars.some((p) => peakStagePillars.includes(p))
         ? "특히 재물과 관련된 선택 앞에서는 반응이 빨라지고 추진력이 붙을 수 있습니다. 이때 속도만 앞서지 않고 조건을 끝까지 확인하는 것이 중요합니다."
         : "기회가 보이더라도 실제 결과는 정보, 실행력, 시장 상황 같은 현실 조건과 함께 결정됩니다.",
-    evidence: `대운 중 재성 겹침 ${wealthOpportunityDaeunCount}회, 정점 12운성 자리 ${pillarNamesKo(peakStagePillars) || "없음"}`,
+    evidence: `${wealthOpportunityDaeunCount === null ? "대운 중 재성 겹침 횟수 미확인" : `대운 중 재성 겹침 ${wealthOpportunityDaeunCount}회`}, 정점 12운성 자리 ${pillarNamesKo(peakStagePillars) || "없음"}`,
   });
 
   const { jobOrientation, teamStrength, soloStrength } = core.sections;
@@ -354,12 +384,14 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
           };
 
   const decisionStyle: ReportParagraph = {
-    text: dayStrength === "neutral"
+    text: !dayStrengthReliable
+      ? "출생시간이 없어 결정을 밀고 나가는 힘과 주변을 살피는 힘 중 어느 쪽이 더 강한지는 확정하지 않습니다. 대신 확인되는 오행과 십성 구조를 바탕으로 결정에서 중요하게 보는 기준을 넓게 살펴봅니다. 실제 선택에서는 충분한 정보와 내 기준이 함께 있는지를 확인하는 편이 좋습니다."
+      : dayStrength === "neutral"
       ? "결정을 내릴 때 자기 기준과 주변 상황을 함께 보는 편입니다. 처음부터 한쪽으로 밀어붙이기보다 지킬 기준과 조정할 부분을 나누어 생각합니다. 균형감은 좋지만, 선택지를 오래 열어두면 결론이 늦어질 수 있습니다."
       : dayStrength === "strong"
         ? "결정을 쉽게 남에게 맡기는 편은 아닙니다. 스스로 납득할 기준이 서야 움직이고, 한번 방향을 정하면 쉽게 흔들리지 않습니다. 중요한 순간에는 추진력이 강하지만, 이미 마음이 기운 뒤에는 다른 의견을 놓칠 수 있습니다."
         : "결정을 내리기 전에 필요한 정보와 주변 의견을 충분히 모으는 편입니다. 성급한 선택을 피하는 장점이 있지만, 기준이 많아질수록 결론을 미루기 쉬워집니다. 어느 정도 확인하면 결정할지 기준을 미리 정해두는 방식이 잘 맞습니다.",
-    evidence: `일간 ${dayStemKo}(${dayStrengthShort(dayStrength)}), 강약과 속도는 다른 의미`,
+    evidence: `일간 ${dayStemKo}(${dayStrengthReliable ? dayStrengthShort(dayStrength) : "강약 미확정"}), 강약과 속도는 다른 의미`,
   };
 
   // ⑬ 기회를 잡는 방식
