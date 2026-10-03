@@ -2,9 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import {
+  SAJU_DETAIL_FOCUS_VALUES,
   SAJU_FOCUS_LABELS,
   SAJU_FOCUS_SHORT_DESCRIPTIONS,
-  SAJU_FOCUS_VALUES,
   type SajuFocus,
 } from "@/lib/saju-focus";
 
@@ -21,30 +21,18 @@ export function SajuFocusStep({
 }) {
   return (
     <div className="flex flex-1 flex-col">
-      <p className="section-eyebrow">{mode === "question" ? "내 궁금증 답과 시기" : "무료 사주풀이"}</p>
+      <p className="section-eyebrow">{mode === "question" ? "더 자세히 볼 분야" : "세부 사주풀이"}</p>
       <h1 className="mt-2 text-2xl leading-snug font-semibold">
-        {mode === "question" ? (
-          <>
-            무엇이 가장
-            <br />
-            궁금하세요?
-          </>
-        ) : (
-          <>
-            어떤 사주가
-            <br />
-            가장 궁금하세요?
-          </>
-        )}
+        어떤 부분을
+        <br />
+        더 자세히 볼까요?
       </h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
-        {mode === "question"
-          ? "가장 가까운 분야를 하나 고르면, 다음 화면에서 실제 궁금한 내용을 바로 물어볼 수 있어요."
-          : "전체 사주는 넓게 보고, 분야를 고르면 그 주제를 5가지 관점으로 더 깊게 풀어드려요."}
+        전체 사주는 앞에서 이미 넓게 봤습니다. 여기서는 한 분야를 골라 더 깊게 본 뒤, 필요한 질문만 이어서 물어볼 수 있어요.
       </p>
 
       <div className="mt-7 grid grid-cols-2 gap-2.5">
-        {SAJU_FOCUS_VALUES.map((item) => (
+        {SAJU_DETAIL_FOCUS_VALUES.map((item) => (
           <button
             key={item}
             type="button"
@@ -52,7 +40,6 @@ export function SajuFocusStep({
             onClick={() => onChange(item)}
             className={
               "min-h-16 rounded-2xl border px-3 py-3 text-left transition-colors " +
-              (item === "overall" ? "col-span-2 " : "") +
               (value === item
                 ? "border-(--gold) bg-(--gold-soft)"
                 : "border-border bg-card")
@@ -73,7 +60,7 @@ export function SajuFocusStep({
           onClick={onNext}
           className="h-14 w-full rounded-full text-base"
         >
-          {mode === "question" ? "궁금한 내용 적기" : "생년월일 입력하기"}
+          자세히 보기
         </Button>
       </div>
     </div>

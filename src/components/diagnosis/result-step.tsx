@@ -1,16 +1,14 @@
 "use client";
 
 import { CompanionHeading } from "@/components/brand-companion";
-import { Clock3, Hand } from "lucide-react";
+import { Hand } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
-import { PersonCompareCard } from "@/components/diagnosis/person-compare-card";
 import { ReportSection } from "@/components/diagnosis/report-section";
-import { WealthTypeSection } from "@/components/diagnosis/wealth-type-section";
 import { MyeongsikSection } from "@/components/diagnosis/myeongsik-section";
 import { DaeunFlowSection } from "@/components/diagnosis/daeun-flow-section";
 import { ELEMENT_COLORS } from "@/lib/element-colors";
@@ -82,10 +80,8 @@ function OtherAreasSummary({
 
 function ConsultationFreeReport({
   report,
-  wealthType,
 }: {
   report: FreeSajuReport;
-  wealthType: FullSajuDiagnosis["wealthType"];
 }) {
   const sections = buildFreeConsultationSections(report);
 
@@ -122,7 +118,6 @@ function ConsultationFreeReport({
                 ))}
               </div>
             </section>
-            {section.key === "money" && <WealthTypeSection result={wealthType} />}
           </div>
         );
       })}
@@ -195,7 +190,7 @@ export function ResultStep({
     }
   }
 
-  const { tendency, deep, freeReport, focusedReport, resultSource, personalityInput, myeongsik, wealthType } = diagnosis;
+  const { tendency, deep, freeReport, focusedReport, resultSource, personalityInput, myeongsik } = diagnosis;
   const focus = diagnosis.focus ?? "overall";
 
   useEffect(() => {
@@ -269,7 +264,7 @@ export function ResultStep({
               <h2 className="mt-2 text-xl leading-8 font-semibold">
                 성향부터 관계·일·돈·앞으로의 흐름까지 하나로 이어봅니다
               </h2>
-              <ConsultationFreeReport report={report} wealthType={wealthType} />
+              <ConsultationFreeReport report={report} />
             </div>
           )}
 
@@ -288,36 +283,19 @@ export function ResultStep({
 
       <section className="mt-8 rounded-3xl border border-(--gold-soft) bg-card p-5">
         <div className="flex items-center gap-2 text-(--gold)">
-          <Clock3 className="size-4" />
-          <p className="section-eyebrow">사주를 더 이어서 보면</p>
+          <Hand className="size-4" />
+          <p className="section-eyebrow">다음은 손금으로 이어봅니다</p>
         </div>
         <h2 className="mt-2 text-xl leading-8 font-semibold">
-          이제 가장 궁금한 것을<br />직접 물어보세요
+          사주 전체를 봤다면<br />양손에서 지금의 모습도 확인해보세요
         </h2>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          방금 본 생년월일·출생시간을 다시 입력하지 않고, 같은 사주를 기준으로 질문에 대한 답과 시기를 이어서 봅니다. 사람과의 관계가 궁금하다면 아래에서 두 사람의 사주를 함께 볼 수도 있습니다.
+          손금은 선택사항입니다. 손금까지 본 뒤 연애·관계, 일·직업·사업, 돈·재물, 생활·건강 중 궁금한 분야를 골라 더 자세히 볼 수 있습니다.
         </p>
-        <Button asChild size="lg" className="mt-5 h-14 w-full rounded-full text-base">
-          <a href={`/diagnosis?mode=question&focus=${focus}&from=free`}>
-            내 질문 답과 시기 보기
-          </a>
-        </Button>
-      </section>
-
-      <PersonCompareCard me={diagnosis.birthInput} />
-
-      <div className="mt-7">
-        <p className="flex items-center gap-1.5 text-sm font-medium">
-          <Hand className="size-4 text-(--gold)" />
-          원하면 손금까지 더해볼 수 있어요
-        </p>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          손금은 필수가 아닙니다. 사주와 별도로 현재 드러난 판단·관계·생활 방식을 보고, 두 결과가 어디서 같고 다른지 이어서 살펴봅니다.
-        </p>
-        <div className="mt-3">
-          <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} focus={focus} />
+        <div className="mt-4">
+          <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} focus="overall" />
         </div>
-      </div>
+      </section>
     </div>
   );
 }

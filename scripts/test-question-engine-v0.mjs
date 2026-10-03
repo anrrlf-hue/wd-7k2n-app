@@ -110,7 +110,7 @@ for (const [id, raw, expectedDomain, expectedTopic] of cases) {
   assert(plan.resolvedQuestion.length >= 10, `${id}: resolved question too short`);
   assert(plan.selectedSignals.length >= 3, `${id}: signal plan too thin`);
   assert(plan.answerFrame.length >= 4, `${id}: answer frame missing`);
-  assert(plan.nextQuestions.length === 3, `${id}: must provide exactly three next questions`);
+  assert(plan.nextQuestions.length === 2, `${id}: must provide exactly two non-repetitive next questions`);
   assert(plan.nextQuestions.every((x) => x.label && x.question && x.focus), `${id}: malformed follow-up`);
 }
 

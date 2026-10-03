@@ -8,6 +8,15 @@ export const SAJU_FOCUS_VALUES = [
 
 export type SajuFocus = (typeof SAJU_FOCUS_VALUES)[number];
 
+export const SAJU_DETAIL_FOCUS_VALUES = [
+  "love_relationship",
+  "work",
+  "money",
+  "wellbeing",
+] as const satisfies readonly SajuFocus[];
+
+export type SajuDetailFocus = (typeof SAJU_DETAIL_FOCUS_VALUES)[number];
+
 export const SAJU_FOCUS_LABELS: Record<SajuFocus, string> = {
   overall: "전체 사주",
   love_relationship: "연애·인간관계",

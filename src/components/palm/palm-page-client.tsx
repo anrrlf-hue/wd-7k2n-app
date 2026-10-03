@@ -17,7 +17,7 @@ import {
 } from "@/lib/palm-detection";
 import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
 import { PalmReadingSections, PalmBilateralSection, PalmFutureTimelineSection, TripleCompareSection } from "@/components/palm/palm-reading-sections";
-import { RealityAnswerFunnel } from "@/components/palm/reality-answer-funnel";
+import { PostReadingDetailFlow } from "@/components/palm/post-reading-detail-flow";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
@@ -301,15 +301,6 @@ export function PalmPageClient({
       cameraStreamRef.current = null;
     };
   }, []);
-
-  useEffect(() => {
-    if (!initialQuestion?.trim()) return;
-    if (stage !== "result" && stage !== "saju_only") return;
-    if (funnelActive) return;
-    setFunnelActive(true);
-    setReadingOpen(false);
-    setChapter(4);
-  }, [initialQuestion, stage, funnelActive]);
 
   useEffect(() => {
     if (!resumeKey || (stage !== "result" && stage !== "saju_only")) return;
@@ -633,7 +624,7 @@ export function PalmPageClient({
                   ref={cameraVideoRef}
                   playsInline
                   muted
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain object-center"
                 />
                 <div
                   aria-hidden="true"
@@ -714,7 +705,7 @@ export function PalmPageClient({
                 <div className="mt-5 flex items-center gap-3 rounded-2xl border border-(--gold-soft) bg-card p-4">
                   <div className="size-14 overflow-hidden rounded-xl border border-(--gold-soft)">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={rightPreviewUrl} alt="오른손 촬영 완료" className="size-full object-cover" />
+                    <img src={rightPreviewUrl} alt="오른손 촬영 완료" className="size-full bg-black object-contain object-center" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-(--gold)">오른손 분석 완료</p>
@@ -795,7 +786,7 @@ export function PalmPageClient({
             onClick={handleSkipPalm}
             className="mt-auto pt-8 text-center text-sm text-muted-foreground"
           >
-            손금 없이 사주 결과만 볼게요
+            손금 없이 세부 분야로 넘어갈게요
           </button>
         </div>
       )}
@@ -805,7 +796,7 @@ export function PalmPageClient({
           {previewUrl && (
             <div className="mystic-ring size-40 overflow-hidden rounded-2xl border border-(--gold-soft)">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previewUrl} alt="" className="size-full object-cover" />
+              <img src={previewUrl} alt="" className="size-full bg-black object-contain object-center" />
             </div>
           )}
           <motion.div
@@ -826,7 +817,7 @@ export function PalmPageClient({
           {previewUrl && (
             <div className="mystic-ring mx-auto size-36 overflow-hidden rounded-2xl border border-(--gold-soft) opacity-70">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previewUrl} alt="" className="size-full object-cover" />
+              <img src={previewUrl} alt="" className="size-full bg-black object-contain object-center" />
             </div>
           )}
           <div className="mystic-card mt-5 p-5">
@@ -844,7 +835,7 @@ export function PalmPageClient({
             </Button>
             {retakeAttempts >= 2 && (
               <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">
-                손금 없이 사주 결과만 계속 보기
+                손금 없이 세부 분야로 넘어가기
               </button>
             )}
           </div>
@@ -870,14 +861,13 @@ export function PalmPageClient({
               다른 사진 선택하기
             </Button>
             <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">
-              손금 없이 사주 결과만 계속 보기
+              손금 없이 세부 분야로 넘어가기
             </button>
           </div>
         </div>
       )}
 
-      {funnelActive && <button type="button" className="reading-toggle" aria-expanded={readingOpen} aria-controls="previous-reading" onClick={() => setReadingOpen(!readingOpen)}>{readingOpen ? "이전 결과 접기" : "이전 사주·손금 결과 다시 보기"}<span aria-hidden="true">{readingOpen ? "−" : "+"}</span></button>}
-      <div id="previous-reading" hidden={!readingOpen}>
+      <div id="previous-reading">
       {stage === "result" && palmFacts && (
         <div className="mt-6 flex flex-1 flex-col">
           <motion.div
@@ -892,9 +882,9 @@ export function PalmPageClient({
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-accent p-3">
                     {rightPreviewUrl && (
-                      <div className="aspect-square overflow-hidden rounded-lg border border-(--gold-soft)">
+                      <div className="aspect-[3/4] overflow-hidden rounded-lg border border-(--gold-soft) bg-black">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={rightPreviewUrl} alt="오른손" className="size-full object-cover" />
+                        <img src={rightPreviewUrl} alt="오른손" className="size-full bg-black object-contain object-center" />
                       </div>
                     )}
                     <p className="mt-2 text-sm font-semibold">오른손{dominantHand === "right" ? " · 주로 쓰는 손" : ""}</p>
@@ -902,9 +892,9 @@ export function PalmPageClient({
                   </div>
                   <div className="rounded-xl bg-accent p-3">
                     {leftPreviewUrl && (
-                      <div className="aspect-square overflow-hidden rounded-lg border border-(--gold-soft)">
+                      <div className="aspect-[3/4] overflow-hidden rounded-lg border border-(--gold-soft) bg-black">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={leftPreviewUrl} alt="왼손" className="size-full object-cover" />
+                        <img src={leftPreviewUrl} alt="왼손" className="size-full bg-black object-contain object-center" />
                       </div>
                     )}
                     <p className="mt-2 text-sm font-semibold">왼손{dominantHand === "left" ? " · 주로 쓰는 손" : ""}</p>
@@ -959,20 +949,14 @@ export function PalmPageClient({
       )}
 
       </div>
-      {(stage === "result" || stage === "saju_only") && birthInput && resumeKey && (
-        <RealityAnswerFunnel
+      {(stage === "result" || stage === "saju_only") && birthInput && (
+        <PostReadingDetailFlow
           birthInput={birthInput}
           personalityInput={personalityInput}
-          palmLines={palmFacts?.onnxLines ?? null}
           palmFacts={palmFacts}
           leftPalmFacts={leftPalmFacts}
           rightPalmFacts={rightPalmFacts}
           dominantHand={dominantHand}
-          resumeKey={resumeKey}
-          initialFocus={focus}
-          initialQuestion={initialQuestion}
-          onStart={() => { setFunnelActive(true); setReadingOpen(false); }}
-          onChapterChange={setChapter}
         />
       )}
 

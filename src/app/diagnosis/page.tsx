@@ -157,10 +157,8 @@ export default function DiagnosisPage() {
 
       const raw = sessionStorage.getItem(FREE_STORAGE_KEY);
       if (!raw) {
-        const directFreeStart = params.get("start") === "free";
-        const nextFocus = urlFocus ?? (directFreeStart ? "overall" : null);
-        setFocus(nextFocus);
-        setStep(directFreeStart && nextFocus ? "date" : "focus");
+        setFocus("overall");
+        setStep("date");
         return;
       }
 
@@ -196,7 +194,7 @@ export default function DiagnosisPage() {
     clearCurrentSession();
     const params = new URLSearchParams(window.location.search);
     const focusParam = params.get("focus");
-    setFocus(focusParam ? parseSajuFocus(focusParam) : null);
+    setFocus(mode === "free" ? "overall" : focusParam ? parseSajuFocus(focusParam) : null);
     setQuestion("");
     setBirthDate("");
     setKnowsTime(false);
@@ -206,7 +204,7 @@ export default function DiagnosisPage() {
     setQuestionAnswer(null);
     setQuestionPlan(null);
     setError(null);
-    setStep("focus");
+    setStep(mode === "free" ? "date" : "focus");
   }
 
   function askAgain() {

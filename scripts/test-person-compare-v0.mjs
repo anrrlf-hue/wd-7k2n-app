@@ -153,18 +153,16 @@ assert(
 );
 
 const resultSource = fs.readFileSync(path.join(root, "src/components/diagnosis/result-step.tsx"), "utf8");
+const postReadingSource = fs.readFileSync(path.join(root, "src/components/palm/post-reading-detail-flow.tsx"), "utf8");
 const compareCardSource = fs.readFileSync(path.join(root, "src/components/diagnosis/person-compare-card.tsx"), "utf8");
 const apiSource = fs.readFileSync(path.join(root, "src/app/api/person-compare/route.ts"), "utf8");
 
-assert(resultSource.includes("PersonCompareCard"), "UI01: result page does not include person comparison");
-assert(resultSource.includes("사주를 더 이어서 보면"), "UI02: person comparison is not placed in the Saju continuation area");
+assert(!resultSource.includes("PersonCompareCard"), "UI01: person comparison should not interrupt the initial broad Saju reading");
+assert(resultSource.includes("다음은 손금으로 이어봅니다"), "UI02: initial Saju should lead to palm before relationship expansion");
+assert(postReadingSource.includes("PersonCompareCard"), "UI03: person comparison must be available after the personal Saju/palm/detail flow");
 assert(
-  resultSource.indexOf("사주를 더 이어서 보면") < resultSource.indexOf("<PersonCompareCard"),
-  "UI03: person comparison should come after the Saju continuation bridge",
-);
-assert(
-  resultSource.indexOf("<PersonCompareCard") < resultSource.indexOf("원하면 손금까지 더해볼 수 있어요"),
-  "UI04: person comparison should appear before optional palm expansion",
+  postReadingSource.indexOf("이 분야에서 질문하기") < postReadingSource.indexOf("<PersonCompareCard"),
+  "UI04: person comparison should come after the selected personal detail reading",
 );
 for (const phrase of ["나와 이 사람", "이 사람과 나 보기", "두 사람 함께 보기", "다른 사람과 비교해보기"]) {
   assert(compareCardSource.includes(phrase), `UI05: missing natural compare copy: ${phrase}`);

@@ -402,6 +402,7 @@ export function buildQuestionEnginePlan(
     timingStrategy,
     selectedSignals: SIGNALS_BY_DOMAIN[domain],
     answerFrame: ANSWER_FRAME_BY_INTENT[parse.intent],
-    nextQuestions: followUpsFor(topic, domain),
+    // 후속질문은 반복감을 줄이기 위해 서로 다른 두 갈래까지만 제시한다.
+    nextQuestions: followUpsFor(topic, domain).slice(0, 2),
   };
 }

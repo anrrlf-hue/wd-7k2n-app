@@ -62,9 +62,6 @@ export function buildFreeConsultationSections(report: FreeSajuReport): FreeConsu
         textOf(report.wealthStructure),
         textOf(report.earningStyle),
         textOf(report.keepingStyle),
-        textOf(report.leakPattern),
-        textOf(report.bigMoneyAffinity),
-        textOf(report.peopleAndMoney),
       ]),
     },
     {

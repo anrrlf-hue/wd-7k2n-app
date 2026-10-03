@@ -65,10 +65,10 @@ export function PalmEntryCard({
         <p className="mt-1 text-xs opacity-80">
           {variant === "answerEnhance"
             ? "선택사항 · 질문은 그대로 두고, 손금에서 보이는 현재 모습을 종합답에 더합니다"
-            : "사진 한 장으로 독립된 두 번째 분석"}
+            : "오른손·왼손을 각각 보고, 공통점과 차이까지 함께 정리합니다"}
         </p>
         <span className="mt-2 inline-flex rounded-full bg-background/20 px-3 py-1 text-sm font-semibold">
-          {variant === "answerEnhance" ? "손금까지 함께 보기" : "손금 사진 찍기"}
+          {variant === "answerEnhance" ? "손금까지 함께 보기" : "양손 손금 보기"}
         </span>
       </div>
       <ArrowRight className="size-4 shrink-0 text-current" />

@@ -197,7 +197,7 @@ assert(view.personalTitle === "당신에게는 이렇게 나타나요", "S06: pe
 assert(view.currentTitle === "지금은 이런 흐름입니다", "S07: current section title drifted");
 assert(view.futureTitle === "앞으로는 이렇게 볼 수 있어요", "S08: future section title drifted");
 assert(view.cautionTitle === "여기서는 이것만 조심해서 보세요", "S09: caution section title drifted");
-assert(view.nextQuestions.length === 3, "S10: conversational next-question bridge missing");
+assert(view.nextQuestions.length === 2, "S10: concise conversational next-question bridge missing");
 
 const styleRules = styleMod.READING_STYLE_V1_RULES.join("\n");
 for (const phrase of ["직접 답", "출처를 섞지", "억지로 일치시키지", "다음 질문"]) {

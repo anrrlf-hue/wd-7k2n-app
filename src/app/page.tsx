@@ -9,14 +9,14 @@ const BENEFITS = [
     description: "성향·연애·일·재물·생활과 큰 흐름을 한 번에 먼저 살펴봅니다.",
   },
   {
-    icon: Clock3,
-    title: "궁금한 건 시기까지 묻습니다",
-    description: "무료 사주를 본 뒤 같은 정보로 질문에 대한 답과 시기를 이어봅니다.",
+    icon: Hand,
+    title: "손금까지 보면 더 입체적입니다",
+    description: "사주로 전체 흐름을 본 뒤, 양손에서 지금 드러난 모습까지 함께 살펴봅니다.",
   },
   {
-    icon: Hand,
-    title: "원하면 손금까지 더합니다",
-    description: "사주는 흐름과 시기를, 손금은 지금 드러난 모습을 보완해 함께 봅니다.",
+    icon: Clock3,
+    title: "그다음 궁금한 분야를 깊게 봅니다",
+    description: "연애·관계, 일·직업·사업, 돈·재물, 생활·건강 중 하나를 골라 자세히 보고 필요한 질문만 이어갑니다.",
   },
 ];
 
@@ -37,8 +37,8 @@ export default function Home() {
         />
 
         <div className={styles.heroPromise}>
-          <span>내 사주를 먼저 보고,</span>
-          <strong>궁금한 것은 답과 시기까지</strong>
+          <span>내 사주를 먼저 넓게 보고,</span>
+          <strong>손금과 궁금한 분야까지</strong>
           <span>한 흐름으로 이어봅니다.</span>
         </div>
 
@@ -50,19 +50,11 @@ export default function Home() {
           내 사주 무료로 보기 <span aria-hidden="true">→</span>
         </Link>
 
-        <Link
-          href="/diagnosis?mode=question"
-          aria-label="궁금한 것 바로 물어보기"
-          className={styles.questionLink}
-        >
-          궁금한 것 바로 물어보기
-        </Link>
-
         <section className={styles.benefitPanel} aria-label="운돈이 특별한 이유">
           <div className={styles.benefitHeading}>
             <h2>운·돈이 특별한 이유</h2>
             <div className={styles.moonDivider} aria-hidden="true">☾</div>
-            <p>복잡한 사주를, 지금 궁금한 질문에 맞춰 쉽게</p>
+            <p>전체를 먼저 보고, 필요한 부분만 더 깊고 쉽게</p>
           </div>
 
           <div className={styles.benefitGrid}>

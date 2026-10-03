@@ -464,6 +464,9 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   ];
   const strengths = strengthPool
     .filter((c) => c.present)
+    // 전체 사주에서는 재물 한 축이 성향·관계·일보다 앞서 보이지 않게 한다.
+    // 돈·재물 상세를 선택했을 때 해당 구조를 충분히 깊게 보여준다.
+    .sort((a, b) => Number(a.title === "재물을 알아보는 감각") - Number(b.title === "재물을 알아보는 감각"))
     .slice(0, 3)
     .map(({ title, detail, evidence }) => ({ title, detail, evidence }));
 
@@ -472,7 +475,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const cautionPool: { title: string; detail: string; evidence: string; present: boolean }[] = [
     {
       title: "감정이 앞서는 순간",
-      detail: "기분이 크게 올라가거나 불편함이 커진 순간에는 조건을 끝까지 보기보다 빨리 결정해 상황을 끝내고 싶어질 수 있습니다. 이때 돈이 걸린 제안은 필요 이상으로 받아들이고, 반대로 괜찮은 기회도 순간 감정 때문에 너무 빨리 끊어낼 수 있습니다. 금액·기간·되돌릴 수 있는지 세 가지를 감정이 가라앉은 뒤 다시 확인하는 편이 손실을 줄여줍니다.",
+      detail: "기분이 크게 올라가거나 불편함이 커진 순간에는 조건을 끝까지 보기보다 빨리 결정해 상황을 끝내고 싶어질 수 있습니다. 이때 중요한 제안이나 관계를 필요 이상으로 받아들이거나, 반대로 괜찮은 선택도 순간 감정 때문에 너무 빨리 끊어낼 수 있습니다. 결정이 되돌릴 수 있는지와 내가 정말 원하는 것이 무엇인지 감정이 가라앉은 뒤 다시 확인하는 편이 좋습니다.",
       evidence: `흉신 ${hyungsin.join(", ")}`,
       present: hyungsin.length > 0,
     },
@@ -490,19 +493,19 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     },
     {
       title: "스트레스가 큰 때의 성급한 정리",
-      detail: "생각이 복잡하고 예민해질수록 당장 불편한 상황을 끝내는 선택에 마음이 기울 수 있습니다. 이때 계약을 급히 정리하거나, 사람과의 갈등 때문에 돈과 기회까지 함께 포기하면 나중에 조건을 다시 볼 여지가 사라집니다. 중요한 선택은 스트레스의 원인과 실제 조건을 분리해서 보는 편이 좋습니다.",
+      detail: "생각이 복잡하고 예민해질수록 당장 불편한 상황을 끝내는 선택에 마음이 기울 수 있습니다. 사람과의 갈등이나 일의 답답함 때문에 관련된 선택까지 한꺼번에 정리하면 나중에 다시 볼 여지가 줄어듭니다. 중요한 선택은 스트레스의 원인과 실제 문제를 분리해서 보는 편이 좋습니다.",
       evidence: gwimunRelations.join(", "),
       present: gwimunRelations.length > 0,
     },
     {
       title: "시작은 빠른데 마무리가 분산되는 패턴",
-      detail: "새로운 일과 아이디어를 시작하는 힘이 강한 대신 동시에 여러 가지를 벌이면 시간과 돈이 여러 곳으로 나뉠 수 있습니다. 기회가 없어서 놓치는 것이 아니라, 끝까지 완성해 결과로 바꿀 자원이 부족해져 좋은 기회도 중간에서 힘이 빠지는 모습으로 나타날 수 있습니다. 새 일을 시작하기 전에 지금 끝낼 한 가지를 먼저 정하는 편이 유리합니다.",
+      detail: "새로운 일과 아이디어를 시작하는 힘이 강한 대신 동시에 여러 가지를 벌이면 시간과 집중력이 여러 곳으로 나뉠 수 있습니다. 기회가 없어서 놓치는 것이 아니라, 끝까지 완성해 결과로 바꿀 여력이 부족해져 좋은 시작도 중간에서 힘이 빠질 수 있습니다. 새 일을 시작하기 전에 지금 끝낼 한 가지를 먼저 정하는 편이 유리합니다.",
       evidence: `식상 ${outputStarCount}개`,
       present: outputStarCount >= 2,
     },
     {
       title: "부족한 기운이 필요한 순간",
-      detail: `타고난 기운 중 ${이가(missingElements.join(", "))} 비어 있어, 평소에는 문제가 없어도 그 성향이 꼭 필요한 순간에 반응이 한쪽으로 치우칠 수 있습니다. 결단이 필요한데 지나치게 미루거나, 반대로 상황을 바꿔야 하는데 익숙한 방식만 붙들면 돈과 기회의 타이밍을 놓치기 쉽습니다. 부족한 부분은 사람·환경·체크리스트처럼 바깥 기준을 이용해 보완하는 편이 좋습니다.`,
+      detail: `타고난 기운 중 ${이가(missingElements.join(", "))} 비어 있어, 평소에는 문제가 없어도 그 성향이 꼭 필요한 순간에 반응이 한쪽으로 치우칠 수 있습니다. 결단이 필요한데 지나치게 미루거나, 반대로 상황을 바꿔야 하는데 익숙한 방식만 붙들면 변화의 타이밍을 놓치기 쉽습니다. 부족한 부분은 사람·환경·체크리스트처럼 바깥 기준을 이용해 보완하는 편이 좋습니다.`,
       evidence: `없는 오행 ${missingElements.join(", ")}`,
       present: missingElements.length > 0,
     },

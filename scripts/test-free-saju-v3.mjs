@@ -155,49 +155,49 @@ assert(
 );
 
 const resultSource = fs.readFileSync(path.join(root, "src/components/diagnosis/result-step.tsx"), "utf8");
-assert(resultSource.includes("을 중심으로 보면"), "focused deep-dive UI missing");
-assert(resultSource.includes("지금 궁금한 부분부터 깊게 풀어볼게요"), "focused-vs-overall distinction missing");
 assert(resultSource.includes("내 사주를 이어서 보면"), "broad overall Saju UI missing");
 assert(resultSource.includes("관계에서는 이렇게 나타나요") || resultSource.includes("buildFreeConsultationSections"), "relationship consultation section missing from free result");
 assert(resultSource.includes("에너지를 쓰고 회복하는 방식도 보입니다") || resultSource.includes("buildFreeConsultationSections"), "life rhythm consultation section missing from free result");
 assert(!resultSource.includes("나의 재물사주"), "money-only free-result heading remains");
-assert(resultSource.includes("사주를 더 이어서 보면"), "free Saju must lead naturally into the question/timing step");
-assert(resultSource.includes("내 질문 답과 시기 보기"), "post-free question CTA missing");
-assert(resultSource.includes("원하면 손금까지 더해볼 수 있어요"), "palm must remain an optional deeper step");
-assert(
-  resultSource.includes('<a href={`/diagnosis?mode=question&focus=${focus}&from=free`}'),
-  "ASTRA-U1: free-to-question CTA is not a real navigation",
-);
+assert(resultSource.includes("다음은 손금으로 이어봅니다"), "free Saju must lead to palm before detailed topics");
+assert(resultSource.includes("손금까지 본 뒤 연애·관계"), "post-Saju sequence must explain detail topics after palm");
+assert(!resultSource.includes("내 질문 답과 시기 보기"), "question CTA must not interrupt Saju -> palm sequence");
 
 const homeSource = fs.readFileSync(path.join(root, "src/app/page.tsx"), "utf8");
 const diagnosisSource = fs.readFileSync(path.join(root, "src/app/diagnosis/page.tsx"), "utf8");
 const focusStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/saju-focus-step.tsx"), "utf8");
+const postReadingSource = fs.readFileSync(path.join(root, "src/components/palm/post-reading-detail-flow.tsx"), "utf8");
 
 assert(!homeSource.includes("LandingFocusSelector"), "focus choices must not cover the first landing screen");
 assert(homeSource.includes("내 사주 무료로 보기"), "free Saju primary CTA missing");
-assert(homeSource.includes("궁금한 것 바로 물어보기"), "question secondary CTA missing");
+assert(!homeSource.includes("궁금한 것 바로 물어보기"), "direct question CTA must not bypass Saju -> palm sequence");
 assert(
   homeSource.includes("/diagnosis?mode=free&focus=overall&start=free"),
   "primary CTA must start the broad free Saju flow directly",
 );
-assert(homeSource.includes("/diagnosis?mode=question"), "question CTA must preserve direct question mode");
 assert(
-  homeSource.includes("궁금한 건 시기까지 묻습니다") &&
-    homeSource.includes("원하면 손금까지 더합니다"),
-  "homepage value sequence must be Saju -> question/timing -> optional palm",
+  homeSource.includes("손금까지 보면 더 입체적입니다") &&
+    homeSource.includes("그다음 궁금한 분야를 깊게 봅니다"),
+  "homepage value sequence must be Saju -> palm -> detail",
 );
-assert(diagnosisSource.includes('type Step ='), "diagnosis step state missing");
-assert(diagnosisSource.includes('| "question"'), "question-first step missing from diagnosis flow");
-assert(diagnosisSource.includes('/api/reality-answer'), "question-first flow must call the answer/timing API");
-assert(diagnosisSource.includes('mode === "question"'), "question-first mode routing missing");
-assert(diagnosisSource.includes('params.get("start") === "free"'), "direct free Saju start routing missing");
-assert(diagnosisSource.includes('params.get("from") === "free"'), "free-to-question handoff routing missing");
-assert(
-  diagnosisSource.includes('params.get("from") !== "free"'),
-  "ASTRA-U2: stale question session still outranks free-to-question handoff",
-);
-assert(focusStepSource.includes("어떤 사주가"), "diagnosis focus chooser missing");
-assert(focusStepSource.includes("전체 사주"), "overall Saju choice missing");
+assert(diagnosisSource.includes('setFocus("overall")') && diagnosisSource.includes('setStep("date")'), "free Saju must start broad without an overall chooser");
+assert(focusStepSource.includes("SAJU_DETAIL_FOCUS_VALUES"), "detail chooser must use only four detailed topics");
+assert(!focusStepSource.includes("SAJU_FOCUS_VALUES.map"), "overall must not remain in the visible detail choices");
+assert(postReadingSource.includes("어떤 부분을 더 자세히 볼까요?"), "post-palm detail chooser missing");
+assert(postReadingSource.includes("연애·관계") || postReadingSource.includes("SAJU_FOCUS_LABELS"), "relationship detail path missing");
+assert(postReadingSource.includes("PersonCompareCard"), "person compare must move after the personal reading");
+assert(postReadingSource.includes("history.length < 2"), "question flow must stop after one follow-up");
+assert(postReadingSource.includes("slice(0, 2)"), "question flow must show at most two follow-up choices");
+assert(postReadingSource.includes("질문 내용은") && postReadingSource.includes("더 가까워"), "cross-domain question must be explained instead of silently mismatching the selected topic");
+
+const consultationSource = fs.readFileSync(path.join(root, "src/lib/free-consultation-style-v1.ts"), "utf8");
+assert(!consultationSource.match(/key: "money"[\s\S]{0,500}bigMoneyAffinity/), "broad Saju still overweights big-money content");
+assert(!consultationSource.match(/key: "money"[\s\S]{0,500}peopleAndMoney/), "broad Saju still overweights finance relationship content");
+assert(!resultSource.includes("WealthTypeSection"), "broad Saju still injects a separate wealth-type card");
+
+const palmPageSource = fs.readFileSync(path.join(root, "src/components/palm/palm-page-client.tsx"), "utf8");
+assert(palmPageSource.includes("object-contain object-center"), "palm camera/preview must preserve the full hand frame");
+assert(!palmPageSource.includes("size-full object-cover"), "palm result preview still crops the hand image");
 
 const questionStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/question-first-step.tsx"), "utf8");
 const questionResultSource = fs.readFileSync(path.join(root, "src/components/diagnosis/question-answer-result.tsx"), "utf8");
