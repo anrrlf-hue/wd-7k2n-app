@@ -282,16 +282,16 @@ assert(
 );
 console.log("PASS T07 timing ranking copy does not imply false chronology");
 
-// Customer UI regression: 5 visible choices, no why/how evidence UI, no action checklist.
-const funnelSource = fs.readFileSync(path.join(root, "src/components/palm/reality-answer-funnel.tsx"), "utf8");
+// Customer UI regression: Saju -> optional palm -> four detailed topics -> bounded question flow.
+const postReadingSource = fs.readFileSync(path.join(root, "src/components/palm/post-reading-detail-flow.tsx"), "utf8");
 const reportSectionSource = fs.readFileSync(path.join(root, "src/components/diagnosis/report-section.tsx"), "utf8");
 const myeongsikSource = fs.readFileSync(path.join(root, "src/components/diagnosis/myeongsik-section.tsx"), "utf8");
 const palmPageSource = fs.readFileSync(path.join(root, "src/components/palm/palm-page-client.tsx"), "utf8");
 const palmDetectionSource = fs.readFileSync(path.join(root, "src/lib/palm-detection.ts"), "utf8");
-assert(funnelSource.includes("SAJU_FOCUS_VALUES.map"), "UI01: question flow must use the same five Saju choices");
-assert(!funnelSource.includes("REALITY_ANSWER_DOMAINS.map"), "UI02: old seven-choice UI remains");
-assert(!funnelSource.includes("왜 이렇게 봤나요"), "UI03: why-explanation UI remains in question answer");
-assert(!funnelSource.includes("answer.actions"), "UI04: action checklist remains in question answer");
+assert(postReadingSource.includes("SAJU_DETAIL_FOCUS_VALUES.map"), "UI01: post-palm flow must expose only four detailed topics");
+assert(!postReadingSource.includes("REALITY_ANSWER_DOMAINS.map"), "UI02: old seven-choice UI remains");
+assert(!postReadingSource.includes("왜 이렇게 봤나요"), "UI03: why-explanation UI remains in detailed question answer");
+assert(!postReadingSource.includes("answer.actions"), "UI04: action checklist remains in detailed question answer");
 assert(!reportSectionSource.includes("왜 이렇게 봤나요"), "UI05: why toggle remains in free report");
 assert(!reportSectionSource.includes("어떻게 할까요"), "UI06: how-to toggle remains in free report");
 assert(!myeongsikSource.includes("왜 이렇게 봤나요"), "UI07: Ohaeng why details remain");
@@ -304,8 +304,8 @@ assert(
   "UI09: palm analysis timeout must allow slower mobile model startup",
 );
 assert(
-  palmPageSource.includes("다른 사진 선택하기") && palmPageSource.includes("손금 없이 사주 결과만 계속 보기"),
-  "UI10: palm error state must offer recovery paths",
+  palmPageSource.includes("다른 사진 선택하기") && palmPageSource.includes("손금 없이 세부 분야로 넘어가기"),
+  "UI10: palm error state must offer recovery paths into the detailed-topic flow",
 );
 assert(
   palmDetectionSource.includes("handLandmarkerPromise = null") &&
@@ -313,15 +313,17 @@ assert(
   "UI11: palm model retry/mobile pressure guards missing",
 );
 assert(
-  palmPageSource.includes("setFunnelActive(true)") && palmPageSource.includes("setReadingOpen(false)"),
-  "UI12: question users must return to the combined answer before the long palm reading",
+  palmPageSource.includes("PostReadingDetailFlow") &&
+    postReadingSource.includes("history.length < 2") &&
+    postReadingSource.includes("slice(0, 2)"),
+  "UI12: post-palm detail flow must bound repetitive follow-up questions",
 );
 
 console.log("REALITY ANSWER REGRESSION RESULTS");
 for (const item of outputs) {
   console.log(`PASS ${item.id} [${item.domain}] :: ${item.headline} / ${item.timing}`);
 }
-console.log("\nPASS 10/10 answer+timing + 5-choice consistency + no coaching UI");
+console.log("\nPASS 10/10 answer+timing + post-palm 4-topic detail flow + bounded follow-up + no coaching UI");
 
 // My Management: save answer, note, duplicate update. No action/status tracking.
 const memory = new Map();
