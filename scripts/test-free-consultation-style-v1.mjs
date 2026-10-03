@@ -55,14 +55,18 @@ assert(JSON.stringify(keys) === JSON.stringify(["self","relationship","work","mo
 assert(sections.every((section) => section.paragraphs.length > 0), "C02: empty consultation section");
 
 const allText = sections.flatMap((section) => section.paragraphs).join("\n");
+// 전체 사주는 균형 잡힌 요약만 유지하고, 반복되던 재물 심화 문단은 돈·재물 상세로 이동한다.
 for (const paragraph of [
   report.temperament.text, report.decisionStyle.text,
   report.relationshipStyle.text, report.loveStyle.text,
   report.jobOrientation.text, report.teamStrength.text, report.soloStrength.text, report.opportunityStyle.text,
-  report.wealthStructure.text, report.earningStyle.text, report.keepingStyle.text, report.leakPattern.text, report.bigMoneyAffinity.text, report.peopleAndMoney.text,
+  report.wealthStructure.text, report.earningStyle.text, report.keepingStyle.text,
   report.lifeRhythm.text, report.nextMove.text, report.timingShift.text,
 ]) {
-  assert(allText.includes(paragraph), "C03: existing free-Saju content was dropped by consultation grouping");
+  assert(allText.includes(paragraph), "C03: core broad-Saju content was dropped by consultation grouping");
+}
+for (const paragraph of [report.leakPattern.text, report.bigMoneyAffinity.text, report.peopleAndMoney.text]) {
+  assert(!allText.includes(paragraph), "C03b: finance-heavy deep content leaked back into broad Saju");
 }
 
 for (const phrase of ["당신은 이런 사람입니다","관계에서는 이렇게 나타나요","일에서는 이런 방식이 잘 드러납니다","지금은 무엇이 중요해지는 시기인가","다음 흐름에서는 무엇이 달라질까"]) {
@@ -87,5 +91,5 @@ for (const phrase of ["사람을 먼저", "중복", "전문용어", "출생시�
   assert(rules.includes(phrase), "C05: consultation style contract missing: " + phrase);
 }
 
-console.log("PASS FREE SAJU CONSULTATION V1: grouped story + all content preserved + natural timing + no numbered report flow");
+console.log("PASS FREE SAJU CONSULTATION V1: balanced broad story + finance-depth deferred + natural timing + no numbered report flow");
 hooks.deregister?.();
