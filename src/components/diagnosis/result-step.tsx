@@ -2,7 +2,7 @@
 
 import { CompanionHeading } from "@/components/brand-companion";
 import { Clock3, Hand } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import type { FullSajuDiagnosis } from "@/lib/saju";
 import type { FreeSajuReport } from "@/lib/free-report-schema";
 import { SAJU_FOCUS_LABELS } from "@/lib/saju-focus";
 import { buildFreeConsultationSections } from "@/lib/free-consultation-style-v1";
+import { track } from "@/lib/analytics";
 
 const revealVariants = {
   hidden: {},
@@ -196,6 +197,11 @@ export function ResultStep({
 
   const { tendency, deep, freeReport, focusedReport, resultSource, personalityInput, myeongsik, wealthType } = diagnosis;
   const focus = diagnosis.focus ?? "overall";
+
+  useEffect(() => {
+    track("free_report_completed", { focus });
+  }, [focus]);
+
   const isDeep = resultSource === "deep" && deep !== null;
   const interp = deep?.interpretation;
   const report = freeReport?.report ?? null;

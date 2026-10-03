@@ -17,6 +17,7 @@ import { parseSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 import type { RealityAnswer } from "@/lib/reality-answer-contract";
 import type { RealityAnswerEngineResult } from "@/lib/reality-answer-engine";
 import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
+import { track } from "@/lib/analytics";
 
 type JourneyMode = "free" | "question";
 type Step =
@@ -285,6 +286,7 @@ export default function DiagnosisPage() {
   ) {
     const effectiveFocus = focusOverride ?? focus;
     const effectiveQuestion = (questionOverride ?? question).trim();
+    const isFollowUp = Boolean(questionAnswer || questionPlan);
 
     if (!effectiveFocus) {
       setStep("focus");
@@ -340,6 +342,11 @@ export default function DiagnosisPage() {
       setQuestion(data.answer.question.raw);
       setFocus(data.questionPlan?.focus ?? effectiveFocus);
       setStep("answer");
+      track("question_answer_viewed", {
+        kind: isFollowUp ? "followup" : "first",
+        focus: data.questionPlan?.focus ?? effectiveFocus,
+        domain: data.answer.question.domain,
+      });
 
       try {
         const toStore: StoredQuestionSession = {

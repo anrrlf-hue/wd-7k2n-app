@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { Copy, Share2, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { BirthInput } from "@/lib/saju";
+import { track } from "@/lib/analytics";
+import { buildRelationshipShareUrl } from "@/lib/relationship-share";
 import {
   PERSON_COMPARE_PURPOSE_LABELS,
   PERSON_COMPARE_PURPOSES,
@@ -71,6 +73,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
     setLoading(true);
     setError(null);
     setShareDone(false);
+    track("relationship_compare_started", { purpose });
 
     try {
       const response = await fetch("/api/person-compare", {
@@ -90,6 +93,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
       }
       setResult(data.result);
       setSelectedFollowUp(null);
+      track("relationship_compare_completed", { purpose: data.result.purpose });
     } catch (err) {
       setError(err instanceof Error ? err.message : "두 사람의 사주를 비교하지 못했습니다.");
     } finally {
@@ -102,15 +106,23 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
     setSharing(true);
     setShareDone(false);
     try {
+      const shared = buildRelationshipShareUrl(result, window.location.origin);
       if (navigator.share) {
         await navigator.share({
           title: `운·돈 · 나와 이 사람 · ${result.purposeLabel}`,
           text: result.shareText,
+          url: shared.url,
         });
+        setShareDone(true);
       } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(result.shareText);
+        await navigator.clipboard.writeText(`${result.shareText}\n\n${shared.url}`);
         setShareDone(true);
       }
+      track("relationship_share_created", {
+        shareId: shared.shareId,
+        purpose: result.purpose,
+        channel: shareAvailable ? "native" : "clipboard",
+      });
     } catch {
       // 사용자가 공유창을 닫은 경우도 오류 화면으로 바꾸지 않는다.
     } finally {
@@ -357,7 +369,10 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
                 <button
                   key={item.question}
                   type="button"
-                  onClick={() => setSelectedFollowUp(item.question)}
+                  onClick={() => {
+                    setSelectedFollowUp(item.question);
+                    track("relationship_followup_opened", { purpose: result.purpose });
+                  }}
                   className="min-h-11 rounded-xl border border-border bg-card px-3 py-2 text-left text-sm font-medium text-foreground"
                 >
                   {item.question}
