@@ -5,12 +5,15 @@ export interface TrustBadge {
 
 export const TRUST_BADGES: TrustBadge[] = [
   {
-    text: "20년간 실제 재무상담을 진행하며 쌓인 경험과 다양한 상담사례를 바탕으로 방향을 잡습니다.",
+    text: "사주 계산에서 확인한 흐름과 손금에서 관측된 특징을 구분해 보여줍니다.",
     enabled: true,
   },
   {
-    text: "사주에서 본 성향과 지금의 생활을 함께 살펴, 내 삶에 맞는 다음 방향으로 이어갑니다.",
+    text: "양손을 함께 볼 때는 주로 쓰는 손과 반대손의 차이를 기준으로 변화 포인트를 정리합니다.",
     enabled: true,
   },
-
+  {
+    text: "관계 비교 공유 링크에는 생년월일이나 손 사진을 직접 넣지 않습니다.",
+    enabled: true,
+  },
 ];
