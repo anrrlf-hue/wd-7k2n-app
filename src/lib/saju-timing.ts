@@ -612,3 +612,109 @@ export function buildSajuTimingOutlook(
       : "표시된 월은 하루를 찍는 예언이 아니라, 대운·세운·월운을 함께 봤을 때 그 주제가 상대적으로 강해지는 '그 달 전후의 흐름'입니다.",
   };
 }
+
+
+export interface SajuAnnualMonthOutlook {
+  label: string;
+  year: number;
+  month: number;
+  domain: Exclude<RealityAnswerDomain, "overall" | "career">;
+  domainLabel: string;
+  theme: string;
+  meaning: string;
+  goodFor: string;
+  caution: string;
+  score: number;
+}
+
+export interface SajuAnnualOutlook {
+  startLabel: string;
+  endLabel: string;
+  precision: "monthly" | "broad";
+  months: SajuAnnualMonthOutlook[];
+  note: string;
+}
+
+const ANNUAL_DOMAINS: Array<Exclude<RealityAnswerDomain, "overall" | "career">> = [
+  "love",
+  "work_business",
+  "money",
+  "relationship",
+  "wellbeing",
+];
+
+const ANNUAL_DOMAIN_LABEL: Record<Exclude<RealityAnswerDomain, "overall" | "career">, string> = {
+  love: "연애·인연",
+  work_business: "일·직업·사업",
+  money: "돈·재물",
+  relationship: "사람·관계",
+  wellbeing: "생활·컨디션",
+};
+
+function addMonths(year: number, month: number, offset: number): { year: number; month: number } {
+  const index = year * 12 + (month - 1) + offset;
+  return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+}
+
+export function buildSajuAnnualOutlook(
+  facts: SajuFacts,
+  referenceDate?: Date,
+): SajuAnnualOutlook {
+  const current = currentKstYearMonth(referenceDate);
+  const months: SajuAnnualMonthOutlook[] = [];
+  const daeunGroups = facts.currentDaeun
+    ? [TEN_GOD_GROUP[facts.currentDaeun.stemTenGod], TEN_GOD_GROUP[facts.currentDaeun.branchTenGod]]
+        .filter((x): x is TenGodGroup => Boolean(x))
+    : [];
+
+  for (let offset = 0; offset < 12; offset += 1) {
+    const target = addMonths(current.year, current.month, offset);
+    const pillars = hanjaPillarsForDate(target.year, target.month, 15);
+    const yearGroups = pillarGroups(facts.dayStem, pillars.yearPillar);
+    const monthGroups = pillarGroups(facts.dayStem, pillars.monthPillar);
+
+    const ranked = ANNUAL_DOMAINS.map((domain) => {
+      const weights = weightsFor(domain, facts.gender);
+      const base = scoreGroups(yearGroups, weights) + scoreGroups(monthGroups, weights) * 1.4;
+      const daeunBoost = Math.min(2, scoreGroups(daeunGroups, weights) * 0.25);
+      return { domain, score: base + daeunBoost, weights };
+    }).sort((a, b) => b.score - a.score);
+
+    const selected = ranked[0];
+    const used = new Set<TenGodGroup>();
+    const signal = choosePrimarySignal(yearGroups, monthGroups, selected.weights, used);
+    const copy = timingWindowCopy(
+      selected.domain,
+      yearGroups,
+      monthGroups,
+      0,
+      selected.weights,
+      new Set<TenGodGroup>(),
+    );
+
+    months.push({
+      label: `${target.year}년 ${target.month}월`,
+      year: target.year,
+      month: target.month,
+      domain: selected.domain,
+      domainLabel: ANNUAL_DOMAIN_LABEL[selected.domain],
+      theme: signal ? signalLabelFor(selected.domain, signal) : ANNUAL_DOMAIN_LABEL[selected.domain],
+      meaning: copy.meaning,
+      goodFor: copy.positive.replace("가장 강한 구간에서는 ", ""),
+      caution: copy.caution,
+      score: selected.score,
+    });
+  }
+
+  const first = months[0];
+  const last = months[months.length - 1];
+  return {
+    startLabel: first.label,
+    endLabel: last.label,
+    precision: facts.hasTimeInput ? "monthly" : "broad",
+    months,
+    note: facts.hasTimeInput
+      ? "앞으로 12개월을 대운·세운·월운의 상대적 강약으로 비교했습니다. 특정 사건을 보장하는 예언이 아니라, 월별로 어떤 주제를 더 눈여겨볼지 보는 리포트입니다."
+      : "출생시간을 모르는 상태라 시주와 정밀 대운 일부를 제외하고 연·월·일 기준으로 12개월의 큰 흐름을 비교했습니다.",
+  };
+}
