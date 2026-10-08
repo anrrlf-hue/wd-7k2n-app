@@ -161,17 +161,19 @@ assert(!resultSource.includes("PersonCompareCard"), "UI01: person comparison sho
 assert(resultSource.includes("다음은 손금으로 이어봅니다"), "UI02: initial Saju should lead to palm before relationship expansion");
 assert(postReadingSource.includes("PersonCompareCard"), "UI03: person comparison must be available after the personal Saju/palm/detail flow");
 assert(
-  postReadingSource.indexOf("이 분야에서 질문하기") < postReadingSource.indexOf("<PersonCompareCard"),
-  "UI04: person comparison should come after the selected personal detail reading",
+  postReadingSource.includes("프리미엄 보기") && postReadingSource.includes("<PersonCompareCard"),
+  "UI04: person comparison should remain after the personal detail/premium flow",
 );
 for (const phrase of ["나와 이 사람", "이 사람과 나 보기", "두 사람 함께 보기", "다른 사람과 비교해보기"]) {
   assert(compareCardSource.includes(phrase), `UI05: missing natural compare copy: ${phrase}`);
 }
-assert(compareCardSource.includes("공유 문구에는 두 사람의 생년월일을 넣지 않습니다"), "UI06: share privacy copy missing");
-assert(compareCardSource.includes("setSelectedFollowUp"), "UI07: comparison follow-ups are still static text");
-assert(compareCardSource.includes("result.followUps.map"), "UI08: comparison follow-up buttons are not rendered");
+assert(compareCardSource.includes("공유 링크에는 두 사람의 생년월일이나 손 사진을 넣지 않습니다"), "UI06: share privacy copy missing");
+assert(!compareCardSource.includes("setSelectedFollowUp"), "UI07: removed question follow-ups returned to comparison UI");
+assert(!compareCardSource.includes("result.followUps.map"), "UI08: removed question follow-up buttons returned");
+assert(compareCardSource.includes("SIJIN_OPTIONS"), "UI09: traditional birth-hour selector missing");
+assert(compareCardSource.includes("loadSavedPeople"), "UI10: saved-person reuse missing");
 assert(apiSource.includes("buildPersonCompareResult"), "API01: person compare route is not using deterministic engine");
 assert(!apiSource.includes("ANTHROPIC") && !apiSource.includes("OPENAI"), "API02: person compare V0 should not call an external model");
 
-console.log("PASS PERSON COMPARE V0: 4 modes + identical-profile symmetry + interactive follow-ups + timing guard + safe sharing");
+console.log("PASS PERSON COMPARE V1: 4 modes + timing guard + saved people + Sijin input + Kakao-safe sharing");
 hooks.deregister?.();
