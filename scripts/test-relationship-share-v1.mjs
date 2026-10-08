@@ -70,14 +70,17 @@ const pageSource = fs.readFileSync(
   "utf8",
 );
 assert(pageSource.includes("relationship_share_opened"), "SHARE07: recipient open not measured");
-assert(pageSource.includes("relationship_shared_followup_opened"), "SHARE08: shared follow-up not measured");
+assert(!pageSource.includes("relationship_shared_followup_opened"), "SHARE08: shared page must not reopen the removed follow-up question flow");
 assert(pageSource.includes("생년월일이나 손 사진이 들어 있지 않습니다"), "SHARE09: privacy notice missing");
+assert(cardSource.includes("카카오톡으로 보내기"), "SHARE10: Kakao-oriented share CTA missing");
+assert(cardSource.includes("결과와 링크 복사"), "SHARE11: copy-link share CTA missing");
+assert(cardSource.includes("이 사람 저장하기"), "SHARE12: reusable person save CTA missing");
 
 const analyticsRoute = fs.readFileSync(
   path.join(root, "src/app/api/analytics/route.ts"),
   "utf8",
 );
-assert(analyticsRoute.includes("[product-event]"), "SHARE10: server-side event log missing");
+assert(analyticsRoute.includes("[product-event]"), "SHARE13: server-side event log missing");
 
-console.log("PASS RELATIONSHIP SHARE V1: private re-entry link + recipient follow-up + growth measurement");
+console.log("PASS RELATIONSHIP SHARE V2: private re-entry link + Kakao share + reusable people + no question follow-up");
 hooks.deregister?.();
