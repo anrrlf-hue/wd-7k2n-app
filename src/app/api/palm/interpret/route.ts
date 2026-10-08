@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { computeSajuFacts, type SajuFacts } from "@/lib/saju-facts";
 import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
-import { getFreeSajuReport } from "@/lib/free-report-engine";
+import { buildFreeSajuReport } from "@/lib/free-report-mock";
 import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
 import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
@@ -20,7 +20,7 @@ import { buildPalmBilateralReading, buildPalmFutureTimeline, type DominantHand }
 // 기준으로 쓸 수 없는 상태면(isPalmFactsUsable) 해석을 만들지 않고 재촬영
 // 사유를 그대로 돌려준다.
 //
-// 최종 통합 리포트(getFreeSajuReport)가 이 라우트의 유일한 리포트 생성
+// 최종 통합 리포트는 계산된 SajuFacts를 바로 문장화해 불필요한 외부 해석 대기를 만들지 않는다
 // 경로다 — 이전에는 별도의 cross-interpretation 파이프라인이 "손금×사주
 // 공통점/차이점" 섹션을 따로 만들어 finalReport 앞에 붙였는데, 이는 결국
 // 사주/손금/자기보고를 세 덩어리로 이어붙이는 구조였다. 이번에는 그 비교
@@ -167,10 +167,7 @@ export async function POST(request: Request) {
 
     const onnxLines = palmFacts?.onnxLines ?? null;
     const personality = { mbti, check: personalityCheck };
-    const freeReportResult = await getFreeSajuReport(deepFacts, {
-      timeoutMs: 9000,
-      personality,
-    });
+    const freeReport = buildFreeSajuReport(deepFacts, personality);
     const fortuneCandidates = buildFortuneCandidates(deepFacts, onnxLines);
     const tripleCompare = buildTripleCompare(deepFacts, onnxLines, personalityCheck);
     const lifetimeStory = buildLifetimeStory(deepFacts, personality, onnxLines);
@@ -196,7 +193,7 @@ export async function POST(request: Request) {
       dominantHand,
       bilateralReading,
       futurePalmTimeline,
-      freeReport: { source: freeReportResult.source, report: freeReportResult.report },
+      freeReport: { source: "mock", report: freeReport },
       fortuneCandidates,
       tripleCompare,
       lifetimeStory,
