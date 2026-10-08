@@ -581,6 +581,13 @@ export function PalmPageClient({
     setRetakeAttempts(0);
   }
 
+  const innatePalmFacts = dominantHand === "right" ? leftPalmFacts : rightPalmFacts;
+  const currentPalmFacts = dominantHand === "right" ? rightPalmFacts : leftPalmFacts;
+  const innatePreviewUrl = dominantHand === "right" ? leftPreviewUrl : rightPreviewUrl;
+  const currentPreviewUrl = dominantHand === "right" ? rightPreviewUrl : leftPreviewUrl;
+  const innateHandLabel = dominantHand === "right" ? "왼손" : "오른손";
+  const currentHandLabel = dominantHand === "right" ? "오른손" : "왼손";
+
   if (!birthInput) {
     return (
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-6 py-10 text-center">
@@ -604,7 +611,7 @@ export function PalmPageClient({
       <CompanionHeading showCompanion={stage !== "upload"} state={stage === "upload" ? "palm-guide" : "palm-observing"} presence={stage === "upload" ? "transition" : "quiet"}>
       <p className="section-eyebrow">두 번째 분석 · 손금</p>
       <h1 className="mt-2 text-xl leading-snug font-semibold tracking-tight">
-        {stage === "result" ? "손에서 관측한 것부터, 하나씩" : stage === "saju_only" ? "사주에서 선택으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
+        {stage === "result" ? "타고난 나에서 지금의 나까지" : stage === "saju_only" ? "사주에서 선택으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
       </h1>
       </CompanionHeading>
       </div>
@@ -876,29 +883,32 @@ export function PalmPageClient({
             transition={{ duration: 0.4 }}
             className="mystic-ring rounded-2xl border border-(--gold-soft) bg-card p-5"
           >
-            {leftPalmFacts && rightPalmFacts ? (
+            {leftPalmFacts && rightPalmFacts && innatePalmFacts && currentPalmFacts ? (
               <>
                 <p className="section-eyebrow">양손 분석 완료</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  주로 쓰는 손을 기준으로 타고난 경향을 참고하는 손부터, 지금까지 살아오며 만들어진 현재 손 순서로 봅니다.
+                </p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-accent p-3">
-                    {rightPreviewUrl && (
+                    {innatePreviewUrl && (
                       <div className="aspect-[3/4] overflow-hidden rounded-lg border border-(--gold-soft) bg-black">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={rightPreviewUrl} alt="오른손" className="size-full bg-black object-contain object-center" />
+                        <img src={innatePreviewUrl} alt={innateHandLabel} className="size-full bg-black object-contain object-center" />
                       </div>
                     )}
-                    <p className="mt-2 text-sm font-semibold">오른손{dominantHand === "right" ? " · 주로 쓰는 손" : ""}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[rightPalmFacts.handShape]}</p>
+                    <p className="mt-2 text-sm font-semibold">{innateHandLabel} · 타고난 성향 참고손</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[innatePalmFacts.handShape]}</p>
                   </div>
                   <div className="rounded-xl bg-accent p-3">
-                    {leftPreviewUrl && (
+                    {currentPreviewUrl && (
                       <div className="aspect-[3/4] overflow-hidden rounded-lg border border-(--gold-soft) bg-black">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={leftPreviewUrl} alt="왼손" className="size-full bg-black object-contain object-center" />
+                        <img src={currentPreviewUrl} alt={currentHandLabel} className="size-full bg-black object-contain object-center" />
                       </div>
                     )}
-                    <p className="mt-2 text-sm font-semibold">왼손{dominantHand === "left" ? " · 주로 쓰는 손" : ""}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[leftPalmFacts.handShape]}</p>
+                    <p className="mt-2 text-sm font-semibold">{currentHandLabel} · 현재 모습 참고손</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[currentPalmFacts.handShape]}</p>
                   </div>
                 </div>
               </>
@@ -913,16 +923,6 @@ export function PalmPageClient({
           <div className="mt-5">
             {rightPalmFacts && leftPalmFacts ? (
               <>
-                <PalmReadingSections
-                  facts={rightPalmFacts}
-                  title={dominantHand === "right" ? "오른손 — 주로 쓰는 손" : "오른손에서 보이는 흐름"}
-                  step="2"
-                />
-                <PalmReadingSections
-                  facts={leftPalmFacts}
-                  title={dominantHand === "left" ? "왼손 — 주로 쓰는 손" : "왼손에서 보이는 흐름"}
-                  step="2"
-                />
                 <PalmBilateralSection reading={bilateralReading} />
                 <PalmFutureTimelineSection timeline={futurePalmTimeline} />
               </>
