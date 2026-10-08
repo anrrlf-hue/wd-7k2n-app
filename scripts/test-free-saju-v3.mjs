@@ -200,6 +200,21 @@ const palmPageSource = fs.readFileSync(path.join(root, "src/components/palm/palm
 assert(palmPageSource.includes("object-contain object-center"), "palm camera/preview must preserve the full hand frame");
 assert(!palmPageSource.includes("size-full object-cover"), "palm result preview still crops the hand image");
 
+const layoutSource = fs.readFileSync(path.join(root, "src/app/layout.tsx"), "utf8");
+const birthDateSource = fs.readFileSync(path.join(root, "src/components/diagnosis/birth-date-step.tsx"), "utf8");
+const privacySource = fs.readFileSync(path.join(root, "src/app/privacy/page.tsx"), "utf8");
+const termsSource = fs.readFileSync(path.join(root, "src/app/terms/page.tsx"), "utf8");
+const refundSource = fs.readFileSync(path.join(root, "src/app/refund/page.tsx"), "utf8");
+const paidProductSource = fs.readFileSync(path.join(root, "src/lib/paid-product.ts"), "utf8");
+assert(layoutSource.includes("SiteFooter"), "launch footer with policy links missing");
+assert(!layoutSource.includes("무료 재물운 진단"), "old finance-only metadata remains");
+assert(birthDateSource.includes("/privacy") && birthDateSource.includes("consent"), "birth information flow must require privacy consent");
+assert(privacySource.includes("생년월일") && privacySource.includes("손 사진"), "privacy page must explain birth and palm data handling");
+assert(termsSource.includes("무료 베타"), "terms must disclose beta status");
+assert(refundSource.includes("결제가 발생하지 않습니다"), "free beta payment notice missing");
+assert(paidProductSource.includes("이 사람·이 상황 깊게 보기"), "future paid product must match relationship/situation direction");
+assert(!paidProductSource.includes("내 돈 고민 한 가지 현실판정"), "legacy finance paid product remains");
+
 const questionStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/question-first-step.tsx"), "utf8");
 const questionResultSource = fs.readFileSync(path.join(root, "src/components/diagnosis/question-answer-result.tsx"), "utf8");
 const palmEntrySource = fs.readFileSync(path.join(root, "src/components/diagnosis/palm-entry-card.tsx"), "utf8");
