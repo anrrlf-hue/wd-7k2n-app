@@ -32,7 +32,7 @@ export function PaywallOffer({
         style={{ background: "var(--gold)" }}
       />
 
-      <p className="relative text-xs text-muted-foreground">첫 유료 파일럿 상품</p>
+      <p className="relative text-xs text-muted-foreground">유료 전환 예정 상품</p>
       <p className="relative mt-1 text-lg leading-snug font-semibold">{title}</p>
       <p className="relative mt-2 text-sm leading-6 text-muted-foreground">
         {PAID_PRODUCT.promise}
@@ -63,7 +63,7 @@ export function PaywallOffer({
       </Button>
 
       <p className="relative mt-2 text-center text-sm text-muted-foreground">
-        현실판정 + 선택지 2개 + 첫 행동 + 30일 재점검 1회
+        현재는 무료 베타입니다. 실제 결제 연결 후 상품 조건을 다시 안내합니다.
       </p>
     </motion.div>
   );
