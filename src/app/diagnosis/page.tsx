@@ -18,6 +18,7 @@ import type { RealityAnswer } from "@/lib/reality-answer-contract";
 import type { RealityAnswerEngineResult } from "@/lib/reality-answer-engine";
 import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
 import { track } from "@/lib/analytics";
+import { upsertSavedPerson } from "@/lib/saved-people";
 
 type JourneyMode = "free" | "question";
 type Step =
@@ -259,6 +260,12 @@ export default function DiagnosisPage() {
       const data: FullSajuDiagnosis = await res.json();
       setDiagnosis(data);
       setStep("result");
+      upsertSavedPerson({
+        name: "나",
+        relation: "본인",
+        birthInput,
+        isSelf: true,
+      });
 
       try {
         const toStore: StoredFreeSession = {
