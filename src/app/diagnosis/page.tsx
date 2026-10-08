@@ -32,8 +32,8 @@ type Step =
   | "answer"
   | "error";
 
-const FREE_STORAGE_KEY = "saju-app:diagnosis-session:v2";
-const QUESTION_STORAGE_KEY = "saju-app:question-first-session:v1";
+const FREE_STORAGE_KEY = "saju-app:diagnosis-session:v3";
+const QUESTION_STORAGE_KEY = "saju-app:question-first-session:v2";
 const CLIENT_TIMEOUT_MS = 30000;
 
 interface StoredFreeSession {
@@ -96,6 +96,7 @@ export default function DiagnosisPage() {
   const [knowsTime, setKnowsTime] = useState(false);
   const [birthTime, setBirthTime] = useState("");
   const [mbti, setMbti] = useState<MbtiType | "모름">("모름");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [diagnosis, setDiagnosis] = useState<FullSajuDiagnosis | null>(null);
   const [questionAnswer, setQuestionAnswer] = useState<RealityAnswer | null>(null);
   const [questionPlan, setQuestionPlan] = useState<QuestionEnginePlan | null>(null);
@@ -124,6 +125,8 @@ export default function DiagnosisPage() {
               setKnowsTime(saved.knowsTime);
               setBirthTime(saved.birthTime);
               setMbti(saved.mbti);
+      setPrivacyAccepted(true);
+              setPrivacyAccepted(true);
               setQuestionAnswer(saved.answer);
               setQuestionPlan(saved.questionPlan ?? null);
               setStep("answer");
@@ -144,6 +147,8 @@ export default function DiagnosisPage() {
               setKnowsTime(saved.knowsTime);
               setBirthTime(saved.birthTime);
               setMbti(saved.mbti);
+      setPrivacyAccepted(true);
+              setPrivacyAccepted(true);
               setStep("question");
               return;
             }
@@ -175,6 +180,7 @@ export default function DiagnosisPage() {
       setKnowsTime(saved.knowsTime);
       setBirthTime(saved.birthTime);
       setMbti(saved.mbti);
+      setPrivacyAccepted(true);
       setDiagnosis(saved.diagnosis);
       setStep("result");
     } catch {
@@ -200,6 +206,7 @@ export default function DiagnosisPage() {
     setKnowsTime(false);
     setBirthTime("");
     setMbti("모름");
+    setPrivacyAccepted(false);
     setDiagnosis(null);
     setQuestionAnswer(null);
     setQuestionPlan(null);
@@ -222,6 +229,10 @@ export default function DiagnosisPage() {
       return;
     }
 
+    if (!privacyAccepted) {
+      setStep("date");
+      return;
+    }
     const birthInput = birthInputFromState({ birthDate, gender, knowsTime, birthTime });
     if (!birthInput) {
       setStep("date");
@@ -296,6 +307,10 @@ export default function DiagnosisPage() {
       return;
     }
 
+    if (!privacyAccepted) {
+      setStep("date");
+      return;
+    }
     const birthInput = birthInputFromState({ birthDate, gender, knowsTime, birthTime });
     if (!birthInput) {
       setStep("date");
@@ -454,6 +469,8 @@ export default function DiagnosisPage() {
           onChange={setBirthDate}
           gender={gender}
           onGenderChange={setGender}
+          consent={privacyAccepted}
+          onConsentChange={setPrivacyAccepted}
           onNext={() => setStep("time")}
           onBack={() => setStep(mode === "question" ? "question" : "focus")}
         />
