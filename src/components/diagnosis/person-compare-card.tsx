@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Copy, Share2, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { BirthInput } from "@/lib/saju";
@@ -208,6 +209,12 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
             <p className="text-sm font-semibold">상대방 정보</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
               내 생년월일은 다시 입력하지 않습니다. 상대방 정보만 추가하면 됩니다.
+            </p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              알고 있고 사용할 수 있는 상대방 정보만 입력해 주세요.{" "}
+              <Link href="/privacy" target="_blank" className="underline underline-offset-4">
+                개인정보처리방침
+              </Link>
             </p>
 
             <label className="mt-4 block">
