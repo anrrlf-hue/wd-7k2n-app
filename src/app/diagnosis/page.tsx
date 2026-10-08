@@ -125,7 +125,6 @@ export default function DiagnosisPage() {
               setKnowsTime(saved.knowsTime);
               setBirthTime(saved.birthTime);
               setMbti(saved.mbti);
-      setPrivacyAccepted(true);
               setPrivacyAccepted(true);
               setQuestionAnswer(saved.answer);
               setQuestionPlan(saved.questionPlan ?? null);
@@ -147,7 +146,6 @@ export default function DiagnosisPage() {
               setKnowsTime(saved.knowsTime);
               setBirthTime(saved.birthTime);
               setMbti(saved.mbti);
-      setPrivacyAccepted(true);
               setPrivacyAccepted(true);
               setStep("question");
               return;
