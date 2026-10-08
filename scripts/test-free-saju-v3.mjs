@@ -213,7 +213,7 @@ assert(birthDateSource.includes("/privacy") && birthDateSource.includes("consent
 assert(privacySource.includes("생년월일") && privacySource.includes("손 사진"), "privacy page must explain birth and palm data handling");
 assert(termsSource.includes("무료 베타"), "terms must disclose beta status");
 assert(refundSource.includes("결제가 발생하지 않습니다"), "free beta payment notice missing");
-assert(paidProductSource.includes("이 사람·이 상황 깊게 보기"), "future paid product must match relationship/situation direction");
+assert(paidProductSource.includes("프리미엄 1년 리포트"), "future paid product must match the premium annual report direction");
 assert(!paidProductSource.includes("내 돈 고민 한 가지 현실판정"), "legacy finance paid product remains");
 
 const questionStepSource = fs.readFileSync(path.join(root, "src/components/diagnosis/question-first-step.tsx"), "utf8");
