@@ -30,7 +30,6 @@ function SharedSection({
 export default function RelationshipSharePage() {
   const [payload, setPayload] = useState<RelationshipSharePayload | null>(null);
   const [invalid, setInvalid] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
   useEffect(() => {
     const raw = window.location.hash.startsWith("#r=")
       ? window.location.hash.slice(3)
@@ -89,38 +88,6 @@ export default function RelationshipSharePage() {
         <SharedSection eyebrow="지금의 두 사람" section={payload.timing} />
       </div>
 
-      {payload.followUps.length > 0 && (
-        <section className="mt-6 rounded-2xl border border-(--gold-soft) bg-card p-5">
-          <p className="section-eyebrow">이 관계에서 더 궁금한 것</p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            공유한 사람이 본 관계 맥락 그대로 이어서 볼 수 있습니다.
-          </p>
-          <div className="mt-3 grid gap-2">
-            {payload.followUps.map((item) => (
-              <button
-                key={item.question}
-                type="button"
-                onClick={() => {
-                  setSelected(item.question);
-                  track("relationship_shared_followup_opened", {
-                    shareId: payload.shareId,
-                    purpose: payload.purpose,
-                  });
-                }}
-                className="min-h-11 rounded-xl border border-border bg-accent px-3 py-2 text-left text-sm font-medium"
-              >
-                {item.question}
-              </button>
-            ))}
-          </div>
-          {selected && selectedAnswer && (
-            <div className="mt-3 rounded-xl bg-accent p-4">
-              <p className="text-sm font-semibold">{selected}</p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedAnswer}</p>
-            </div>
-          )}
-        </section>
-      )}
 
       <section className="mt-7 rounded-3xl border border-(--gold-soft) bg-card p-5">
         <p className="section-eyebrow">내 관계도 보고 싶다면</p>
