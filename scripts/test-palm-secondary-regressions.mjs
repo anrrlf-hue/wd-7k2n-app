@@ -277,11 +277,21 @@ const leftPalm = {
 };
 
 const bilateralReading = bilateral.buildPalmBilateralReading(leftPalm, rightPalm, "right");
-if (!/오른손/.test(bilateralReading.summary) || bilateralReading.items.length < 4) {
-  throw new Error("bilateral palm comparison missing dominant-hand summary/items");
+if (!/왼손.*타고난|타고난.*왼손/.test(bilateralReading.summary) || !/오른손.*현재|현재.*오른손/.test(bilateralReading.summary)) {
+  throw new Error("bilateral reading must interpret non-dominant hand first and dominant hand as current");
 }
-if (!bilateralReading.items.some((item) => /일·성과·재물/.test(item.title))) {
-  throw new Error("bilateral work/money comparison missing");
+if (bilateralReading.items.length !== 4) {
+  throw new Error("bilateral palm story should stay concise with four narrative sections");
+}
+if (!bilateralReading.items.some((item) => /타고난 나/.test(item.title))) {
+  throw new Error("innate-hand story missing");
+}
+if (!bilateralReading.items.some((item) => /지금의 나/.test(item.title))) {
+  throw new Error("current-hand story missing");
+}
+const careerItem = bilateralReading.items.find((item) => /직업 예시/.test(item.title));
+if (!careerItem || !/(회계사|세무사|기획|사업개발|영업|프로젝트|마케팅|운영)/.test(careerItem.text)) {
+  throw new Error("career-fit reading lacks concrete but non-deterministic job examples");
 }
 
 const fakeSajuFacts = {
@@ -320,8 +330,13 @@ for (const required of [
   'rightPalmFacts',
   'PalmBilateralSection',
   'PalmFutureTimelineSection',
+  '타고난 성향 참고손',
+  '현재 모습 참고손',
 ]) {
   if (!palmPageSource.includes(required)) throw new Error(`dual-palm UI missing: ${required}`);
+}
+if ((palmPageSource.match(/<PalmReadingSections/g) ?? []).length > 1) {
+  throw new Error("bilateral UI still repeats full per-hand readings instead of using the change story");
 }
 
 const routeSource = fs.readFileSync(path.join(root, "src/app/api/palm/interpret/route.ts"), "utf8");
