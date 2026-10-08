@@ -184,12 +184,13 @@ assert(
 assert(diagnosisSource.includes('setFocus("overall")') && diagnosisSource.includes('setStep("date")'), "free Saju must start broad without an overall chooser");
 assert(focusStepSource.includes("SAJU_DETAIL_FOCUS_VALUES"), "detail chooser must use only four detailed topics");
 assert(!focusStepSource.includes("SAJU_FOCUS_VALUES.map"), "overall must not remain in the visible detail choices");
-assert(postReadingSource.includes("어떤 부분을 더 자세히 볼까요?"), "post-palm detail chooser missing");
+assert(postReadingSource.includes("이제 더 깊게 볼 차례입니다"), "post-palm detail chooser missing");
 assert(postReadingSource.includes("연애·관계") || postReadingSource.includes("SAJU_FOCUS_LABELS"), "relationship detail path missing");
 assert(postReadingSource.includes("PersonCompareCard"), "person compare must move after the personal reading");
-assert(postReadingSource.includes("history.length < 2"), "question flow must stop after one follow-up");
-assert(postReadingSource.includes("slice(0, 2)"), "question flow must show at most two follow-up choices");
-assert(postReadingSource.includes("질문 내용은") && postReadingSource.includes("더 가까워"), "cross-domain question must be explained instead of silently mismatching the selected topic");
+assert(postReadingSource.includes("프리미엄 보기"), "premium report CTA missing");
+assert(postReadingSource.includes("/api/premium-report"), "premium report API handoff missing");
+assert(!postReadingSource.includes("submitQuestion"), "post-palm repetitive question flow must be removed");
+assert(postReadingSource.includes("12개월"), "premium CTA must promise the one-year monthly report");
 
 const consultationSource = fs.readFileSync(path.join(root, "src/lib/free-consultation-style-v1.ts"), "utf8");
 assert(!consultationSource.match(/key: "money"[\s\S]{0,500}bigMoneyAffinity/), "broad Saju still overweights big-money content");
@@ -261,5 +262,5 @@ assert(!reportSectionSource.includes("왜 이렇게 봤나요"), "why-explanatio
 assert(!reportSectionSource.includes("어떻게 할까요"), "action-guidance toggle remains in free report");
 assert(resultSource.includes("다른 영역은 한눈에"), "focused reading should summarize other areas instead of repeating full sections");
 
-console.log("PASS FREE SAJU V9: Saju-first + unknown-time guards + real free-to-question handoff + optional palm");
+console.log("PASS FREE SAJU V10: Saju-first + optional palm + detail topics + premium annual report");
 hooks.deregister?.();
