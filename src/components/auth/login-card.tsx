@@ -83,11 +83,11 @@ export function LoginCard({ nextPath = "/management" }: { nextPath?: string }) {
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
-      <p className="section-eyebrow">결과와 변화를 저장할게요</p>
+      <p className="section-eyebrow">내 결과를 이어서 볼게요</p>
       <h1 className="mt-3 text-2xl leading-snug font-semibold">
-        로그인하면 오늘의 재무 방향과
+        로그인하면 내 질문과 관계 결과를
         <br />
-        30일 후 변화까지 이어서 볼 수 있어요
+        다시 이어서 볼 수 있어요
       </h1>
 
       {(providers.kakao || providers.google) && (
