@@ -1,4 +1,4 @@
-const CHAPTERS = ["나의 사주", "양손 손금", "세부풀이", "내 질문", "나와 이 사람"];
+const CHAPTERS = ["나의 사주", "양손 손금", "세부풀이", "프리미엄", "나와 이 사람"];
 
 export function JourneyHeader({ chapter }: { chapter: 1 | 2 | 3 | 4 | 5 }) {
   return (
