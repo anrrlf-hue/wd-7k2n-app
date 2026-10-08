@@ -54,7 +54,7 @@ export function PalmReadingSections({ facts, title = "손금에서 보이는 나
 export function PalmBilateralSection({ reading }: { reading: PalmBilateralReading | null }) {
   if (!reading) return null;
   return (
-    <ReportSection title="오른손·왼손을 함께 보면">
+    <ReportSection title="타고난 나에서 지금의 나까지">
       <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
         <p className="text-base leading-7 text-foreground">{reading.summary}</p>
         <div className="mt-4 space-y-3">
@@ -74,7 +74,7 @@ export function PalmBilateralSection({ reading }: { reading: PalmBilateralReadin
 export function PalmFutureTimelineSection({ timeline }: { timeline: PalmFutureTimeline | null }) {
   if (!timeline) return null;
   return (
-    <ReportSection title="앞으로의 손금 흐름">
+    <ReportSection title="앞으로 눈여겨볼 흐름">
       <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
         <p className="text-sm leading-6 text-muted-foreground">
           현재 만 {timeline.currentAge}세 이후만 봅니다.
@@ -84,12 +84,6 @@ export function PalmFutureTimelineSection({ timeline }: { timeline: PalmFutureTi
             <div key={window.ageLabel} className="rounded-xl bg-accent p-4">
               <p className="text-xs font-semibold text-(--gold)">{window.ageLabel}</p>
               <h3 className="mt-1 text-base font-semibold text-foreground">{window.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{window.palmReading}</p>
-              {window.sajuReading && (
-                <p className="mt-2 text-sm leading-6 text-foreground/80">
-                  사주 흐름: {window.sajuReading}
-                </p>
-              )}
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{window.combined}</p>
             </div>
           ))}
