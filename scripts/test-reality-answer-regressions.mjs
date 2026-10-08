@@ -282,7 +282,7 @@ assert(
 );
 console.log("PASS T07 timing ranking copy does not imply false chronology");
 
-// Customer UI regression: Saju -> optional palm -> four detailed topics -> bounded question flow.
+// Customer UI regression: Saju -> optional palm -> four detailed topics -> premium report, without repetitive question flow.
 const postReadingSource = fs.readFileSync(path.join(root, "src/components/palm/post-reading-detail-flow.tsx"), "utf8");
 const reportSectionSource = fs.readFileSync(path.join(root, "src/components/diagnosis/report-section.tsx"), "utf8");
 const myeongsikSource = fs.readFileSync(path.join(root, "src/components/diagnosis/myeongsik-section.tsx"), "utf8");
@@ -296,8 +296,10 @@ assert(!reportSectionSource.includes("왜 이렇게 봤나요"), "UI05: why togg
 assert(!reportSectionSource.includes("어떻게 할까요"), "UI06: how-to toggle remains in free report");
 assert(!myeongsikSource.includes("왜 이렇게 봤나요"), "UI07: Ohaeng why details remain");
 assert(
-  palmPageSource.includes("자동 확인이 끝나지 않아도 촬영할 수 있어요"),
-  "UI08: mobile palm capture must remain available when preview analysis is not ready",
+  palmPageSource.includes("이제 찍으세요") &&
+    palmPageSource.includes("손 전체를 맞추는 중...") &&
+    palmPageSource.includes("cameraReady ?"),
+  "UI08: palm capture button must appear only after the hand frame is ready",
 );
 assert(
   palmPageSource.includes("60000"),
@@ -314,16 +316,18 @@ assert(
 );
 assert(
   palmPageSource.includes("PostReadingDetailFlow") &&
-    postReadingSource.includes("history.length < 2") &&
-    postReadingSource.includes("slice(0, 2)"),
-  "UI12: post-palm detail flow must bound repetitive follow-up questions",
+    postReadingSource.includes("프리미엄 보기") &&
+    postReadingSource.includes("/api/premium-report") &&
+    !postReadingSource.includes("submitQuestion") &&
+    !postReadingSource.includes("history.length"),
+  "UI12: post-palm flow must replace repetitive questions with the premium annual report",
 );
 
 console.log("REALITY ANSWER REGRESSION RESULTS");
 for (const item of outputs) {
   console.log(`PASS ${item.id} [${item.domain}] :: ${item.headline} / ${item.timing}`);
 }
-console.log("\nPASS 10/10 answer+timing + post-palm 4-topic detail flow + bounded follow-up + no coaching UI");
+console.log("\nPASS 10/10 answer+timing + post-palm 4-topic detail flow + premium annual report + no repetitive question UI");
 
 // My Management: save answer, note, duplicate update. No action/status tracking.
 const memory = new Map();
