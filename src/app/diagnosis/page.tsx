@@ -18,7 +18,7 @@ import type { RealityAnswer } from "@/lib/reality-answer-contract";
 import type { RealityAnswerEngineResult } from "@/lib/reality-answer-engine";
 import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
 import { track } from "@/lib/analytics";
-import { upsertSavedPerson } from "@/lib/saved-people";
+import { findSavedSelf, upsertSavedPerson } from "@/lib/saved-people";
 
 type JourneyMode = "free" | "question";
 type Step =
@@ -161,6 +161,26 @@ export default function DiagnosisPage() {
 
       const raw = sessionStorage.getItem(FREE_STORAGE_KEY);
       if (!raw) {
+        const savedSelf = findSavedSelf();
+        if (savedSelf) {
+          const birth = savedSelf.birthInput;
+          setFocus("overall");
+          setBirthDate([
+            String(birth.year).padStart(4, "0"),
+            String(birth.month).padStart(2, "0"),
+            String(birth.day).padStart(2, "0"),
+          ].join("-"));
+          setGender(birth.gender);
+          setKnowsTime(birth.hour !== null);
+          setBirthTime(
+            birth.hour === null
+              ? ""
+              : `${String(birth.hour).padStart(2, "0")}:${String(birth.minute ?? 0).padStart(2, "0")}`,
+          );
+          setPrivacyAccepted(true);
+          setStep("personality");
+          return;
+        }
         setFocus("overall");
         setStep("date");
         return;
