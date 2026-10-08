@@ -5,6 +5,7 @@ import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
 import { buildPremiumReport } from "@/lib/premium-report";
 import type { PalmFacts } from "@/lib/palm-facts";
+import { MBTI_TYPES } from "@/lib/mbti-facts";
 
 const bodySchema = z.object({
   year: z.number().int().min(1900).max(2035),
@@ -13,7 +14,7 @@ const bodySchema = z.object({
   hour: z.number().int().min(0).max(23).nullable(),
   minute: z.number().int().min(0).max(59).nullable(),
   gender: z.enum(["남", "여"]),
-  mbti: z.string().nullable().optional(),
+  mbti: z.enum(MBTI_TYPES).nullable().optional(),
   leftPalmFacts: z.unknown().nullable().optional(),
   rightPalmFacts: z.unknown().nullable().optional(),
   dominantHand: z.enum(["left", "right"]).nullable().optional(),
