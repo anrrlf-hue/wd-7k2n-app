@@ -176,9 +176,10 @@ assert(
   "primary CTA must start the broad free Saju flow directly",
 );
 assert(
-  homeSource.includes("손금까지 보면 더 입체적입니다") &&
-    homeSource.includes("그다음 궁금한 분야를 깊게 봅니다"),
-  "homepage value sequence must be Saju -> palm -> detail",
+  homeSource.includes("타고난 나를 먼저 봅니다") &&
+    homeSource.includes("양손으로 지금의 변화를 봅니다") &&
+    homeSource.includes("나와 이 사람까지 이어봅니다"),
+  "homepage value sequence must communicate Saju -> bilateral palm -> relationship",
 );
 assert(diagnosisSource.includes('setFocus("overall")') && diagnosisSource.includes('setStep("date")'), "free Saju must start broad without an overall chooser");
 assert(focusStepSource.includes("SAJU_DETAIL_FOCUS_VALUES"), "detail chooser must use only four detailed topics");
