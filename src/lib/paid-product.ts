@@ -1,25 +1,24 @@
 export const PAID_PRODUCT = {
-  sku: "finance-one-question-v1",
-  name: "내 돈 고민 한 가지 현실판정",
+  sku: "person-situation-deep-dive-v1",
+  name: "이 사람·이 상황 깊게 보기",
   priceKrw: null,
   promise:
-    "한 가지 돈 고민을 실제 금액과 날짜로 확인해, 지금 계획이 가능한지와 무엇을 바꿀지까지 정리합니다.",
+    "연애·동업·직장·이직·사업처럼 지금 가장 궁금한 사람이나 상황 하나를 골라, 사주 흐름과 관계 맥락을 더 깊게 이어봅니다.",
   included: [
-    "내가 고른 돈 고민 1개",
-    "확인한 금액·날짜와 빠진 정보",
-    "가능 / 부족 / 추가 확인이 필요한지 현실판정",
-    "지금 선택할 수 있는 방향 2개",
-    "오늘 시작할 첫 행동 1개",
-    "30일 뒤 재점검 1회",
+    "궁금한 사람 또는 상황 1개",
+    "지금 관계·상황의 핵심",
+    "잘 맞는 부분과 부딪히는 부분",
+    "가장 눈여겨볼 시기",
+    "좋은 방향과 조심할 방향",
+    "한 번 더 좁혀보는 후속 질문",
   ],
   excluded: [
-    "사주·손금으로 수익이나 투자 결과를 예측하지 않습니다.",
-    "특정 금융상품 매수·가입을 권하지 않습니다.",
+    "의료·법률·투자 결과를 확정적으로 예측하지 않습니다.",
+    "미래 사건이나 상대의 행동을 보장하지 않습니다.",
     "무제한 상담이나 상시 관리는 포함하지 않습니다.",
   ],
-  recheckCount: 1,
   priceStatus: "unvalidated" as const,
-  status: "preview" as const,
+  status: "beta_not_for_sale" as const,
 };
 
 export const PAID_PRODUCT_INCLUDED = PAID_PRODUCT.included;
