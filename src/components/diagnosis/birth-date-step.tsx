@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,8 @@ export function BirthDateStep({
   onChange,
   gender,
   onGenderChange,
+  consent,
+  onConsentChange,
   onNext,
   onBack,
 }: {
@@ -18,6 +21,8 @@ export function BirthDateStep({
   onChange: (v: string) => void;
   gender: "남" | "여";
   onGenderChange: (v: "남" | "여") => void;
+  consent: boolean;
+  onConsentChange: (v: boolean) => void;
   onNext: () => void;
   onBack?: () => void;
 }) {
@@ -65,10 +70,25 @@ export function BirthDateStep({
         ))}
       </div>
 
-      <div className="mt-auto pt-10">
+      <label className="mt-6 flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
+        <input
+          type="checkbox"
+          checked={consent}
+          onChange={(e) => onConsentChange(e.target.checked)}
+          className="mt-1 size-4"
+        />
+        <span className="text-sm leading-6 text-muted-foreground">
+          사주 분석에 필요한 출생정보 처리에 동의합니다.{" "}
+          <Link href="/privacy" target="_blank" className="font-medium text-foreground underline underline-offset-4">
+            개인정보처리방침 보기
+          </Link>
+        </span>
+      </label>
+
+      <div className="mt-auto pt-8">
         <Button
           size="lg"
-          disabled={!value}
+          disabled={!value || !consent}
           onClick={onNext}
           className="h-13 w-full rounded-full text-base"
         >
