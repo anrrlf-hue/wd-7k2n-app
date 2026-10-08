@@ -68,7 +68,6 @@ export default function RelationshipSharePage() {
     );
   }
 
-  const selectedAnswer = payload.followUps.find((item) => item.question === selected)?.answer;
   return (
     <main className="mx-auto min-h-screen w-full max-w-xl px-5 py-8">
       <div className="flex items-center gap-2 text-(--gold)">
