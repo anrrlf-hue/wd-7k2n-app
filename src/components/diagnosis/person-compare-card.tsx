@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, Share2, UsersRound } from "lucide-react";
+import { Copy, MessageCircle, Save, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { BirthInput } from "@/lib/saju";
 import { track } from "@/lib/analytics";
 import { buildRelationshipShareUrl } from "@/lib/relationship-share";
+import { SIJIN_OPTIONS, sijinFromHour, sijinOption, type SijinId } from "@/lib/korean-hour";
+import { loadSavedPeople, upsertSavedPerson, type SavedPerson } from "@/lib/saved-people";
 import {
   PERSON_COMPARE_PURPOSE_LABELS,
   PERSON_COMPARE_PURPOSES,
@@ -17,25 +19,27 @@ import {
 function otherBirthFromForm(input: {
   birthDate: string;
   gender: "남" | "여";
-  knowsTime: boolean;
-  birthTime: string;
+  sijin: SijinId;
 }): BirthInput | null {
   const [year, month, day] = input.birthDate.split("-").map(Number);
   if (!year || !month || !day) return null;
-
-  const [hour, minute] =
-    input.knowsTime && input.birthTime
-      ? input.birthTime.split(":").map(Number)
-      : [null, null];
-
+  const option = sijinOption(input.sijin);
   return {
     year,
     month,
     day,
-    hour,
-    minute,
+    hour: option.hour,
+    minute: option.hour === null ? null : 0,
     gender: input.gender,
   };
+}
+
+function dateValue(input: BirthInput): string {
+  return [
+    String(input.year).padStart(4, "0"),
+    String(input.month).padStart(2, "0"),
+    String(input.day).padStart(2, "0"),
+  ].join("-");
 }
 
 export function PersonCompareCard({ me }: { me: BirthInput }) {
@@ -44,36 +48,48 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
   const [otherName, setOtherName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState<"남" | "여">("남");
-  const [knowsTime, setKnowsTime] = useState(false);
-  const [birthTime, setBirthTime] = useState("");
+  const [sijin, setSijin] = useState<SijinId>("unknown");
   const [result, setResult] = useState<PersonCompareResult | null>(null);
+  const [savedPeople, setSavedPeople] = useState<SavedPerson[]>([]);
+  const [selectedSavedId, setSelectedSavedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
-  const [shareDone, setShareDone] = useState(false);
-  const [selectedFollowUp, setSelectedFollowUp] = useState<string | null>(null);
+  const [shareDone, setShareDone] = useState<string | null>(null);
+  const [savedDone, setSavedDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const otherBirth = useMemo(
-    () => otherBirthFromForm({ birthDate, gender, knowsTime, birthTime }),
-    [birthDate, gender, knowsTime, birthTime],
+    () => otherBirthFromForm({ birthDate, gender, sijin }),
+    [birthDate, gender, sijin],
   );
-  const shareAvailable =
-    typeof navigator !== "undefined" &&
-    typeof (navigator as Navigator & { share?: unknown }).share === "function";
+
+  useEffect(() => {
+    const refresh = () => setSavedPeople(loadSavedPeople().filter((person) => !person.isSelf));
+    refresh();
+    window.addEventListener("saju:saved-people-changed", refresh);
+    return () => window.removeEventListener("saju:saved-people-changed", refresh);
+  }, []);
+
+  function applySavedPerson(person: SavedPerson) {
+    setSelectedSavedId(person.id);
+    setOtherName(person.name);
+    setBirthDate(dateValue(person.birthInput));
+    setGender(person.birthInput.gender);
+    setSijin(sijinFromHour(person.birthInput.hour));
+    setResult(null);
+    setError(null);
+    setSavedDone(false);
+  }
 
   async function compare() {
     if (!otherBirth) {
       setError("상대방의 생년월일을 입력해주세요.");
       return;
     }
-    if (knowsTime && !birthTime) {
-      setError("출생시간을 안다면 시간을 입력해주세요.");
-      return;
-    }
 
     setLoading(true);
     setError(null);
-    setShareDone(false);
+    setShareDone(null);
     track("relationship_compare_started", { purpose });
 
     try {
@@ -93,7 +109,6 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
         throw new Error(data.error || "두 사람의 사주를 비교하지 못했습니다.");
       }
       setResult(data.result);
-      setSelectedFollowUp(null);
       track("relationship_compare_completed", { purpose: data.result.purpose });
     } catch (err) {
       setError(err instanceof Error ? err.message : "두 사람의 사주를 비교하지 못했습니다.");
@@ -102,45 +117,79 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
     }
   }
 
-  async function shareResult() {
-    if (!result) return;
+  function currentShare() {
+    if (!result) return null;
+    return buildRelationshipShareUrl(result, window.location.origin);
+  }
+
+  async function shareToKakao() {
+    const shared = currentShare();
+    if (!shared || !result) return;
     setSharing(true);
-    setShareDone(false);
+    setShareDone(null);
     try {
-      const shared = buildRelationshipShareUrl(result, window.location.origin);
       if (navigator.share) {
         await navigator.share({
           title: `운·돈 · 나와 이 사람 · ${result.purposeLabel}`,
           text: result.shareText,
           url: shared.url,
         });
-        setShareDone(true);
+        setShareDone("공유창에서 카카오톡으로 보낼 수 있어요");
+        track("relationship_share_created", {
+          shareId: shared.shareId,
+          purpose: result.purpose,
+          channel: "native_kakao_choice",
+        });
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(`${result.shareText}\n\n${shared.url}`);
-        setShareDone(true);
+        setShareDone("링크를 복사했어요. 카카오톡에 붙여넣어 보내주세요");
+        track("relationship_share_created", {
+          shareId: shared.shareId,
+          purpose: result.purpose,
+          channel: "clipboard_kakao_fallback",
+        });
       }
-      track("relationship_share_created", {
-        shareId: shared.shareId,
-        purpose: result.purpose,
-        channel: shareAvailable ? "native" : "clipboard",
-      });
     } catch {
-      // 사용자가 공유창을 닫은 경우도 오류 화면으로 바꾸지 않는다.
+      // 공유창을 닫은 경우는 오류로 보이지 않는다.
     } finally {
       setSharing(false);
     }
   }
 
+  async function copyLink() {
+    const shared = currentShare();
+    if (!shared || !result || !navigator.clipboard) return;
+    await navigator.clipboard.writeText(`${result.shareText}\n\n${shared.url}`);
+    setShareDone("결과와 링크를 복사했어요");
+    track("relationship_share_created", {
+      shareId: shared.shareId,
+      purpose: result.purpose,
+      channel: "clipboard",
+    });
+  }
+
+  function saveCurrentPerson() {
+    if (!otherBirth) return;
+    const saved = upsertSavedPerson({
+      id: selectedSavedId ?? undefined,
+      name: otherName.trim() || "상대",
+      relation: PERSON_COMPARE_PURPOSE_LABELS[purpose],
+      birthInput: otherBirth,
+    });
+    setSelectedSavedId(saved.id);
+    setSavedDone(true);
+  }
+
   function resetOther() {
+    setSelectedSavedId(null);
     setOtherName("");
     setBirthDate("");
     setGender("남");
-    setKnowsTime(false);
-    setBirthTime("");
+    setSijin("unknown");
     setResult(null);
     setError(null);
-    setShareDone(false);
-    setSelectedFollowUp(null);
+    setShareDone(null);
+    setSavedDone(false);
   }
 
   if (!open) {
@@ -151,11 +200,10 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
           <p className="section-eyebrow">나와 이 사람</p>
         </div>
         <h3 className="mt-2 text-lg leading-7 font-semibold">
-          내 사주를 사람 관계로 이어서 볼 수 있어요
+          저장해둔 사람은 생년월일을 다시 입력하지 않아도 됩니다
         </h3>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          연애·가족·직장·동업에서 누가 더 좋은 사람인지 점수를 매기지 않고,
-          서로 잘 맞는 부분과 부딪히는 부분, 같이할 때 역할을 어떻게 나누면 좋은지 봅니다.
+          연애·가족·직장·동업에서 잘 맞는 부분, 부딪히는 부분, 역할을 어떻게 나누면 좋은지 함께 봅니다.
         </p>
         <Button
           type="button"
@@ -180,7 +228,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
         <>
           <h3 className="mt-2 text-xl leading-8 font-semibold">어떤 관계인지 먼저 골라주세요</h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            같은 두 사람도 연애와 동업에서 봐야 할 지점이 다릅니다. 관계 목적에 맞춰 풀이 내용을 바꿉니다.
+            같은 두 사람도 연애와 동업에서 봐야 할 지점이 다릅니다.
           </p>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -205,10 +253,33 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
             ))}
           </div>
 
+          {savedPeople.length > 0 && (
+            <section className="mt-5 rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-semibold">저장한 사람 불러오기</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {savedPeople.map((person) => (
+                  <button
+                    key={person.id}
+                    type="button"
+                    onClick={() => applySavedPerson(person)}
+                    className={
+                      "rounded-full border px-3 py-2 text-sm " +
+                      (selectedSavedId === person.id
+                        ? "border-(--gold) bg-(--gold-soft)"
+                        : "border-border bg-accent")
+                    }
+                  >
+                    {person.name} · {person.relation}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className="mt-5 rounded-2xl bg-accent p-4">
             <p className="text-sm font-semibold">상대방 정보</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              내 생년월일은 다시 입력하지 않습니다. 상대방 정보만 추가하면 됩니다.
+              내 정보는 다시 입력하지 않습니다. 저장한 사람은 위에서 한 번만 누르면 됩니다.
             </p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               알고 있고 사용할 수 있는 상대방 정보만 입력해 주세요.{" "}
@@ -218,11 +289,15 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
             </p>
 
             <label className="mt-4 block">
-              <span className="text-sm font-medium">이름 또는 호칭 · 선택</span>
+              <span className="text-sm font-medium">이름 또는 호칭</span>
               <input
                 value={otherName}
                 maxLength={20}
-                onChange={(event) => setOtherName(event.target.value)}
+                onChange={(event) => {
+                  setOtherName(event.target.value);
+                  setSelectedSavedId(null);
+                  setSavedDone(false);
+                }}
                 placeholder="예: 민수, 배우자, 동업자"
                 className="mt-2 h-12 w-full rounded-xl border border-border bg-card px-4 text-base outline-none focus:border-(--gold)"
               />
@@ -235,6 +310,8 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
                 value={birthDate}
                 onChange={(event) => {
                   setBirthDate(event.target.value);
+                  setSelectedSavedId(null);
+                  setSavedDone(false);
                   setError(null);
                 }}
                 className="mt-2 h-12 w-full rounded-xl border border-border bg-card px-4 text-base outline-none focus:border-(--gold)"
@@ -249,7 +326,10 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
                     key={item}
                     type="button"
                     variant={gender === item ? "default" : "outline"}
-                    onClick={() => setGender(item)}
+                    onClick={() => {
+                      setGender(item);
+                      setSelectedSavedId(null);
+                    }}
                     className="h-11 rounded-xl"
                   >
                     {item}
@@ -258,39 +338,27 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
               </div>
             </div>
 
-            <label className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-              <input
-                type="checkbox"
-                checked={knowsTime}
+            <label className="mt-4 block">
+              <span className="text-sm font-medium">태어난 시 · 선택</span>
+              <select
+                value={sijin}
                 onChange={(event) => {
-                  setKnowsTime(event.target.checked);
-                  if (!event.target.checked) setBirthTime("");
-                  setError(null);
+                  setSijin(event.target.value as SijinId);
+                  setSelectedSavedId(null);
+                  setSavedDone(false);
                 }}
-                className="size-4"
-              />
-              <span>
-                <span className="block text-sm font-medium">출생시간을 알고 있어요</span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  모르면 기본 관계는 볼 수 있고, 현재 시기 비교만 덜 정밀해집니다.
-                </span>
-              </span>
+                className="mt-2 h-12 w-full rounded-xl border border-border bg-card px-4 text-base outline-none focus:border-(--gold)"
+              >
+                {SIJIN_OPTIONS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.id === "unknown" ? item.label : `${item.label} · ${item.range}`}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                정확한 분을 몰라도 축시·묘시처럼 두 시간 단위의 시진만 알면 선택할 수 있습니다.
+              </p>
             </label>
-
-            {knowsTime && (
-              <label className="mt-3 block">
-                <span className="text-sm font-medium">출생시간</span>
-                <input
-                  type="time"
-                  value={birthTime}
-                  onChange={(event) => {
-                    setBirthTime(event.target.value);
-                    setError(null);
-                  }}
-                  className="mt-2 h-12 w-full rounded-xl border border-border bg-card px-4 text-base outline-none focus:border-(--gold)"
-                />
-              </label>
-            )}
           </div>
 
           {error && <p className="mt-3 text-sm leading-6 text-destructive">{error}</p>}
@@ -369,49 +437,40 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
             </div>
           </div>
 
-          <section className="mt-5 rounded-2xl bg-accent p-4">
-            <p className="section-eyebrow">이어서 궁금해질 수 있는 것</p>
-            <div className="mt-3 grid gap-2">
-              {result.followUps.map((item) => (
-                <button
-                  key={item.question}
-                  type="button"
-                  onClick={() => {
-                    setSelectedFollowUp(item.question);
-                    track("relationship_followup_opened", { purpose: result.purpose });
-                  }}
-                  className="min-h-11 rounded-xl border border-border bg-card px-3 py-2 text-left text-sm font-medium text-foreground"
-                >
-                  {item.question}
-                </button>
-              ))}
-            </div>
-            {selectedFollowUp && (
-              <div className="mt-3 rounded-xl border border-(--gold-soft) bg-card p-4">
-                <p className="text-sm font-semibold">
-                  {selectedFollowUp}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {result.followUps.find((item) => item.question === selectedFollowUp)?.answer}
-                </p>
-              </div>
-            )}
-          </section>
-
           <p className="mt-4 text-xs leading-5 text-muted-foreground">{result.note}</p>
 
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void shareResult()}
-            disabled={sharing}
-            className="mt-5 h-12 w-full rounded-full"
-          >
-            {shareAvailable ? <Share2 className="size-4" /> : <Copy className="size-4" />}
-            {sharing ? "공유 준비 중..." : shareDone ? "결과를 복사했습니다" : "이 결과 함께 보기"}
-          </Button>
+          <div className="mt-5 grid gap-2">
+            <Button
+              type="button"
+              onClick={() => void shareToKakao()}
+              disabled={sharing}
+              className="h-12 w-full rounded-full"
+            >
+              <MessageCircle className="size-4" />
+              {sharing ? "공유창 여는 중..." : "카카오톡으로 보내기"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void copyLink()}
+              className="h-12 w-full rounded-full"
+            >
+              <Copy className="size-4" />
+              결과와 링크 복사
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={saveCurrentPerson}
+              className="h-12 w-full rounded-full"
+            >
+              <Save className="size-4" />
+              {savedDone ? "사람 정보 저장됨" : "이 사람 저장하기"}
+            </Button>
+          </div>
+          {shareDone && <p className="mt-2 text-center text-xs leading-5 text-muted-foreground">{shareDone}</p>}
           <p className="mt-2 text-center text-xs leading-5 text-muted-foreground">
-            공유 문구에는 두 사람의 생년월일을 넣지 않습니다.
+            공유 링크에는 두 사람의 생년월일이나 손 사진을 넣지 않습니다.
           </p>
 
           <Button
