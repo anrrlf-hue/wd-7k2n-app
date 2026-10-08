@@ -194,6 +194,8 @@ export function PalmPageClient({
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraMessage, setCameraMessage] = useState("손바닥 전체를 화면 안에 맞춰주세요.");
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisMessage, setAnalysisMessage] = useState("");
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -232,6 +234,40 @@ export function PalmPageClient({
       cancelled = true;
     };
   }, [resumeKey]);
+
+  useEffect(() => {
+    if (stage !== "detecting" && stage !== "loading") return;
+
+    if (stage === "detecting") {
+      setAnalysisProgress(22);
+      setAnalysisMessage(`${captureHand === "right" ? "오른손" : "왼손"} 사진 품질과 주요 손금선을 확인하고 있어요`);
+    } else {
+      setAnalysisProgress(72);
+      setAnalysisMessage("양손의 차이와 사주 흐름을 함께 비교하고 있어요");
+    }
+
+    const first = window.setTimeout(() => {
+      setAnalysisProgress(stage === "detecting" ? 44 : 84);
+      setAnalysisMessage(
+        stage === "detecting"
+          ? "생명선·두뇌선·감정선과 보조선을 나눠 확인하고 있어요"
+          : "타고난 흐름과 지금의 변화를 한 번에 정리하고 있어요",
+      );
+    }, 1800);
+    const second = window.setTimeout(() => {
+      setAnalysisProgress(stage === "detecting" ? 62 : 94);
+      setAnalysisMessage(
+        stage === "detecting"
+          ? "거의 다 봤어요. 선명한 특징만 남기고 있어요"
+          : "결과 문장을 정리하고 있어요. 잠시만 기다려주세요",
+      );
+    }, 4200);
+
+    return () => {
+      window.clearTimeout(first);
+      window.clearTimeout(second);
+    };
+  }, [stage, captureHand]);
 
   useEffect(() => {
     if (!cameraOpen) return;
@@ -444,6 +480,7 @@ export function PalmPageClient({
     setErrorMsg(null);
     setStage("detecting");
     replacePreview(preview);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     try {
       const analyzed = await withTimeout(
@@ -619,14 +656,20 @@ export function PalmPageClient({
       {stage === "upload" && (
         <div className="mt-6 flex flex-1 flex-col">
           {cameraOpen ? (
-            <div className="pb-28">
-              <div className="mb-4 rounded-2xl border border-(--gold-soft) bg-card p-4 text-center">
-                <p className="section-eyebrow">{captureHand === "right" ? "1 / 2 · 오른손 촬영" : "2 / 2 · 왼손 촬영"}</p>
-                <p className="mt-1 text-base font-semibold">
-                  {captureHand === "right" ? "오른손 손바닥을 정면으로 보여주세요" : "이제 왼손 손바닥을 정면으로 보여주세요"}
-                </p>
+            <div className="fixed inset-0 z-[80] flex min-h-0 flex-col bg-background px-4 pt-[max(12px,env(safe-area-inset-top))] pb-[max(14px,env(safe-area-inset-bottom))]">
+              <div className="mx-auto flex w-full max-w-sm items-center justify-between gap-3">
+                <div>
+                  <p className="section-eyebrow">{captureHand === "right" ? "1 / 2 · 오른손" : "2 / 2 · 왼손"}</p>
+                  <p className="mt-1 text-base font-semibold">
+                    {captureHand === "right" ? "오른손 전체를 화면 안에 맞춰주세요" : "왼손 전체를 화면 안에 맞춰주세요"}
+                  </p>
+                </div>
+                <Button type="button" size="sm" variant="outline" onClick={stopLiveCamera} className="rounded-full">
+                  취소
+                </Button>
               </div>
-              <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-3xl border border-(--gold-soft) bg-black">
+
+              <div className="relative mx-auto mt-3 min-h-0 w-full max-w-sm flex-1 overflow-hidden rounded-3xl border border-(--gold-soft) bg-black">
                 <video
                   ref={cameraVideoRef}
                   playsInline
@@ -635,46 +678,37 @@ export function PalmPageClient({
                 />
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-[7%] rounded-[2rem] border-2 border-dashed border-white/70"
+                  className="pointer-events-none absolute inset-[5%] rounded-[2rem] border-2 border-dashed border-white/75"
                 />
+                <div className="absolute inset-x-3 bottom-3 rounded-2xl bg-black/65 px-4 py-3 text-center backdrop-blur">
+                  <p className={`text-sm font-semibold ${cameraReady ? "text-amber-200" : "text-white"}`}>
+                    {cameraMessage}
+                  </p>
+                  {!cameraReady && (
+                    <p className="mt-1 text-xs leading-5 text-white/75">
+                      손가락 끝부터 손목까지 모두 들어오고 선명해지면 촬영 버튼이 나타납니다.
+                    </p>
+                  )}
+                </div>
               </div>
               <canvas ref={cameraProbeCanvasRef} className="hidden" />
-              <div className="mt-4 rounded-2xl border border-border bg-card p-4">
-                <p className="text-sm leading-6 text-muted-foreground">
-                  손바닥이 화면의 70~85% 정도 차지하게 가까이 맞추고, 손가락 끝부터 손목 주름까지 모두 보이게 해주세요.
-                  카메라와 손바닥을 최대한 평행하게 두고 반사광이 생기지 않게 한 뒤 잠깐 멈춰주세요.
-                </p>
-                <p className={`mt-2 text-base font-medium leading-7 ${cameraReady ? "text-(--gold)" : "text-foreground"}`}>
-                  {cameraMessage}
-                </p>
-              </div>
-              <div className="mt-4">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={stopLiveCamera}
-                  className="h-13 w-full rounded-full text-base"
-                >
-                  취소
-                </Button>
-              </div>
-              <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 px-4 pt-3 pb-4 backdrop-blur">
-                <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-2">
+
+              <div className="mx-auto mt-3 w-full max-w-sm">
+                {cameraReady ? (
                   <Button
                     type="button"
                     aria-label="손금 사진 촬영"
                     onClick={captureLiveCamera}
-                    className="primary-cta flex size-20 flex-col gap-1 rounded-full p-0 shadow-xl"
+                    className="primary-cta h-14 w-full rounded-full text-base shadow-xl"
                   >
                     <Camera className="size-5" />
-                    <span className="text-xs font-semibold">촬영</span>
+                    이제 찍으세요
                   </Button>
-                  {!cameraReady && (
-                    <p className="text-center text-xs leading-5 text-muted-foreground">
-                      자동 확인이 끝나지 않아도 촬영할 수 있어요. 결과가 흐리면 다시 안내합니다.
-                    </p>
-                  )}
-                </div>
+                ) : (
+                  <div className="flex h-14 items-center justify-center rounded-full border border-border bg-card text-sm text-muted-foreground">
+                    손 전체를 맞추는 중...
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -799,22 +833,27 @@ export function PalmPageClient({
       )}
 
       {(stage === "detecting" || stage === "loading") && (
-        <div className="mt-10 flex flex-1 flex-col items-center justify-center gap-6 text-center">
+        <div className="mt-8 flex flex-1 flex-col items-center justify-center text-center">
           {previewUrl && (
-            <div className="mystic-ring size-40 overflow-hidden rounded-2xl border border-(--gold-soft)">
+            <div className="mystic-ring size-36 overflow-hidden rounded-2xl border border-(--gold-soft)">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={previewUrl} alt="" className="size-full bg-black object-contain object-center" />
             </div>
           )}
-          <motion.div
-            className="h-10 w-10 rounded-full border-2 border-(--gold-soft) border-t-(--gold)"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
-          <p className="text-base text-muted-foreground">
-            {stage === "detecting"
-              ? `${captureHand === "right" ? "오른손" : "왼손"}의 손 모양과 손금선을 확인하는 중이에요`
-              : "양손 손금과 생년월일의 앞으로 흐름을 함께 정리하는 중이에요"}
+          <p className="mt-5 text-lg font-semibold">
+            {stage === "detecting" ? "손금선을 읽고 있습니다" : "양손과 사주를 함께 정리하고 있습니다"}
+          </p>
+          <p className="mt-2 min-h-12 max-w-sm text-sm leading-6 text-muted-foreground">{analysisMessage}</p>
+          <div className="mt-5 h-2 w-full max-w-sm overflow-hidden rounded-full bg-border">
+            <motion.div
+              className="h-full rounded-full bg-(--gold)"
+              animate={{ width: `${analysisProgress}%` }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+            />
+          </div>
+          <p className="mt-2 text-xs tabular-nums text-muted-foreground">{analysisProgress}%</p>
+          <p className="mt-4 text-xs leading-5 text-muted-foreground">
+            화면이 멈춘 것이 아닙니다. 사진에서 선을 실제로 확인한 뒤 결과를 만들고 있어요.
           </p>
         </div>
       )}
