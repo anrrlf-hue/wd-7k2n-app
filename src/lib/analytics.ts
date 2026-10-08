@@ -1,4 +1,5 @@
 export const CONVERSION_EVENTS = [
+  "landing_viewed",
   "free_report_completed",
   "indirect_experience_started",
   "indirect_experience_completed",
