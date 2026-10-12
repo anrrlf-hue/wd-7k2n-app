@@ -1,0 +1,21 @@
+{
+  "schema": "SAJU_AGGREGATE_V1",
+  "realm": "TEST",
+  "coverage": "DISABLED",
+  "period": {
+    "start": "2026-10-12T00:00:00Z",
+    "end": "2026-10-12T01:00:00Z",
+    "observed_until": "2026-10-12T01:30:00Z"
+  },
+  "state": "NO_DATA",
+  "sample_status": "NO_DATA",
+  "counts": null,
+  "transitions": [],
+  "optional_from_result": {},
+  "error_sessions": {},
+  "people": null,
+  "new_customers": null,
+  "delivered_shares": null,
+  "causal_effect": null,
+  "digest": "63471bb6582a7dbc7796bcd4eed2aa86fc48489ee298f62ceae43aedb17be499"
+}

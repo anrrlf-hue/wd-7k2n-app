@@ -1,4 +1,5 @@
 "use client";
+import { AnalyticsView } from "@/components/analytics-view";
 
 import { useState } from "react";
 import { Crown } from "lucide-react";
@@ -108,6 +109,7 @@ export function PostReadingDetailFlow({
 
   return (
     <section className="mt-8 border-t border-border pt-8">
+      {stage === "premium" && <AnalyticsView event="premium_report_viewed" />}
       {stage === "focus" && (
         <>
           <p className="section-eyebrow">사주·손금을 다 봤다면</p>

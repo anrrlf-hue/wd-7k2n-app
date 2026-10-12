@@ -1,0 +1,389 @@
+diff --git a/contract/agentic_executor.py b/contract/agentic_executor.py
+index 8d2f592..82ae6aa 100644
+--- a/contract/agentic_executor.py
++++ b/contract/agentic_executor.py
+@@ -445,12 +445,30 @@ Use headings 대상 고객:, 홍보 방향:, 채널 계획:, 전환 목표:, 추
+     if provider and model:
+         params['args']['provider']=str(provider)
+         params['args']['model']=str(model)
+-    run=subprocess.run([OPENCLAW_NODE,OPENCLAW_CLI,'gateway','call','tools.invoke',
+-                        '--json','--timeout','100000','--params',json.dumps(params,ensure_ascii=False)],
+-                       capture_output=True,text=True,timeout=110)
+-    try: output=json.loads(run.stdout)
+-    except (TypeError,ValueError): raise RuntimeError('LLM_TASK_SYNTHESIS_INVALID_RESPONSE')
+-    if run.returncode or output.get('ok') is not True:
++    def submit_once(bounded_params):
++        run=subprocess.run([OPENCLAW_NODE,OPENCLAW_CLI,'gateway','call','tools.invoke',
++                            '--json','--timeout','100000','--params',json.dumps(bounded_params,ensure_ascii=False)],
++                           capture_output=True,text=True,timeout=110)
++        try: output=json.loads(run.stdout)
++        except (TypeError,ValueError): raise RuntimeError('LLM_TASK_SYNTHESIS_INVALID_RESPONSE')
++        if run.returncode:
++            raise RuntimeError('LLM_TASK_SYNTHESIS_FAILED')
++        return output
++    budget_required = (context.get('model_run_budget') is not None or
++                       ((context.get('payload') or {}).get('factory') or {}).get('domain') == 'saju-agent' or
++                       (context.get('payload') or {}).get('model_budget_required') is True)
++    if budget_required:
++        from model_run_budget import invoke_reviewed_llm_task
++        output=invoke_reviewed_llm_task(context,params,submit_once)
++        failed=output.get('ok') is not True
++    else:
++        run=subprocess.run([OPENCLAW_NODE,OPENCLAW_CLI,'gateway','call','tools.invoke',
++                            '--json','--timeout','100000','--params',json.dumps(params,ensure_ascii=False)],
++                           capture_output=True,text=True,timeout=110)
++        try: output=json.loads(run.stdout)
++        except (TypeError,ValueError): raise RuntimeError('LLM_TASK_SYNTHESIS_INVALID_RESPONSE')
++        failed=run.returncode or output.get('ok') is not True
++    if failed:
+         selected = (
+             f"{provider}/{model}"
+             if provider and model
+diff --git a/contract/autonomous_growth_brain_bridge.py b/contract/autonomous_growth_brain_bridge.py
+index c717215..f96658b 100644
+--- a/contract/autonomous_growth_brain_bridge.py
++++ b/contract/autonomous_growth_brain_bridge.py
+@@ -1032,6 +1032,9 @@ def invoke(mode, context, provider=None, model=None):
+             },
+         },
+     }
++    if (context.get('scope') or {}).get('domain_id') == 'saju-agent':
++        execution_context['model_run_budget'] = context.get('model_run_budget')
++        execution_context['payload']['model_budget_required'] = True
+     if len(request.encode("utf-8")) > MODEL_REQUEST_BYTE_LIMIT:
+         raise RuntimeError("AUTONOMOUS_GROWTH_BRAIN_CONTEXT_TOO_LARGE")
+     executor = _executor_module()
+diff --git a/contract/model_run_budget.py b/contract/model_run_budget.py
+new file mode 100644
+index 0000000..5828a76
+--- /dev/null
++++ b/contract/model_run_budget.py
+@@ -0,0 +1,247 @@
++"""One-run cost reservations at the existing llm-task boundary.
++
++This is an accounting guard, not an executor, retry loop or provider adapter.
++No approved billing terms -> no submission. Unknown response -> stop the run.
++The reviewed llm-task transport currently cannot prove hard limits/usage and
++therefore remains blocked even if a caller sets a policy flag to True.
++"""
++import copy
++import hashlib
++import json
++from contextlib import nullcontext
++from datetime import datetime, timezone
++from decimal import Decimal, InvalidOperation
++
++SCHEMA = "MODEL_RUN_BUDGET_V1"
++LIMIT_KEYS = {"max_calls", "max_input_tokens", "max_output_tokens", "per_call_input_tokens", "per_call_output_tokens", "max_retries_per_call"}
++REQUIRED_CAPABILITIES = {"hard_output_limit", "preflight_total_input_tokens", "complete_usage", "single_attempt", "billable_total_ceiling"}
++
++
++def canonical(value):
++    return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
++
++
++def digest(value):
++    return hashlib.sha256(canonical(value).encode()).hexdigest()
++
++
++def amount(value):
++    if not isinstance(value, str):
++        raise ValueError("BILLING_AMOUNT_MUST_BE_DECIMAL_STRING")
++    try:
++        number = Decimal(value)
++    except InvalidOperation as exc:
++        raise ValueError("BILLING_AMOUNT_INVALID") from exc
++    if not number.is_finite() or number < 0:
++        raise ValueError("BILLING_AMOUNT_INVALID")
++    return number
++
++
++def validate_policy(policy, *, require_approval=True):
++    if not isinstance(policy, dict) or set(policy) != {"schema", "enabled", "limits", "billing"} or policy["schema"] != SCHEMA:
++        raise ValueError("MODEL_BUDGET_POLICY_REQUIRED")
++    limits = policy["limits"]
++    if not isinstance(limits, dict) or set(limits) != LIMIT_KEYS:
++        raise ValueError("MODEL_BUDGET_LIMITS_REQUIRED")
++    if any(type(v) is not int or v < (0 if k == "max_retries_per_call" else 1) for k, v in limits.items()):
++        raise ValueError("MODEL_BUDGET_LIMITS_INVALID")
++    if type(policy["enabled"]) is not bool:
++        raise ValueError("MODEL_BUDGET_ENABLED_INVALID")
++    if not require_approval:
++        return policy
++    if not policy["enabled"]:
++        raise ValueError("MODEL_ACTIVATION_NOT_APPROVED")
++    billing = policy["billing"]
++    fields = {"approval_ref", "invocation_key", "account_terms_ref", "account_terms_sha256", "account_binding_ref", "provider", "model", "currency", "approved_max_amount", "input_token_price_ceiling", "output_token_price_ceiling", "per_call_fee_ceiling", "all_billable_usage_covered", "expires_at"}
++    if not isinstance(billing, dict) or set(billing) != fields:
++        raise ValueError("ACCOUNT_BILLING_APPROVAL_REQUIRED")
++    for key in fields - {"all_billable_usage_covered"}:
++        if not isinstance(billing[key], str) or not billing[key].strip():
++            raise ValueError("ACCOUNT_BILLING_APPROVAL_REQUIRED")
++    if billing["all_billable_usage_covered"] is not True:
++        raise ValueError("BILLING_CEILING_NOT_COMPLETE")
++    fingerprint = billing["account_terms_sha256"]
++    if len(fingerprint) != 64 or any(x not in "0123456789abcdef" for x in fingerprint):
++        raise ValueError("ACCOUNT_TERMS_FINGERPRINT_REQUIRED")
++    expires = datetime.fromisoformat(billing["expires_at"].replace("Z", "+00:00"))
++    if expires.tzinfo is None or expires <= datetime.now(timezone.utc):
++        raise ValueError("BILLING_APPROVAL_EXPIRED")
++    for key in ("approved_max_amount", "input_token_price_ceiling", "output_token_price_ceiling", "per_call_fee_ceiling"):
++        amount(billing[key])
++    return policy
++
++
++class ReviewedLLMTaskTransport:
++    """Observed c0f8616 transport: no enforced token cap; usage is optional.
++
++    Keep these facts in code, not in caller-provided policy. No fictional
++    maxTokens argument or tokenizer estimate is sent to the current gateway.
++    """
++    capabilities = dict.fromkeys(REQUIRED_CAPABILITIES, False)
++    contract_ref = "reviewed-llm-task:hard-limits-and-complete-usage-unverified"
++
++    def __init__(self, submit):
++        self.submit = submit
++
++
++def require_supported(transport):
++    if any(transport.capabilities.get(key) is not True for key in REQUIRED_CAPABILITIES):
++        raise ValueError("PROVIDER_HARD_LIMIT_AND_USAGE_UNVERIFIED")
++
++
++def _authority(base, scope, connection=None):
++    import workpack_admission
++    registry = workpack_admission.registry(base)
++    with (nullcontext(connection) if connection is not None else base.connect()) as con:
++        trusted, goal, factory_policy = workpack_admission._snapshot(base, con, scope["tenant_id"], scope["goal_id"], registry)
++    if trusted["scope"] != scope or scope["domain"] != "saju-agent" or scope["environment"] not in {"TEST", "SANDBOX"}:
++        raise ValueError("MODEL_BUDGET_SCOPE_MISMATCH")
++    policy = validate_policy(registry["bundle"]["inputs"].get("model_policy"))
++    billing = policy["billing"]
++    if (factory_policy.get("model_budget_approval_ref") != billing["approval_ref"]
++            or goal["budget_state"] != "KNOWN" or goal["budget_currency"] != billing["currency"]
++            or amount(str(goal["budget_hard_limit_amount"])) < amount(billing["approved_max_amount"])):
++        raise ValueError("GOAL_MODEL_BUDGET_APPROVAL_REQUIRED")
++    return policy
++
++
++def init_schema(base):
++    with base.connect() as con:
++        con.executescript("""
++          CREATE TABLE IF NOT EXISTS model_run_budgets(
++            run_id TEXT PRIMARY KEY, scope_json TEXT NOT NULL, policy_digest TEXT NOT NULL,
++            state TEXT NOT NULL, calls INTEGER NOT NULL, input_tokens INTEGER NOT NULL,
++            output_tokens INTEGER NOT NULL, reserved_amount TEXT NOT NULL);
++          CREATE TABLE IF NOT EXISTS model_run_calls(
++            run_id TEXT NOT NULL, call_key TEXT NOT NULL, attempt INTEGER NOT NULL,
++            request_digest TEXT NOT NULL, state TEXT NOT NULL, receipt_json TEXT,
++            PRIMARY KEY(run_id,call_key,attempt));
++        """)
++
++
++def open_run(base, scope, invocation_key):
++    """Called by the explicit coordinator. Existing keys never reset counters."""
++    if not isinstance(invocation_key, str) or not invocation_key.strip() or len(invocation_key) > 256:
++        raise ValueError("MODEL_BUDGET_INVOCATION_REQUIRED")
++    policy = _authority(base, scope)
++    if policy["billing"]["invocation_key"] != invocation_key:
++        raise ValueError("MODEL_RUN_KEY_NOT_APPROVED")
++    run_id = "factory-" + digest({"scope": scope, "invocation": invocation_key})[:32]
++    binding = {"schema": SCHEMA, "run_id": run_id, "scope": copy.deepcopy(scope), "policy_digest": digest(policy)}
++    init_schema(base)
++    with base.connect() as con:
++        con.execute("BEGIN IMMEDIATE")
++        con.execute("INSERT OR IGNORE INTO model_run_budgets VALUES(?,?,?,'OPEN',0,0,0,'0')", (run_id, canonical(scope), binding["policy_digest"]))
++        row = con.execute("SELECT * FROM model_run_budgets WHERE run_id=?", (run_id,)).fetchone()
++        if row["scope_json"] != canonical(scope) or row["policy_digest"] != binding["policy_digest"]:
++            raise ValueError("MODEL_BUDGET_REPLAY_CONFLICT")
++    return binding
++
++
++def run_state(base, binding):
++    with base.connect() as con:
++        row = con.execute("SELECT state FROM model_run_budgets WHERE run_id=?", (binding["run_id"],)).fetchone()
++    return row[0] if row else None
++
++
++def finish_run(base, binding):
++    with base.connect() as con:
++        con.execute("BEGIN IMMEDIATE")
++        if con.execute("SELECT 1 FROM model_run_calls WHERE run_id=? AND state IN ('SUBMITTED','UNKNOWN') LIMIT 1", (binding["run_id"],)).fetchone():
++            raise ValueError("MODEL_RUN_UNRESOLVED")
++        con.execute("UPDATE model_run_budgets SET state='FINISHED' WHERE run_id=? AND state='OPEN'", (binding["run_id"],))
++
++
++def binding_for_factory(base, run_id, scope):
++    policy = _authority(base, scope)
++    return {"schema": SCHEMA, "run_id": run_id, "scope": scope, "policy_digest": digest(policy)}
++
++
++def invoke(base, binding, params, transport, *, attempt=0):
++    """Reserve all maxima before a single provider attempt; never auto-retry.
++
++    Reservations are conservative and never refunded, including safe retries.
++    A verified response may be replayed without another call. SUBMITTED after a
++    crash, an unknown response or invalid usage blocks all further run calls.
++    Only a transport-confirmed NOT_SUBMITTED attempt may be explicitly retried.
++    """
++    if not isinstance(binding, dict) or set(binding) != {"schema", "run_id", "scope", "policy_digest"} or binding["schema"] != SCHEMA:
++        raise ValueError("MODEL_RUN_BINDING_REQUIRED")
++    policy = _authority(base, binding["scope"])
++    if binding["policy_digest"] != digest(policy):
++        raise ValueError("MODEL_BUDGET_POLICY_CHANGED")
++    require_supported(transport)  # Current real transport always stops here.
++    limits, billing = policy["limits"], policy["billing"]
++    if type(attempt) is not int or not 0 <= attempt <= limits["max_retries_per_call"]:
++        raise ValueError("MODEL_RETRY_LIMIT")
++    request = copy.deepcopy(params)
++    # A supported adapter must count the whole provider request, including its
++    # system/schema/reasoning overhead, and enforce this exact output ceiling.
++    request = transport.prepare(request, provider=billing["provider"], model=billing["model"], max_output_tokens=limits["per_call_output_tokens"])
++    input_tokens = transport.input_tokens(request)
++    if type(input_tokens) is not int or not 0 <= input_tokens <= limits["per_call_input_tokens"]:
++        raise ValueError("MODEL_INPUT_TOKEN_LIMIT")
++    output_tokens = limits["per_call_output_tokens"]
++    reserve = input_tokens * amount(billing["input_token_price_ceiling"]) + output_tokens * amount(billing["output_token_price_ceiling"]) + amount(billing["per_call_fee_ceiling"])
++    call_key = digest(params)
++    request_digest = digest(request)
++    with base.connect() as con:
++        con.execute("BEGIN IMMEDIATE")
++        if digest(_authority(base, binding["scope"], con)) != binding["policy_digest"]:
++            raise ValueError("MODEL_BUDGET_POLICY_CHANGED")
++        row = con.execute("SELECT * FROM model_run_budgets WHERE run_id=?", (binding["run_id"],)).fetchone()
++        if not row or row["scope_json"] != canonical(binding["scope"]) or row["policy_digest"] != binding["policy_digest"]:
++            raise ValueError("MODEL_RUN_NOT_OPENED")
++        prior = con.execute("SELECT * FROM model_run_calls WHERE run_id=? AND call_key=? ORDER BY attempt DESC LIMIT 1", (binding["run_id"], call_key)).fetchone()
++        if prior and prior["request_digest"] != request_digest:
++            raise ValueError("MODEL_REQUEST_REPLAY_CONFLICT")
++        if prior and prior["state"] == "VERIFIED":
++            return json.loads(prior["receipt_json"])["response"]
++        unresolved = con.execute("SELECT 1 FROM model_run_calls WHERE run_id=? AND state IN ('SUBMITTED','UNKNOWN') LIMIT 1", (binding["run_id"],)).fetchone()
++        if row["state"] != "OPEN" or unresolved:
++            raise ValueError("MODEL_RUN_STOPPED_OR_UNRESOLVED")
++        if (prior and (prior["state"] != "NOT_SUBMITTED" or attempt != prior["attempt"] + 1)) or (not prior and attempt != 0):
++            raise ValueError("MODEL_RETRY_NOT_AUTHORIZED")
++        if row["calls"] + 1 > limits["max_calls"]:
++            raise ValueError("MODEL_TOTAL_CALL_LIMIT")
++        if row["input_tokens"] + input_tokens > limits["max_input_tokens"]:
++            raise ValueError("MODEL_TOTAL_INPUT_TOKEN_LIMIT")
++        if row["output_tokens"] + output_tokens > limits["max_output_tokens"]:
++            raise ValueError("MODEL_TOTAL_OUTPUT_TOKEN_LIMIT")
++        total = amount(row["reserved_amount"]) + reserve
++        if total > amount(billing["approved_max_amount"]):
++            raise ValueError("MODEL_APPROVED_AMOUNT_LIMIT")
++        con.execute("INSERT INTO model_run_calls VALUES(?,?,?,?, 'SUBMITTED',NULL)", (binding["run_id"], call_key, attempt, request_digest))
++        con.execute("UPDATE model_run_budgets SET calls=calls+1,input_tokens=input_tokens+?,output_tokens=output_tokens+?,reserved_amount=? WHERE run_id=?", (input_tokens, output_tokens, str(total), binding["run_id"]))
++    try:
++        response = transport.submit(request)
++        # Usage must include every billable token category, not an estimate or
++        # a convenient subset. Provider/model/account must match the approval.
++        receipt = transport.verify_receipt(response, request, billing)
++        if set(receipt) != {"input_tokens", "output_tokens", "amount", "provider", "model", "account_binding_ref", "complete"} or receipt["complete"] is not True:
++            raise ValueError("MODEL_USAGE_UNVERIFIED")
++        for key, cap in (("input_tokens", input_tokens), ("output_tokens", output_tokens)):
++            if type(receipt[key]) is not int or not 0 <= receipt[key] <= cap:
++                raise ValueError("MODEL_USAGE_EXCEEDS_RESERVATION")
++        if amount(receipt["amount"]) > reserve or any(receipt[key] != billing[key] for key in ("provider", "model", "account_binding_ref")):
++            raise ValueError("MODEL_BILLING_RECEIPT_MISMATCH")
++        state, saved = "VERIFIED", canonical({"usage": receipt, "response": response})
++    except Exception as exc:
++        # Only the reviewed transport can classify proven non-submission.
++        safe = transport.confirm_not_submitted(exc) is True
++        with base.connect() as con:
++            con.execute("UPDATE model_run_calls SET state=? WHERE run_id=? AND call_key=? AND attempt=?", ("NOT_SUBMITTED" if safe else "UNKNOWN", binding["run_id"], call_key, attempt))
++            if not safe:
++                con.execute("UPDATE model_run_budgets SET state='UNKNOWN' WHERE run_id=?", (binding["run_id"],))
++        failure = RuntimeError("MODEL_NOT_SUBMITTED_EXPLICIT_RETRY_ONLY" if safe else "MODEL_RESPONSE_OR_USAGE_UNKNOWN")
++        failure.submit_unknown = not safe
++        raise failure from exc
++    with base.connect() as con:
++        con.execute("UPDATE model_run_calls SET state=?,receipt_json=? WHERE run_id=? AND call_key=? AND attempt=?", (state, saved, binding["run_id"], call_key, attempt))
++    return response
++
++
++def invoke_reviewed_llm_task(context, params, submit):
++    """Only integration point called by the existing synthesis primitive."""
++    import base_runtime
++    return invoke(base_runtime, context.get("model_run_budget"), params, ReviewedLLMTaskTransport(submit))
+diff --git a/contract/workpack_admission.py b/contract/workpack_admission.py
+index 14322d4..7670249 100644
+--- a/contract/workpack_admission.py
++++ b/contract/workpack_admission.py
+@@ -83,8 +83,18 @@ def validate_native(base,spec,installed,goal,policy):
+                 raise ValueError("CAPABILITY_GAP")
+             if hashlib.sha256(path.read_bytes()).hexdigest()!=expected:
+                 raise ValueError("NATIVE_RUNTIME_DRIFT")
+-    if goal["budget_state"]!="KNOWN" or goal["budget_hard_limit_amount"]!=0:
+-        raise ValueError("SYNTHETIC_ZERO_BUDGET_REQUIRED")
++    if goal["budget_state"]!="KNOWN":
++        raise ValueError("KNOWN_GOAL_BUDGET_REQUIRED")
++    if goal["budget_hard_limit_amount"]!=0 or spec["constraints"]["budget"]["external_spend_cap"]!=0:
++        from model_run_budget import validate_policy, amount
++        if bundle.get("public_local_only") is not True or bundle.get("synthetic_only") is not False:
++            raise ValueError("SYNTHETIC_ZERO_BUDGET_REQUIRED")
++        billing=validate_policy(bundle.get("inputs",{}).get("model_policy"))["billing"]
++        if (policy.get("model_budget_approval_ref")!=billing["approval_ref"]
++                or goal["budget_currency"]!=billing["currency"]
++                or amount(str(goal["budget_hard_limit_amount"]))<amount(billing["approved_max_amount"])
++                or amount(str(spec["constraints"]["budget"]["external_spend_cap"]))!=amount(billing["approved_max_amount"])):
++            raise ValueError("GOAL_MODEL_BUDGET_APPROVAL_REQUIRED")
+     if spec["constraints"]["budget"]["approval_ref"]!=policy["approval_ref"]:
+         raise ValueError("APPROVAL_CHANGED")
+     if any(g["approval_ref"]!=policy["approval_ref"] for g in spec["constraints"]["compliance"]):
+@@ -257,6 +267,14 @@ def outcomes(base,run_id):
+                 "evidence":evidence,"method_id":spec["learning_output"]["method_id"]}
+             for item in con.execute("SELECT evidence_json FROM job_items WHERE job_id=? AND status='SUCCESS_VERIFIED'",(row["job_id"],)):
+                 proof=json.loads(item["evidence_json"] or "{}")
++                # Only an explicit verifier attestation for this exact record
++                # can distinguish a real local artifact from fixture execution.
++                # Missing provenance stays synthetic; input policy alone is not
++                # proof that a model or native capability really ran.
++                if any(r.get("dedup_key")==row["dedup_key"] for r in proof.get("business_evidence",[])):
++                    public_inputs = bool(spec["inputs"]) and all(
++                        value["classification"] == "PUBLIC" for value in spec["inputs"].values())
++                    envelope["synthetic"] = not (public_inputs and proof.get("synthetic") is False)
+                 if proof.get("native_capability_receipt") and any(r.get("dedup_key")==row["dedup_key"] for r in proof.get("business_evidence",[])):
+                     envelope["native_capability_receipt"]=proof["native_capability_receipt"]
+                     break
+diff --git a/contract/workpack_contract.py b/contract/workpack_contract.py
+index 300814c..b88ea8d 100644
+--- a/contract/workpack_contract.py
++++ b/contract/workpack_contract.py
+@@ -79,12 +79,32 @@ def validate_spec(spec, trusted, bundle, schema):
+     check_pins(spec)
+     if any(p["status"] != "PROVEN" for p in spec["prerequisites"]):
+         raise ValueError("PREREQUISITE_UNPROVEN")
++    # Opt-in, Goal-pinned public/local preparation. Legacy synthetic bundles keep
++    # their original boundary; neither a proposal nor an input can grant this.
++    classifications = {v["classification"] for v in spec["inputs"].values()}
++    synthetic = bundle.get("synthetic_only") is True and classifications <= {"SYNTHETIC"}
++    public_local = (bundle.get("synthetic_only") is False
++                    and bundle.get("public_local_only") is True
++                    and classifications == {"PUBLIC"}
++                    and spec["scope"]["environment"] in {"TEST", "SANDBOX"})
++    if not (synthetic or public_local):
++        raise ValueError("NATIVE_CAPABILITY_INTEGRATION_REQUIRED")
+     safety = spec["constraints"]["safety"]
+-    if (any(safety[k] for k in ("real_spend_authorized", "customer_contact_authorized", "production_change_authorized"))
+-            or spec["constraints"]["budget"]["external_spend_cap"] != 0):
++    budget = spec["constraints"]["budget"]
++    if safety["customer_contact_authorized"] or safety["production_change_authorized"]:
+         raise ValueError("EFFECT_AUTHORITY_UNSUPPORTED")
+-    if not bundle.get("synthetic_only") or any(v["classification"] != "SYNTHETIC" for v in spec["inputs"].values()):
+-        raise ValueError("NATIVE_CAPABILITY_INTEGRATION_REQUIRED")
++    if safety["real_spend_authorized"] or budget["external_spend_cap"] != 0:
++        # Only the reviewed one-run model budget may fund PUBLIC/local work.
++        # This does not authorize publishing, payment tools or other spending.
++        from model_run_budget import validate_policy, amount
++        if not public_local or budget["compute_budget_ref"]["ref"] != "saju-agent:model-run-budget-v1":
++            raise ValueError("EFFECT_AUTHORITY_UNSUPPORTED")
++        model_policy = validate_policy(bundle.get("inputs", {}).get("model_policy"))
++        billing = model_policy["billing"]
++        cap = amount(str(budget["external_spend_cap"]))
++        if (cap != amount(billing["approved_max_amount"]) or budget["currency"] != billing["currency"]
++                or safety["real_spend_authorized"] != (cap > 0)):
++            raise ValueError("MODEL_SPEND_BINDING_INVALID")
+     for action in spec["actions"]:
+         template = bundle["templates"].get(action["template"]["ref"])
+         if not template or template["sha256"] != action["template"]["sha256"]:

@@ -1,0 +1,33 @@
+{
+  "repository": "anrrlf-hue/agent-base",
+  "commit": "5eb7054f6a2116ab6901a0063299692bd09f26cc",
+  "description": "Source provenance only; does not prove runtime installation, model billing or operator authorization.",
+  "files": {
+    "contract/base_runtime.py": "176329078b6239184f33f9f9eaa98cfcb63007b8",
+    "contract/goal_agent_v1.py": "a0af28ccb781bab3e2f76fd9d99e6fadeed0036f",
+    "contract/task_contract.py": "e25000c672907b07692b9a6966313ad5211db787",
+    "contract/capability_registry.py": "3dc93b01b13dc6627b92718710a49ef4846c4d17",
+    "contract/agentic_executor.py": "65fb297a85e4ac092764b24313dd6c7e21a2cde7",
+    "contract/brain_policy.py": "c3858ae057b5ddd944e199274aa392f3de34994a",
+    "contract/brain_policy.json": "f593eff76a03f158827f5a6a57df939b8171fc3c",
+    "workpacks/general_freeform/handler.py": "d6472a698a453c8b729ecdd57abf1da9c7c60a2d",
+    "workpacks/general_freeform/runtime.py": "b864c472a3b6be1b668dbccfb3e23beef71a208f",
+    "workpacks/general_freeform/verifier.py": "02bd2786c5dcbe917e24c7f661c308456debc234",
+    "workpacks/general_freeform/manifest.json": "27d57cbd7e64633329c43b41fa58bb3aefa5d5f3"
+  },
+  "runtime_release": "d9e8fd24fa46b094",
+  "product_commit": "f1a9847c973b948dd64c7b46033281c6e7c7f744",
+  "normalized_sha256": {
+    "contract/brain_policy.json": "f49be7aefd07cc7548286085d2fbd0f478fa2c0f6a16ef6391d4552f5f3d37f0",
+    "contract/brain_policy.py": "32f0bbd0f7f5fe40e5e66e271cbf3255c99cf8e885c0a484a01e21e42fcdc6a1",
+    "contract/agentic_executor.py": "77783d7b2f9f59fba3e681e6a2ddcd47fe7aae40f8e38e0ecd80a60d39253bad",
+    "contract/capability_registry.py": "95bb024d86676d6dd1c6055a8c74948e336d7cd828fc819e026432a88c73a815",
+    "contract/task_contract.py": "4bad25a8c7f57fba4b2250f5ddd703c1d92203a134dfa060929c641e65c85c98",
+    "contract/goal_agent_v1.py": "12aeb4d5a5476003504e788ea6403eaf271311a9df53532d43f1dbc8014ee339",
+    "contract/base_runtime.py": "e55ea59bbd182ea44b19c8c08c56a1cd13a2b4e3a3fd5b9929b7335c10d1b5f8",
+    "workpacks/general_freeform/manifest.json": "8c9d66492518c4bff39cb0087fb600193278ec1fcde4fc48d690ff988758ae02",
+    "workpacks/general_freeform/verifier.py": "82d9efdd1cbf6cf5c217983495982608f178644ad612af67c82bce91a6fd11fb",
+    "workpacks/general_freeform/runtime.py": "ef42268b86e7d1cb733e614fc5e222d9f0536bd182538b89b14adf3f7eb119aa",
+    "workpacks/general_freeform/handler.py": "2e80364655077e5ede207fc80ff1dc484acf9b9915e426e8483809ceb5242e15"
+  }
+}

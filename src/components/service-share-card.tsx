@@ -4,6 +4,7 @@ import { useRef, useState, useSyncExternalStore } from "react";
 import { Copy, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildServiceShare } from "@/lib/relationship-share";
+import { track } from "@/lib/analytics";
 
 const shareData = buildServiceShare();
 const subscribe = () => () => {};
@@ -30,12 +31,15 @@ export function ServiceShareCard() {
   }
 
   async function share() {
+    track("share_intent");
     setBusy(true);
     setNotice(null);
     try {
       await navigator.share(shareData);
+      track("share_sheet_resolved");
       setNotice({ text: "공유창 처리가 끝났어요. 실제 전달 여부는 선택한 앱에서 확인해주세요." });
     } catch (error) {
+      track(error instanceof Error && error.name === "AbortError" ? "share_cancelled" : "share_failed");
       setNotice(error instanceof Error && error.name === "AbortError"
         ? { text: "공유를 취소했어요. 다시 공유하거나 링크를 복사할 수 있어요." }
         : { text: "공유창을 열지 못했어요. 링크 복사를 이용해주세요.", error: true });
@@ -50,8 +54,10 @@ export function ServiceShareCard() {
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
       await navigator.clipboard.writeText(shareData.url);
+      track("link_copied");
       setNotice({ text: "무료 사주 링크를 복사했어요. 보내려는 앱에 붙여넣어주세요." });
     } catch {
+      track("copy_failed");
       selectLink();
       setNotice({ text: "자동 복사를 하지 못했어요. 아래 주소를 길게 누르거나 선택해 직접 복사해주세요.", error: true });
     } finally {

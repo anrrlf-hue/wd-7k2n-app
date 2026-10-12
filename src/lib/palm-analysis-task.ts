@@ -9,7 +9,7 @@ export async function runWithDeadline<T>(
   parent.throwIfAborted();
   const controller = new AbortController();
   const started = performance.now();
-  const timeout = () => controller.abort(new Error(message));
+  const timeout = () => controller.abort(Object.assign(new Error(message), { name: "TimeoutError" }));
   const onParentAbort = () => controller.abort(parent.reason);
   parent.addEventListener("abort", onParentAbort, { once: true });
   const timer = setTimeout(timeout, timeoutMs);

@@ -1,0 +1,11 @@
+{
+  "schema_version": "SAJU_OPS_SNAPSHOT_V1",
+  "source_kind": "SYNTHETIC",
+  "release_sha": "d83f1e400ccea1fc30dee58f97bf2191c86a90fc",
+  "checks": [
+    {"check_id": "palm_pipeline", "status": "FAIL", "evidence_ref": "fixture:saju-ops:palm_pipeline"},
+    {"check_id": "premium_annual", "status": "PASS", "evidence_ref": "fixture:saju-ops:premium_annual"},
+    {"check_id": "service_share", "status": "UNVERIFIED", "evidence_ref": "fixture:saju-ops:service_share"},
+    {"check_id": "device_camera", "status": "UNVERIFIED", "evidence_ref": "fixture:saju-ops:device_camera"}
+  ]
+}

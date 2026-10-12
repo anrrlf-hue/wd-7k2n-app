@@ -5,6 +5,7 @@ import { Hand } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { ServiceShareCard } from "@/components/service-share-card";
+import { AnalyticsView } from "@/components/analytics-view";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -205,6 +206,7 @@ export function ResultStep({
 
   return (
     <div className="result-bright flex flex-1 flex-col">
+      <AnalyticsView event="result_viewed" />
       <CompanionHeading state="saju-companion"><p className="section-eyebrow">나의 사주</p></CompanionHeading>
 
       <motion.div

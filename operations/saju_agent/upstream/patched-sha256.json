@@ -1,0 +1,7 @@
+{
+  "agent-base/contract/workpack_contract.py": "9c8fafef340eebe5c39a645360c0287a8e9aea5f600e14a21546997b1f9c57fa",
+  "agent-base/contract/workpack_admission.py": "af4093187716397878782c776f092d3e4bcb3390cb34e964b736f7d3b576be39",
+  "agent-base/contract/agentic_executor.py": "a25910e0e45939577b1541ae19cff5d4c7b3d6627ff9b5512aa93e0d40b42c5e",
+  "agent-base/contract/autonomous_growth_brain_bridge.py": "97439d2211b7c36d0ecfff28399badb5fa2504cba54055fa43b9c78789c483e2",
+  "agent-base/contract/model_run_budget.py": "b365222a59cade88e7f1b93432a0c380204da5ba4afa973deb3ce909b6f014d0"
+}
