@@ -266,6 +266,7 @@ export default function DiagnosisPage() {
       return;
     }
 
+    track("reading_started", { flow: "saju" });
     setStep("loading");
     setError(null);
 
@@ -311,6 +312,7 @@ export default function DiagnosisPage() {
       }
     } catch (err) {
       const isTimeout = err instanceof DOMException && err.name === "AbortError";
+      track(isTimeout ? "analysis_timeout" : "analysis_failed", { flow: "saju" });
       setError(
         isTimeout
           ? "서버 응답이 평소보다 오래 걸리고 있어요. 네트워크 상태를 확인하고 다시 시도해주세요."

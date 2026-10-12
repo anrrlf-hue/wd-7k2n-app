@@ -1,0 +1,389 @@
+{
+  "schema_version": "WORKPACK_SCHEMA_V1",
+  "artifact_kind": "DRAFT",
+  "workpack_id": "SAJU_PREPARATION_V1",
+  "workpack_type": "OPERATIONS_REVIEW",
+  "version": 1,
+  "execution_owner": "AGENT_BASE",
+  "scope": {
+    "tenant_id": "saju-development",
+    "goal_id": "saju-preparation",
+    "goal_version": 1,
+    "domain": "saju-agent",
+    "environment": "SANDBOX",
+    "policy_version": "saju-public-local-v1",
+    "authority_ref": {
+      "ref": "saju-agent:unissued-authority",
+      "sha256": null
+    }
+  },
+  "target_outcome": {
+    "description": "Prepare three promotion drafts, advisory review and evidence-linked next experiments for human review; no publishing or business impact claim.",
+    "primary_metric": "REVIEW_READY_PACK",
+    "done_rule": {
+      "ref": "saju-agent:review-done",
+      "sha256": null
+    },
+    "false_success": [
+      "Document readback is not human approval or business growth.",
+      "TEST and missing collection do not prove live performance.",
+      "Costs remain UNKNOWN without provider evidence."
+    ]
+  },
+  "inputs": {
+    "brief": {
+      "source_ref": "saju-agent:brief",
+      "classification": "PUBLIC",
+      "schema": {
+        "ref": "saju-agent:brief-schema",
+        "sha256": null
+      },
+      "content_sha256": null
+    },
+    "aggregate": {
+      "source_ref": "saju-agent:aggregate",
+      "classification": "PUBLIC",
+      "schema": {
+        "ref": "saju-agent:aggregate-schema",
+        "sha256": null
+      },
+      "content_sha256": null
+    },
+    "model_policy": {
+      "source_ref": "saju-agent:model_policy",
+      "classification": "PUBLIC",
+      "schema": {
+        "ref": "saju-agent:model_policy-schema",
+        "sha256": null
+      },
+      "content_sha256": null
+    }
+  },
+  "assumptions": [],
+  "evidence": [],
+  "prerequisites": [
+    {
+      "id": "REVIEW_PUBLIC_LOCAL_REGISTRY",
+      "status": "MISSING",
+      "evidence_ref": null
+    }
+  ],
+  "method_refs": [
+    {
+      "ref": "saju-agent:preparation-method",
+      "sha256": null
+    }
+  ],
+  "strategy_ref": {
+    "ref": "saju-agent:review-strategy",
+    "sha256": null
+  },
+  "actions": [
+    {
+      "action_id": "draft",
+      "template": {
+        "ref": "saju-agent:prepare-draft",
+        "sha256": null
+      },
+      "capability_id": "saju.public_local_preparation",
+      "required_tools": [],
+      "depends_on": [],
+      "input_bindings": {
+        "brief": {
+          "kind": "INPUT",
+          "ref": "brief",
+          "field": null
+        },
+        "aggregate": {
+          "kind": "INPUT",
+          "ref": "aggregate",
+          "field": null
+        },
+        "model_policy": {
+          "kind": "INPUT",
+          "ref": "model_policy",
+          "field": null
+        }
+      },
+      "parameters": {
+        "kind": "draft"
+      },
+      "base": {
+        "workpack_id": "saju_agent_prepare",
+        "item_keys": [
+          "draft"
+        ],
+        "target_count": 1
+      },
+      "verifier": {
+        "ref": "saju-agent:recompute-verifier",
+        "sha256": null
+      },
+      "readback": {
+        "ref": "saju-agent:effect-free-readback",
+        "sha256": null
+      },
+      "expected_outputs": [
+        "document"
+      ],
+      "effect": "LOCAL_WRITE",
+      "operation_intent_ref": "saju-agent:prepare-for-review",
+      "recovery": "BASE_RETRY",
+      "not_before_ref": null,
+      "deadline_seconds": 180,
+      "compensation_template": null
+    },
+    {
+      "action_id": "review",
+      "template": {
+        "ref": "saju-agent:prepare-review",
+        "sha256": null
+      },
+      "capability_id": "saju.public_local_preparation",
+      "required_tools": [],
+      "depends_on": [
+        "draft"
+      ],
+      "input_bindings": {
+        "brief": {
+          "kind": "INPUT",
+          "ref": "brief",
+          "field": null
+        },
+        "aggregate": {
+          "kind": "INPUT",
+          "ref": "aggregate",
+          "field": null
+        },
+        "model_policy": {
+          "kind": "INPUT",
+          "ref": "model_policy",
+          "field": null
+        },
+        "parent": {
+          "kind": "ACTION_OUTPUT",
+          "ref": "draft",
+          "field": "document"
+        }
+      },
+      "parameters": {
+        "kind": "review"
+      },
+      "base": {
+        "workpack_id": "saju_agent_prepare",
+        "item_keys": [
+          "review"
+        ],
+        "target_count": 1
+      },
+      "verifier": {
+        "ref": "saju-agent:recompute-verifier",
+        "sha256": null
+      },
+      "readback": {
+        "ref": "saju-agent:effect-free-readback",
+        "sha256": null
+      },
+      "expected_outputs": [
+        "document"
+      ],
+      "effect": "LOCAL_WRITE",
+      "operation_intent_ref": "saju-agent:prepare-for-review",
+      "recovery": "BASE_RETRY",
+      "not_before_ref": null,
+      "deadline_seconds": 180,
+      "compensation_template": null
+    },
+    {
+      "action_id": "improve",
+      "template": {
+        "ref": "saju-agent:prepare-improve",
+        "sha256": null
+      },
+      "capability_id": "saju.public_local_preparation",
+      "required_tools": [],
+      "depends_on": [
+        "review"
+      ],
+      "input_bindings": {
+        "brief": {
+          "kind": "INPUT",
+          "ref": "brief",
+          "field": null
+        },
+        "aggregate": {
+          "kind": "INPUT",
+          "ref": "aggregate",
+          "field": null
+        },
+        "model_policy": {
+          "kind": "INPUT",
+          "ref": "model_policy",
+          "field": null
+        },
+        "parent": {
+          "kind": "ACTION_OUTPUT",
+          "ref": "review",
+          "field": "document"
+        }
+      },
+      "parameters": {
+        "kind": "improve"
+      },
+      "base": {
+        "workpack_id": "saju_agent_prepare",
+        "item_keys": [
+          "improve"
+        ],
+        "target_count": 1
+      },
+      "verifier": {
+        "ref": "saju-agent:recompute-verifier",
+        "sha256": null
+      },
+      "readback": {
+        "ref": "saju-agent:effect-free-readback",
+        "sha256": null
+      },
+      "expected_outputs": [
+        "document"
+      ],
+      "effect": "LOCAL_WRITE",
+      "operation_intent_ref": "saju-agent:prepare-for-review",
+      "recovery": "BASE_RETRY",
+      "not_before_ref": null,
+      "deadline_seconds": 180,
+      "compensation_template": null
+    }
+  ],
+  "metrics": [
+    {
+      "id": "REVIEW_READY_PACK",
+      "role": "OUTCOME",
+      "unit": "pack",
+      "measurement_rule": {
+        "ref": "saju-agent:fixture-check-count",
+        "sha256": null
+      },
+      "verification_rule": {
+        "ref": "saju-agent:synthetic-only-verifier",
+        "sha256": null
+      },
+      "source_ref": "improve.document",
+      "minimum_samples": null,
+      "observation_seconds": null,
+      "threshold": null,
+      "comparison": "REPORT_ONLY",
+      "unknown_policy": "UNKNOWN_BLOCKS_SUCCESS_OR_SCALE"
+    }
+  ],
+  "constraints": {
+    "budget": {
+      "currency": "KRW",
+      "external_spend_cap": 0,
+      "approval_ref": null,
+      "compute_budget_ref": {
+        "ref": "saju-agent:existing-model-default-disabled",
+        "sha256": null
+      },
+      "unknown_cost_policy": "DO_NOT_TREAT_AS_ZERO"
+    },
+    "time": {
+      "run_deadline_seconds": 600,
+      "measurement_deadline_seconds": 600
+    },
+    "safety": {
+      "real_spend_authorized": false,
+      "customer_contact_authorized": false,
+      "production_change_authorized": false,
+      "data_policy": {
+        "ref": "saju-agent:no-customer-data",
+        "sha256": null
+      }
+    },
+    "compliance": [],
+    "stop_rules": [
+      {
+        "ref": "saju-agent:missing-authority-or-data",
+        "sha256": null
+      }
+    ],
+    "scale_rules": [
+      {
+        "ref": "saju-agent:no-real-scale",
+        "sha256": null
+      }
+    ],
+    "replan_rules": [
+      {
+        "ref": "saju-agent:human-review",
+        "sha256": null
+      }
+    ],
+    "fallback": "NO_AUTHORITY_EXPANSION_SAFE_PAUSE",
+    "recovery_behavior": "EXISTING_BASE_ONLY"
+  },
+  "learning_output": {
+    "evidence_to_collect": [
+      "artifact_readback",
+      "advisory_review",
+      "aggregate_digest"
+    ],
+    "consumer": {
+      "ref": "saju-agent:existing-growth",
+      "sha256": null
+    },
+    "method_id": "saju-agent:preparation-method",
+    "attribution_rule": {
+      "ref": "saju-agent:no-business-attribution",
+      "sha256": null
+    },
+    "comparison_rule": {
+      "ref": "saju-agent:fixture-only",
+      "sha256": null
+    },
+    "synthetic_business_proof": false
+  },
+  "release_identity": {
+    "base_sha": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "growth_sha": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "product_sha": "3f0ddb8adffa62fbfa256966dbee1bac7ef271bf",
+    "compiler": {
+      "ref": "saju-agent:compiler",
+      "sha256": null
+    },
+    "template_bundle": {
+      "ref": "saju-agent:templates",
+      "sha256": null
+    },
+    "capability_catalog": {
+      "ref": "saju-agent:capabilities",
+      "sha256": null
+    },
+    "policy_bundle": {
+      "ref": "saju-agent:policy",
+      "sha256": null
+    },
+    "schema": {
+      "ref": "saju-agent:schema",
+      "sha256": null
+    },
+    "artifact_digest": null
+  },
+  "rollback": {
+    "previous_plan_digest": null,
+    "stop_new_claims": true,
+    "external_effect_policy": "APPROVED_COMPENSATION_OR_HUMAN_NO_IMPLICIT_UNDO",
+    "retain_evidence": true
+  },
+  "next_version": {
+    "parent_digest": null,
+    "trigger_rule": {
+      "ref": "saju-agent:human-reviewed-change",
+      "sha256": null
+    },
+    "changed_variables": [],
+    "reason_evidence": [],
+    "scope_migration": "EXPLICIT_ONLY"
+  }
+}

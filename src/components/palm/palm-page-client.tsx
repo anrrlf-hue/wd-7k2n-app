@@ -1,4 +1,5 @@
 "use client";
+import { AnalyticsView } from "@/components/analytics-view";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -396,6 +397,7 @@ export function PalmPageClient({
   }
 
   function beginTask() {
+    track("reading_started", { flow: "palm" });
     const task = tasks.current.begin();
     analysisStarted.current = performance.now();
     operationStarted.current = analysisStarted.current;
@@ -454,6 +456,7 @@ export function PalmPageClient({
 
   function showFailure(task: AbortController, err: unknown) {
     if (!tasks.current.isCurrent(task)) return;
+    track(err instanceof Error && err.name === "TimeoutError" ? "analysis_timeout" : "analysis_failed", { flow: "palm" });
     console.info("[palm-analysis]", { run: runNumber.current, phase: "failed", elapsedMs: Math.round(performance.now() - analysisStarted.current) });
     setErrorMsg(err instanceof Error ? err.message : "분석 중 문제가 발생했어요. 다시 시도해주세요.");
     setRetryMode(retryReport.current ? "report" : capturedCanvas.current ? "photo" : null);
@@ -461,6 +464,7 @@ export function PalmPageClient({
   }
 
   function cancelAnalysis() {
+    track("analysis_cancelled", { flow: "palm" });
     tasks.current.cancel();
     analyzer.current.dispose();
     setRetryMode(retryReport.current ? "report" : capturedCanvas.current ? "photo" : null);
@@ -471,6 +475,7 @@ export function PalmPageClient({
   async function retrySavedReport() {
     const saved = retryReport.current;
     if (!saved) return;
+    track("analysis_retry", { flow: "palm" });
     const task = beginTask();
     try { await fetchReport(task, saved.primary, saved.left, saved.right); }
     catch (err) { showFailure(task, err); }
@@ -920,7 +925,10 @@ export function PalmPageClient({
             ) : retryMode === "photo" ? (
               <Button size="lg" onClick={() => {
                 const saved = capturedCanvas.current;
-                if (saved) void processPalmCanvas(async () => saved.canvas, saved.preview);
+                if (saved) {
+                  track("analysis_retry", { flow: "palm" });
+                  void processPalmCanvas(async () => saved.canvas, saved.preview);
+                }
               }} className="h-13 w-full rounded-full text-base">같은 사진으로 분석 다시 시도</Button>
             ) : null}
             <Button size="lg" variant="outline" onClick={retryCurrentHand} className="h-13 w-full rounded-full text-base">
@@ -934,6 +942,7 @@ export function PalmPageClient({
       <div id="previous-reading">
       {stage === "result" && palmFacts && (
         <div className="mt-6 flex flex-1 flex-col">
+          <AnalyticsView event="result_viewed" />
           <motion.div
             initial={{ opacity: 0.6, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -996,6 +1005,7 @@ export function PalmPageClient({
 
       {stage === "saju_only" && finalReport && (
         <div className="mt-6 flex flex-1 flex-col">
+          <AnalyticsView event="result_viewed" />
           <div className="mystic-card p-4 text-sm text-muted-foreground">
             이번 결과는 사주와 입력한 정보를 중심으로 봤어요.
           </div>

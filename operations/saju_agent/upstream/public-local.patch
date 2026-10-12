@@ -1,0 +1,40 @@
+diff --git a/agent-base/contract/workpack_admission.py b/agent-base/contract/workpack_admission.py
+index 14322d4..887b8c2 100644
+--- a/agent-base/contract/workpack_admission.py
++++ b/agent-base/contract/workpack_admission.py
+@@ -257,6 +257,14 @@ def outcomes(base,run_id):
+                 "evidence":evidence,"method_id":spec["learning_output"]["method_id"]}
+             for item in con.execute("SELECT evidence_json FROM job_items WHERE job_id=? AND status='SUCCESS_VERIFIED'",(row["job_id"],)):
+                 proof=json.loads(item["evidence_json"] or "{}")
++                # Only an explicit verifier attestation for this exact record
++                # can distinguish a real local artifact from fixture execution.
++                # Missing provenance stays synthetic; input policy alone is not
++                # proof that a model or native capability really ran.
++                if any(r.get("dedup_key")==row["dedup_key"] for r in proof.get("business_evidence",[])):
++                    public_inputs = bool(spec["inputs"]) and all(
++                        value["classification"] == "PUBLIC" for value in spec["inputs"].values())
++                    envelope["synthetic"] = not (public_inputs and proof.get("synthetic") is False)
+                 if proof.get("native_capability_receipt") and any(r.get("dedup_key")==row["dedup_key"] for r in proof.get("business_evidence",[])):
+                     envelope["native_capability_receipt"]=proof["native_capability_receipt"]
+                     break
+diff --git a/agent-base/contract/workpack_contract.py b/agent-base/contract/workpack_contract.py
+index 300814c..926abfd 100644
+--- a/agent-base/contract/workpack_contract.py
++++ b/agent-base/contract/workpack_contract.py
+@@ -83,7 +83,15 @@ def validate_spec(spec, trusted, bundle, schema):
+     if (any(safety[k] for k in ("real_spend_authorized", "customer_contact_authorized", "production_change_authorized"))
+             or spec["constraints"]["budget"]["external_spend_cap"] != 0):
+         raise ValueError("EFFECT_AUTHORITY_UNSUPPORTED")
+-    if not bundle.get("synthetic_only") or any(v["classification"] != "SYNTHETIC" for v in spec["inputs"].values()):
++    # Opt-in, Goal-pinned public/local preparation. Legacy synthetic bundles keep
++    # their original boundary; neither a proposal nor an input can grant this.
++    classifications = {v["classification"] for v in spec["inputs"].values()}
++    synthetic = bundle.get("synthetic_only") is True and classifications <= {"SYNTHETIC"}
++    public_local = (bundle.get("synthetic_only") is False
++                    and bundle.get("public_local_only") is True
++                    and classifications == {"PUBLIC"}
++                    and spec["scope"]["environment"] in {"TEST", "SANDBOX"})
++    if not (synthetic or public_local):
+         raise ValueError("NATIVE_CAPABILITY_INTEGRATION_REQUIRED")
+     for action in spec["actions"]:
+         template = bundle["templates"].get(action["template"]["ref"])

@@ -1,0 +1,7 @@
+{
+  "workpack_id": "saju_agent_prepare",
+  "version": "0.1.0-development",
+  "requires_base": "0.1.0",
+  "required_capabilities": ["durable_job", "verifier"],
+  "handler": "native_handler.py"
+}

@@ -1,0 +1,87 @@
+{
+  "schema": "SAJU_AGGREGATE_V1",
+  "realm": "TEST",
+  "coverage": "COMPLETE_EXPORT",
+  "period": {
+    "start": "2026-10-12T00:00:00Z",
+    "end": "2026-10-12T01:00:00Z",
+    "observed_until": "2026-10-12T01:30:00Z"
+  },
+  "state": "OBSERVED",
+  "sample_status": "LOW_SAMPLE",
+  "counts": {
+    "sessions": 1,
+    "readings_started": 1,
+    "readings_completed": 1,
+    "results_viewed": 1,
+    "unlinked_result_events": 0,
+    "duplicate_events": 0
+  },
+  "transitions": [
+    {
+      "from": "landing_viewed",
+      "to": "reading_started",
+      "eligible": 1,
+      "reached": 1,
+      "closed_not_reached": 0,
+      "pending": 0
+    },
+    {
+      "from": "reading_started",
+      "to": "free_report_completed",
+      "eligible": 1,
+      "reached": 1,
+      "closed_not_reached": 0,
+      "pending": 0
+    },
+    {
+      "from": "free_report_completed",
+      "to": "result_viewed",
+      "eligible": 1,
+      "reached": 1,
+      "closed_not_reached": 0,
+      "pending": 0
+    }
+  ],
+  "optional_from_result": {
+    "premium_report_viewed": {
+      "result_sessions": 1,
+      "action_sessions": 0
+    },
+    "share_intent": {
+      "result_sessions": 1,
+      "action_sessions": 1
+    },
+    "share_sheet_resolved": {
+      "result_sessions": 1,
+      "action_sessions": 0
+    },
+    "share_cancelled": {
+      "result_sessions": 1,
+      "action_sessions": 1
+    },
+    "share_failed": {
+      "result_sessions": 1,
+      "action_sessions": 0
+    },
+    "link_copied": {
+      "result_sessions": 1,
+      "action_sessions": 1
+    },
+    "copy_failed": {
+      "result_sessions": 1,
+      "action_sessions": 0
+    }
+  },
+  "error_sessions": {
+    "analysis_failed": 0,
+    "analysis_timeout": 0,
+    "analysis_cancelled": 0,
+    "analysis_retry": 0
+  },
+  "people": null,
+  "new_customers": null,
+  "delivered_shares": null,
+  "causal_effect": null,
+  "digest": "91ded550788a702383bbb72dfb5fa6ca2eeb0297fe952086e7108687151821db"
+}

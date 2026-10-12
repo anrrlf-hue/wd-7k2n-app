@@ -1,0 +1,230 @@
+[
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/agentic_executor.py",
+    "blob": "8d2f5920dc5fea2b4bdab51863e8d8f20dc4733c"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/autonomous_growth_brain_bridge.py",
+    "blob": "c717215cf569a4b5f6d4dac4ec2ff3896fa2d18e"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/autonomous_growth_research_bridge.py",
+    "blob": "aea4d4286ca79a14cca3c80c8262859a4ceb10e9"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/base_runtime.py",
+    "blob": "bbaed84c36c65d9f506ab70867046aaa785fbd68"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/brain_policy.json",
+    "blob": "9991e411bb0d2692e2abe832caa2a156224c7974"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/brain_policy.py",
+    "blob": "c3858ae057b5ddd944e199274aa392f3de34994a"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/capability_readiness.py",
+    "blob": "ef947389c8b04d69ce7536da6def846bc6224922"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/capability_registry.py",
+    "blob": "5db39f1fdd07701d52305d6b617e44be6082cabb"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/channel_target.py",
+    "blob": "eded035cc01447e6cbdab67fb523687c6df4896a"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/goal_agent_v1.py",
+    "blob": "a1a505872f741884d14a4efc2bc79bf1ee89954d"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/growth_authority_v1.py",
+    "blob": "eea310689794d8766883049b8c339f65245aea35"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/native_capability_receipt.py",
+    "blob": "433b8f9eb499782436a6d147fb08bcf4d6afb025"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/schemas/workpack.v1.schema.json",
+    "blob": "2f1b805c8ff9d247ff2ec6a2322715066eaebac6"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/task_contract.py",
+    "blob": "e25000c672907b07692b9a6966313ad5211db787"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/workpack_admission.py",
+    "blob": "14322d446557551d0301cd7f7c4626131a5f0d90"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/workpack_contract.py",
+    "blob": "300814c5228053e44a98b28d21265d7e9a38ea42"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/workpack_product_flow.py",
+    "blob": "7d9c051916ca910aae14bd954d12f0fe2fad07d9"
+  },
+  {
+    "repo": "agent-base",
+    "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "path": "contract/workpack_run_outcome_view.py",
+    "blob": "73f3b9e8bb9a71a2b6c0ea98f731049c91dbfbe4"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/__init__.py",
+    "blob": "e29d5876e68dc316f5e50db874fd01a0e54f70a8"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/agent.py",
+    "blob": "81692c3c41b8af4e93611c152740e94a6b0c2b0a"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/autonomy.py",
+    "blob": "61ae4774c50093f81748d9c13df17e1bf141fad6"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/brain_runtime.py",
+    "blob": "c9c1489ef3b3b02e62cfdf707706df425b3a926c"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/champion.py",
+    "blob": "991d864cdcb1ca9126eb6b52d26843f7d95b7879"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/contracts.py",
+    "blob": "3e6ee872aaff0142214abe85c60dd200cd0bb047"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/durable_cycle.py",
+    "blob": "1b92d1d8d694882f46a3a5d76fa23c0351472de6"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/factory_execution.py",
+    "blob": "33bf289377810287d62f054373d79e020b562712"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/intelligence.py",
+    "blob": "cff4cae56c087d8ca5c2751a6c1b4e6a0f6759f6"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/learning.py",
+    "blob": "74e59cf6925cddf3b5785f1e55c7fbb1c637ad79"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/learning_assets.py",
+    "blob": "00afd694b5815a6983b202de7324c076cba25be8"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/methods.py",
+    "blob": "dd51c4b8aa9b7e94202e4fc1cdf19c33d71cac62"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/policy.py",
+    "blob": "150ce24a37a3f2614766649dced20c73a9adfcb5"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/research_runtime.py",
+    "blob": "2d4f514cadf8a44880597e3e7f17cbfd0f37b7e4"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/reuse_first.py",
+    "blob": "87ca17c3b6e00c1d9c7e7d4754a3379befd6147a"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/reuse_target_workpack.py",
+    "blob": "cc3410af995231315a9bf76aabcb282b4e262914"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/self_direction.py",
+    "blob": "707fe037659efea7794a12c3cb0d0f9de5cf0621"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/workpack.py",
+    "blob": "3f54c3d40e3fa4867fc8425ab01b9c91f9cf488a"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/workpack_factory.py",
+    "blob": "9f0406368984fd2f8776d079bc9c1f0958ea0759"
+  },
+  {
+    "repo": "insurance-growth-agent",
+    "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "path": "common_growth/workpack_reuse.py",
+    "blob": "c1ca0bd243a0dae700cd386c5ad48563bc393763"
+  }
+]

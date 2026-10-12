@@ -137,6 +137,16 @@ try {
   assert.deepEqual(pageErrors, []);
   assert.ok(network.every(request => request.path === "/api/analytics"), "no model/API generation called");
   assert.ok(!JSON.stringify(network).includes("relationship_share_created"));
+  if (process.env.EXPECT_ANALYTICS_ENABLED === "1") {
+    const events = network.map(request => JSON.parse(request.body));
+    const names = events.map(event => event.event);
+    for (const name of ["result_viewed", "share_intent", "share_sheet_resolved", "share_cancelled", "share_failed", "link_copied", "copy_failed"]) {
+      assert.ok(names.includes(name), `missing share analytics: ${name}`);
+    }
+    assert.ok(!JSON.stringify(events).includes("1988-12-02"));
+    assert.ok(events.every(event => !Object.hasOwn(event.props, "focus")));
+    console.log("PASS share analytics distinguish intent, sheet resolution, cancellation, failure and copy without personal fields");
+  }
   fs.writeFileSync(evidence + "/service-share-browser.json", JSON.stringify({ base: BASE, shared, pageErrors, apiPaths: network.map(r => r.path) }, null, 2));
   console.log("PASS legacy encoded/malformed links: discard fragment, no report exposure, free entry; no messages sent");
 } finally { await browser.close(); }
