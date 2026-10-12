@@ -2,6 +2,7 @@
 
 import { CalendarDays, Crown, Sparkles } from "lucide-react";
 import type { PremiumReport } from "@/lib/premium-report";
+import { buildPremiumAnnualPlan } from "@/lib/premium-annual-plan";
 
 export function PremiumReportView({ report }: { report: PremiumReport }) {
   const monthDomains = report.focus === "overall" ? report.domains : report.domains.filter((domain) => domain.key === report.focus);
@@ -63,7 +64,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
         <p className="section-eyebrow">분야별 선택 근거와 2주 실험</p>
         <div className="mt-3 space-y-4">
           {report.domains.map((domain) => (
-            <details key={domain.key} open={domain.key === report.focus} className="rounded-2xl border border-border bg-card p-5">
+            <details id={`premium-domain-${domain.key}`} key={domain.key} open={domain.key === report.focus} className="scroll-mt-5 rounded-2xl border border-border bg-card p-5">
               <summary className="cursor-pointer list-none">
                 <p className="text-xs font-semibold text-(--gold)">{domain.label}</p>
                 <h3 className="mt-1 text-lg font-semibold">{domain.headline}</h3>
@@ -108,7 +109,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
           {report.annual.startLabel} ~ {report.annual.endLabel}
         </h3>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          같은 분야를 세로로 비교하세요. 실험은 작은 시도, 유지는 효과가 있던 습관 이어가기, 점검은 기록 돌아보기입니다. 좋고 나쁜 달을 뜻하지 않습니다. 아래 카드에서는 {report.focus === "overall" ? "네 분야의" : "선택한 관심 분야의"} 과제를 각 단계에 연결합니다. 실제 일정과 기록을 먼저 따르세요.
+          같은 분야를 세로로 비교하세요. 실험은 작은 시도, 유지는 효과가 있던 습관 이어가기, 점검은 기록 돌아보기입니다. 좋고 나쁜 달을 뜻하지 않습니다. 아래에서는 {report.focus === "overall" ? "네 분야의" : "선택한 관심 분야의"} 같은 실행 제안을 한 번씩 묶었습니다. 달이 바뀌어도 실제 일정과 기록을 먼저 따르세요.
         </p>
 
         <div className="mt-4 overflow-x-auto">
@@ -125,30 +126,39 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
         </div>
 
         <div className="mt-5 space-y-3">
-          {report.annual.months.map((month, monthIndex) => (
-            <details key={month.label} className="rounded-2xl border border-border p-4">
-              <summary className="cursor-pointer list-none">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold">{month.label}</p>
-                    <p className="mt-1 text-xs text-(--gold)">{monthDomains.map((domain) => `${domain.label} · ${month.comparisons.find((item) => item.domain === domain.key)?.emphasis}`).join(" / ")}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">자세히</span>
+          {monthDomains.map((domain) => {
+            const plan = buildPremiumAnnualPlan(domain, report.annual);
+            return (
+              <article key={domain.key} className="rounded-2xl border border-border p-4">
+                <h3 className="font-semibold">{domain.label} · 연간 실행 흐름</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{domain.headline}</p>
+                <ol aria-label={`${domain.label}의 기간별 단계`} className="mt-3 flex flex-wrap gap-2">
+                  {plan.periods.map((period, index) => (
+                    <li key={period.months[0].label} className="rounded-xl bg-accent px-3 py-2 text-xs leading-5">
+                      <span className="font-semibold">{index + 1}. {period.emphasis}</span>
+                      <span className="block text-muted-foreground">{period.label}</span>
+                    </li>
+                  ))}
+                </ol>
+                <a href={`#premium-domain-${domain.key}`} className="mt-3 inline-block text-sm text-(--gold) underline underline-offset-4">2주 실험·점검 기준·계획을 바꿀 조건 함께 보기</a>
+                <div className="mt-4 space-y-3">
+                  {plan.actions.map((action) => (
+                    <div key={action.emphasis} className="rounded-xl bg-accent p-3">
+                      <h4 className="text-sm font-semibold">{action.emphasis} · {action.months.length}개월</h4>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{action.periods.join(" / ")}</p>
+                      <p className="mt-2 text-sm leading-6">{action.text}</p>
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs text-muted-foreground">해당 월의 계산 근거</summary>
+                        <ul className="mt-2 space-y-2 text-xs leading-5 text-muted-foreground">
+                          {action.months.map((month) => <li key={month.label}><strong>{month.label}:</strong> {month.basis}</li>)}
+                        </ul>
+                      </details>
+                    </div>
+                  ))}
                 </div>
-              </summary>
-              <div className="mt-3 grid gap-2 border-t border-border pt-3">
-                {monthDomains.map((domain) => {
-                  const comparison = month.comparisons.find((item) => item.domain === domain.key)!;
-                  const previous = report.annual.months[monthIndex - 1]?.comparisons.find((item) => item.domain === domain.key)?.emphasis;
-                  return <div key={domain.key} className="rounded-xl bg-accent p-3">
-                    <p className="text-xs font-semibold text-(--gold)">{domain.label} · {previous ? previous === comparison.emphasis ? `지난달과 같은 ${comparison.emphasis}` : `${previous} → ${comparison.emphasis}` : `첫 달 · ${comparison.emphasis}`}</p>
-                    <p className="mt-1 text-sm leading-6">{domain.monthlyActions[comparison.emphasis]}</p>
-                    <p className="mt-2 text-xs leading-5 text-muted-foreground">비교 근거: {comparison.basis}</p>
-                  </div>;
-                })}
-              </div>
-            </details>
-          ))}
+              </article>
+            );
+          })}
         </div>
         <p className="mt-4 text-xs leading-5 text-muted-foreground">{report.annual.note}</p>
       </section>
