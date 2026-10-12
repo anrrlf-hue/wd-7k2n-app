@@ -1,0 +1,236 @@
+{
+  "schema_version": "WORKPACK_SCHEMA_V1",
+  "artifact_kind": "DRAFT",
+  "workpack_id": "SAJU_OPERATIONS_REVIEW_V1",
+  "workpack_type": "OPERATIONS_REVIEW",
+  "version": 1,
+  "execution_owner": "AGENT_BASE",
+  "scope": {
+    "tenant_id": "SYNTHETIC_SAJU_TENANT",
+    "goal_id": "synthetic-saju-ops",
+    "goal_version": 1,
+    "domain": "saju-operations",
+    "environment": "SANDBOX",
+    "policy_version": "synthetic-saju-ops-v1",
+    "authority_ref": {
+      "ref": "fixture:saju-ops:unissued-authority",
+      "sha256": null
+    }
+  },
+  "target_outcome": {
+    "description": "Review supplied synthetic release checks and propose bounded operational follow-ups. This does not measure users, revenue or real operational success.",
+    "primary_metric": "OPS_REVIEW_COVERAGE",
+    "done_rule": {
+      "ref": "fixture:saju-ops:review-done",
+      "sha256": null
+    },
+    "false_success": [
+      "Synthetic checks do not prove production health or business improvement.",
+      "NO_DATA is WAIT, never zero visits or success.",
+      "Observed business outcome and cost remain unknown."
+    ]
+  },
+  "inputs": {
+    "ops_snapshot": {
+      "source_ref": "fixture:saju-ops:synthetic-review",
+      "classification": "SYNTHETIC",
+      "schema": {
+        "ref": "fixture:saju-ops:snapshot-schema",
+        "sha256": null
+      },
+      "content_sha256": null
+    }
+  },
+  "assumptions": [],
+  "evidence": [],
+  "prerequisites": [
+    {
+      "id": "REVIEW_TARGET_REGISTRY_AND_AUTHORITY",
+      "status": "MISSING",
+      "evidence_ref": null
+    }
+  ],
+  "method_refs": [
+    {
+      "ref": "fixture:saju-ops:review-method",
+      "sha256": null
+    }
+  ],
+  "strategy_ref": {
+    "ref": "fixture:saju-ops:review-strategy",
+    "sha256": null
+  },
+  "actions": [
+    {
+      "action_id": "review",
+      "template": {
+        "ref": "fixture:saju-ops:native-review-v1",
+        "sha256": null
+      },
+      "capability_id": "saju.synthetic_operations_review",
+      "required_tools": [],
+      "depends_on": [],
+      "input_bindings": {
+        "snapshot": {
+          "kind": "INPUT",
+          "ref": "ops_snapshot",
+          "field": null
+        }
+      },
+      "parameters": {},
+      "base": {
+        "workpack_id": "saju_operations_review",
+        "item_keys": [
+          "synthetic-review"
+        ],
+        "target_count": 1
+      },
+      "verifier": {
+        "ref": "fixture:saju-ops:recompute-verifier",
+        "sha256": null
+      },
+      "readback": {
+        "ref": "fixture:saju-ops:effect-free-readback",
+        "sha256": null
+      },
+      "expected_outputs": [
+        "review_report"
+      ],
+      "effect": "NONE",
+      "operation_intent_ref": "fixture:saju-ops:review-only",
+      "recovery": "BASE_RETRY",
+      "not_before_ref": null,
+      "deadline_seconds": 60,
+      "compensation_template": null
+    }
+  ],
+  "metrics": [
+    {
+      "id": "OPS_REVIEW_COVERAGE",
+      "role": "OUTCOME",
+      "unit": "count",
+      "measurement_rule": {
+        "ref": "fixture:saju-ops:fixture-check-count",
+        "sha256": null
+      },
+      "verification_rule": {
+        "ref": "fixture:saju-ops:synthetic-only-verifier",
+        "sha256": null
+      },
+      "source_ref": "review.review_report",
+      "minimum_samples": null,
+      "observation_seconds": null,
+      "threshold": null,
+      "comparison": "REPORT_ONLY",
+      "unknown_policy": "UNKNOWN_BLOCKS_SUCCESS_OR_SCALE"
+    }
+  ],
+  "constraints": {
+    "budget": {
+      "currency": "KRW",
+      "external_spend_cap": 0,
+      "approval_ref": null,
+      "compute_budget_ref": {
+        "ref": "fixture:saju-ops:no-model",
+        "sha256": null
+      },
+      "unknown_cost_policy": "DO_NOT_TREAT_AS_ZERO"
+    },
+    "time": {
+      "run_deadline_seconds": 120,
+      "measurement_deadline_seconds": 120
+    },
+    "safety": {
+      "real_spend_authorized": false,
+      "customer_contact_authorized": false,
+      "production_change_authorized": false,
+      "data_policy": {
+        "ref": "fixture:saju-ops:no-customer-data",
+        "sha256": null
+      }
+    },
+    "compliance": [],
+    "stop_rules": [
+      {
+        "ref": "fixture:saju-ops:missing-authority-or-data",
+        "sha256": null
+      }
+    ],
+    "scale_rules": [
+      {
+        "ref": "fixture:saju-ops:no-real-scale",
+        "sha256": null
+      }
+    ],
+    "replan_rules": [
+      {
+        "ref": "fixture:saju-ops:human-review",
+        "sha256": null
+      }
+    ],
+    "fallback": "NO_AUTHORITY_EXPANSION_SAFE_PAUSE",
+    "recovery_behavior": "EXISTING_BASE_ONLY"
+  },
+  "learning_output": {
+    "evidence_to_collect": [
+      "synthetic_input_digest",
+      "local_review_readback"
+    ],
+    "consumer": {
+      "ref": "fixture:saju-ops:existing-growth",
+      "sha256": null
+    },
+    "method_id": "fixture:saju-ops:review-method",
+    "attribution_rule": {
+      "ref": "fixture:saju-ops:no-business-attribution",
+      "sha256": null
+    },
+    "comparison_rule": {
+      "ref": "fixture:saju-ops:fixture-only",
+      "sha256": null
+    },
+    "synthetic_business_proof": false
+  },
+  "release_identity": {
+    "base_sha": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+    "growth_sha": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+    "product_sha": "1db6368a6ad3531bb09226669b6e8cbb47264e69",
+    "compiler": {
+      "ref": "fixture:saju-ops:compiler",
+      "sha256": null
+    },
+    "template_bundle": {
+      "ref": "fixture:saju-ops:templates",
+      "sha256": null
+    },
+    "capability_catalog": {
+      "ref": "fixture:saju-ops:capabilities",
+      "sha256": null
+    },
+    "policy_bundle": {
+      "ref": "fixture:saju-ops:policy",
+      "sha256": null
+    },
+    "schema": {
+      "ref": "fixture:saju-ops:schema",
+      "sha256": null
+    },
+    "artifact_digest": null
+  },
+  "rollback": {
+    "previous_plan_digest": null,
+    "stop_new_claims": true,
+    "external_effect_policy": "APPROVED_COMPENSATION_OR_HUMAN_NO_IMPLICIT_UNDO",
+    "retain_evidence": true
+  },
+  "next_version": {
+    "parent_digest": null,
+    "trigger_rule": {
+      "ref": "fixture:saju-ops:human-reviewed-change",
+      "sha256": null
+    },
+    "changed_variables": [],
+    "reason_evidence": [],
+    "scope_migration": "EXPLICIT_ONLY"
+  }
+}

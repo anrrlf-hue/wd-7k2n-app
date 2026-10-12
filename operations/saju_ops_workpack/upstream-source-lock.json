@@ -1,0 +1,41 @@
+{
+  "description": "Read-only source provenance for offline contract tests; not runtime authority or an approval registry.",
+  "repositories": {
+    "agent-base": {
+      "commit": "c0f861661f664edd70c45b6a29d20dfded0f5669",
+      "files": {
+        "contract/base_runtime.py": "bbaed84c36c65d9f506ab70867046aaa785fbd68",
+        "contract/goal_agent_v1.py": "a1a505872f741884d14a4efc2bc79bf1ee89954d",
+        "contract/capability_readiness.py": "ef947389c8b04d69ce7536da6def846bc6224922",
+        "contract/capability_registry.py": "5db39f1fdd07701d52305d6b617e44be6082cabb",
+        "contract/growth_authority_v1.py": "eea310689794d8766883049b8c339f65245aea35",
+        "contract/native_capability_receipt.py": "433b8f9eb499782436a6d147fb08bcf4d6afb025",
+        "contract/workpack_admission.py": "14322d446557551d0301cd7f7c4626131a5f0d90",
+        "contract/workpack_contract.py": "300814c5228053e44a98b28d21265d7e9a38ea42",
+        "contract/workpack_product_flow.py": "7d9c051916ca910aae14bd954d12f0fe2fad07d9",
+        "contract/workpack_run_outcome_view.py": "73f3b9e8bb9a71a2b6c0ea98f731049c91dbfbe4",
+        "contract/schemas/workpack.v1.schema.json": "2f1b805c8ff9d247ff2ec6a2322715066eaebac6"
+      }
+    },
+    "insurance-growth-agent": {
+      "commit": "dc50636ae97f6f3a9a5d76be2c7968b69cd1f920",
+      "files": {
+        "common_growth/__init__.py": "e29d5876e68dc316f5e50db874fd01a0e54f70a8",
+        "common_growth/contracts.py": "3e6ee872aaff0142214abe85c60dd200cd0bb047",
+        "common_growth/factory_execution.py": "33bf289377810287d62f054373d79e020b562712",
+        "common_growth/workpack.py": "3f54c3d40e3fa4867fc8425ab01b9c91f9cf488a",
+        "common_growth/workpack_factory.py": "9f0406368984fd2f8776d079bc9c1f0958ea0759",
+        "common_growth/reuse_first.py": "87ca17c3b6e00c1d9c7e7d4754a3379befd6147a",
+        "common_growth/reuse_target_workpack.py": "cc3410af995231315a9bf76aabcb282b4e262914",
+        "common_growth/workpack_reuse.py": "c1ca0bd243a0dae700cd386c5ad48563bc393763",
+        "common_growth/methods.py": "dd51c4b8aa9b7e94202e4fc1cdf19c33d71cac62"
+      }
+    },
+    "agent-product": {
+      "commit": "1db6368a6ad3531bb09226669b6e8cbb47264e69",
+      "files": {
+        "public-command/web-command-entry/web_command_entry.py": "97739cf2f6d7d69a7cf64a8a374163e87b1b304a"
+      }
+    }
+  }
+}

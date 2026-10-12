@@ -1,0 +1,7 @@
+{
+  "workpack_id": "saju_operations_review",
+  "version": "0.1.0-local-synthetic",
+  "requires_base": "0.1.0",
+  "required_capabilities": ["durable_job", "verifier"],
+  "handler": "handler.py"
+}
