@@ -24,4 +24,8 @@ def verify_sources(root):
             valid = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest() == file["blob"]
         if not valid:
             raise ValueError("SAJU_SOURCE_DRIFT:" + relative)
+    original_paths = {item["repo"] + "/" + item["path"] for item in manifest}
+    for relative in set(patched) - original_paths:
+        if hashlib.sha256((root / relative).read_bytes()).hexdigest() != patched[relative]:
+            raise ValueError("SAJU_SOURCE_DRIFT:" + relative)
     return root

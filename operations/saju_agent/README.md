@@ -2,7 +2,7 @@
 
 이 패키지는 기존 Growth의 판단 → Factory 제안 → Base 실행·읽기 검증 → Growth 증거 수집 → 다음 판단을 연결한다. 홍보 초안 3개, 별도 평가문, 이용 흐름 근거를 반영한 다음 실험 제안은 로컬 문서로만 준비한다. 새로운 엔진·스케줄러·공개 채널·통계 벤더는 없다.
 
-**운영 설치·모델 호출·통계 활성화·게시·배포를 실행한 상태가 아니다.** `3f0ddb8`의 기존 `operations/saju_launch` 설치안은 취소된 역사 자료로 보존한다. 이 구현은 public-command Base `5eb…`를 사용하지 않는다.
+**운영 설치·모델 호출·통계 활성화·게시·배포를 실행한 상태가 아니다.** 비용 가드와 설치 후보는 [ACTIVATION_CANDIDATE.md](ACTIVATION_CANDIDATE.md)를 기준으로 한다. `3f0ddb8`의 기존 `operations/saju_launch` 설치안은 취소된 역사 자료로 보존한다. 이 구현은 public-command Base `5eb…`를 사용하지 않는다.
 
 ## 검토 범위와 소스
 
@@ -10,10 +10,10 @@
 - Base: `c0f861661f664edd70c45b6a29d20dfded0f5669`.
 - Growth: `dc50636ae97f6f3a9a5d76be2c7968b69cd1f920`.
 - 개발 사본: `/workspace/saju-agent-integration-upstream`, `dev/saju-public-local`.
-- `upstream/source-manifest.json`: 사용한 38개 원본 파일의 Git blob 지문. `sources.verify_sources()`는 변경 허용된 Base 계약 두 파일을 제외한 원본 지문과 두 파일의 수정 후 SHA-256을 검사한다.
-- `upstream/public-local.patch`: 원본 Base 계약 두 파일에 대한 패치. Growth/Core의 다른 파일은 변경하지 않는다.
+- `upstream/source-manifest.json`: 사용한 38개 원본 파일의 Git blob 지문. `sources.verify_sources()`는 변경된 Base 파일의 수정 후 SHA-256과 나머지 원본 지문을 검사한다.
+- `upstream/public-local.patch`: 원본 `agent-base` 루트에서 적용할 수 있는 누적 패치. 계약 두 파일, 기존 모델 경계 두 파일 수정과 비용 가드 한 파일 추가를 포함한다. Growth 소스는 변경하지 않는다.
 
-PUBLIC 입력은 기존 Goal이 지문으로 승인한 registry에 `synthetic_only:false`, `public_local_only:true`가 있을 때만 TEST/SANDBOX의 NONE/LOCAL_WRITE 작업에 허용한다. 제안 자체가 권한을 부여하지 않는다. TENANT_PRIVATE, 혼합 분류, 지출·게시·Production 변경은 계속 거부한다. 기존 SYNTHETIC 경로는 유지한다. 공개 제품 설명과 공개 제공을 검토한 비식별 집계만 registry에 넣는다. 집계가 비식별이라는 이유만으로 자동 공개 승인된 것으로 취급하지 않는다.
+PUBLIC 입력은 기존 Goal이 지문으로 승인한 registry에 `synthetic_only:false`, `public_local_only:true`가 있을 때만 TEST/SANDBOX의 NONE/LOCAL_WRITE 작업에 허용한다. 제안 자체가 권한을 부여하지 않는다. TENANT_PRIVATE, 혼합 분류, 무승인 지출·게시·Production 변경은 계속 거부한다. 모델 비용은 검증된 과금조건과 Goal의 금액 승인에 맞는 공통 한도 안에서만 허용하는 구조이며, 현재 transport는 제한 기능 미확인으로 차단된다. 기존 SYNTHETIC 경로는 유지한다. 공개 제품 설명과 공개 제공을 검토한 비식별 집계만 registry에 넣는다. 집계가 비식별이라는 이유만으로 자동 공개 승인된 것으로 취급하지 않는다.
 
 `unreviewed-draft.json`의 null 지문과 MISSING 선행조건은 의도적이다. 운영 승인이나 설치 가능한 registry로 가장하지 않는다. 테스트만 임시 디렉터리에 `TEST_AUTHORITY_NOT_ACTIVATION` 권한을 만든다.
 
@@ -21,7 +21,7 @@ PUBLIC 입력은 기존 Goal이 지문으로 승인한 registry에 `synthetic_on
 
 `runtime.build_agent(...)`는 이미 존재하는 Base의 DB·Goal·검토 registry와 사주 전용 Scope를 요구한다. 소스 버전, 환경 변수의 DB 경로, 실제 로드된 엔진 경로, tenant/goal/version/domain/environment/policy를 검사한다. 별도 Goal·등록·설치 명령은 제공하지 않는다.
 
-기본 판단 콜백은 기존 `AutonomousGrowthBrain` + `AgentBaseBrainCommandClient` + Base의 `autonomous_growth_brain_bridge.py`를 사용한다. 모델·provider를 새로 지정하지 않는다. 모든 모델 호출 전에 Goal이 지문으로 묶은 `model_policy`의 활성화·추가비용 0 확인·승인 참조를 검사한다. 개발 기본값은 모두 비활성이다. 이 확인은 **provider의 강제 지출 한도 기능이 아니다**. 비용·계정 조건을 확인하기 전 활성화하지 않는다. 시험에서는 콜백/완성문만 합성 fixture로 대체한다.
+기본 판단 콜백은 기존 `AutonomousGrowthBrain` + `AgentBaseBrainCommandClient` + Base의 `autonomous_growth_brain_bridge.py`를 사용한다. 홍보 작성·평가·개선안과 Growth 판단 모두 기존 `_llm_task_synthesis`에서 같은 실행의 호출·토큰·금액 예약을 검사한다. 추가비용 0이라는 확인 문구만으로는 실행할 수 없다. 실제 계정 과금조건, 금액·실행 키·모델·만료일 승인, 강제 출력 제한과 완전한 사용량 검증이 필요하다. 현재 transport는 이 기능을 확인하지 못했으므로 **실제 모델 호출이 차단된다**. 시험용 지원 adapter는 provider 지원 증거가 아니다.
 
 `runtime.advance_once(base=..., agent=..., assets=..., invocation_key=...)`는 이미 승인된 로컬 범위에서 한 번만 연결한다. Factory는 기존 reuse-first/compile, Base는 기존 admission/claim/lease/dependency/verify/recovery, Growth는 기존 `LearningAssetStore.ingest_base_outcomes`를 소유한다. 최대 3개 Base tick 뒤 돌아오며, 반복 작업이나 새 재시도 큐를 만들지 않는다. 호스트의 기존 cycle 기록에 invocation key를 보관해 재시작 때 같은 키를 전달한다. 같은 키 재개 시 중복 모델 작업·중복 증거를 만들지 않는다.
 
@@ -68,4 +68,4 @@ Base native 디렉터리에 필요한 파일은 `manifest.json`, `native_handler
 
 브라우저 검사는 `scripts/test-saju-analytics-browser.mjs`, `scripts/test-service-share-browser.mjs`를 로컬 서버에서만 실행한다. 모든 API·외부 네트워크·공유를 fixture로 막는다. 손금 제한시간 회귀는 `scripts/test-palm-analysis-task.mjs`다. 검증 결과는 [VALIDATION.md](VALIDATION.md)에 정리한다.
 
-남은 별도 승인 범위는 Base 두 파일 패치 검토·대상에 설치할 정확한 사주 패키지/registry/Goal·기존 모델 계정의 비용 조건·운영 로그 범위와 TEST/LIVE 설정·통계 활성화·앱 배포다. 어떤 것도 이 작업으로 활성화하지 않는다. 실제 모델의 홍보문 품질, 실제 이용자의 행동과 효과, iPhone/Android 카메라는 미검증이다.
+남은 별도 승인 범위는 누적 Base 패치·MiniHQ의 별도 예정 디렉터리에 배치할 설치 후보·registry/Goal·기존 모델의 과금조건과 금액·호출/토큰 한도·운영 로그 범위와 TEST/LIVE 설정·통계 활성화·앱 배포다. 실제 모델 경로의 강제 제한·사용량 검증은 먼저 해결해야 할 기술 blocker다. 어떤 것도 이 작업으로 활성화하지 않는다. 실제 모델의 홍보문 품질, 실제 이용자의 행동과 효과, iPhone/Android 카메라는 미검증이다.

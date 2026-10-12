@@ -76,10 +76,12 @@ class IntegrationTests(unittest.TestCase):
                                    "properties": {"kind": {"const": action["parameters"]["kind"]}}})
             templates[action["template"]["ref"]] = template
         telemetry = aggregate(sample() if rows is None else rows, **{**WINDOW, "realm": realm})
+        model_policy = json.loads((HERE / "model-policy.pending.json").read_text())
+        model_policy["enabled"] = model_enabled
         bundle = {"schema": json.loads((SOURCES / "agent-base/contract/schemas/workpack.v1.schema.json").read_text()),
                   "templates": templates, "pins": pins, "synthetic_only": False, "public_local_only": True,
                   "inputs": {"brief": public_brief(), "aggregate": telemetry,
-                             "model_policy": {"enabled": model_enabled, "incremental_cost_confirmed_zero": model_enabled, "approval_ref": "TEST_AUTHORITY_NOT_ACTIVATION"}},
+                             "model_policy": model_policy},
                   "native_files": {WORKPACK: {file.name: hashlib.sha256(file.read_bytes()).hexdigest() for file in native.iterdir()}}}
         registry = {"bundle": bundle, "release_identity": draft["release_identity"]}
         (self.root / "workpack-reviewed.json").write_text(canonical(registry))
@@ -109,7 +111,7 @@ class IntegrationTests(unittest.TestCase):
         from common_growth.contracts import Scope
         scope = Scope("saju-development", "saju-preparation", DOMAIN, "SANDBOX", 1, "saju-public-local-v1")
         return build_agent(base=self.base, agent_base_root=SOURCES / "agent-base", scope=scope,
-            state_parent=self.root / "growth", director=self.director, evaluator=lambda _c: {}, brain=lambda _c: {})
+            state_parent=self.root / "growth", director=self.director, evaluator=lambda _c: {}, brain=lambda _c: {}, synthetic_test_callbacks=True)
 
     def stub_model(self):
         original = self.base.load_workpack
@@ -192,12 +194,12 @@ class IntegrationTests(unittest.TestCase):
         self.assertFalse(self.calls)
         with self.base.connect() as con:
             incidents = [dict(row) for row in con.execute("SELECT * FROM goal_incidents")]
-        self.assertIn("APPROVAL_REQUIRED", canonical(incidents))
+        self.assertIn("MODEL_ACTIVATION_NOT_APPROVED", canonical(incidents))
 
     def test_existing_brain_default_binding_checks_policy_before_process(self):
         self.provision(); agent, _ = self.agent()
         default, _ = build_agent(base=self.base, agent_base_root=SOURCES / "agent-base", scope=agent.scope, state_parent=self.root / "default-growth")
-        with self.assertRaisesRegex(RuntimeError, "ACTIVATION_AND_COST_APPROVAL_REQUIRED"):
+        with self.assertRaisesRegex(RuntimeError, "MODEL_RUN_BINDING_REQUIRED"):
             default.step()
 
     def test_partial_resume_and_foreign_scope_ingestion(self):
@@ -213,18 +215,10 @@ class IntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "SCOPE_MISMATCH"):
             assets.ingest_base_outcomes(replace(agent.scope, tenant_id="other"), self.base, second["run_id"])
 
-    def test_model_response_loss_enters_base_unknown_without_reexecution(self):
+    def test_enabled_flag_without_billing_cannot_compile_paid_execution(self):
         self.provision(model_enabled=True); agent, _ = self.agent()
-        spec = agent.step()["proposal"]["workpack_spec"]
-        run = self.admission.admit_workpack(self.base, spec, "unknown-response")
-        import agentic_executor
-        with patch.object(agentic_executor, "execute_tool_free", side_effect=TimeoutError("fixture response loss")) as provider:
-            first = self.base.tick("SANDBOX", factory_run_id=run["run_id"])
-            second = self.base.tick("SANDBOX", factory_run_id=run["run_id"])
-        self.assertEqual("SUBMIT_UNKNOWN", first["status"], first)
-        self.assertEqual("SUBMIT_UNKNOWN", second["status"], second)
-        self.assertEqual(1, provider.call_count)
-        self.assertEqual([], self.admission.outcomes(self.base, run["run_id"]))
+        with self.assertRaisesRegex(ValueError, "BILLING_APPROVAL_REQUIRED"):
+            agent.step()
 
     def test_contract_denies_private_mixed_live_effect_and_missing_public_optin(self):
         registry = self.provision()

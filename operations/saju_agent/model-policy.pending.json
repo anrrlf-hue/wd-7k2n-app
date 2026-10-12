@@ -1,0 +1,28 @@
+{
+  "schema": "MODEL_RUN_BUDGET_V1",
+  "enabled": false,
+  "limits": {
+    "max_calls": 8,
+    "max_input_tokens": 65536,
+    "max_output_tokens": 16000,
+    "per_call_input_tokens": 8192,
+    "per_call_output_tokens": 2000,
+    "max_retries_per_call": 1
+  },
+  "billing": {
+    "approval_ref": null,
+    "invocation_key": null,
+    "account_terms_ref": null,
+    "account_terms_sha256": null,
+    "account_binding_ref": null,
+    "provider": null,
+    "model": null,
+    "currency": null,
+    "approved_max_amount": null,
+    "input_token_price_ceiling": null,
+    "output_token_price_ceiling": null,
+    "per_call_fee_ceiling": null,
+    "all_billable_usage_covered": false,
+    "expires_at": null
+  }
+}

@@ -283,7 +283,7 @@
       "external_spend_cap": 0,
       "approval_ref": null,
       "compute_budget_ref": {
-        "ref": "saju-agent:existing-model-default-disabled",
+        "ref": "saju-agent:model-run-budget-v1",
         "sha256": null
       },
       "unknown_cost_policy": "DO_NOT_TREAT_AS_ZERO"

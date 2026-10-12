@@ -36,12 +36,18 @@ def target_draft(trusted, registry):
     use_reviewed_pins(draft)
     for key in draft["inputs"]:
         draft["inputs"][key]["content_sha256"] = digest(bundle["inputs"][key])
+    if bundle["inputs"]["model_policy"].get("enabled"):
+        from model_run_budget import validate_policy, amount
+        billing = validate_policy(bundle["inputs"]["model_policy"])["billing"]
+        cap = amount(billing["approved_max_amount"])
+        draft["constraints"]["budget"].update(currency=billing["currency"], external_spend_cap=float(cap))
+        draft["constraints"]["safety"]["real_spend_authorized"] = cap > 0
     # This marker refers to already installed review; it issues no approval.
     draft["prerequisites"] = [{"id": "REVIEW_PUBLIC_LOCAL_REGISTRY", "status": "PROVEN", "evidence_ref": "base:workpack-reviewed:" + digest(registry)}]
     return draft
 
 
-def build_agent(*, base, agent_base_root, scope, state_parent, director=None, evaluator=None, brain=None):
+def build_agent(*, base, agent_base_root, scope, state_parent, director=None, evaluator=None, brain=None, synthetic_test_callbacks=False):
     from .sources import verify_sources, BASE_SHA, GROWTH_SHA
     verified = verify_sources(Path(agent_base_root).parent)
     if (Path(agent_base_root).resolve() != verified / "agent-base"
@@ -69,7 +75,7 @@ def build_agent(*, base, agent_base_root, scope, state_parent, director=None, ev
         raise ValueError("EXISTING_REVIEWED_BASE_REQUIRED")
     profile = DomainProfile(DOMAIN, "REVIEW_READY_PACK", ("DRAFT", "REVIEW", "IMPROVEMENT"),
                             "saju-agent:local-artifact-only", 1, policy_constraints=(
-                                "NO_PUBLISHING", "NO_CUSTOMER_DATA", "NO_NEW_COST", "NO_SELF_PROMOTION", "TEST_IS_NOT_LIVE"))
+                                "NO_PUBLISHING", "NO_CUSTOMER_DATA", "NO_UNAPPROVED_COST", "NO_SELF_PROMOTION", "TEST_IS_NOT_LIVE"))
     def authority():
         trusted = workpack_admission.trusted_snapshot(base, scope.tenant_id, scope.goal_id)
         if trusted["release_identity"]["base_sha"] != BASE_SHA or trusted["release_identity"]["growth_sha"] != GROWTH_SHA:
@@ -80,6 +86,9 @@ def build_agent(*, base, agent_base_root, scope, state_parent, director=None, ev
             raise ValueError("SAJU_SCOPE_CHANGED")
         return trusted
     authority()
+    run_budget = {"binding": None, "synthetic_test_callbacks": synthetic_test_callbacks}
+    if any(callback is not None for callback in (director, evaluator, brain)) and not synthetic_test_callbacks:
+        raise ValueError("CUSTOM_CALLBACKS_REQUIRE_EXPLICIT_SYNTHETIC_TEST_MODE")
     if any(callback is None for callback in (director, evaluator, brain)):
         if not all(callback is None for callback in (director, evaluator, brain)):
             raise ValueError("SAJU_COMPLETE_BRAIN_BINDING_REQUIRED")
@@ -90,13 +99,10 @@ def build_agent(*, base, agent_base_root, scope, state_parent, director=None, ev
         from common_growth.brain_runtime import AgentBaseBrainCommandClient, AutonomousGrowthBrain
         def model_authority():
             authority()
-            registry = workpack_admission.registry(base)
-            with base.connect() as con:
-                _, _, policy = workpack_admission._snapshot(base, con, scope.tenant_id, scope.goal_id, registry)
-            model_policy = registry["bundle"]["inputs"]["model_policy"]
-            if (model_policy.get("enabled") is not True or model_policy.get("incremental_cost_confirmed_zero") is not True
-                    or model_policy.get("approval_ref") != policy["approval_ref"]):
-                raise RuntimeError("SAJU_MODEL_ACTIVATION_AND_COST_APPROVAL_REQUIRED")
+            from model_run_budget import require_supported, ReviewedLLMTaskTransport
+            if not run_budget["binding"]:
+                raise RuntimeError("MODEL_RUN_BINDING_REQUIRED_USE_ADVANCE_ONCE")
+            require_supported(ReviewedLLMTaskTransport(None))
         transport = AgentBaseBrainCommandClient(
             [sys.executable, str(verified / "agent-base/contract/autonomous_growth_brain_bridge.py")],
             max_attempts=1, provider_recovery_attempts=0, attempt_guard=model_authority)
@@ -163,7 +169,8 @@ def build_agent(*, base, agent_base_root, scope, state_parent, director=None, ev
 
     adapter = GrowthWorkpackAdapter(DOMAIN, profile, snapshot, lambda *_args: (),
                 available_capabilities=(CAPABILITY,), execution_proposer=factory,
-                context_provider=lambda: {"proposal_only": True, "external_execution_allowed": False})
+                context_provider=lambda: {"proposal_only": True, "external_execution_allowed": False,
+                                          "model_run_budget": copy.deepcopy(run_budget["binding"])})
     controller = SelfDirectionController(scope=scope, director=director, evaluator=evaluator,
         store=SelfDirectionStore(state / "direction.sqlite"), immutable_boundaries=profile.policy_constraints)
     agent = PurposeAutonomousAgent(scope=scope, locked_goal={"goal_id": scope.goal_id, "target": "Review-ready documents; business effect unproven"},
@@ -171,7 +178,8 @@ def build_agent(*, base, agent_base_root, scope, state_parent, director=None, ev
         learning_store=LearningStore(state / "learning.sqlite"), method_store=MethodStore(state / "methods.sqlite"),
         autonomy_store=AutonomyStore(state / "autonomy.sqlite"), learning_assets=assets,
         goal_guard=authority, immutable_boundaries=profile.policy_constraints,
-        resource_envelope={"new_external_spend": 0, "external_execution": False})
+        resource_envelope={"model_cost_control": "APPROVED_ONE_RUN_BUDGET", "external_execution": False})
+    agent._saju_run_budget = run_budget
     return agent, assets
 
 
@@ -193,6 +201,12 @@ def advance_once(*, base, agent, assets, invocation_key, max_ticks=3):
                 "domain": scope.domain_id, "environment": scope.environment, "policy_version": scope.policy_version}
     if any(trusted["scope"][k] != v for k, v in expected.items()) or scope.domain_id != DOMAIN or scope.environment not in {"TEST", "SANDBOX"}:
         raise ValueError("SAJU_SCOPE_CHANGED")
+    budget = agent._saju_run_budget
+    if not budget["synthetic_test_callbacks"]:
+        from model_run_budget import open_run, run_state
+        budget["binding"] = open_run(base, trusted["scope"], invocation_key)
+        if run_state(base, budget["binding"]) == "FINISHED":
+            return {"state": "ALREADY_FINISHED", "run_id": budget["binding"]["run_id"], "publishing_performed": False}
     workpack_admission.init_schema(base)
     with base.connect() as con:
         existing = con.execute("SELECT * FROM workpack_runs WHERE scope_json=? AND invocation_key=?", (canonical(trusted["scope"]), invocation_key)).fetchone()
@@ -203,6 +217,9 @@ def advance_once(*, base, agent, assets, invocation_key, max_ticks=3):
         decision = agent.step()
         spec = decision.get("proposal", {}).get("workpack_spec")
         if decision["status"] != "EXECUTE_PROPOSAL" or not spec:
+            if budget["binding"]:
+                from model_run_budget import finish_run
+                finish_run(base, budget["binding"])
             return {"state": "NO_EXECUTION", "decision": decision, "external_execution_performed": False}
         if spec["scope"] != trusted["scope"]:
             raise ValueError("SAJU_PROPOSAL_SCOPE_CHANGED")
@@ -218,6 +235,9 @@ def advance_once(*, base, agent, assets, invocation_key, max_ticks=3):
         states = [row[0] for row in con.execute("SELECT i.status FROM job_items i JOIN jobs j ON j.job_id=i.job_id WHERE j.factory_run_id=?", (run["run_id"],))]
     complete = bool(states) and all(status == "SUCCESS_VERIFIED" for status in states)
     next_decision = agent.step() if complete else None
+    if complete and budget["binding"]:
+        from model_run_budget import finish_run
+        finish_run(base, budget["binding"])
     return {"state": "LOCAL_REVIEW_READY" if complete else "BASE_RECOVERY_REQUIRED", "run_id": run["run_id"],
             "decision": decision, "ticks": ticks, "evidence_ids": evidence_ids, "next_decision": next_decision,
             "publishing_performed": False, "business_effect_verified": False}

@@ -45,11 +45,8 @@ def _inputs(context):
     if set(inputs) != expected or inputs["brief"] != public_brief():
         raise ValueError("SAJU_PUBLIC_INPUT_REQUIRED")
     validate_aggregate(inputs["aggregate"])
-    policy = inputs["model_policy"]
-    if (not isinstance(policy, dict) or set(policy) != {"enabled", "incremental_cost_confirmed_zero", "approval_ref"}
-            or type(policy["enabled"]) is not bool or type(policy["incremental_cost_confirmed_zero"]) is not bool
-            or not isinstance(policy["approval_ref"], str)):
-        raise ValueError("SAJU_MODEL_POLICY_INVALID")
+    from model_run_budget import validate_policy
+    validate_policy(inputs["model_policy"], require_approval=False)
     if kind != "draft":
         parent = inputs["parent"]
         if (parent.get("kind") != KINDS[KINDS.index(kind) - 1]
@@ -78,22 +75,14 @@ def prompt_for(context):
 
 
 def complete(context, prompt):
-    """Existing model bridge, never invoked by offline verification.
-
-    The reviewed registry pins this policy. Its approval reference must also
-    match the Goal's Factory approval. A toggle alone cannot authorize cost.
-    This is a preflight condition, not a provider-side billing limit.
-    """
+    """Reuse the existing model boundary with the shared one-run budget."""
     _, inputs = _inputs(context)
-    policy = inputs["model_policy"]
     import base_runtime
     import workpack_admission
-    installed = workpack_admission.registry(base_runtime)
-    with base_runtime.connect() as con:
-        _, _, authority = workpack_admission._snapshot(base_runtime, con, context["tenant_id"], context["goal_id"], installed)
-    if (policy["enabled"] is not True or policy["incremental_cost_confirmed_zero"] is not True
-            or policy["approval_ref"] != authority["approval_ref"]):
-        raise RuntimeError("SAJU_MODEL_ACTIVATION_AND_COST_APPROVAL_REQUIRED")
+    from model_run_budget import binding_for_factory, ReviewedLLMTaskTransport, require_supported
+    trusted = workpack_admission.trusted_snapshot(base_runtime, context["tenant_id"], context["goal_id"])
+    binding = binding_for_factory(base_runtime, context["payload"]["factory"]["run_id"], trusted["scope"])
+    require_supported(ReviewedLLMTaskTransport(None))
     from task_contract import build_task_contract
     from agentic_executor import execute_tool_free
     contract = build_task_contract(prompt, workpack="general_freeform", tenant_id=context["tenant_id"])
@@ -102,15 +91,11 @@ def complete(context, prompt):
             or contract.get("new_tool_execution_required") or contract.get("orchestration") or contract.get("contract_issues")):
         raise ValueError("SAJU_TOOL_FREE_CONTRACT_REQUIRED")
     native = copy.deepcopy(context)
+    native["model_run_budget"] = binding
     native["payload"]["task_contract"] = contract
-    try:
-        text = execute_tool_free(native, prompt)
-    except Exception as exc:
-        # Once submitted, even an error response can leave billing/completion
-        # ambiguous. Let Base's existing SUBMIT_UNKNOWN verifier path own it.
-        failure = RuntimeError("SAJU_MODEL_SUBMIT_UNKNOWN")
-        failure.submit_unknown = True
-        raise failure from exc
+    # The shared boundary distinguishes pre-submit budget rejection from an
+    # uncertain submission and gives Base the latter's submit_unknown marker.
+    text = execute_tool_free(native, prompt)
     return {"text": text, "synthetic": False}
 
 
