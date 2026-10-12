@@ -5,6 +5,7 @@ import type { SajuFacts, TenGodGroup } from "@/lib/saju-facts";
 import { TEN_GOD_GROUP } from "@/lib/saju-facts";
 import { SAJU_FOCUS_LABELS, type SajuFocus, type SajuDetailFocus } from "@/lib/saju-focus";
 import { buildSajuAnnualOutlook, type SajuAnnualOutlook } from "@/lib/saju-timing";
+import { eulReul, gwaWa, iGa } from "@/lib/korean-particle";
 
 export interface PremiumBalanceItem {
   title: string;
@@ -71,15 +72,15 @@ function balanceItems(facts: SajuFacts): PremiumBalanceItem[] {
     const guide = ELEMENT_PRACTICE[element];
     if (!guide) return [];
     return [{
-      title: `${element}을 생활 습관으로 번역하면`,
-      whatItMeans: `${facts.hasTimeInput ? "입력된 네 기둥" : "시간을 제외한 세 기둥"}에서 ${element}이 0개로 집계됩니다. 전통적으로 ${guide.meaning}을 돌아보는 상징으로 읽을 수 있습니다. 실제 능력의 결핍을 뜻하지는 않습니다.`,
+      title: `${element}${eulReul(element)} 생활 습관으로 번역하면`,
+      whatItMeans: `${facts.hasTimeInput ? "입력된 네 기둥" : "시간을 제외한 세 기둥"}에서 ${element}${iGa(element)} 0개로 집계됩니다. 전통적으로 ${guide.meaning}${eulReul(guide.meaning)} 돌아보는 상징으로 읽을 수 있습니다. 실제 능력의 결핍을 뜻하지는 않습니다.`,
       howToFill: guide.action,
       goodResult: guide.check,
     }];
   });
   items.push({
     title: `${first.meaning}에 멈춤 기준 더하기`,
-    whatItMeans: `${first.key} ${first.value}개라는 구조에서 ${first.risk}을 점검 대상으로 삼았습니다. 경험에 맞는지 먼저 확인하세요.`,
+    whatItMeans: `${first.key} ${first.value}개라는 구조에서 ${first.risk}${eulReul(first.risk)} 점검 대상으로 삼았습니다. 경험에 맞는지 먼저 확인하세요.`,
     howToFill: first.practice,
     goodResult: "2주 뒤 비슷한 상황을 두 건 비교하세요. 부담이 줄었다면 유지하고, 달라진 점이 없으면 이 해석 대신 실제 상황에 맞는 규칙을 새로 정하세요.",
   });
@@ -87,7 +88,6 @@ function balanceItems(facts: SajuFacts): PremiumBalanceItem[] {
 }
 
 function domainSection(key: SajuDetailFocus, facts: SajuFacts, annual: SajuAnnualOutlook): PremiumDomainSection {
-  const { first, second, basis } = profile(facts);
   const outspoken = facts.outputStarCount + facts.peerStarCount >= facts.resourceStarCount + facts.officerStarCount;
   const outputFirst = facts.outputStarCount >= facts.officerStarCount;
   const moneyFirst = facts.wealthStarCount >= facts.resourceStarCount;
@@ -128,8 +128,7 @@ function domainSection(key: SajuDetailFocus, facts: SajuFacts, annual: SajuAnnua
   const labels = (months: typeof annual.months) => months.slice(0, 2).map((month) => month.label).join(", ");
   return {
     key, label: SAJU_FOCUS_LABELS[key], headline: template.headline,
-    paragraphs: [template.scene, template.evidence,
-      `내 구조와 연결하면: ${first.meaning}과 ${second.meaning}을 함께 시험해볼 수 있습니다(${basis}). 먼저 작은 행동을 해본 뒤 실제 반응이 해석과 맞는지 확인하세요.`],
+    paragraphs: [template.scene, template.evidence],
     experiment: template.experiment,
     checkpoint: template.checkpoint,
     timing: experiments.length && checks.length
@@ -159,10 +158,10 @@ export function buildPremiumReport(input: {
     ? buildPalmBilateralReading(input.leftPalm, input.rightPalm, input.dominantHand) : null;
   return {
     title: "프리미엄 1년 리포트", focus,
-    summary: `${annual.startLabel}부터 ${annual.endLabel}까지, ${focus === "overall" ? "네 분야를 함께 비교하며" : `${SAJU_FOCUS_LABELS[focus]}을 먼저 살펴보며`} 행동과 점검 일정을 정리합니다. ${first.meaning}과 ${second.meaning}의 조합(${basis})을 출발점으로 삼되, 자신의 경험과 맞는 부분만 선택하세요.`,
+    summary: `${annual.startLabel}부터 ${annual.endLabel}까지, ${focus === "overall" ? "네 분야를 함께 비교하며" : `${SAJU_FOCUS_LABELS[focus]}${eulReul(SAJU_FOCUS_LABELS[focus])} 먼저 살펴보며`} 행동과 점검 일정을 정리합니다. ‘${first.meaning}’${gwaWa(first.meaning)} ‘${second.meaning}’${eulReul(second.meaning)} 함께 시험해보는 구성을 제안합니다(${basis}). 자신의 경험과 맞는 부분만 선택하세요.`,
     corePatterns: [
-      `${first.meaning}을 먼저 쓰는 상황을 찾아보세요. ${basis}가 나란히 나타나므로 ‘${first.meaning} → ${second.meaning}’ 두 단계를 이번 주의 결정 한 건에 적용해 비교해볼 수 있습니다. 개수는 능력 점수가 아닙니다.`,
-      `${places || "입력된 원국"} 자리에 ${first.key}이 보입니다. 이 영역에서 ${first.risk}이 있었는지 최근 사례 한 건을 적어보세요. 해당 경험이 없다면 이 가설은 내려놓아도 됩니다.`,
+      `이번 주에 ‘${first.meaning}’${eulReul(first.meaning)} 시도해볼 상황을 하나 고르세요. ${basis}라는 구성을 ‘${first.meaning} → ${second.meaning}’ 두 단계의 행동으로 옮겨본 제안입니다. 개수는 능력 점수가 아닙니다.`,
+      `${places || "입력된 원국"} 자리에 ${first.key}${iGa(first.key)} 보입니다. 이 영역에서 ${first.risk}${iGa(first.risk)} 있었는지 최근 사례 한 건을 적어보세요. 해당 경험이 없다면 이 가설은 내려놓아도 됩니다.`,
       facts.dayStrengthReliable
         ? `${facts.dayStrength === "weak" ? "한꺼번에 벌이는 일의 수를 줄이는" : facts.dayStrength === "strong" ? "혼자 정하기 전에 외부 반응을 받는" : "실행과 검토에 쓸 시간을 나누는"} 방식을 시험해보세요. 강약 분류(${facts.dayStrengthGrade})를 행동 실험으로 번역했으며 체력이나 정신 상태를 뜻하지 않습니다.`
         : "출생시간이 없어 강약 분류와 시주를 이용한 세밀한 가설은 생략했습니다. 세 기둥의 해석을 실제 경험과 비교하며 작은 실험부터 시작하세요.",
