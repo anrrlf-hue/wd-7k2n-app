@@ -625,6 +625,13 @@ export interface SajuAnnualMonthOutlook {
   goodFor: string;
   caution: string;
   score: number;
+  comparisons: Array<{
+    domain: "love_relationship" | "work" | "money" | "wellbeing";
+    label: string;
+    score: number;
+    emphasis: "실험" | "유지" | "점검";
+    basis: string;
+  }>;
 }
 
 export interface SajuAnnualOutlook {
@@ -662,7 +669,7 @@ export function buildSajuAnnualOutlook(
 ): SajuAnnualOutlook {
   const current = currentKstYearMonth(referenceDate);
   const months: SajuAnnualMonthOutlook[] = [];
-  const daeunGroups = facts.currentDaeun
+  const daeunGroups = facts.hasTimeInput && facts.currentDaeun
     ? [TEN_GOD_GROUP[facts.currentDaeun.stemTenGod], TEN_GOD_GROUP[facts.currentDaeun.branchTenGod]]
         .filter((x): x is TenGodGroup => Boolean(x))
     : [];
@@ -703,7 +710,35 @@ export function buildSajuAnnualOutlook(
       goodFor: copy.positive.replace("가장 강한 구간에서는 ", ""),
       caution: copy.caution,
       score: selected.score,
+      comparisons: ([
+        ["love_relationship", "연애·관계", "relationship"],
+        ["work", "일·직업·사업", "work_business"],
+        ["money", "돈·재물", "money"],
+        ["wellbeing", "생활·컨디션", "wellbeing"],
+      ] as const).map(([domain, label, timingDomain]) => {
+        const weight = weightsFor(timingDomain, facts.gender);
+        return {
+          domain, label,
+          score: scoreGroups(yearGroups, weight) + scoreGroups(monthGroups, weight) * 1.4
+            + Math.min(2, scoreGroups(daeunGroups, weight) * 0.25),
+          emphasis: "유지" as const,
+          basis: `세운 ${pillars.yearPillar} · 월운 ${pillars.monthPillar} · 월의 주제 ${monthGroups.join("·") || "확인 어려움"}`,
+        };
+      }),
     });
+  }
+
+  // Compare each domain only with itself across the 12 months. The score is
+  // an interpretation weight, never a probability, fortune grade or cross-domain rank.
+  for (const domain of months[0].comparisons.map((item) => item.domain)) {
+    const values = months.map((month) => month.comparisons.find((item) => item.domain === domain)!.score);
+    const low = Math.min(...values);
+    const high = Math.max(...values);
+    for (const month of months) {
+      const item = month.comparisons.find((item) => item.domain === domain)!;
+      const position = high === low ? 0.5 : (item.score - low) / (high - low);
+      item.emphasis = position >= 2 / 3 ? "실험" : position <= 1 / 3 ? "점검" : "유지";
+    }
   }
 
   const first = months[0];
@@ -714,7 +749,7 @@ export function buildSajuAnnualOutlook(
     precision: facts.hasTimeInput ? "monthly" : "broad",
     months,
     note: facts.hasTimeInput
-      ? "앞으로 12개월을 대운·세운·월운의 상대적 강약으로 비교했습니다. 특정 사건을 보장하는 예언이 아니라, 월별로 어떤 주제를 더 눈여겨볼지 보는 리포트입니다."
+      ? "현재 대운을 배경으로 매월 15일의 세운·월운을 비교한 근사 해석입니다. 절기 경계와 기간 중 대운 전환은 정밀 반영하지 않습니다. 실험·유지·점검은 각 분야 안의 12개월 상대 비교이며, 성공 확률이나 길흉 등급이 아닙니다."
       : "출생시간을 모르는 상태라 시주와 정밀 대운 일부를 제외하고 연·월·일 기준으로 12개월의 큰 흐름을 비교했습니다.",
   };
 }

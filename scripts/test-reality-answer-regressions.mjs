@@ -302,11 +302,13 @@ assert(
   "UI08: palm capture button must appear only after the hand frame is ready",
 );
 assert(
-  palmPageSource.includes("60000"),
+  /runWithDeadline\(task\.signal, 60_?000/.test(palmPageSource),
   "UI09: palm analysis timeout must allow slower mobile model startup",
 );
 assert(
-  palmPageSource.includes("다른 사진 선택하기") && palmPageSource.includes("손금 없이 세부 분야로 넘어가기"),
+  palmPageSource.includes("사진 다시 선택·촬영") &&
+    palmPageSource.includes("촬영 유지하고 리포트 다시 받기") &&
+    palmPageSource.includes("손금 없이 세부 분야로 넘어가기"),
   "UI10: palm error state must offer recovery paths into the detailed-topic flow",
 );
 assert(

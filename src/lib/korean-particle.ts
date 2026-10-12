@@ -25,3 +25,8 @@ export function iGa(text: string): "이" | "가" {
 export function eulReul(text: string): "을" | "를" {
   return hasBatchim(text) ? "을" : "를";
 }
+
+/** "과"/"와" 중 text 뒤에 맞는 조사를 고른다. */
+export function gwaWa(text: string): "과" | "와" {
+  return hasBatchim(text) ? "과" : "와";
+}

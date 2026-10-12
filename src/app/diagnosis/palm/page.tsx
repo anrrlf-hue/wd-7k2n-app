@@ -71,6 +71,7 @@ export default async function PalmPage({
 
   return (
     <PalmPageClient
+      key={JSON.stringify([birthInput, personalityInput, focus])}
       birthInput={birthInput}
       personalityInput={personalityInput}
       focus={focus}

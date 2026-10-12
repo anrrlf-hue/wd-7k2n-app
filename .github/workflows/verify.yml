@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -68,6 +70,11 @@ jobs:
 
       - name: Relationship share V1
         run: node scripts/test-relationship-share-v1.mjs
+
+      - name: Premium annual report
+        run: |
+          node scripts/test-premium-annual.mjs
+          node scripts/test-premium-annual-grouping.mjs
 
       - name: Build
         run: pnpm build
