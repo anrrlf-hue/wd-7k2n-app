@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold">공유 링크</h2>
             <p className="mt-2 text-muted-foreground">
-              관계 결과 공유 링크에는 두 사람의 생년월일이나 손 사진을 직접 넣지 않고, 공유용으로 축약한 관계 풀이만 담습니다.
+              서비스 공유 링크는 무료 사주 시작 화면의 주소만 전달합니다. 이름·생년월일·태어난 시각·손 사진·개인 풀이를 링크에 넣거나 공유용으로 공개 저장하지 않습니다. 이전 형식의 링크를 열어도 개인 풀이를 표시하지 않고 무료 사주 시작 화면으로 이동합니다.
             </p>
           </section>
           <section className="rounded-2xl border border-border bg-card p-5">

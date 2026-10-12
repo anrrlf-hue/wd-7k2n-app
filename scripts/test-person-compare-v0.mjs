@@ -167,7 +167,7 @@ assert(
 for (const phrase of ["나와 이 사람", "이 사람과 나 보기", "두 사람 함께 보기", "다른 사람과 비교해보기"]) {
   assert(compareCardSource.includes(phrase), `UI05: missing natural compare copy: ${phrase}`);
 }
-assert(compareCardSource.includes("공유 링크에는 두 사람의 생년월일이나 손 사진을 넣지 않습니다"), "UI06: share privacy copy missing");
+assert(compareCardSource.includes("<ServiceShareCard") && !compareCardSource.includes("result.shareText"), "UI06: comparison must share only the service invitation");
 assert(!compareCardSource.includes("setSelectedFollowUp"), "UI07: removed question follow-ups returned to comparison UI");
 assert(!compareCardSource.includes("result.followUps.map"), "UI08: removed question follow-up buttons returned");
 assert(compareCardSource.includes("SIJIN_OPTIONS"), "UI09: traditional birth-hour selector missing");

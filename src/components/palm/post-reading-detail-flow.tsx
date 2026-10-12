@@ -135,9 +135,9 @@ export function PostReadingDetailFlow({
               <Crown className="size-4" />
               <p className="section-eyebrow">프리미엄</p>
             </div>
-            <h3 className="mt-2 text-xl leading-8 font-semibold">부족한 점·보완법·앞으로 1년을 한 번에</h3>
+            <h3 className="mt-2 text-xl leading-8 font-semibold">내 근거에서 시작하는 1년 실행 리포트</h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              무료풀이보다 더 깊게 네 영역을 모두 보고, 부족한 부분을 어떻게 채울지와 좋은 결과를 만들 행동, 앞으로 12개월의 월별 흐름까지 정리합니다.
+              관심 분야의 행동을 고른 근거와 2주 실험, 계획을 바꿀 조건을 정리합니다. 앞으로 12개월의 월별 흐름을 비교하며 실험·유지·점검할 일을 정해보세요.
             </p>
             <Button size="lg" onClick={() => void loadPremium()} className="mt-4 h-14 w-full rounded-full text-base">
               프리미엄 보기
@@ -175,8 +175,8 @@ export function PostReadingDetailFlow({
           </div>
 
           <section className="mt-5 rounded-3xl border border-(--gold-soft) bg-card p-5">
-            <p className="section-eyebrow">전체를 더 깊게 보고 싶다면</p>
-            <h3 className="mt-2 text-lg font-semibold">1년 전체 흐름과 보완법까지 이어봅니다</h3>
+            <p className="section-eyebrow">이 분야의 실행 계획까지 보고 싶다면</p>
+            <h3 className="mt-2 text-lg font-semibold">1년 실행 계획과 점검 일정으로 이어봅니다</h3>
             <Button size="lg" onClick={() => void loadPremium()} className="mt-4 h-13 w-full rounded-full text-base">
               프리미엄 보기
             </Button>
@@ -199,7 +199,7 @@ export function PostReadingDetailFlow({
           <Crown className="mx-auto size-6 text-(--gold)" />
           <p className="mt-3 font-semibold">프리미엄 1년 리포트를 만들고 있어요</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            원국·대운·세운·월운과 양손 변화가 있으면 함께 묶어 12개월 전체를 정리합니다.
+            선택한 분야의 우선 행동과 점검 기준을 정리하고, 12개월의 흐름을 비교하고 있어요.
           </p>
         </div>
       )}

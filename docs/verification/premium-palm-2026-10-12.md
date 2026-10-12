@@ -2,7 +2,7 @@
 
 수정 브랜치: `fix/annual-premium-palm-analysis`. 기준 체크아웃: `7b0c213aa87133cb7ec45615aed82c94fc891b66` (`work`, 작업 시작 시 clean). 선택된 `/workspace/wd-7k2n-app` 환경에서 실행했다. 원격 push·PR·Production 배포는 하지 않았다.
 
-최신 연간 표시 후속 변경은 [같은 권고 묶기·검증·공유/신년 질문 메모](./premium-grouping-2026-10-12.md)에 기록했다. 아래 손금 검증과 이전 추천 선택 변경은 보존했으며 반복 실행하지 않았다.
+연간 표시 후속 변경은 [같은 권고 묶기](./premium-grouping-2026-10-12.md), 이후 승인된 공유 구현과 배포 전 검증은 [프리미엄·공유 변경 보고서](./premium-share-release-2026-10-12.md)에 기록했다. 아래 손금 검증과 이전 추천 선택 변경은 보존했으며 반복 실행하지 않았다.
 
 ## 결과와 남은 제한
 

@@ -6,6 +6,7 @@ import { buildPremiumAnnualPlan } from "@/lib/premium-annual-plan";
 
 export function PremiumReportView({ report }: { report: PremiumReport }) {
   const monthDomains = report.focus === "overall" ? report.domains : report.domains.filter((domain) => domain.key === report.focus);
+  const priorityDomain = report.domains.find((domain) => domain.key === report.focus);
   return (
     <div className="mt-5 space-y-5">
       <section className="rounded-3xl border border-(--gold-soft) bg-card p-5">
@@ -15,11 +16,15 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
         </div>
         <h2 className="mt-2 text-2xl leading-9 font-semibold">{report.title}</h2>
         <p className="mt-3 text-base leading-8 text-muted-foreground">{report.summary}</p>
-        {report.freeSummary && <p className="mt-3 border-t border-border pt-3 text-xs leading-6 text-muted-foreground"><span className="font-semibold">무료 풀이 한 줄 · 해석 가설: </span>{report.freeSummary}</p>}
+        {report.freeSummary && <details className="mt-3 border-t border-border pt-3 text-xs leading-6 text-muted-foreground"><summary className="cursor-pointer">무료 성향 요약 다시 보기</summary><p className="mt-2">해석 가설: {report.freeSummary}</p></details>}
       </section>
 
       <section className="rounded-3xl border border-border bg-card p-5">
         <p className="section-eyebrow">이번 계획의 우선순위</p>
+        {priorityDomain && <div className="mt-3 border-l-2 border-(--gold-soft) pl-3">
+          <h3 className="text-sm font-semibold">{priorityDomain.label} · 이 행동을 고른 근거</h3>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{priorityDomain.paragraphs[1]}</p>
+        </div>}
         <div className="mt-3 space-y-3">
           {report.actionPlan.map((item, index) => (
             <div key={item.title} className="rounded-2xl bg-accent p-4">
@@ -31,34 +36,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
         </div>
       </section>
 
-      <details className="rounded-3xl border border-(--gold-soft) bg-card p-5">
-        <summary className="cursor-pointer list-none">
-          <div className="flex items-center gap-2 text-(--gold)">
-            <Sparkles className="size-4" />
-            <p className="section-eyebrow">필요할 때 더할 보완 습관</p>
-          </div>
-          <h3 className="mt-2 text-xl font-semibold">현재 과제에 맞는 습관 하나만 고르기</h3>
-        </summary>
-        <details className="mt-4 rounded-xl bg-accent p-3">
-          <summary className="cursor-pointer text-sm">보완 습관을 고른 해석 근거</summary>
-          {report.corePatterns.map((text) => <p key={text} className="mt-3 text-sm leading-6 text-muted-foreground">{text}</p>)}
-        </details>
-        <div className="mt-4 space-y-4">
-          {report.balance.map((item) => (
-            <article key={item.title} className="rounded-2xl border border-border p-4">
-              <h4 className="font-semibold">{item.title}</h4>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.whatItMeans}</p>
-              <div className="mt-3 rounded-xl bg-accent p-3">
-                <p className="text-xs font-semibold text-(--gold)">이렇게 채워보세요</p>
-                <p className="mt-1 text-sm leading-6">{item.howToFill}</p>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                <span className="font-medium text-foreground">확인할 변화:</span> {item.goodResult}
-              </p>
-            </article>
-          ))}
-        </div>
-      </details>
+
 
       <section>
         <p className="section-eyebrow">분야별 선택 근거와 2주 실험</p>
@@ -71,7 +49,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
                 <p className="mt-2 text-xs text-muted-foreground">눌러서 자세히 보기</p>
               </summary>
               <div className="mt-4 space-y-3 border-t border-border pt-4">
-                {domain.paragraphs.map((paragraph) => (
+                {domain.paragraphs.filter((_, index) => domain.key !== priorityDomain?.key || index !== 1).map((paragraph) => (
                   <p key={paragraph} className="text-base leading-8 text-muted-foreground">{paragraph}</p>
                 ))}
                 <p className="text-sm leading-7"><strong>2주 실험: </strong>{domain.experiment}</p>
@@ -162,6 +140,35 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
         </div>
         <p className="mt-4 text-xs leading-5 text-muted-foreground">{report.annual.note}</p>
       </section>
+
+      <details className="rounded-3xl border border-(--gold-soft) bg-card p-5">
+        <summary className="cursor-pointer list-none">
+          <div className="flex items-center gap-2 text-(--gold)">
+            <Sparkles className="size-4" />
+            <p className="section-eyebrow">필요할 때 더할 보완 습관</p>
+          </div>
+          <h3 className="mt-2 text-xl font-semibold">현재 과제에 맞는 습관 하나만 고르기</h3>
+        </summary>
+        <details className="mt-4 rounded-xl bg-accent p-3">
+          <summary className="cursor-pointer text-sm">보완 습관을 고른 해석 근거</summary>
+          {report.corePatterns.map((text) => <p key={text} className="mt-3 text-sm leading-6 text-muted-foreground">{text}</p>)}
+        </details>
+        <div className="mt-4 space-y-4">
+          {report.balance.map((item) => (
+            <article key={item.title} className="rounded-2xl border border-border p-4">
+              <h4 className="font-semibold">{item.title}</h4>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.whatItMeans}</p>
+              <div className="mt-3 rounded-xl bg-accent p-3">
+                <p className="text-xs font-semibold text-(--gold)">이렇게 채워보세요</p>
+                <p className="mt-1 text-sm leading-6">{item.howToFill}</p>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                <span className="font-medium text-foreground">확인할 변화:</span> {item.goodResult}
+              </p>
+            </article>
+          ))}
+        </div>
+      </details>
 
       <p className="text-center text-xs leading-5 text-muted-foreground">{report.note}</p>
     </div>

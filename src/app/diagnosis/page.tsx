@@ -111,6 +111,14 @@ export default function DiagnosisPage() {
       const urlFocus = focusParam ? parseSajuFocus(focusParam) : null;
       setMode(nextMode);
 
+      // A service invitation starts the recipient's own free reading. Preserve
+      // saved readings, but do not unexpectedly restore one into this entry.
+      if (nextMode === "free" && params.get("from") === "share") {
+        setFocus("overall");
+        setStep("date");
+        return;
+      }
+
       if (nextMode === "question") {
         // 무료 결과에서 넘어온 경우에는 오래된 질문 세션보다 방금 본 무료 사주를 우선한다.
         // 그래야 CTA를 누른 즉시 같은 출생정보로 새 질문을 시작할 수 있다.

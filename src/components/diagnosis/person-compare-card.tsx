@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, MessageCircle, Save, UsersRound } from "lucide-react";
+import { Save, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { BirthInput } from "@/lib/saju";
 import { track } from "@/lib/analytics";
-import { buildRelationshipShareUrl } from "@/lib/relationship-share";
+import { ServiceShareCard } from "@/components/service-share-card";
 import { SIJIN_OPTIONS, sijinFromHour, sijinOption, type SijinId } from "@/lib/korean-hour";
 import { loadSavedPeople, upsertSavedPerson, type SavedPerson } from "@/lib/saved-people";
 import {
@@ -53,8 +53,6 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
   const [savedPeople, setSavedPeople] = useState<SavedPerson[]>([]);
   const [selectedSavedId, setSelectedSavedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const [shareDone, setShareDone] = useState<string | null>(null);
   const [savedDone, setSavedDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,7 +87,6 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
 
     setLoading(true);
     setError(null);
-    setShareDone(null);
     track("relationship_compare_started", { purpose });
 
     try {
@@ -117,57 +114,6 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
     }
   }
 
-  function currentShare() {
-    if (!result) return null;
-    return buildRelationshipShareUrl(result, window.location.origin);
-  }
-
-  async function shareToKakao() {
-    const shared = currentShare();
-    if (!shared || !result) return;
-    setSharing(true);
-    setShareDone(null);
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `운·돈 · 나와 이 사람 · ${result.purposeLabel}`,
-          text: result.shareText,
-          url: shared.url,
-        });
-        setShareDone("공유창에서 카카오톡으로 보낼 수 있어요");
-        track("relationship_share_created", {
-          shareId: shared.shareId,
-          purpose: result.purpose,
-          channel: "native_kakao_choice",
-        });
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(`${result.shareText}\n\n${shared.url}`);
-        setShareDone("링크를 복사했어요. 카카오톡에 붙여넣어 보내주세요");
-        track("relationship_share_created", {
-          shareId: shared.shareId,
-          purpose: result.purpose,
-          channel: "clipboard_kakao_fallback",
-        });
-      }
-    } catch {
-      // 공유창을 닫은 경우는 오류로 보이지 않는다.
-    } finally {
-      setSharing(false);
-    }
-  }
-
-  async function copyLink() {
-    const shared = currentShare();
-    if (!shared || !result || !navigator.clipboard) return;
-    await navigator.clipboard.writeText(`${result.shareText}\n\n${shared.url}`);
-    setShareDone("결과와 링크를 복사했어요");
-    track("relationship_share_created", {
-      shareId: shared.shareId,
-      purpose: result.purpose,
-      channel: "clipboard",
-    });
-  }
-
   function saveCurrentPerson() {
     if (!otherBirth) return;
     const saved = upsertSavedPerson({
@@ -188,7 +134,6 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
     setSijin("unknown");
     setResult(null);
     setError(null);
-    setShareDone(null);
     setSavedDone(false);
   }
 
@@ -439,25 +384,8 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
 
           <p className="mt-4 text-xs leading-5 text-muted-foreground">{result.note}</p>
 
+          <ServiceShareCard />
           <div className="mt-5 grid gap-2">
-            <Button
-              type="button"
-              onClick={() => void shareToKakao()}
-              disabled={sharing}
-              className="h-12 w-full rounded-full"
-            >
-              <MessageCircle className="size-4" />
-              {sharing ? "공유창 여는 중..." : "카카오톡으로 보내기"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void copyLink()}
-              className="h-12 w-full rounded-full"
-            >
-              <Copy className="size-4" />
-              결과와 링크 복사
-            </Button>
             <Button
               type="button"
               variant="outline"
@@ -468,10 +396,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
               {savedDone ? "사람 정보 저장됨" : "이 사람 저장하기"}
             </Button>
           </div>
-          {shareDone && <p className="mt-2 text-center text-xs leading-5 text-muted-foreground">{shareDone}</p>}
-          <p className="mt-2 text-center text-xs leading-5 text-muted-foreground">
-            공유 링크에는 두 사람의 생년월일이나 손 사진을 넣지 않습니다.
-          </p>
+
 
           <Button
             type="button"

@@ -4,6 +4,7 @@ import { CompanionHeading } from "@/components/brand-companion";
 import { Hand } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
+import { ServiceShareCard } from "@/components/service-share-card";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -251,7 +252,7 @@ export function ResultStep({
         disabled={saving}
         className="mt-4 h-12 w-full rounded-full"
       >
-        {saving ? "저장 중..." : "이미지로 저장하고 공유하기"}
+        {saving ? "저장 중..." : "내 사주 카드 이미지 저장"}
       </Button>
 
       {report ? (
@@ -280,6 +281,7 @@ export function ResultStep({
 
       <DaeunFlowSection view={myeongsik} />
       <MyeongsikSection view={myeongsik} />
+      <ServiceShareCard />
 
       <section className="mt-8 rounded-3xl border border-(--gold-soft) bg-card p-5">
         <div className="flex items-center gap-2 text-(--gold)">

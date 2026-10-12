@@ -13,7 +13,7 @@ export const TRUST_BADGES: TrustBadge[] = [
     enabled: true,
   },
   {
-    text: "관계 비교 공유 링크에는 생년월일이나 손 사진을 직접 넣지 않습니다.",
+    text: "공유 링크는 무료 사주 시작 주소만 전달하며 이름·출생정보·손 사진·개인 풀이를 담지 않습니다.",
     enabled: true,
   },
 ];
