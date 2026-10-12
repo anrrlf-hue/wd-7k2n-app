@@ -80,6 +80,7 @@ export function PostReadingDetailFlow({
         body: JSON.stringify({
           ...birthInput,
           mbti: personalityInput?.mbti ?? null,
+          focus: focus ?? "overall",
           leftPalmFacts: leftPalmFacts ?? null,
           rightPalmFacts: rightPalmFacts ?? null,
           dominantHand: dominantHand ?? null,

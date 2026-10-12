@@ -11,7 +11,6 @@ import { JourneyScene } from "@/components/journey-scene";
 import { VerdictCard } from "@/components/diagnosis/verdict-card";
 import { ReportSection, ParagraphSection, EvidenceItemCard } from "@/components/diagnosis/report-section";
 import {
-  analyzePalmFromCanvas,
   assessPalmCaptureFrame,
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
@@ -25,6 +24,34 @@ import type { WealthTypeResult } from "@/lib/wealth-type";
 import type { SajuFocus } from "@/lib/saju-focus";
 import { track } from "@/lib/analytics";
 import type { DominantHand, PalmBilateralReading, PalmFutureTimeline } from "@/lib/palm-bilateral";
+
+import { PalmTaskSlot, requestPalmReport, runWithDeadline } from "@/lib/palm-analysis-task";
+import { PalmWorkerClient } from "@/lib/palm-worker-client";
+import type { PalmAnalysisPhase } from "@/lib/palm-detection";
+
+const ANALYSIS_PHASES = {
+  decode: "사진을 불러오고 있어요",
+  landmarks: "사진에서 손 위치를 확인하고 있어요",
+  quality: "사진 품질과 손바닥 영역을 확인하고 있어요",
+  lines: "기본 손금선을 분석하고 있어요. 처음에는 분석 파일을 불러오는 시간이 필요합니다",
+  enhanced: "흐린 선을 보정한 사진과 비교하고 있어요",
+  secondary: "보조선 결과를 확인하고 있어요",
+  request: "촬영 정보로 리포트를 요청했어요. 서버 응답을 기다리고 있습니다",
+  body: "서버에 연결됐어요. 리포트 본문을 받고 있어요",
+} as const;
+type AnalysisPhase = keyof typeof ANALYSIS_PHASES;
+interface PalmReportResponse {
+  usable: boolean;
+  palmSkipped?: boolean;
+  hand?: "left" | "right" | "primary";
+  warnings?: string[];
+  bilateralReading?: PalmBilateralReading;
+  futurePalmTimeline?: PalmFutureTimeline;
+  freeReport?: { report: FreeSajuReport };
+  tripleCompare?: CompareItem[];
+  verdict?: ReportParagraph;
+  wealthType?: WealthTypeResult;
+}
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
 
@@ -119,20 +146,6 @@ async function fileToCanvas(file: File, maxDim = 1280): Promise<HTMLCanvasElemen
   }
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
 /** 최종 통합 리포트(finalReport)를 렌더링한다. 손금이 있을 때(withPalm)와
  * 없을 때(saju-only) 양쪽에서 재사용한다. NO_DUPLICATION: 1차 무료 결과
  * (result-step.tsx)에서 이미 보여준 필드는 여기서 다시 보여주지 않는다 —
@@ -163,7 +176,6 @@ export function PalmPageClient({
   birthInput,
   personalityInput,
   focus = "overall",
-  initialQuestion = null,
 }: {
   birthInput: BirthInput | null;
   personalityInput?: PersonalityInputEcho;
@@ -194,8 +206,16 @@ export function PalmPageClient({
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraMessage, setCameraMessage] = useState("손바닥 전체를 화면 안에 맞춰주세요.");
-  const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [analysisMessage, setAnalysisMessage] = useState("");
+  const [analysisPhase, setAnalysisPhase] = useState<AnalysisPhase>("decode");
+  const [retryMode, setRetryMode] = useState<"report" | "photo" | null>(null);
+  const [analysisElapsed, setAnalysisElapsed] = useState(0);
+  const tasks = useRef(new PalmTaskSlot());
+  const analyzer = useRef(new PalmWorkerClient());
+  const analysisStarted = useRef(0);
+  const operationStarted = useRef(0);
+  const runNumber = useRef(0);
+  const capturedCanvas = useRef<{ canvas: HTMLCanvasElement; preview: string } | null>(null);
+  const retryReport = useRef<{ primary: PalmFacts | null; left: PalmFacts | null; right: PalmFacts | null } | null>(null);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -237,37 +257,31 @@ export function PalmPageClient({
 
   useEffect(() => {
     if (stage !== "detecting" && stage !== "loading") return;
+    const timer = window.setInterval(() => setAnalysisElapsed(Math.floor((performance.now() - operationStarted.current) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [stage]);
 
-    if (stage === "detecting") {
-      setAnalysisProgress(22);
-      setAnalysisMessage(`${captureHand === "right" ? "오른손" : "왼손"} 사진 품질과 주요 손금선을 확인하고 있어요`);
-    } else {
-      setAnalysisProgress(72);
-      setAnalysisMessage("양손의 차이와 사주 흐름을 함께 비교하고 있어요");
-    }
-
-    const first = window.setTimeout(() => {
-      setAnalysisProgress(stage === "detecting" ? 44 : 84);
-      setAnalysisMessage(
-        stage === "detecting"
-          ? "생명선·두뇌선·감정선과 보조선을 나눠 확인하고 있어요"
-          : "타고난 흐름과 지금의 변화를 한 번에 정리하고 있어요",
-      );
-    }, 1800);
-    const second = window.setTimeout(() => {
-      setAnalysisProgress(stage === "detecting" ? 62 : 94);
-      setAnalysisMessage(
-        stage === "detecting"
-          ? "거의 다 봤어요. 선명한 특징만 남기고 있어요"
-          : "결과 문장을 정리하고 있어요. 잠시만 기다려주세요",
-      );
-    }, 4200);
-
-    return () => {
-      window.clearTimeout(first);
-      window.clearTimeout(second);
+  useEffect(() => {
+    const slot = tasks.current;
+    const worker = analyzer.current;
+    const stop = () => { slot.cancel(); worker.dispose(); };
+    let interrupted = false;
+    const onHide = () => { interrupted = slot.hasActive(); stop(); };
+    const onRestore = (event: PageTransitionEvent) => {
+      if (!event.persisted || !interrupted) return;
+      interrupted = false;
+      setStage("error");
+      setRetryMode(retryReport.current ? "report" : capturedCanvas.current ? "photo" : null);
+      setErrorMsg("화면을 떠나 분석이 중단됐어요. 저장된 촬영 정보로 다시 시도해주세요.");
     };
-  }, [stage, captureHand]);
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pageshow", onRestore);
+    return () => {
+      stop();
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pageshow", onRestore);
+    };
+  }, [resumeKey]);
 
   useEffect(() => {
     if (!cameraOpen) return;
@@ -375,63 +389,92 @@ export function PalmPageClient({
     chapter,
   ]);
 
-  async function fetchReport(
-    facts: PalmFacts | null,
-    leftFacts: PalmFacts | null = leftPalmFacts,
-    rightFacts: PalmFacts | null = rightPalmFacts,
-  ) {
-    function retryCurrentHand() {
-    stopLiveCamera();
-    setErrorMsg(null);
-    setRetakeAttempts(0);
-    setPalmFacts(null);
-    replacePreview(null);
-    setStage("upload");
+  function markPhase(task: AbortController, phase: AnalysisPhase) {
+    if (!tasks.current.isCurrent(task)) return;
+    setAnalysisPhase(phase);
+    console.info("[palm-analysis]", { run: runNumber.current, phase, elapsedMs: Math.round(performance.now() - analysisStarted.current) });
   }
 
-  if (!birthInput) {
-      setErrorMsg("생년월일 정보를 찾을 수 없어요. 사주 결과 화면에서 다시 들어와주세요.");
-      setStage("error");
-      return;
-    }
-    const res = await withTimeout(
-      fetch("/api/palm/interpret", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...birthInput,
-          palmFacts: facts,
-          leftPalmFacts: leftFacts,
-          rightPalmFacts: rightFacts,
-          dominantHand: dominantHand ?? undefined,
-          personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
-          mbti: personalityInput?.mbti ?? undefined,
-        }),
-      }),
-      30000,
-      "리포트 생성이 오래 걸리고 있어요. 다시 시도해주세요.",
-    );
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "요청 실패");
+  function beginTask() {
+    const task = tasks.current.begin();
+    analysisStarted.current = performance.now();
+    operationStarted.current = analysisStarted.current;
+    runNumber.current += 1;
+    setAnalysisElapsed(0);
+    setErrorMsg(null);
+    setRetryMode(null);
+    return task;
+  }
 
+  async function fetchReport(
+    task: AbortController,
+    facts: PalmFacts | null,
+    leftFacts: PalmFacts | null,
+    rightFacts: PalmFacts | null,
+  ) {
+    if (!birthInput) throw new Error("생년월일 정보를 찾을 수 없어요. 사주 결과 화면에서 다시 들어와주세요.");
+    retryReport.current = { primary: facts, left: leftFacts, right: rightFacts };
+    operationStarted.current = performance.now();
+    setAnalysisElapsed(0);
+    setStage("loading");
+    markPhase(task, "request");
+    const data = await requestPalmReport<PalmReportResponse>({
+      ...birthInput,
+      palmFacts: facts,
+      leftPalmFacts: leftFacts,
+      rightPalmFacts: rightFacts,
+      dominantHand: dominantHand ?? undefined,
+      personalityAnswers: personalityInput?.personalityAnswers ?? undefined,
+      mbti: personalityInput?.mbti ?? undefined,
+    }, task.signal, () => markPhase(task, "body"));
+    if (!tasks.current.isCurrent(task)) return;
+
+    if (typeof data.usable !== "boolean") throw new Error("리포트 응답을 확인하지 못했어요. 다시 시도해주세요.");
     if (!data.usable) {
+      retryReport.current = null;
+      const rejectedHand = data.hand === "left" || data.hand === "right" ? data.hand : dominantHand ?? captureHand;
+      const rejected = rejectedHand === "left" ? leftFacts : rightFacts;
+      setCaptureHand(rejectedHand);
       setRetakeAttempts((n) => n + 1);
-      setPalmFacts((prev) => (prev ? { ...prev, warnings: data.warnings ?? prev.warnings } : prev));
+      setPalmFacts(rejected ? { ...rejected, warnings: data.warnings ?? rejected.warnings } : facts);
       setStage("retake");
       return;
     }
-
+    retryReport.current = null;
     setBilateralReading(data.bilateralReading ?? null);
     setFuturePalmTimeline(data.futurePalmTimeline ?? null);
     setFinalReport(data.freeReport?.report ?? null);
     setTripleCompare(data.tripleCompare ?? []);
     setVerdict(data.verdict ?? null);
     setWealthType(data.wealthType ?? null);
-    track("free_report_completed", {
-      palmSkipped: Boolean(data.palmSkipped),
-      bilateral: Boolean(leftFacts && rightFacts),
-    });
+    track("free_report_completed", { palmSkipped: Boolean(data.palmSkipped), bilateral: Boolean(leftFacts && rightFacts) });
+    console.info("[palm-analysis]", { run: runNumber.current, phase: "complete", elapsedMs: Math.round(performance.now() - analysisStarted.current) });
     setStage(data.palmSkipped ? "saju_only" : "result");
+  }
+
+  function showFailure(task: AbortController, err: unknown) {
+    if (!tasks.current.isCurrent(task)) return;
+    console.info("[palm-analysis]", { run: runNumber.current, phase: "failed", elapsedMs: Math.round(performance.now() - analysisStarted.current) });
+    setErrorMsg(err instanceof Error ? err.message : "분석 중 문제가 발생했어요. 다시 시도해주세요.");
+    setRetryMode(retryReport.current ? "report" : capturedCanvas.current ? "photo" : null);
+    setStage("error");
+  }
+
+  function cancelAnalysis() {
+    tasks.current.cancel();
+    analyzer.current.dispose();
+    setRetryMode(retryReport.current ? "report" : capturedCanvas.current ? "photo" : null);
+    setErrorMsg("분석을 취소했어요. 촬영한 사진과 완료된 손 분석은 이 화면에서 유지됩니다.");
+    setStage("error");
+  }
+
+  async function retrySavedReport() {
+    const saved = retryReport.current;
+    if (!saved) return;
+    const task = beginTask();
+    try { await fetchReport(task, saved.primary, saved.left, saved.right); }
+    catch (err) { showFailure(task, err); }
+    finally { tasks.current.finish(task); }
   }
 
   function replacePreview(next: string | null) {
@@ -476,59 +519,48 @@ export function PalmPageClient({
     }
   }
 
-  async function processPalmCanvas(canvas: HTMLCanvasElement, preview: string) {
-    setErrorMsg(null);
+  async function processPalmCanvas(source: () => Promise<HTMLCanvasElement>, existingPreview?: string) {
+    const task = beginTask();
+    const hand = captureHand;
+    retryReport.current = null;
     setStage("detecting");
-    replacePreview(preview);
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-
+    markPhase(task, "decode");
     try {
-      const analyzed = await withTimeout(
-        analyzePalmFromCanvas(canvas),
-        60000,
-        "손금 분석 준비가 오래 걸리고 있어요. 다시 촬영하거나 사진 선택으로 시도해주세요.",
-      );
-      // 사용자가 화면 안내에 맞춰 오른손/왼손을 순서대로 찍으므로 그 촬영 단계의
-      // 손 방향을 결과에 고정한다. 카메라 미러링에 따라 handedness가 뒤집히는 문제를 피한다.
-      const facts: PalmFacts = { ...analyzed, handSide: captureHand };
+      const analyzed = await runWithDeadline(task.signal, 60_000,
+        "사진 분석이 60초를 넘었어요. 같은 사진으로 다시 시도할 수 있습니다.", async (signal) => {
+          const canvas = await source();
+          signal.throwIfAborted();
+          const preview = existingPreview ?? canvas.toDataURL("image/jpeg", 0.9);
+          capturedCanvas.current = { canvas, preview };
+          replacePreview(preview);
+          return analyzer.current.analyze(canvas, signal, (phase: PalmAnalysisPhase) => markPhase(task, phase));
+        });
+      if (!tasks.current.isCurrent(task)) return;
+      const preview = capturedCanvas.current!.preview;
+      const facts: PalmFacts = { ...analyzed, handSide: hand };
       setPalmFacts(facts);
-
       if (!isPalmFactsUsable(facts)) {
         setRetakeAttempts((n) => n + 1);
         setStage("retake");
         return;
       }
-
-      if (captureHand === "right") {
-        setRightPalmFacts(facts);
-        setRightPreviewUrl(preview);
-        setCaptureHand("left");
+      const nextRight = hand === "right" ? facts : rightPalmFacts;
+      const nextLeft = hand === "left" ? facts : leftPalmFacts;
+      if (hand === "right") { setRightPalmFacts(facts); setRightPreviewUrl(preview); }
+      else { setLeftPalmFacts(facts); setLeftPreviewUrl(preview); }
+      if (!nextLeft || !nextRight) {
+        setCaptureHand(nextRight ? "left" : "right");
         setRetakeAttempts(0);
+        capturedCanvas.current = null;
         replacePreview(null);
         setStage("upload");
         return;
       }
-
-      const nextLeft = facts;
-      const nextRight = rightPalmFacts;
-      setLeftPalmFacts(nextLeft);
-      setLeftPreviewUrl(preview);
-
-      if (!nextRight) {
-        setErrorMsg("오른손 분석 정보가 없어 오른손부터 다시 촬영해주세요.");
-        setCaptureHand("right");
-        setStage("upload");
-        return;
-      }
-
       const primary = dominantHand === "left" ? nextLeft : nextRight;
       setPalmFacts(primary);
-      setStage("loading");
-      await fetchReport(primary, nextLeft, nextRight);
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "분석 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
-      setStage("error");
-    }
+      await fetchReport(task, primary, nextLeft, nextRight);
+    } catch (err) { showFailure(task, err); }
+    finally { tasks.current.finish(task); }
   }
 
   async function captureLiveCamera() {
@@ -546,7 +578,7 @@ export function PalmPageClient({
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const preview = canvas.toDataURL("image/jpeg", 0.9);
     stopLiveCamera();
-    await processPalmCanvas(canvas, preview);
+    await processPalmCanvas(async () => canvas, preview);
   }
 
   async function handleFile(file: File) {
@@ -554,34 +586,28 @@ export function PalmPageClient({
       setErrorMsg("먼저 평소 주로 쓰는 손을 선택해주세요.");
       return;
     }
-    try {
-      const canvas = await fileToCanvas(file);
-      await processPalmCanvas(canvas, canvas.toDataURL("image/jpeg", 0.9));
-    } catch (err) {
-      setErrorMsg(
-        err instanceof Error && err.message.includes("손금 분석")
-          ? err.message
-          : "사진을 불러오지 못했어요. JPG·PNG 사진으로 다시 시도하거나 카메라 촬영을 이용해주세요.",
-      );
-      setStage("error");
-    }
+    capturedCanvas.current = null;
+    await processPalmCanvas(() => fileToCanvas(file));
   }
 
   /** 손금 없이 계속 보기 — 처음부터 건너뛸 때도, 반복 실패 뒤에도 쓴다.
    * 실패한 손금을 성공한 것처럼 꾸며서 보여주지 않는다: 사주만으로 완결된
    * 리포트를 정직하게 보여준다. */
   async function handleSkipPalm() {
-    setErrorMsg(null);
-    setStage("loading");
-    try {
-      await fetchReport(null, null, null);
-    } catch {
-      setErrorMsg("분석 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.");
-      setStage("error");
-    }
+    stopLiveCamera();
+    const task = beginTask();
+    try { await fetchReport(task, null, null, null); }
+    catch (err) { showFailure(task, err); }
+    finally { tasks.current.finish(task); }
   }
 
   function retryCurrentHand() {
+    tasks.current.cancel();
+    analyzer.current.dispose();
+    capturedCanvas.current = null;
+    retryReport.current = null;
+    if (captureHand === "right") { setRightPalmFacts(null); setRightPreviewUrl(null); }
+    else { setLeftPalmFacts(null); setLeftPreviewUrl(null); }
     stopLiveCamera();
     setErrorMsg(null);
     setRetakeAttempts(0);
@@ -591,6 +617,10 @@ export function PalmPageClient({
   }
 
   function reset() {
+    tasks.current.cancel();
+    analyzer.current.dispose();
+    capturedCanvas.current = null;
+    retryReport.current = null;
     stopLiveCamera();
     if (resumeKey) {
       sessionStorage.removeItem(`${resumeKey}:palm`);
@@ -843,18 +873,10 @@ export function PalmPageClient({
           <p className="mt-5 text-lg font-semibold">
             {stage === "detecting" ? "손금선을 읽고 있습니다" : "양손과 사주를 함께 정리하고 있습니다"}
           </p>
-          <p className="mt-2 min-h-12 max-w-sm text-sm leading-6 text-muted-foreground">{analysisMessage}</p>
-          <div className="mt-5 h-2 w-full max-w-sm overflow-hidden rounded-full bg-border">
-            <motion.div
-              className="h-full rounded-full bg-(--gold)"
-              animate={{ width: `${analysisProgress}%` }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-            />
-          </div>
-          <p className="mt-2 text-xs tabular-nums text-muted-foreground">{analysisProgress}%</p>
-          <p className="mt-4 text-xs leading-5 text-muted-foreground">
-            화면이 멈춘 것이 아닙니다. 사진에서 선을 실제로 확인한 뒤 결과를 만들고 있어요.
-          </p>
+          <p role="status" className="mt-2 min-h-12 max-w-sm text-sm leading-6 text-muted-foreground">{ANALYSIS_PHASES[analysisPhase]}</p>
+          <p className="mt-2 text-xs tabular-nums text-muted-foreground">이 단계 경과 {analysisElapsed}초 · {stage === "loading" ? "리포트 요청은 최대 30초" : "사진 분석은 최대 60초"}</p>
+          {analysisElapsed >= 10 && <p className="mt-4 text-sm text-muted-foreground">예상보다 오래 걸리고 있어요. 취소한 뒤 다시 시도할 수 있습니다.</p>}
+          <Button variant="outline" onClick={cancelAnalysis} className="mt-6 rounded-full">분석 취소</Button>
         </div>
       )}
 
@@ -890,25 +912,21 @@ export function PalmPageClient({
 
       {stage === "error" && (
         <div className="mt-8 flex flex-1 flex-col">
-          <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-            {errorMsg ?? "문제가 발생했어요."}
-          </div>
+          <div role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{errorMsg ?? "문제가 발생했어요."}</div>
+          {leftPalmFacts && rightPalmFacts && <p className="mt-3 text-sm text-muted-foreground">오른손·왼손 분석이 보존되어 있어요. 다시 촬영할 필요 없이 리포트를 재요청할 수 있습니다.</p>}
           <div className="mt-auto flex flex-col gap-3 pt-8">
-            <Button size="lg" onClick={retryCurrentHand} className="h-13 w-full rounded-full text-base">
-              {captureHand === "right" ? "오른손 다시 촬영하기" : "왼손 다시 촬영하기"}
+            {retryMode === "report" ? (
+              <Button size="lg" onClick={retrySavedReport} className="h-13 w-full rounded-full text-base">촬영 유지하고 리포트 다시 받기</Button>
+            ) : retryMode === "photo" ? (
+              <Button size="lg" onClick={() => {
+                const saved = capturedCanvas.current;
+                if (saved) void processPalmCanvas(async () => saved.canvas, saved.preview);
+              }} className="h-13 w-full rounded-full text-base">같은 사진으로 분석 다시 시도</Button>
+            ) : null}
+            <Button size="lg" variant="outline" onClick={retryCurrentHand} className="h-13 w-full rounded-full text-base">
+              {captureHand === "right" ? "오른손 사진 다시 선택·촬영" : "왼손 사진 다시 선택·촬영"}
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => galleryInputRef.current?.click()}
-              className="h-13 w-full rounded-full text-base"
-            >
-              <ImagePlus className="size-4" />
-              다른 사진 선택하기
-            </Button>
-            <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">
-              손금 없이 세부 분야로 넘어가기
-            </button>
+            <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">손금 없이 세부 분야로 넘어가기</button>
           </div>
         </div>
       )}

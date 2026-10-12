@@ -1,3 +1,4 @@
+import { createPalmCanvas, type PalmCanvas } from "@/lib/palm-canvas";
 import * as ort from "onnxruntime-web";
 
 ort.env.wasm.wasmPaths = "/ort/";
@@ -42,13 +43,13 @@ function getSession(): Promise<ort.InferenceSession> {
   return sessionPromise;
 }
 
-function preprocess(source: HTMLCanvasElement): {
+function preprocess(source: PalmCanvas): {
   tensor: ort.Tensor;
   scale: number;
   padX: number;
   padY: number;
 } {
-  const canvas = document.createElement("canvas");
+  const canvas = createPalmCanvas();
   canvas.width = MODEL_SIZE;
   canvas.height = MODEL_SIZE;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -84,7 +85,7 @@ function preprocess(source: HTMLCanvasElement): {
 function normalizedPoint(
   x: number,
   y: number,
-  source: HTMLCanvasElement,
+  source: PalmCanvas,
   scale: number,
   padX: number,
   padY: number,
@@ -98,7 +99,7 @@ function normalizedPoint(
 }
 
 export async function runPalmFourLineOnnx(
-  source: HTMLCanvasElement,
+  source: PalmCanvas,
   minConfidence = 0.08,
 ): Promise<FourLinePoseResult | null> {
   try {

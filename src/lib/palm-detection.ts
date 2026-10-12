@@ -22,6 +22,10 @@ import type {
   PalmFacts,
 } from "@/lib/palm-facts";
 
+import { createPalmCanvas, type PalmCanvas, type PalmContext } from "@/lib/palm-canvas";
+
+export type PalmAnalysisPhase = "landmarks" | "quality" | "lines" | "enhanced" | "secondary";
+
 let handLandmarkerPromise: Promise<HandLandmarker> | null = null;
 
 function getHandLandmarker(): Promise<HandLandmarker> {
@@ -176,7 +180,7 @@ function paddedRect(rect: Rect, imageWidth: number, imageHeight: number, padRati
   };
 }
 
-function imageDataForRect(ctx: CanvasRenderingContext2D, rect: Rect): ImageData {
+function imageDataForRect(ctx: PalmContext, rect: Rect): ImageData {
   const x = Math.max(0, Math.floor(rect.x));
   const y = Math.max(0, Math.floor(rect.y));
   const width = Math.max(1, Math.min(ctx.canvas.width - x, Math.ceil(rect.width)));
@@ -190,8 +194,8 @@ function adaptivePalmMargin(landmarksPx: { x: number; y: number }[]): number {
   return Math.round(Math.max(70, Math.min(135, palmScale * 0.28)));
 }
 
-function enhancePalmContrast(source: HTMLCanvasElement): HTMLCanvasElement {
-  const out = document.createElement("canvas");
+function enhancePalmContrast(source: PalmCanvas): PalmCanvas {
+  const out = createPalmCanvas();
   out.width = source.width;
   out.height = source.height;
   const ctx = out.getContext("2d");
@@ -284,11 +288,11 @@ function extractLineFeatures(imageData: ImageData, landmarksPx: { x: number; y: 
  * 마진 100px은 upstream 스크립트의 고정값을 그대로 쓴 것 — 우리가 임의로
  * 추측한 padding 비율이 아니다. */
 function cropAndRotatePalm(
-  source: HTMLCanvasElement,
+  source: PalmCanvas,
   landmarksPx: { x: number; y: number }[],
   isLeftHanded: boolean,
   margin = 100,
-): HTMLCanvasElement {
+): PalmCanvas {
   const wrist = landmarksPx[0];
   const middleMcp = landmarksPx[9];
   const v = { x: middleMcp.x - wrist.x, y: middleMcp.y - wrist.y };
@@ -314,7 +318,7 @@ function cropAndRotatePalm(
   const outW = Math.max(1, Math.round(maxX - minX));
   const outH = Math.max(1, Math.round(maxY - minY));
 
-  const rotatedCanvas = document.createElement("canvas");
+  const rotatedCanvas = createPalmCanvas();
   rotatedCanvas.width = outW;
   rotatedCanvas.height = outH;
   const rctx = rotatedCanvas.getContext("2d");
@@ -326,7 +330,7 @@ function cropAndRotatePalm(
 
   if (isLeftHanded) return rotatedCanvas;
 
-  const flipped = document.createElement("canvas");
+  const flipped = createPalmCanvas();
   flipped.width = outW;
   flipped.height = outH;
   const fctx = flipped.getContext("2d");
@@ -444,8 +448,8 @@ function bestSecondaryLineSignal(
 }
 
 function detectSecondaryPalmLines(
-  rawCrop: HTMLCanvasElement,
-  enhancedCrop: HTMLCanvasElement,
+  rawCrop: PalmCanvas,
+  enhancedCrop: PalmCanvas,
   landmarks: { x: number; y: number }[],
 ): NonNullable<PalmFacts["secondaryLines"]> | undefined {
   const rawCtx = rawCrop.getContext("2d");
@@ -559,7 +563,7 @@ export interface PalmCaptureAssessment {
  * 라이브 카메라 프리뷰용 가벼운 품질 검사.
  * ONNX 손금 모델은 실행하지 않고 MediaPipe 손 검출 + 촬영 품질만 확인한다.
  */
-export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise<PalmCaptureAssessment> {
+export async function assessPalmCaptureFrame(canvas: PalmCanvas): Promise<PalmCaptureAssessment> {
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return {
@@ -717,7 +721,7 @@ export async function assessPalmCaptureFrame(canvas: HTMLCanvasElement): Promise
 
 export interface PalmAnalysisSource {
   image: CanvasImageSource & { width: number; height: number };
-  canvas: HTMLCanvasElement;
+  canvas: PalmCanvas;
 }
 
 /**
@@ -725,7 +729,11 @@ export interface PalmAnalysisSource {
  * 손 미검출/저조도/손 잘림 중 하나라도 걸리면 선 분석 없이 바로 재촬영
  * 사유(warnings)와 함께 반환한다 — "억지 해석 금지" 원칙.
  */
-export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<PalmFacts> {
+export async function analyzePalmFromCanvas(
+  canvas: PalmCanvas,
+  onPhase: (phase: PalmAnalysisPhase) => void = () => {},
+): Promise<PalmFacts> {
+  onPhase("landmarks");
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return {
@@ -772,6 +780,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
     };
   }
 
+  onPhase("quality");
   const landmarks = result.landmarks[0];
   const landmarksPx = landmarks.map((l) => px(l, canvas.width, canvas.height));
 
@@ -844,10 +853,12 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
         elapsedMs: performance.now() - fateModelStartedAt,
       }));
 
+  onPhase("lines");
   const threeLineStartedAt = performance.now();
   const onnxRaw = await runPalmLineOnnx(rawPalmCrop);
   const rawDetectedBeforeFallback = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
   const enhancedAttempted = rawDetectedBeforeFallback < 3;
+  if (enhancedAttempted) onPhase("enhanced");
   const onnxEnhanced = enhancedAttempted ? await runPalmLineOnnx(enhancedPalmCrop) : null;
   const threeLineElapsedMs = performance.now() - threeLineStartedAt;
 
@@ -889,6 +900,7 @@ export async function analyzePalmFromCanvas(canvas: HTMLCanvasElement): Promise<
       }
     : null;
 
+  onPhase("secondary");
   const fourLineTimed = await fourLinePromise;
   const fourLine = fourLineTimed.result;
   const fateModelElapsedMs = fourLineTimed.elapsedMs;

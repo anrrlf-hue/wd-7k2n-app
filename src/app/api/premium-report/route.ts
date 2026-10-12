@@ -5,6 +5,7 @@ import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
 import { buildPremiumReport } from "@/lib/premium-report";
 import type { PalmFacts } from "@/lib/palm-facts";
+import { SAJU_FOCUS_VALUES } from "@/lib/saju-focus";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 
 const bodySchema = z.object({
@@ -14,6 +15,7 @@ const bodySchema = z.object({
   hour: z.number().int().min(0).max(23).nullable(),
   minute: z.number().int().min(0).max(59).nullable(),
   gender: z.enum(["남", "여"]),
+  focus: z.enum(SAJU_FOCUS_VALUES).optional(),
   mbti: z.enum(MBTI_TYPES).nullable().optional(),
   leftPalmFacts: z.unknown().nullable().optional(),
   rightPalmFacts: z.unknown().nullable().optional(),
@@ -37,6 +39,7 @@ export async function POST(request: Request) {
     const report = buildPremiumReport({
       facts,
       freeReport,
+      focus: parsed.data.focus,
       leftPalm: (parsed.data.leftPalmFacts as PalmFacts | null | undefined) ?? null,
       rightPalm: (parsed.data.rightPalmFacts as PalmFacts | null | undefined) ?? null,
       dominantHand: parsed.data.dominantHand ?? null,
