@@ -19,6 +19,7 @@ import type { RealityPalmContext } from "@/lib/reality-palm-context";
 import { realityDomainForSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 import { buildSajuTimingOutlook } from "@/lib/saju-timing";
 import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
+import { refersToReading, resolveCautionReference, referenceForCaution, REFERENCE_CLARIFICATION, type ReadingReference, type CautionExplanation } from "@/lib/reading-reference";
 
 const RealityAnswerDraftSchema = z.object({
   headline: z.string().min(10),
@@ -48,6 +49,8 @@ export interface RealityAnswerEngineOptions {
   domainHint?: RealityAnswerDomain | null;
   /** 질문 엔진이 고른 세부 주제/후속 문맥을 실제 답 작성에도 사용한다. */
   questionPlan?: QuestionEnginePlan | null;
+  readingReference?: ReadingReference | null;
+  previousDomain?: RealityAnswerDomain | null;
 }
 
 export type RealityAnswerEngineResult =
@@ -57,7 +60,9 @@ export type RealityAnswerEngineResult =
       answer: RealityAnswer;
       parse: RealityQuestionParseResult;
       fallbackReason?: string;
+      readingReference?: ReadingReference;
     }
+  | { status: "reference_answer"; explanation: CautionExplanation }
   | {
       status: "needs_clarification";
       parse: RealityQuestionParseResult;
@@ -174,6 +179,12 @@ export async function getRealityAnswer(
   options: RealityAnswerEngineOptions = {},
 ): Promise<RealityAnswerEngineResult> {
   const parse = parseRealityQuestion(rawQuestion);
+  if (refersToReading(rawQuestion)) {
+    const explanation = resolveCautionReference(rawQuestion, options.readingReference, options.previousDomain);
+    return explanation
+      ? { status: "reference_answer", explanation }
+      : { status: "needs_clarification", parse, reason: REFERENCE_CLARIFICATION };
+  }
   const question = toQuestion(parse, options.focusHint, options.domainHint);
 
   if (!question) {
@@ -268,5 +279,6 @@ export async function getRealityAnswer(
     answer: fallback,
     parse,
     fallbackReason,
+    readingReference: referenceForCaution(fallback),
   };
 }

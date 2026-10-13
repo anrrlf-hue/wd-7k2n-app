@@ -267,6 +267,13 @@ export function RealityAnswerFunnel({
         return;
       }
 
+      // This legacy flow never sends a deterministic reference. Keep it from
+      // accepting a passage belonging to a different reading if one is returned.
+      if (data.status === "reference_answer") {
+        setError("어느 문장이나 항목을 말씀하시는지 구체적으로 적어 주세요.");
+        return;
+      }
+
       setAnswer(data.answer);
       if (data.questionPlan) {
         setQuestionPlan(data.questionPlan);

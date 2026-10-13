@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReadingStorageControls } from "@/components/reading-storage-controls";
 
 export default function PrivacyPage() {
   return (
@@ -21,14 +22,16 @@ export default function PrivacyPage() {
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold">손 사진</h2>
             <p className="mt-2 text-muted-foreground">
-              손 사진은 브라우저에서 손금 특징을 분석하는 데 사용합니다. 서버에는 원본 손 사진 대신 분석된 손금 특징 정보가 전달되도록 구성되어 있습니다.
+              손 사진은 브라우저에서 손금 특징을 분석하는 데 사용합니다. 서버에는 원본 손 사진 대신 분석된 손금 특징 정보가 전달됩니다. 사진 원본은 브라우저 저장소에 보관하지 않습니다. 같은 화면에서 재시도하는 동안에는 사진이 메모리에 남을 수 있고, 화면을 떠날 때 미리보기를 해제합니다.
             </p>
           </section>
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold">이용기록과 저장</h2>
             <p className="mt-2 text-muted-foreground">
-              진행 중인 결과와 질문 기록 일부는 브라우저의 세션·로컬 저장소에 보관될 수 있습니다. 서비스 개선을 위해 익명 세션 식별자와 완료·공유·질문 같은 제품 이용 이벤트를 기록할 수 있으며, 결제카드 정보는 현재 서비스가 수집하지 않습니다.
+              진행 중인 사주 입력, 손금 화면으로 이어갈 입력, 완료된 손금 특징, 풀이와 이전 리포트는 같은 탭의 세션 저장소에 보관합니다. 탭을 닫아도 브라우저의 탭 복원 기능에 따라 다시 나타날 수 있습니다. 사주 분석 후 내 생년월일은 로컬 저장소에도 자동 저장되며, 저장된 비교할 사람의 정보와 관리 기록도 다음 방문까지 남습니다.
             </p>
+            <p className="mt-2 text-muted-foreground">통합 연간 풀이와 손금 해석은 서비스 내부의 계산·문장 규칙으로 만듭니다. 별도의 무료 사주·질문 기능은 운영 설정에 따라 외부 해석 서비스(Anthropic)에 계산된 사주 정보와 입력한 질문 등을 전달할 수 있습니다. 손 사진 원본은 이 요청에 포함하지 않습니다.</p>
+            <p className="mt-2 text-muted-foreground">이용 통계가 켜진 경우 임의로 만든 세션 식별자와 완료·공유·질문 같은 제품 이용 이벤트를 기록합니다. 해당 이벤트에는 생년월일·질문 본문·손 사진·풀이 원문을 넣지 않습니다. 결제카드 정보는 현재 수집하지 않습니다.</p>
           </section>
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold">공유 링크</h2>
@@ -39,8 +42,9 @@ export default function PrivacyPage() {
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold">이용자의 선택</h2>
             <p className="mt-2 text-muted-foreground">
-              출생시간과 MBTI는 선택할 수 있습니다. 브라우저에 저장된 기록은 서비스의 다시 시작·기록 삭제 기능 또는 브라우저 저장공간 삭제를 통해 지울 수 있습니다.
+              출생시간과 MBTI는 선택할 수 있습니다. 아래 기능은 이 탭에서 접근 가능한 사주 서비스의 세션·로컬 저장소 기록을 지웁니다. 방문 기록의 URL, 다른 기기와 서버의 이용 통계는 지우지 않습니다. 다른 탭이 열려 있다면 진행 내용을 다시 저장할 수 있습니다.
             </p>
+            <ReadingStorageControls />
           </section>
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold">문의</h2>

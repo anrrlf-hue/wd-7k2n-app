@@ -11,7 +11,7 @@ const annual = z.object({
     comparisons: z.array(comparison).length(4).refine(items => new Set(items.map(item => item.domain)).size === 4),
   })).length(12),
 });
-const reading = z.object({ headline: text, paragraphs: z.array(text).min(1), opportunity: text, caution: text, tip: text, basis: text });
+const reading = z.object({ headline: text, paragraphs: z.array(text).min(1), opportunity: text, caution: text, tip: text, basis: text, observationNote: text.nullable().optional() });
 const interpretation = z.object({
   headline: text,
   passages: z.array(z.object({ id: text, kind: z.enum(["observation", "traditional", "reflection"]), text, evidenceIds: z.array(text).min(1) })).min(1),
@@ -22,27 +22,30 @@ const interpretation = z.object({
   return ids.size === plan.evidence.length && plan.passages.every(p => p.evidenceIds.every(id => ids.has(id)));
 });
 const renderableReport = z.object({
-  version: z.enum(["annual-reading-2026-10-v2", PREMIUM_REPORT_VERSION]),
+  version: z.enum(["annual-reading-2026-10-v2", "context-reading-2026-10-v3", "personal-reading-2026-10-v4", "integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", PREMIUM_REPORT_VERSION]),
   title: z.literal("프리미엄 통합 연간 리포트"), summary: text, note: text,
   overall: reading,
   domains: z.array(reading.extend({ key: z.enum(keys), label: text })).length(3).refine(items => items.every((item, i) => item.key === keys[i])),
   annual,
   annualIntroduction: text, annualBackground: text.nullable(),
+  annualMethod: text.optional(),
   annualHighlights: z.array(text).optional(),
   palmConnections: z.array(z.object({ topic: text, text })).optional(),
   profileRule: text.optional(),
+  closing: z.object({ remember: z.string().min(1), question: z.string().min(1), basis: z.string().min(1) }).optional(),
   periods: z.array(z.object({ label: text, months: z.array(text).min(1), headline: text, reading: text, basis: text,
     domains: z.array(z.object({ key: z.enum(keys), label: text, text })),
     interpretation: interpretation.optional(),
   })).min(1),
 }).refine(report => JSON.stringify(report.periods.flatMap(period => period.months)) === JSON.stringify(report.annual.months.map(month => month.label)))
-  .refine(report => report.version !== PREMIUM_REPORT_VERSION || (
+  .refine(report => report.version === "annual-reading-2026-10-v2" || (
     Boolean(report.profileRule) && Array.isArray(report.palmConnections)
     && !!report.annualHighlights?.length && report.annualHighlights.length <= 3
     && new Set(report.annualHighlights).size === report.annualHighlights.length
     && report.annualHighlights.every(label => report.periods.some(period => period.months[0] === label))
     && report.periods.every(period => period.interpretation)
-  ));
+  )).refine(report => !["personal-reading-2026-10-v4", "integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", PREMIUM_REPORT_VERSION].includes(report.version) || Boolean(report.closing))
+  .refine(report => report.version !== PREMIUM_REPORT_VERSION || Boolean(report.annualMethod));
 
 // Preserve saved v1 prose in its original view; only an explicit request creates
 // the new edition. Accept no half-written report that could crash either view.

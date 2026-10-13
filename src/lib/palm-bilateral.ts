@@ -2,7 +2,7 @@ import { buildPalmContextReading } from "@/lib/palm-context-reading";
 import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
 
 export type DominantHand = "left" | "right";
-export const PALM_READING_VERSION = "bilateral-context-v2";
+export const PALM_READING_VERSION = "bilateral-reading-v3";
 export interface PalmBilateralItem {
   title: string;
   observation?: string;
@@ -53,7 +53,7 @@ export function buildPalmBilateralReading(left: PalmFacts, right: PalmFacts, dom
     items.push({
       title: "운명선 후보 · 일에서 맡는 역할",
       observation: `${currentLabel}에서 운명선 후보를 두 분석 방식이 함께 찾았습니다.`,
-      text: "전통적으로 일의 방향을 스스로 세우려는 모습에 연결합니다. 운영·기획·프로젝트 관리 같은 일을 떠올리되, 직업 이름보다 실제로 맡을 권한과 책임이 맞는지 확인하는 예시로 읽어주세요.",
+      text: "맡은 일의 방향을 스스로 정하고 이어가는 모습으로 읽어볼 수 있습니다. 가령 공동 작업을 시작한다면, 무엇을 책임질지와 어디까지 스스로 결정할지를 함께 정할 때 자신의 몫이 선명해집니다.",
     });
   }
   for (const [key, name] of [["sun", "태양선"], ["wealth", "재물선"]] as const) {
@@ -62,14 +62,14 @@ export function buildPalmBilateralReading(left: PalmFacts, right: PalmFacts, dom
       title: `${name} 후보 · 보조 관측`,
       observation: `${currentLabel}에서 ${name} 후보 영역의 영상 신호가 확인됐습니다. 주요 3선과는 다른 보조 분석값입니다.`,
       text: key === "sun"
-        ? "전통적으로 결과를 드러내고 인정받는 이야기와 연결하는 후보입니다. 만든 것을 다른 사람에게 보이는 과정과, 그 가치를 스스로 느끼는 과정이 어떻게 다른지 떠올려볼 수 있습니다. 실제 명성이나 성공을 판정하는 근거는 아닙니다."
-        : "전통적으로 주고받는 가치와 보상을 돌아보는 데 사용하는 후보입니다. 돈의 액수나 들어올 시기를 정하지 않고, 자신의 기여가 어떤 조건으로 돌아오는지를 생각하는 참고로 읽습니다.",
+        ? "만든 것을 다른 사람에게 보여주고 반응을 받는 모습으로 읽어볼 수 있습니다. 스스로 만족한 부분과 상대가 알아본 장점이 같았는지 떠올려보면, 다음에 무엇을 더 잘 보여줄지 구체적으로 생각할 수 있습니다."
+        : "자신의 기여와 돌아오는 조건을 함께 살피는 관점입니다. 일을 맡거나 무언가를 주고받는다면, 어디까지 해줄지와 무엇을 기대하는지를 처음부터 나누어보세요.",
     });
   }
   return {
     version: PALM_READING_VERSION,
     summary: plan.passages.find(p => p.id === "head-heart-composition")?.text ?? `주로 쓰는 ${currentLabel}에서 읽힌 선을 중심으로 해석합니다. 확인하지 못한 선은 채우지 않았습니다.`,
     items,
-    note: `${plan.limits[0]} ${plan.passages.find(p => p.id === "visibility")?.text ?? ""}`,
+    note: plan.passages.find(p => p.id === "visibility")?.text ?? "",
   };
 }

@@ -53,7 +53,7 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
     const observation = ld === rd ? `${LINES[key]}은 양손에서 ${ld}으로 분류됐습니다.` : `${LINES[key]}은 왼손에서 ${ld}, 오른손에서 ${rd}으로 분류됐습니다.`;
     plan.passages.push({ id: `${key}-observation`, kind: "observation", text: observation, evidenceIds: refs(key) });
     if (!line?.detected) {
-      plan.passages.push({ id: `${key}-unread`, kind: "observation", text: `${label}의 ${LINES[key]}을 충분히 읽지 못해 이 선을 이용한 해석은 보류합니다. 반대 손에 보이는 모양으로 주손의 특징을 대신 채우지는 않았습니다.`, evidenceIds: refs(key) });
+      plan.passages.push({ id: `${key}-unread`, kind: "observation", text: `${label}의 ${LINES[key]}을 충분히 읽지 못해 이 선의 해석은 보류합니다.`, evidenceIds: refs(key) });
       continue;
     }
     if (!(usableHead && usableHeart) && line.curve && (key === "headLine" || key === "heartLine") && line.length !== "김" && line.length !== "짧음") {
@@ -70,14 +70,12 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
       plan.passages.push({ id: "heart-length-curve", kind: "traditional", text: `${lengthText} ${line.curve === "완만한 곡선" ? "이 손에서는 곡선이라는 관측을 중심으로, 마음이 표정이나 말의 반응에 실리는 모습을 읽을 수 있습니다. 표현을 했다는 것과 상대가 같은 뜻으로 받아들였다는 것은 다를 수 있습니다." : "이 손에서는 직선에 가까운 관측을 중심으로, 애정을 꾸준한 행동과 약속에 담는 모습을 읽을 수 있습니다. 충분히 챙겼다고 느껴도 상대는 마음을 말로 듣고 싶을 수 있습니다."}`, evidenceIds: refs(key) });
     }
     if (l?.detected && r?.detected && (l.length !== r.length || l.curve !== r.curve)) {
-      plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}의 좌우 모양이 같지 않아 ${label}의 관측을 중심으로 해석하고, 반대 손은 차이를 확인하는 자료로 남겼습니다. 이 차이만으로 성격이 바뀌었다거나 앞으로 변화할 것이라고 읽지는 않았습니다.`, evidenceIds: refs(key) });
+      plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}의 좌우 모양이 달라, 위 설명은 주로 쓰는 ${label}을 기준으로 읽었습니다.`, evidenceIds: refs(key) });
     }
   }
   const detected = (Object.keys(LINES) as LineKey[]).filter(key => primary.onnxLines?.[key].detected);
   const faint = detected.filter(key => primary.onnxLines?.[key].depthStrength === "약함");
-  if (detected.length) plan.passages.push({ id: "visibility", kind: "observation", text: faint.length
-    ? `${faint.map(key => LINES[key]).join("·")}은 사진에서 약하게 읽혔습니다. 끊겨 보이거나 짧게 잡힌 부분에 촬영 조건이 영향을 줄 수 있어 세부 해석을 확정하지 않습니다.`
-    : "사진의 선명도는 판독에만 사용하며, 성격이나 의지의 강약으로 환산하지 않습니다.", evidenceIds: detected.flatMap(refs) });
+  if (faint.length) plan.passages.push({ id: "visibility", kind: "observation", text: `${faint.map(key => LINES[key]).join("·")}은 사진에서 흐리게 읽혔습니다. 촬영 조건 때문에 선이 짧거나 끊겨 보일 수 있어 세부 모양은 확인이 더 필요합니다.`, evidenceIds: faint.flatMap(refs) });
   validateReadingPlan(plan);
   return plan;
 }

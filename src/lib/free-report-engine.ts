@@ -85,9 +85,11 @@ export async function getFreeSajuReport(
   if (raw) {
     const validation = validateFreeSajuReport(raw);
     if (validation.ok && validation.data) {
+      const personalReport = buildFreeSajuReport(facts, options?.personality);
       // These interdependent fields share the exact deterministic frame used by fallback.
       return { source: "llm", report: { ...validation.data, ...deriveSajuWorkCore(facts).sections,
-        decisionStyle: buildFreeSajuReport(facts).decisionStyle,
+        snapshot: personalReport.snapshot,
+        decisionStyle: personalReport.decisionStyle,
         realWorldPersonalization: options?.personality ? buildRealWorldPersonalization(facts, options.personality) : null,
         nextMove: buildNextMove(facts, options?.personality), timingShift: buildTimingShift(facts),
       } };

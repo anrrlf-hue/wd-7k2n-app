@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { PalmLineIllustration } from "@/components/diagnosis/palm-line-illustration";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import type { SajuFocus } from "@/lib/saju-focus";
+import { savePalmEntry } from "@/lib/palm-entry-state";
 
 export function PalmEntryCard({
   birthInput,
@@ -19,38 +21,26 @@ export function PalmEntryCard({
   variant?: "default" | "answerEnhance";
   question?: string;
 }) {
-  const params = new URLSearchParams({
-    year: String(birthInput.year),
-    month: String(birthInput.month),
-    day: String(birthInput.day),
-    hour: birthInput.hour === null ? "" : String(birthInput.hour),
-    minute: birthInput.minute === null ? "" : String(birthInput.minute),
-    gender: birthInput.gender,
-  });
+  const router = useRouter();
+  const [error, setError] = useState(false);
 
-  // 성향정보를 손금 페이지까지 이어가 "사주+손금+성향" 통합 비교를 만든다.
-  // 압축 형식(id:value,id:value)으로만 넘기고, 손금 페이지에서 다시 검증해 채점한다.
-  if (personalityInput?.personalityAnswers) {
-    params.set(
-      "pc",
-      Object.entries(personalityInput.personalityAnswers)
-        .map(([id, v]) => `${id}:${v}`)
-        .join(","),
-    );
-  }
-  if (personalityInput?.mbti) {
-    params.set("mbti", personalityInput.mbti);
-  }
-  if (focus) {
-    params.set("focus", focus);
-  }
-  if (question?.trim()) {
-    params.set("question", question.trim());
+  function openPalm() {
+    if (!savePalmEntry({
+      birthInput,
+      personalityInput: personalityInput ?? { personalityAnswers: null, mbti: null },
+      focus: focus ?? "overall",
+      initialQuestion: question?.trim() || null,
+    })) {
+      setError(true);
+      return;
+    }
+    router.push("/diagnosis/palm");
   }
 
-  return (
-    <Link
-      href={`/diagnosis/palm?${params.toString()}`}
+  return <>
+    <button
+      type="button"
+      onClick={openPalm}
       className="primary-cta flex items-center gap-3 rounded-2xl p-5 transition-colors hover:border-(--gold-soft)"
     >
       <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-(--gold-soft)">
@@ -72,6 +62,7 @@ export function PalmEntryCard({
         </span>
       </div>
       <ArrowRight className="size-4 shrink-0 text-current" />
-    </Link>
-  );
+    </button>
+    {error && <p role="alert" className="mt-2 text-sm text-destructive">브라우저 저장공간을 사용할 수 없어요. 설정을 확인한 뒤 다시 시도해주세요.</p>}
+  </>;
 }

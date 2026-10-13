@@ -1,6 +1,7 @@
 import type { SajuFacts } from "@/lib/saju-facts";
 import type { PersonalityCheckFacts, PersonalityCheckLevel } from "@/lib/personality-check";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
+import type { ReadingEvidence } from "@/lib/reading-plan";
 
 export type CompareKind = "일치" | "차이" | "보완" | "중립" | "미확인" | "비교 불가";
 export interface CompareSignal {
@@ -12,6 +13,7 @@ export interface CompareItem {
   kind: CompareKind;
   text: string;
   signals: { saju: CompareSignal; palm: CompareSignal; self: CompareSignal };
+  evidence?: ReadingEvidence[];
 }
 
 function selfSignal(level: PersonalityCheckLevel | undefined, left: string, right: string): CompareSignal {
@@ -51,7 +53,7 @@ export function buildTripleCompare(facts: SajuFacts, palm: OnnxPalmLines | null,
     const linked = facts.dayStrengthReliable && facts.dayStrength === "strong"
       ? curved
         ? "두 관점을 함께 놓으면 중요한 기준은 지키면서 방법은 유연하게 찾는 모습으로 읽어볼 수 있습니다. 사주는 무엇을 납득해야 움직이는지를, 손금의 곡선 해석은 그 답을 어떤 방식으로 찾아가는지를 다르게 비춥니다. 기준이 분명한 것과 방법을 하나로 고집하는 것은 같은 뜻이 아닙니다."
-        : "두 관점 모두 기준을 분명히 세우는 생활 장면으로 이어집니다. 다만 서로 같은 성격을 검증했다는 뜻은 아닙니다. 일관성을 지키는 힘이 상대의 다른 방법을 받아들일 여지와 어떻게 함께 놓이는지 읽어볼 수 있습니다."
+        : "두 관점 모두 기준을 분명히 세우는 생활 장면으로 이어집니다. 일관성을 지키는 힘이 상대의 다른 방법을 받아들일 여지와 어떻게 함께 놓이는지 읽어볼 수 있습니다."
       : !facts.dayStrengthReliable
         ? "출생시간이 없어 사주의 강약과 연결한 성향을 덧붙이지 않았습니다. 손금의 모양을 읽은 내용은 별도로 남기며, 부족한 사주 정보를 손금으로 대신 채우지는 않았습니다."
       : facts.dayStrength === "neutral"

@@ -36,11 +36,12 @@
 // interpret/route.ts에서 직접 만든다 — palm은 무료 사주 단계(/api/saju)엔
 // 존재하지 않으므로 이 파일/이 함수는 palm을 아예 받지 않는다.
 
+import { buildPersonalReading } from "@/lib/personal-reading";
 import { deriveSajuWorkCore } from "@/lib/saju-work-core";
 import type { SajuFacts, PillarFact } from "@/lib/saju-facts";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { PersonalityInput } from "@/lib/personality-check";
-import { dayStrengthShort, elementTemperamentPhrase, dayStemImagery } from "@/lib/saju-labels";
+import { dayStrengthShort, elementTemperamentPhrase } from "@/lib/saju-labels";
 import { buildRealWorldPersonalization, buildNextMove, buildTimingShift } from "@/lib/real-world-personalization";
 
 // ---------- 문장 구조 다양화 유틸 ----------
@@ -170,38 +171,16 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const seedFor = (i: number) => hashStr(`${baseSeed}:${i}`);
 
   const wLevel = levelOf(wealthStarCount);
-  const activeCompare: "output" | "peer" | "tie" =
-    outputStarCount === peerStarCount ? "tie" : outputStarCount > peerStarCount ? "output" : "peer";
-  const socialCompare: "officer" | "resource" | "tie" =
-    officerStarCount === resourceStarCount ? "tie" : officerStarCount > resourceStarCount ? "officer" : "resource";
-  const strengthSummary = dayStrengthReliable
-    ? dayStrength === "strong"
-      ? "자기 기준이 분명하고 한번 방향을 잡으면 쉽게 흔들리지 않습니다"
-      : dayStrength === "weak"
-        ? "주변의 흐름을 잘 읽고 필요한 도움을 받아 방향을 잡는 데 능합니다"
-        : "자기 기준과 주변 상황을 함께 보며 균형점을 찾는 감각이 있습니다"
-    : "출생시간에 따라 달라질 수 있는 자기주도성의 강약은 한쪽으로 단정하지 않습니다";
-  const strengthShadow = dayStrengthReliable
-    ? dayStrength === "strong"
-      ? "확신이 고집으로 굳지 않는지"
-      : dayStrength === "weak"
-        ? "주변 의견 속에서 내 기준을 잃지 않는지"
-        : "조정이 지나쳐 결정을 미루지 않는지"
-    : "확인되지 않은 강약을 성격 사실처럼 받아들이지 않는지";
+  const socialCompare: "officer" | "resource" | "tie" | "unobserved" =
+    officerStarCount === 0 && resourceStarCount === 0 ? "unobserved"
+      : officerStarCount === resourceStarCount ? "tie" : officerStarCount > resourceStarCount ? "officer" : "resource";
   const strengthEvidence = dayStrengthReliable
     ? `신강신약 ${dayStrengthShort(dayStrength)}`
     : "출생시간 미상으로 신강신약 확정하지 않음";
-
-  // ① 한눈에 보는 나 — 일간 물상(10종)으로 열어서 갑/을처럼 같은 오행이라도
-  // 서로 다른 이미지로 시작하게 한다(벤치마크: 실제 사주 서비스는 "태양처럼",
-  // "호랑이의 기상처럼" 같은 물상으로 문장을 여는 경우가 많았는데, 우리는
-  // 오행 5종으로만 뭉뚱그려 갑목·을목이 같은 문장을 받고 있었다).
-  const imagery = dayStemImagery(dayStemKo);
+  // Use the same composite reading as the deeper report, before any palm input.
+  const personal = buildPersonalReading(facts);
   const snapshot: ReportParagraph = {
-    text:
-      `당신은 ${imagery.image}처럼 ${imagery.core} 사람입니다. ` +
-      `${strengthSummary}. ` +
-      `일과 관계, 중요한 선택에서는 ${activeCompare === "output" ? "생각을 말이나 결과물로 바꿔 보여줄 때" : activeCompare === "peer" ? "직접 움직이며 내 몫을 만들어갈 때" : "구상과 실행을 함께 굴릴 때"} 힘이 붙습니다. 다만 ${strengthShadow}를 함께 살피는 것이 중요합니다.`,
+    text: personal.preview,
     evidence: `일간 ${dayStemKo}(${dayElement}), ${facts.hasTimeInput ? `격국 ${geukguk}` : "격국 미확정"}, ${strengthEvidence}, 비겁 ${peerStarCount}개, 식상 ${outputStarCount}개, 관성 ${officerStarCount}개, 인성 ${resourceStarCount}개, 재성 ${wealthStarCount}개. 전통적 성향 해석이며 실제 성격·관계·직업·자산 상태를 측정한 결과는 아닙니다.`,
   };
 
@@ -231,7 +210,12 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   // 사람과 관계를 맺는 방식 — 상대의 마음을 예측하지 않고, 관계에서
   // 본인이 어떤 기준과 반응 방식을 쓰기 쉬운지만 설명한다.
   const relationshipStyle: ReportParagraph =
-    socialCompare === "officer"
+    socialCompare === "unobserved"
+      ? {
+          text: "약속을 중시하는지, 상대의 이유를 먼저 이해하려는지는 이 비교만으로 정하기 어렵습니다. 관계를 돌아볼 때는 실제 대화에서 편하게 느끼는 조건을 함께 살펴볼 수 있습니다. 의견이 다를 때, 내 생각을 말하기 전에 어떤 이야기를 듣고 싶은가요?",
+          evidence: "관성 0개 · 인성 0개. 드러난 글자에 두 요소가 모두 없어, 이 비교는 관계 성향의 판단 근거로 사용하지 않았습니다.",
+        }
+      : socialCompare === "officer"
       ? {
           text:
             "사람과의 관계에서는 역할과 약속이 분명할수록 마음이 편한 편입니다. 애매한 태도나 말이 자주 바뀌는 상황에서는 신뢰가 빠르게 떨어질 수 있습니다. 대신 기준이 맞는 사람에게는 오래 책임지고 관계를 이어가는 힘이 있습니다.",
@@ -347,7 +331,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
   const bigMoneyAffinity = compose(seedFor(7), {
     claim:
       wealthOpportunityDaeunCount === null
-        ? "출생시간이 없어 평생 대운에서 재물 신호가 몇 차례 들어오는지는 확정하지 않습니다. 지금은 원국에서 확인되는 돈과 일의 구조만으로 큰 흐름을 봅니다."
+        ? "출생시간이 없어 평생 대운에서 재물 신호가 몇 차례 들어오는지는 확정하지 않습니다. 지금은 확인된 글자의 돈과 일에 관한 의미로 큰 흐름을 봅니다."
         : wealthOpportunityDaeunCount === 0
           ? "재물 신호가 강하게 몰리는 시기보다, 본업과 전문성을 통해 꾸준히 현실적인 성과를 만드는 방식이 더 중요하게 읽힙니다. 크게 한 번 잡는 것보다 오래 쌓아가는 힘이 결과를 만듭니다."
           : wealthOpportunityDaeunCount <= 2
@@ -364,7 +348,12 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
 
   // ⑪ 사람과 돈
   const peopleAndMoney: ReportParagraph =
-    socialCompare === "officer"
+    socialCompare === "unobserved"
+      ? {
+          text: "사람과 돈이 함께 걸린 선택에서 책임을 맡는 방식이나 도움을 구하는 태도는 이 비교만으로 정하지 않습니다. 함께하는 일을 떠올린다면 각자가 기대하는 역할과 조건을 대화로 확인하는 데 참고해볼 수 있습니다. 내가 맡고 싶은 부분과 먼저 의논하고 싶은 부분은 무엇인가요?",
+          evidence: "관성 0개 · 인성 0개. 드러난 글자에 두 요소가 모두 없어, 이 비교는 책임을 맡거나 도움을 받는 태도의 판단 근거로 사용하지 않았습니다.",
+        }
+      : socialCompare === "officer"
       ? {
           text:
             `사람과 재물이 얽힌 일에서는 애매함을 오래 견디는 편이 아닙니다. 역할과 약속이 분명해야 마음이 놓이고, 누가 무엇을 맡는지가 선명할수록 신뢰가 생깁니다. ` +
@@ -520,6 +509,15 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     .filter((c) => c.present)
     .slice(0, 3)
     .map(({ title, detail, evidence }) => ({ title, detail, evidence }));
+  // Some valid charts select only two source cautions. Reuse a caution already
+  // explained by this personal reading instead of inventing a new risk to fill
+  // the report schema. Keep all selected source cautions in their original order.
+  for (const reading of [personal.overall, ...personal.domains]) {
+    if (cautions.length >= 3) break;
+    if (!cautions.some(item => item.detail === reading.caution)) {
+      cautions.push({ title: reading.headline, detail: `${reading.caution} ${personal.closing.remember}`, evidence: reading.basis });
+    }
+  }
 
   // ⑯ 왜 이런 결과가 나왔나 — 전체 리포트용 "근거 요약" 보조 섹션. 여기는
   // 전문용어를 써도 된다(이 필드 자체가 펼쳐보는 근거 영역이라서).

@@ -12,6 +12,7 @@ import { deriveSajuWorkCore } from "@/lib/saju-work-core";
 import { buildPalmEvidenceBridge } from "@/lib/reading-style-v1";
 import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
 import type { RealityPalmContext } from "@/lib/reality-palm-context";
+import { deterministicCaution } from "@/lib/reading-reference";
 
 export interface RealityAnswerBuildInput {
   question: RealityQuestion;
@@ -344,21 +345,7 @@ function solutionReadingFor(
 }
 
 function cautionFor(question: RealityQuestion): string {
-  switch (question.domain) {
-    case "love":
-    case "relationship":
-      return "상대방의 마음이나 행동을 내 사주만으로 확정할 수는 없습니다.";
-    case "career":
-      return "사주 시기가 실제 합격이나 채용 결과를 보장하는 것은 아닙니다.";
-    case "work_business":
-      return "사주 시기가 실제 사업 성공이나 계약 결과를 보장하는 것은 아닙니다.";
-    case "money":
-      return "재물운이 강한 시기와 실제 투자·수익 결과는 같은 뜻이 아닙니다.";
-    case "wellbeing":
-      return "사주로 질병이나 치료 결과를 판단하지 않습니다.";
-    case "overall":
-      return "좋은 흐름이 보여도 모든 영역이 동시에 같은 결과로 움직인다는 뜻은 아닙니다.";
-  }
+  return deterministicCaution(question.domain);
 }
 
 function keyPointFor(question: RealityQuestion, timing: RealityTiming): string {

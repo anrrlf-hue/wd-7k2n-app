@@ -3,24 +3,26 @@ import { CalendarDays, Crown } from "lucide-react";
 import type { PremiumPeriod, PremiumReading, PremiumReport } from "@/lib/premium-report";
 import { buildPremiumPeriodPresentation } from "@/lib/premium-period-presentation";
 
-function ReadingContent({ reading }: { reading: PremiumReading }) {
+function ReadingContent({ reading, showTip = true }: { reading: PremiumReading; showTip?: boolean }) {
   return <>
     <h3 className="mt-2 text-xl leading-8 font-semibold">{reading.headline}</h3>
     {reading.paragraphs.map(text => <p key={text} className="mt-3 text-base leading-8 text-muted-foreground">{text}</p>)}
-    <div className="mt-4 rounded-2xl bg-accent p-4">
-      <p className="text-sm font-semibold text-(--gold)">기회가 열리는 모습</p>
+    {reading.observationNote && <p className="mt-3 rounded-xl bg-accent px-4 py-3 text-sm leading-6 text-muted-foreground">{reading.observationNote}</p>}
+    {reading.opportunity && <div className="mt-4 rounded-2xl bg-accent p-4">
+      <p className="text-sm font-semibold text-(--gold)">생활 속에서 떠올려보면</p>
       <p className="mt-2 text-base leading-7">{reading.opportunity}</p>
-    </div>
-    <p className="mt-4 text-sm leading-7 text-muted-foreground"><strong className="text-foreground">마음에 둘 점 · </strong>{reading.caution}</p>
+    </div>}
+    {reading.caution && <p className="mt-4 text-sm leading-7 text-muted-foreground"><strong className="text-foreground">마음에 둘 점 · </strong>{reading.caution}</p>}
     <details className="mt-4 border-t border-border pt-4">
-      <summary className="cursor-pointer text-sm font-medium">풀이 근거와 짧은 참고</summary>
+      <summary className="cursor-pointer text-sm font-medium">{showTip ? "풀이 근거와 짧은 참고" : "풀이 근거"}</summary>
       <p className="mt-3 text-sm leading-7 text-muted-foreground">{reading.basis}</p>
-      {reading.tip && <p className="mt-3 text-sm leading-7">{reading.tip}</p>}
+      {showTip && reading.tip && <p className="mt-3 text-sm leading-7">{reading.tip}</p>}
     </details>
   </>;
 }
 
 export function PremiumReportView({ report }: { report: PremiumReport }) {
+  const currentLayout = ["integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8"].includes(report.version);
   const highlights = report.annualHighlights?.flatMap(label => {
     const period = report.periods.find(p => p.months[0] === label);
     return period ? [period] : [];
@@ -28,14 +30,17 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
   const narratives = buildPremiumPeriodPresentation(report);
   const narrative = (period: PremiumPeriod) => <>
     {narratives.get(period)?.paragraphs.map(text => <p key={text} className="mt-3 text-base leading-8 text-muted-foreground">{text}</p>)}
-    {narratives.get(period)?.shared.map(prior => <a key={prior.months[0]} href={`#premium-period-${report.periods.indexOf(prior)}`} className="mt-3 block text-sm text-(--gold) underline underline-offset-4">공통 주제의 상세 해설 · {prior.label}</a>)}
+    {!!narratives.get(period)?.shared.length && <details className="mt-3 text-sm">
+      <summary className="cursor-pointer text-muted-foreground">앞서 나온 공통 주제 함께 보기</summary>
+      {narratives.get(period)?.shared.map(prior => <a key={prior.months[0]} href={`#premium-period-${report.periods.indexOf(prior)}`} className="mt-3 block text-sm text-(--gold) underline underline-offset-4">공통 주제의 상세 해설 · {prior.label}</a>)}
+    </details>}
   </>;
   return <div id="premium-report" className="mt-5 space-y-5">
     <section className="rounded-3xl border border-(--gold-soft) bg-card p-5">
       <div className="flex items-center gap-2 text-(--gold)"><Crown className="size-4" /><p className="section-eyebrow">프리미엄 리포트</p></div>
       <h2 className="mt-2 text-2xl leading-9 font-semibold">{report.title}</h2>
       <p className="mt-3 text-base leading-8">{report.summary}</p>
-      <p className="mt-3 text-xs leading-6 text-muted-foreground">{report.note}</p>
+      {!currentLayout && <p className="mt-3 text-xs leading-6 text-muted-foreground">{report.note}</p>}
       <nav aria-label="리포트 목차" className="mt-4 flex flex-wrap gap-3 text-sm text-(--gold)">
         <a href="#premium-overall">총운</a>
         {report.domains.map(domain => <a key={domain.key} href={`#premium-domain-${domain.key}`}>{domain.label}</a>)}
@@ -43,12 +48,12 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
       </nav>
     </section>
     <section id="premium-overall" className="scroll-mt-5 rounded-3xl border border-border bg-card p-5">
-      <p className="section-eyebrow">총운</p><ReadingContent reading={report.overall} />
+      <p className="section-eyebrow">총운</p><ReadingContent reading={report.overall} showTip={!report.closing} />
     </section>
     {report.domains.map(domain => <section id={`premium-domain-${domain.key}`} key={domain.key} className="scroll-mt-5 rounded-3xl border border-border bg-card p-5">
-      <p className="section-eyebrow">{domain.label}</p><ReadingContent reading={domain} />
+      <p className="section-eyebrow">{domain.label}</p><ReadingContent reading={domain} showTip={!report.closing} />
     </section>)}
-    {!!report.palmConnections?.length && <section className="rounded-3xl border border-border bg-card p-5" aria-label="손금과 사주를 연결해 읽기">
+    {!!report.palmConnections?.length && !currentLayout && <section className="rounded-3xl border border-border bg-card p-5" aria-label="손금과 사주를 연결해 읽기">
       <p className="section-eyebrow">손금과 함께 보면</p>
       <h3 className="mt-2 text-xl leading-8 font-semibold">같은 장면을 서로 다른 관점에서 읽기</h3>
       {report.palmConnections.map(item => <div key={item.topic} className="mt-4">
@@ -61,6 +66,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
       <h3 className="mt-2 text-xl font-semibold">{report.annual.startLabel} ~ {report.annual.endLabel}</h3>
       <p className="mt-3 text-base leading-8 text-muted-foreground">{report.annualIntroduction}</p>
       {report.annualBackground && <p className="mt-3 text-sm leading-7 text-muted-foreground">{report.annualBackground}</p>}
+      {report.annualMethod && <details className="mt-3 text-sm text-muted-foreground"><summary className="cursor-pointer">월별 흐름을 읽은 기준</summary><p className="mt-2 leading-6">{report.annualMethod}</p></details>}
       {highlights && <div aria-label="1년의 주요 구간" className="mt-5 space-y-5">
         {highlights.map(period => <article id={`premium-period-${report.periods.indexOf(period)}`} key={period.months[0]} className="scroll-mt-5 rounded-2xl bg-accent p-4">
           <p className="text-sm text-(--gold)">{period.label}</p>
@@ -88,5 +94,16 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
       </ol>
       </details>
     </section>
+    {report.closing && <section aria-label="풀이를 마치며" className="rounded-3xl border border-(--gold-soft) bg-card p-5">
+      <h3 className="text-lg font-semibold">기억할 한 가지</h3>
+      <p className="mt-3 text-base leading-8">{report.closing.remember}</p>
+      <h3 className="mt-5 text-lg font-semibold">자신에게 물을 한 질문</h3>
+      <p className="mt-3 text-base leading-8 text-muted-foreground">{report.closing.question}</p>
+      <details className="mt-4 border-t border-border pt-4">
+        <summary className="cursor-pointer text-sm font-medium">이 참고를 고른 근거</summary>
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">{report.closing.basis}</p>
+      </details>
+    </section>}
+    {currentLayout && <p className="px-2 text-xs leading-6 text-muted-foreground" aria-label="풀이 이용 안내">{report.note}</p>}
   </div>;
 }
