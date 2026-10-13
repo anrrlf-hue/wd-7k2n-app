@@ -631,6 +631,8 @@ export interface SajuAnnualMonthOutlook {
     score: number;
     emphasis: "실험" | "유지" | "점검";
     basis: string;
+    /** Existing calculation inputs, exposed for explanation without parsing copy. */
+    signals?: { year: TenGodGroup[]; month: TenGodGroup[]; background: TenGodGroup[] };
   }>;
 }
 
@@ -723,6 +725,7 @@ export function buildSajuAnnualOutlook(
             + Math.min(2, scoreGroups(daeunGroups, weight) * 0.25),
           emphasis: "유지" as const,
           basis: `세운 ${pillars.yearPillar} · 월운 ${pillars.monthPillar} · 월의 주제 ${monthGroups.join("·") || "확인 어려움"}`,
+          signals: { year: [...yearGroups], month: [...monthGroups], background: [...daeunGroups] },
         };
       }),
     });

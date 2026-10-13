@@ -1,4 +1,4 @@
-import type { PremiumDomainSection } from "@/lib/premium-report";
+import type { PremiumDomainSection } from "@/lib/legacy-premium-report";
 import type { SajuAnnualOutlook } from "@/lib/saju-timing";
 
 type Emphasis = keyof PremiumDomainSection["monthlyActions"];

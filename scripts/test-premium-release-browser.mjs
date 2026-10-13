@@ -61,7 +61,8 @@ async function open({ blockedStorage = false, width = 390 } = {}) {
   await page.goto(url);
   assert.equal(await page.getByRole("region", { name: "무료 사주 링크 공유" }).count(), 0);
   await page.getByRole("button", { name: "손금 없이 계속 볼게요", exact: true }).click();
-  await page.getByRole("button", { name: "프리미엄 보기", exact: true }).waitFor();
+  try { await page.getByRole("button", { name: "프리미엄 보기", exact: true }).waitFor(); }
+  catch (error) { fs.writeFileSync(`${evidence}/premium-entry-failure.txt`, JSON.stringify({ body: await page.locator("body").innerText(), errors, unexpected }, null, 2)); throw error; }
   return { context, page };
 }
 async function start(s) { await s.page.getByRole("button", { name: "프리미엄 보기", exact: true }).click(); }
@@ -70,10 +71,12 @@ try {
   for (const width of [390, 1440]) {
     mode = "normal"; const s = await open({ width }); await start(s); await result(s);
     const p = s.page;
-    assert.equal(await p.locator("table tbody tr").count(), 12);
+    assert.equal(await p.locator('[aria-label="12개월 흐름"] > li').count(), premium.report.periods.length);
+    assert.deepEqual(premium.report.periods.flatMap(period => period.months), premium.report.annual.months.map(month => month.label));
     assert.equal(await p.locator("#premium-report input").count(), 0);
     const body = await p.locator("body").innerText();
     assert.doesNotMatch(body, /2주|분야 선택|유파마다|과거는 제외/);
+    assert.doesNotMatch(await p.locator("#premium-report").innerText(), /비겁|관성|인성|신강|가설|실험|과제/);
     assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     const shareAfter = await p.evaluate(() => !!(document.querySelector('#premium-report').compareDocumentPosition(document.querySelector('[aria-label="무료 사주 링크 공유"]')) & Node.DOCUMENT_POSITION_FOLLOWING));
     assert.equal(shareAfter, true);

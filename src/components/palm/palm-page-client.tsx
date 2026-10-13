@@ -23,7 +23,7 @@ import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import type { SajuFocus } from "@/lib/saju-focus";
 import { track } from "@/lib/analytics";
-import { buildPalmBilateralReading, type DominantHand, type PalmBilateralReading } from "@/lib/palm-bilateral";
+import { buildPalmBilateralReading, isStoredPalmReading, PALM_READING_VERSION, type DominantHand, type PalmBilateralReading } from "@/lib/palm-bilateral";
 
 import { PalmTaskSlot, requestPalmReport, runWithDeadline } from "@/lib/palm-analysis-task";
 import { PalmWorkerClient } from "@/lib/palm-worker-client";
@@ -87,6 +87,7 @@ interface PalmResumeState {
   rightPalmFacts?: PalmFacts | null;
   dominantHand?: DominantHand;
   bilateralReading?: PalmBilateralReading | null;
+  previousBilateralReading?: PalmBilateralReading | null;
   finalReport: FreeSajuReport | null;
   tripleCompare: CompareItem[];
   verdict: ReportParagraph | null;
@@ -191,6 +192,7 @@ export function PalmPageClient({
   const [leftPalmFacts, setLeftPalmFacts] = useState<PalmFacts | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
   const [bilateralReading, setBilateralReading] = useState<PalmBilateralReading | null>(null);
+  const [previousBilateralReading, setPreviousBilateralReading] = useState<PalmBilateralReading | null>(null);
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
   const [tripleCompare, setTripleCompare] = useState<CompareItem[]>([]);
   const [verdict, setVerdict] = useState<ReportParagraph | null>(null);
@@ -246,8 +248,8 @@ export function PalmPageClient({
       setLeftPalmFacts(saved.leftPalmFacts ?? null);
       setRightPalmFacts(saved.rightPalmFacts ?? null);
       setDominantHand(saved.dominantHand ?? null);
-      setBilateralReading(saved.leftPalmFacts && saved.rightPalmFacts && saved.dominantHand
-        ? buildPalmBilateralReading(saved.leftPalmFacts, saved.rightPalmFacts, saved.dominantHand) : null);
+      setBilateralReading(isStoredPalmReading(saved.bilateralReading) ? saved.bilateralReading : null);
+      setPreviousBilateralReading(isStoredPalmReading(saved.previousBilateralReading) ? saved.previousBilateralReading : null);
       setFinalReport(saved.finalReport ?? null);
       setTripleCompare(saved.tripleCompare ?? []);
       setVerdict(saved.verdict ?? null);
@@ -368,6 +370,7 @@ export function PalmPageClient({
       rightPalmFacts,
       dominantHand: dominantHand ?? undefined,
       bilateralReading,
+      previousBilateralReading,
       finalReport,
       tripleCompare,
       verdict,
@@ -383,6 +386,7 @@ export function PalmPageClient({
     rightPalmFacts,
     dominantHand,
     bilateralReading,
+    previousBilateralReading,
     finalReport,
     tripleCompare,
     verdict,
@@ -442,6 +446,7 @@ export function PalmPageClient({
     }
     retryReport.current = null;
     setBilateralReading(data.bilateralReading ?? null);
+    setPreviousBilateralReading(null);
     setFinalReport(data.freeReport?.report ?? null);
     setTripleCompare(data.tripleCompare ?? []);
     setVerdict(data.verdict ?? null);
@@ -953,7 +958,18 @@ export function PalmPageClient({
           <div className="mt-5">
             {rightPalmFacts && leftPalmFacts ? (
               <>
-                <PalmBilateralSection reading={bilateralReading} />
+                {bilateralReading?.version === PALM_READING_VERSION ? <PalmBilateralSection reading={bilateralReading} /> : <div className="rounded-2xl border border-border p-4">
+                  <p className="text-sm leading-7">이전 형식으로 저장된 손금 풀이입니다. 저장된 문장은 그대로 두고, 원할 때 현재 형식으로 다시 정리할 수 있어요.</p>
+                  {bilateralReading && <details className="mt-3"><summary className="cursor-pointer text-sm">저장 당시 손금 문장 보기</summary><PalmBilateralSection reading={bilateralReading} /></details>}
+                  <Button variant="outline" className="mt-3 min-h-11" onClick={() => {
+                    if (!dominantHand) return;
+                    setPreviousBilateralReading(bilateralReading);
+                    setBilateralReading(buildPalmBilateralReading(leftPalmFacts, rightPalmFacts, dominantHand));
+                  }}>현재 형식으로 손금 정리</Button>
+                </div>}
+                {previousBilateralReading && <button type="button" className="mt-3 min-h-11 text-sm underline" onClick={() => {
+                  setBilateralReading(previousBilateralReading); setPreviousBilateralReading(bilateralReading);
+                }}>다른 손금 저장본 보기</button>}
               </>
             ) : (
               <PalmReadingSections facts={palmFacts} />

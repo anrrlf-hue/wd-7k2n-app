@@ -1,3 +1,5 @@
+> 이 문서는 ae7e854 단계의 기록입니다. 문장·월별 표시·저장본 정책·lint 최종 결과는 [후속 검증 기록](narrative-report-verification-2026-10-13.md)을 따릅니다.
+
 # 리포트 정리 — 수정·검증 범위
 
 기준 main: c3392b1a87503e3c3631710b1ff1e4b2c5a11731. 격리 브랜치: fix/integrated-report-reading-flow.

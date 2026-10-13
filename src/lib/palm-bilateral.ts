@@ -1,15 +1,25 @@
 import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
 
 export type DominantHand = "left" | "right";
+export const PALM_READING_VERSION = "bilateral-observations-v1";
 export interface PalmBilateralItem {
   title: string;
-  observation: string;
+  observation?: string;
   text: string;
 }
 export interface PalmBilateralReading {
+  version?: string;
   summary: string;
   items: PalmBilateralItem[];
   note: string;
+}
+
+export function isStoredPalmReading(value: unknown): value is PalmBilateralReading {
+  if (!value || typeof value !== "object") return false;
+  const reading = value as PalmBilateralReading;
+  return typeof reading.summary === "string" && typeof reading.note === "string"
+    && Array.isArray(reading.items) && reading.items.every(item => item && typeof item.title === "string"
+      && typeof item.text === "string" && (item.observation === undefined || typeof item.observation === "string"));
 }
 
 function observed(line: OnnxLineDetail | null | undefined): string {
@@ -64,6 +74,7 @@ export function buildPalmBilateralReading(left: PalmFacts, right: PalmFacts, dom
     });
   }
   return {
+    version: PALM_READING_VERSION,
     summary: `주로 쓰는 ${currentLabel}을 중심으로 양손의 같은 선을 비교했습니다. 다른 모양이 보이더라도 조명과 촬영 각도의 영향이 있을 수 있습니다.`,
     items,
     note: "손금 해석은 전통적 참고입니다. 사진에서 보이는 선만으로 성격·건강·미래를 확정할 수 없습니다.",

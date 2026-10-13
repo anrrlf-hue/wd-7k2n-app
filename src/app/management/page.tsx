@@ -38,11 +38,18 @@ export default function ManagementPage() {
   }
 
   useEffect(() => {
-    refresh();
-    setLoaded(true);
+    let mounted = true;
+    queueMicrotask(() => {
+      if (!mounted) return;
+      refresh();
+      setLoaded(true);
+    });
     const onChange = () => refresh();
     window.addEventListener("saju:saved-people-changed", onChange);
-    return () => window.removeEventListener("saju:saved-people-changed", onChange);
+    return () => {
+      mounted = false;
+      window.removeEventListener("saju:saved-people-changed", onChange);
+    };
   }, []);
 
   const self = useMemo(() => people.find((person) => person.isSelf) ?? null, [people]);

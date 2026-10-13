@@ -1,181 +1,236 @@
 import type { FreeSajuReport } from "@/lib/free-report-schema";
 import type { PalmFacts } from "@/lib/palm-facts";
-import { buildPalmBilateralReading, type DominantHand, type PalmBilateralReading } from "@/lib/palm-bilateral";
+import type { DominantHand } from "@/lib/palm-bilateral";
 import type { SajuFacts, TenGodGroup } from "@/lib/saju-facts";
 import { TEN_GOD_GROUP } from "@/lib/saju-facts";
-import { type SajuFocus, type SajuDetailFocus } from "@/lib/saju-focus";
+import type { SajuFocus, SajuDetailFocus } from "@/lib/saju-focus";
 import { buildSajuAnnualOutlook, type SajuAnnualOutlook } from "@/lib/saju-timing";
-import { eulReul, iGa } from "@/lib/korean-particle";
 
-type MonthlyEmphasis = SajuAnnualOutlook["months"][number]["comparisons"][number]["emphasis"];
-
-export interface PremiumBalanceItem {
-  title: string;
-  whatItMeans: string;
-  howToFill: string;
-  goodResult: string;
-}
-
-export interface PremiumDomainSection {
-  key: SajuDetailFocus;
-  label: string;
+export const PREMIUM_REPORT_VERSION = "annual-reading-2026-10-v2" as const;
+export interface PremiumReading {
   headline: string;
   paragraphs: string[];
-  experiment: string;
-  checkpoint: string;
-  changeWhen: string;
-  monthlyActions: Record<MonthlyEmphasis, string>;
-  timing: string;
+  opportunity: string;
+  caution: string;
+  tip: string;
+  basis: string;
 }
-
+export interface PremiumDomainSection extends PremiumReading {
+  key: SajuDetailFocus;
+  label: string;
+}
+export interface PremiumPeriod {
+  label: string;
+  months: string[];
+  headline: string;
+  reading: string;
+  basis: string;
+  domains: Array<{ key: "love_relationship" | "money" | "work"; label: string; text: string }>;
+}
 export interface PremiumReport {
+  version: typeof PREMIUM_REPORT_VERSION;
   title: string;
   summary: string;
-  freeSummary: string;
-  focus: SajuFocus;
-  corePatterns: string[];
-  balance: PremiumBalanceItem[];
+  overall: PremiumReading;
   domains: PremiumDomainSection[];
   annual: SajuAnnualOutlook;
-  palm: PalmBilateralReading | null;
+  annualIntroduction: string;
+  annualBackground: string | null;
+  periods: PremiumPeriod[];
   note: string;
 }
 
-const GROUPS: Array<{ key: TenGodGroup; count: keyof Pick<SajuFacts,
-  "peerStarCount" | "outputStarCount" | "wealthStarCount" | "officerStarCount" | "resourceStarCount">;
-  meaning: string; risk: string; practice: string }> = [
-  { key: "비겁", count: "peerStarCount", meaning: "직접 정하고 실행하기", risk: "상대의 동의를 확인하기 전에 속도를 올리는 장면", practice: "함께 결정할 일 하나를 골라 내 의견을 말하기 전에 상대의 기준을 먼저 적어보세요." },
-  { key: "식상", count: "outputStarCount", meaning: "만들어 보여주기", risk: "새 일을 시작하느라 이미 약속한 마무리가 밀리는 장면", practice: "이번 주에는 새 과제를 더하기 전에 진행 중인 결과물 하나를 끝내고 반응을 기록하세요." },
-  { key: "재성", count: "wealthStarCount", meaning: "자원과 결과를 연결하기", risk: "눈앞의 성과를 위해 쓸 수 있는 시간보다 많은 약속을 잡는 장면", practice: "제안을 받을 때 필요한 시간과 지출을 한 줄씩 적고, 이번 주에 감당할 범위부터 정하세요." },
-  { key: "관성", count: "officerStarCount", meaning: "역할과 약속을 지키기", risk: "내 책임이 아닌 일까지 떠안아 자신의 일정이 사라지는 장면", practice: "이번 주 맡은 일마다 담당자와 종료 조건을 적고, 불분명한 일 한 건은 범위를 다시 확인하세요." },
-  { key: "인성", count: "resourceStarCount", meaning: "정보를 모으고 검토하기", risk: "확인을 반복하다 작은 시도까지 미루는 장면", practice: "자료를 찾는 시간을 30분으로 정하고, 남은 의문 하나를 실제 경험으로 확인해보세요." },
-];
+const GROUPS = [
+  { key: "비겁", count: "peerStarCount", label: "내 뜻과 주도권", trait: "남이 정한 답을 따르기보다 스스로 납득한 방향으로 움직일 때 마음이 놓이는 편으로 읽힙니다.", chance: "재량을 주는 역할이나 서로의 몫이 분명한 협업에서 자기 색깔이 드러나기 좋습니다.", caution: "의견이 부딪힐 때 옳고 그름을 빨리 가르려 하면, 함께 가고 싶은 사람과도 거리가 생길 수 있습니다." },
+  { key: "식상", count: "outputStarCount", label: "표현과 창작", trait: "생각을 마음속에 오래 묶어두기보다 말이나 결과물로 꺼낼 때 자기 모습을 더 잘 드러내는 편으로 읽힙니다.", chance: "완성된 정답을 요구하는 자리보다 아이디어에 반응을 주고받는 환경에서 가능성이 열리기 좋습니다.", caution: "새로운 생각이 계속 떠오를수록 이미 시작한 일이나 약속이 뒤로 밀리기 쉽다는 점이 주의할 부분입니다." },
+  { key: "재성", count: "wealthStarCount", label: "현실적인 성과", trait: "좋은 생각인지에 그치지 않고 실제로 어디에 쓰이고 어떤 결과가 남는지를 중요하게 여기는 편으로 읽힙니다.", chance: "사람이 필요로 하는 것과 자신이 제공할 수 있는 것을 연결하는 자리에서 강점을 쓰기 좋습니다.", caution: "눈앞의 성과가 매력적일수록 그 뒤에 필요한 시간과 관계의 부담을 가볍게 보기 쉽습니다." },
+  { key: "관성", count: "officerStarCount", label: "책임과 신뢰", trait: "맡은 역할을 지키고 주변의 신뢰를 얻는 일이 자기 만족과 가깝게 연결되는 편으로 읽힙니다.", chance: "기준이 분명하고 꾸준히 쌓은 신뢰가 인정되는 환경에서 자신의 자리를 만들기 좋습니다.", caution: "기대에 맞추려는 마음이 커지면 부탁받지 않은 책임까지 혼자 지고 있다는 느낌이 쌓일 수 있습니다." },
+  { key: "인성", count: "resourceStarCount", label: "이해와 준비", trait: "충분히 이해하고 마음이 놓인 뒤에 움직이려는 편으로 읽힙니다. 경험 많은 사람의 설명이나 익숙한 기반이 선택에 힘을 보탭니다.", chance: "배운 것을 차근차근 자기 것으로 만들거나 누군가의 도움을 다음 기회로 연결하는 자리에서 강점이 드러나기 좋습니다.", caution: "더 알아야 한다는 마음이 커지면 이미 준비된 부분까지 의심하며 시작을 늦추기 쉽습니다." },
+] as const;
+const GROUP_LABEL = Object.fromEntries(GROUPS.map(g => [g.key, g.label])) as Record<TenGodGroup, string>;
+const areaLabel = { year: "익숙한 환경과 가족 관계", month: "사회생활과 일", day: "가까운 관계", hour: "일을 마무리하고 이어가는 과정" } as const;
 
-const ELEMENT_PRACTICE: Record<string, { meaning: string; action: string; check: string }> = {
-  목: { meaning: "새로운 시도를 작은 단위로 시작하는 습관", action: "미뤄둔 일 하나를 20분 안에 시작할 수 있는 크기로 나누고, 가능한 날을 달력에 넣어보세요.", check: "성공 여부보다 실제로 시작한 횟수와 다음에 바꿀 조건 한 가지를 남기세요." },
-  화: { meaning: "생각을 밖으로 표현하는 습관", action: "완성한 것 하나를 신뢰하는 사람에게 보여주고 구체적인 반응을 한 문장 받아보세요.", check: "내가 예상한 반응과 실제 반응이 달랐던 점을 비교하세요." },
-  토: { meaning: "반복되는 일을 마무리하는 습관", action: "하루를 마칠 때 미완료 일 하나와 내일 끝낼 시각을 적으세요.", check: "미뤄둔 일의 개수가 줄었는지, 계획이 지나치게 빡빡했는지 확인하세요." },
-  금: { meaning: "선택과 거절의 기준을 말로 정하는 습관", action: "새 부탁을 받기 전에 가능한 시간·역할·마감 세 가지를 적고, 이번 주 한 번은 그 범위를 전달하세요.", check: "범위를 말한 뒤 불필요한 재작업이나 약속 변경이 줄었는지 보세요." },
-  수: { meaning: "정보를 정리하고 잠깐 멈추는 습관", action: "중요한 결정을 앞두고 선택의 이유를 남기고 다음 날 다시 읽어보세요. 급하지 않다면 그때 확정하세요.", check: "하루 뒤 바뀐 판단과 그대로 유지된 판단을 나눠 적으세요." },
+function overallReading(facts: SajuFacts): PremiumReading {
+  const ranked = GROUPS.map(g => ({ ...g, value: facts[g.count] })).sort((a, b) => b.value - a.value);
+  // Equal counts stay equal: never invent a priority by array order.
+  const leaders = ranked.filter(g => g.value === ranked[0].value);
+  const leadKeys = new Set<TenGodGroup>(leaders.map(g => g.key));
+  const places = [...new Set(facts.pillars.filter(p => leadKeys.has(TEN_GOD_GROUP[p.stemTenGod]) || leadKeys.has(TEN_GOD_GROUP[p.branchTenGod])).map(p => areaLabel[p.pillar]))];
+  const equal = leaders.length > 1;
+  const attitude = !facts.dayStrengthReliable
+    ? null
+    : facts.dayStrength === "strong"
+      ? "한번 마음을 정하면 주변 반응이 달라도 자기 기준을 지키려는 쪽에 무게가 실립니다. 그 단단함이 버팀목이 되지만, 가까운 사람에게는 결론을 바꿀 여지가 적게 느껴질 수도 있습니다."
+      : facts.dayStrength === "weak"
+        ? "혼자 모든 조건을 만들기보다 사람이나 환경의 도움을 받을 때 본래의 장점이 편하게 드러나는 쪽으로 읽힙니다. 누구와 어디에서 하느냐가 무엇을 하느냐만큼 중요할 수 있습니다."
+        : "자기 뜻을 밀고 가는 힘과 주변 사정을 받아들이는 힘이 어느 한쪽으로 크게 치우치지 않은 모습입니다. 상황에 맞게 속도를 바꾸는 유연함을 장점으로 읽을 수 있습니다.";
+  return {
+    headline: equal ? `${leaders.map(g => g.label).join(" · ")}의 장점을 함께 지닌 사람` : `${leaders[0].label}에서 힘을 얻는 사람`,
+    paragraphs: [leaders.map(g => g.trait).join(" "), ...(attitude ? [attitude] : [])],
+    opportunity: equal ? "서로 다른 장점을 함께 쓸 수 있는 자리가 어울립니다. " + leaders.map(g => g.chance).join(" ") : leaders[0].chance,
+    caution: equal ? "중요하게 여기는 기준이 여럿이라 한쪽을 택하면 다른 쪽이 마음에 걸릴 수 있습니다. 특히 내 방식과 주변의 기대가 다른 장면에서는 선택보다 마음을 정리하는 데 시간이 들 수 있습니다." : leaders[0].caution,
+    tip: "주변의 기대와 내가 원하는 방향이 다를 때는, 이번 선택에서 놓치고 싶지 않은 것 하나만 먼저 말해보세요.",
+    basis: `태어난 연·월·일${facts.hasTimeInput ? "·시" : ""}를 함께 읽을 때 ${leaders.map(g => `‘${g.label}’`).join(", ")}${equal ? "의 비중이 나란히 두드러집니다." : "의 비중이 두드러집니다."} ${places.length ? `이런 요소가 놓인 자리는 ${places.join(", ")}에 연결해 읽었습니다.` : ""}`,
+  };
+}
+
+function domainReadings(facts: SajuFacts): PremiumDomainSection[] {
+  const expression = facts.outputStarCount + facts.peerStarCount;
+  const reserve = facts.resourceStarCount + facts.officerStarCount;
+  const love = expression === reserve ? "balanced" : expression > reserve ? "expressive" : "reserved";
+  const money = facts.wealthStarCount === facts.resourceStarCount ? "balanced" : facts.wealthStarCount > facts.resourceStarCount ? "results" : "understanding";
+  const work = facts.outputStarCount === facts.officerStarCount ? "balanced" : facts.outputStarCount > facts.officerStarCount ? "creative" : "responsible";
+  const loveCopy: Record<typeof love, PremiumReading> = {
+    expressive: {
+      headline: "마음을 나누면서 가까워지는 관계",
+      paragraphs: ["관계에서 먼저 말을 꺼내거나 분위기를 움직이는 쪽에 무게가 실립니다. 좋아하는 마음도 생각도 밖으로 전하면서 상대와의 거리를 가늠하는 편으로 읽힙니다.", "대화가 잘 통하면 빠르게 가까워질 수 있지만, 상대가 생각을 정리하는 동안에는 반응이 적다고 느끼기 쉽습니다. 표현의 양보다 서로 편한 속도가 관계의 만족을 좌우할 수 있습니다."],
+      opportunity: "취향이나 관심사를 함께 즐기고 서로의 생각에 반응하는 관계에서 자연스러운 매력이 드러나기 좋습니다.",
+      caution: "내가 답을 빨리 말할수록 상대에게는 자기 마음을 꺼낼 자리가 좁게 느껴질 수 있습니다.",
+      tip: "답을 제안하기 전에 ‘네 마음은 어때?’라고 한 번 물어보세요.",
+      basis: "생각을 표현하고 스스로 움직이는 요소가, 마음속에서 정리하거나 역할을 지키는 요소보다 두드러져 대화를 통해 가까워지는 관계로 읽었습니다.",
+    },
+    reserved: {
+      headline: "작은 약속이 쌓일수록 깊어지는 관계",
+      paragraphs: ["마음이 움직여도 바로 드러내기보다 이 관계가 편안하고 믿을 만한지 먼저 살피는 편으로 읽힙니다. 강한 첫인상보다 꾸준히 이어지는 연락과 작은 배려에 마음이 열리는 모습입니다.", "가까워진 뒤에는 말보다 챙기는 행동으로 애정을 보일 수 있습니다. 다만 속으로 충분히 생각한 마음이 상대에게도 전해졌다고 여기면, 서로 좋아하면서도 서운함이 남을 수 있습니다."],
+      opportunity: "관계의 속도를 재촉하지 않고 말과 행동이 비슷한 사람과 신뢰를 쌓기 좋습니다.",
+      caution: "상대가 먼저 알아주기를 오래 기다리면, 원하는 것이 없는 사람처럼 보일 수 있습니다.",
+      tip: "고마웠던 행동이나 바라는 시간을 짧게 말로 덧붙여보세요.",
+      basis: "마음을 정리하고 약속을 지키는 요소가 표현과 주도성을 나타내는 요소보다 두드러져, 신뢰를 확인하며 가까워지는 관계로 읽었습니다.",
+    },
+    balanced: {
+      headline: "가까움과 나만의 공간이 함께 필요한 관계",
+      paragraphs: ["마음을 표현하고 싶은 쪽과 신중하게 거리를 살피는 쪽이 비슷하게 놓여 있습니다. 좋아하는 사람과 자주 나누는 시간도, 혼자 마음을 정리할 여유도 소중한 모습으로 읽힙니다.", "익숙한 사람 앞에서는 편하게 이야기하다가도 중요한 약속 앞에서는 생각이 깊어질 수 있습니다. 이 차이를 서로 알아주면 관계가 편해지고, 모르고 지나가면 갑자기 멀어진 것처럼 느껴질 수 있습니다."],
+      opportunity: "함께하는 시간과 각자의 시간을 자연스럽게 인정하는 관계에서 안정감을 얻기 좋습니다.",
+      caution: "그날의 여유에 따라 표현이 달라질 때 상대가 이유를 모르면 마음이 바뀌었다고 받아들일 수 있습니다.",
+      tip: "혼자 쉬고 싶은 날에는 거리 두기가 아니라 휴식이 필요하다는 말을 남겨보세요.",
+      basis: "표현과 주도성을 나타내는 요소, 신중함과 약속을 나타내는 요소의 비중이 같아 어느 한쪽만 우선하는 관계로 정하지 않았습니다.",
+    },
+  };
+  const moneyCopy: Record<typeof money, PremiumReading> = {
+    results: {
+      headline: "가능성을 실제 보상으로 연결하려는 재물 흐름",
+      paragraphs: ["무언가를 고를 때 흥미로운지뿐 아니라 어떤 쓸모와 결과가 남는지를 빨리 떠올리는 편으로 읽힙니다. 돈도 막연히 모으는 대상보다 일의 성과나 선택의 결과와 연결해 이해하는 모습입니다.", facts.outputStarCount > 0 ? "표현하고 만들어내는 요소도 함께 있어, 자신의 결과물이 누군가의 필요와 만나는 과정에 눈길이 갑니다. 잘하는 일을 어떻게 전달하느냐가 보상을 받아들이는 감각과 연결될 수 있습니다." : "성과를 확인하려는 마음에 비해 결과를 밖으로 드러내는 요소는 두드러지지 않습니다. 생각한 가치와 상대가 알아보는 가치 사이에 거리가 생기면 아쉬움이 커질 수 있습니다."],
+      opportunity: "무엇을 제공하고 무엇을 받는지가 분명한 일에서 자신의 기여를 드러내기 좋습니다.",
+      caution: "보이는 보상이 클수록 그 일을 이어가는 데 드는 시간이나 관계의 부담이 뒤늦게 느껴질 수 있습니다.",
+      tip: "조건이 매력적인 제안이라면 얻는 것과 오래 감당해야 할 것을 함께 떠올려보세요.",
+      basis: "실제 결과와 교환을 뜻하는 요소가 이해와 준비를 뜻하는 요소보다 두드러집니다. 여기에 자신의 생각을 결과로 드러내는 요소가 있는지도 함께 읽었습니다.",
+    },
+    understanding: {
+      headline: "납득할 수 있는 기반에서 안정을 찾는 재물 흐름",
+      paragraphs: ["돈이 된다는 말만으로 움직이기보다 어떤 과정으로 생기는 결과인지 이해해야 마음이 놓이는 편으로 읽힙니다. 낯선 기회보다 배워온 것과 익숙한 경험에 연결된 선택에 신뢰가 쌓이기 쉽습니다.", "이런 신중함은 쉽게 휩쓸리지 않는 바탕이 될 수 있습니다. 반면 충분히 준비했는데도 확신이 더 필요하다고 느끼면, 자신의 시간과 능력에 어떤 보상을 기대하는지 말하는 일이 늦어질 수 있습니다."],
+      opportunity: "전문성이나 꾸준히 쌓은 신뢰를 상대가 알아주는 환경에서 보상의 의미를 찾기 좋습니다.",
+      caution: "준비에 쓴 노력과 실제로 돌아오는 보상을 별개로 여기면, 많이 애쓰고도 충분히 인정받지 못했다고 느낄 수 있습니다.",
+      tip: "보상이 걸린 일을 맡을 때는 기대하는 대가를 처음부터 편하게 이야기해보세요.",
+      basis: "이해하고 익히는 요소가 현실적인 성과를 뜻하는 요소보다 두드러져, 확신과 익숙한 기반을 중시하는 돈의 태도로 읽었습니다.",
+    },
+    balanced: {
+      headline: "가치에 대한 납득과 실제 이익을 함께 보는 재물 흐름",
+      paragraphs: ["무엇이 남는지도 중요하지만 왜 이 선택을 하는지 스스로 설명할 수 있어야 편한 쪽으로 읽힙니다. 이익이 커 보여도 과정이 납득되지 않으면 망설이고, 마음에 드는 일이라도 부담이 너무 크면 다시 생각하는 모습입니다.", "현실적인 조건과 자신의 기준을 함께 살필 수 있는 점이 장점입니다. 두 기준이 엇갈릴 때에는 어느 하나가 틀렸다기보다, 지금 무엇을 더 소중하게 여기는지가 선택을 가를 수 있습니다."],
+      opportunity: "내용을 충분히 이해하면서도 노력에 대한 대가가 분명한 일에서 만족을 찾기 좋습니다.",
+      caution: "완벽하게 납득되는 조건만 기다리면 이미 괜찮은 선택도 부족하게 느껴질 수 있습니다.",
+      tip: "비슷한 선택지라면 이익 외에 오래 만족할 이유 하나를 함께 떠올려보세요.",
+      basis: "현실적인 성과를 뜻하는 요소와 이해·준비를 뜻하는 요소의 비중이 같아, 이익 추구나 신중함 한쪽으로만 읽지 않았습니다.",
+    },
+  };
+  const workCopy: Record<typeof work, PremiumReading> = {
+    creative: {
+      headline: "자신의 방법을 결과로 보여줄 때 살아나는 일",
+      paragraphs: ["정해진 절차를 빠짐없이 따르는 일보다 생각한 방법을 직접 써보고 결과를 보여주는 일에 마음이 움직이는 편으로 읽힙니다. 같은 목표라도 접근 방식을 고를 여지가 있을 때 자기 색깔이 드러나기 쉽습니다.", "아이디어가 실제 반응을 얻으면 다음 일을 이어갈 힘이 생기는 모습입니다. 반대로 설명할 기회 없이 방식만 지시받으면 능력을 쓰기보다 틀에 맞추는 데 에너지를 쓰고 있다고 느낄 수 있습니다."],
+      opportunity: "기획·제안·제작처럼 생각이 구체적인 결과로 이어지고 피드백을 받을 수 있는 역할에서 강점을 쓰기 좋습니다.",
+      caution: "새 방법을 떠올리는 속도와 함께 일하는 사람이 받아들이는 속도가 다르면, 좋은 의도도 잦은 변경으로 보일 수 있습니다.",
+      tip: "새 방식을 제안할 때는 무엇이 좋아지는지 작은 예 하나를 곁들여보세요.",
+      basis: "자신의 생각을 표현하고 만들어내는 요소가 정해진 역할과 규칙을 뜻하는 요소보다 두드러져, 방법을 고를 여지가 있는 일로 연결했습니다.",
+    },
+    responsible: {
+      headline: "꾸준히 맡아낸 일이 신뢰로 쌓이는 일",
+      paragraphs: ["눈에 띄는 새 아이디어보다 맡은 일을 믿고 맡길 수 있게 해내는 데 강점이 드러나는 편으로 읽힙니다. 자신의 역할이 분명하고 책임에 맞는 권한을 받을 때 일의 의미가 또렷해질 수 있습니다.", "한 번의 성과보다 여러 번 함께 일하며 쌓은 평판이 자신의 자리를 만드는 모습입니다. 다만 주변에서 믿고 맡기는 일이 늘수록, 잘하고 있다는 느낌과 부담스럽다는 느낌이 동시에 커질 수 있습니다."],
+      opportunity: "운영·조율·관리처럼 흐름을 안정적으로 이어가고 책임 있게 마무리하는 역할에서 신뢰를 얻기 좋습니다.",
+      caution: "끝까지 해내려는 마음 때문에 역할 밖의 일까지 받아들이면, 정작 잘하는 일에 쓸 여유가 줄 수 있습니다.",
+      tip: "새 책임을 맡을 때는 결정할 수 있는 범위도 함께 이야기해보세요.",
+      basis: "자유로운 표현보다 역할과 신뢰를 뜻하는 요소가 두드러져, 꾸준함이 평판으로 이어지는 일의 방식으로 읽었습니다.",
+    },
+    balanced: {
+      headline: "새로운 방법과 안정적인 마무리를 잇는 일",
+      paragraphs: ["자신의 생각을 보여주는 힘과 맡은 역할을 지키려는 마음이 비슷하게 놓여 있습니다. 새로운 방식을 고민하더라도 실제로 함께 쓰고 마무리할 수 있는지가 중요하게 느껴지는 모습입니다.", "아이디어만 내거나 정해진 일만 반복하는 자리보다, 바꿀 부분과 지킬 부분을 함께 판단하는 역할에 여지가 있습니다. 어느 쪽을 원하는 자리인지 불분명하면 스스로도 힘을 어디에 써야 할지 헷갈릴 수 있습니다."],
+      opportunity: "기존 일을 개선하거나 사람들의 생각을 실행 가능한 형태로 조율하는 역할에서 균형감을 쓰기 좋습니다.",
+      caution: "새로움과 안정성을 동시에 완벽하게 만족시키려 하면 작은 변화에도 결정이 길어질 수 있습니다.",
+      tip: "지켜야 할 부분과 바꿔도 되는 부분을 먼저 나눠 이야기해보세요.",
+      basis: "표현·창작과 역할·규칙을 뜻하는 요소의 비중이 같아, 자유로운 실행과 안정적인 완수 중 한쪽만 우선하지 않았습니다.",
+    },
+  };
+  const dayBranch = facts.pillars.find(p => p.pillar === "day")?.branchTenGod;
+  const closeGroup = dayBranch ? TEN_GOD_GROUP[dayBranch] : null;
+  const loveResult = { ...loveCopy[love], paragraphs: [...loveCopy[love].paragraphs] };
+  if (closeGroup === "인성") loveResult.paragraphs.push("가까운 관계를 나타내는 자리에는 이해와 보살핌의 의미가 놓여 있습니다. 편하게 기대고 마음을 설명할 수 있다는 느낌이 친밀함을 더해주는 모습입니다.");
+  if (closeGroup === "비겁") loveResult.paragraphs.push("가까운 관계를 나타내는 자리에는 자기 뜻과 동등함의 의미가 놓여 있습니다. 서로를 챙기더라도 한 사람이 다른 사람의 방식을 대신 정하지 않는 관계가 편할 수 있습니다.");
+  return [
+    { key: "love_relationship", label: "연애·관계", ...loveResult },
+    { key: "money", label: "재물", ...moneyCopy[money] },
+    { key: "work", label: "직장·일", ...workCopy[work] },
+  ];
+}
+
+const MONTH_THEME: Record<TenGodGroup, { label: string; reading: string }> = {
+  비겁: { label: "내 뜻과 사람 사이의 균형", reading: "자기 뜻을 지키는 일과 다른 사람과 보조를 맞추는 일이 함께 주제로 떠오르는 흐름입니다. 혼자 정할 부분과 함께 나눌 부분의 경계가 관계와 일의 분위기를 가르는 시기로 읽습니다." },
+  식상: { label: "생각을 밖으로 드러내는 흐름", reading: "마음속 생각이 말이나 결과물로 드러나는 쪽에 의미가 실립니다. 관계에서는 표현이, 일에서는 보여준 것에 대한 반응이 평소보다 중요한 주제가 되는 달로 읽습니다." },
+  재성: { label: "노력과 보상이 만나는 흐름", reading: "시간과 노력이 어떤 결과로 돌아오는지를 바라보는 쪽에 의미가 실립니다. 마음에 드는 선택과 현실적으로 이어갈 수 있는 선택 사이의 차이를 살펴보는 달로 읽습니다." },
+  관성: { label: "약속과 역할이 또렷해지는 흐름", reading: "서로 기대하는 역할과 약속의 의미가 부각됩니다. 관계를 안정시키는 힘이 될 수 있는 한편, 기대에 맞춰야 한다는 부담도 함께 느끼기 쉬운 시기로 읽습니다." },
+  인성: { label: "이해와 준비가 깊어지는 흐름", reading: "새로운 결과를 서둘러 내기보다 익히고 이해하는 과정에 의미가 실립니다. 그동안의 경험을 정리하거나 믿을 만한 사람의 설명에서 다음 방향을 찾는 달로 읽습니다." },
+};
+const MONTH_DOMAINS: Record<"love_relationship" | "money" | "work", Partial<Record<TenGodGroup, string>>> = {
+  love_relationship: {
+    비겁: "연애에서는 가까이 지내면서도 서로의 선택을 존중하는 문제가 눈에 들어오는 흐름입니다.",
+    식상: "마음이 얼마나 큰지보다 어떤 말과 태도로 전해지는지가 관계의 분위기를 만드는 흐름입니다.",
+    재성: "함께 쓰는 시간과 서로 주고받는 배려에서 관계의 현실적인 균형을 생각하게 하는 흐름입니다.",
+    관성: "관계를 어떻게 이어갈지, 서로 기대하는 약속이 무엇인지에 의미가 실리는 흐름입니다.",
+    인성: "편하게 기대고 이해받는 느낌이 친밀함과 연결되는 흐름입니다.",
+  },
+  money: {
+    재성: "재물에서는 내가 제공한 가치와 돌아오는 보상의 관계를 중심으로 읽습니다. 수익의 크기보다 교환 조건과 만족의 균형이 주제입니다.",
+    식상: "재물에서는 결과물을 보여주는 일과 보상의 연결을 중심으로 읽습니다. 아이디어 자체보다 상대가 그 쓰임을 알아보는 과정에 의미가 있습니다.",
+    관성: "재물에서는 급여나 계약처럼 이미 정해진 조건과 책임의 관계를 중심으로 읽습니다. 맡는 몫과 받는 대가가 맞는지가 주제입니다.",
+  },
+  work: {
+    식상: "일에서는 생각을 제안이나 결과물로 보여주는 장면에 의미가 실립니다. 방법을 고를 여지가 자신의 장점을 드러내는 통로가 될 수 있습니다.",
+    재성: "일에서는 잘 만든 것과 실제로 필요로 하는 것의 연결에 의미가 실립니다. 상대의 필요를 이해하는 일이 성과의 의미를 또렷하게 하는 흐름입니다.",
+    관성: "일에서는 맡은 역할과 주변의 기대가 주제가 됩니다. 신뢰가 쌓이는 면과 책임이 무거워지는 면을 함께 읽습니다.",
+    비겁: "일에서는 자기 방식과 동료의 방식 사이의 조율이 주제가 됩니다. 서로 다른 강점을 어디까지 함께 쓸지가 중요한 흐름입니다.",
+  },
 };
 
-function profile(facts: SajuFacts) {
-  const ranked = GROUPS.map((group) => ({ ...group, value: facts[group.count] }))
-    .sort((a, b) => b.value - a.value);
-  const first = ranked[0];
-  const second = ranked[1];
-  const places = facts.pillars.filter((pillar) =>
-    TEN_GOD_GROUP[pillar.stemTenGod] === first.key || TEN_GOD_GROUP[pillar.branchTenGod] === first.key)
-    .map((pillar) => ({ year: "가족·기반", month: "사회·업무", day: "가까운 관계", hour: "실행·마무리" })[pillar.pillar]);
-  return { first, second, basis: `${first.key} ${first.value}개·${second.key} ${second.value}개`, places: [...new Set(places)].join(", ") };
-}
-
-function balanceItems(facts: SajuFacts): PremiumBalanceItem[] {
-  const { first } = profile(facts);
-  const items = facts.missingElements.slice(0, 2).flatMap((element) => {
-    const guide = ELEMENT_PRACTICE[element];
-    if (!guide) return [];
-    return [{
-      title: `${element}${eulReul(element)} 생활 습관으로 번역하면`,
-      whatItMeans: `${facts.hasTimeInput ? "입력된 네 기둥" : "시간을 제외한 세 기둥"}에서 ${element}${iGa(element)} 0개로 집계됩니다. 전통적으로 ${guide.meaning}${eulReul(guide.meaning)} 돌아보는 상징으로 읽을 수 있습니다. 실제 능력의 결핍을 뜻하지는 않습니다.`,
-      howToFill: guide.action,
-      goodResult: guide.check,
-    }];
-  });
-  items.push({
-    title: `${first.meaning}에 멈춤 기준 더하기`,
-    whatItMeans: `${first.key} ${first.value}개라는 구조에서 ${first.risk}${eulReul(first.risk)} 점검 대상으로 삼았습니다. 경험에 맞는지 먼저 확인하세요.`,
-    howToFill: first.practice,
-    goodResult: "비슷한 일이 다시 생겼을 때 전보다 부담이 줄었는지 보세요. 경험에 맞지 않는 조언은 따르지 않아도 됩니다.",
-  });
-  return items;
-}
-
-function domainSection(key: SajuDetailFocus, facts: SajuFacts, annual: SajuAnnualOutlook): PremiumDomainSection {
-  const outspoken = facts.outputStarCount + facts.peerStarCount >= facts.resourceStarCount + facts.officerStarCount;
-  const outputFirst = facts.outputStarCount >= facts.officerStarCount;
-  const moneyFirst = facts.wealthStarCount > facts.resourceStarCount;
-  const moneyBalanced = facts.wealthStarCount === facts.resourceStarCount;
-  const active = facts.outputStarCount + facts.officerStarCount >= facts.resourceStarCount;
-  const templates = {
-    love_relationship: {
-      headline: outspoken ? "내 표현 뒤에 상대의 기준을 놓아보기" : "혼자 정리한 마음을 작은 요청으로 바꾸기",
-      scene: outspoken ? "대화를 빨리 정리하고 싶을 때, 상대가 원하는 것이 조언인지 공감인지부터 확인해보세요." : "생각은 정리됐는데 상대가 알아주기를 기다린 장면이 있다면, 바라는 행동 하나를 말로 전해보세요.",
-      evidence: `표현·주도 신호 ${facts.outputStarCount + facts.peerStarCount}개와 검토·역할 신호 ${facts.resourceStarCount + facts.officerStarCount}개를 비교했습니다. 관계 상태나 상대의 마음은 이 계산으로 알 수 없습니다.`,
-      experiment: outspoken ? "중요한 대화를 시작할 때 ‘지금 들어주면 될까, 같이 방법을 찾을까’를 먼저 확인하고, 합의한 다음 행동만 적으세요." : "한 번에 요청 하나만 전해보세요. ‘이번 주에 20분 같이 이야기하고 싶어’처럼 상대가 답할 수 있게 시간과 행동을 붙이세요.",
-      checkpoint: "대화 후 서로 기억하는 약속이 같은지 확인하세요. 횟수를 늘려도 불편함이 커지면 상대의 거절과 거리 두기를 존중하세요.",
-      changeWhen: "기억하는 약속이 다르면 대화 횟수를 늘리기보다 합의한 행동 하나를 다시 확인하세요. 상대가 원하지 않거나 불편함이 커지면 요청을 멈추세요.",
-      monthlyActions: {
-        실험: outspoken ? "중요한 대화 한 번에서 조언과 공감 중 원하는 것을 먼저 확인해보세요." : "상대가 답할 수 있게 시간과 행동을 붙인 요청 하나를 전해보세요.",
-        유지: "서로 편안했던 대화 방식을 한 번 더 써보세요. 아직 그런 경험이 없다면 최근 대화 하나부터 기록하세요.",
-        점검: "최근 합의한 약속 하나를 서로 같은 뜻으로 기억하는지 확인하세요. 합의가 없었다면 바라는 행동 하나를 먼저 적어보세요.",
-      },
-    },
-    work: {
-      headline: outputFirst ? "결과물 하나로 역할의 범위를 확인하기" : "책임의 경계를 정하고 작은 개선을 시험하기",
-      scene: outputFirst ? "아이디어를 더 모으기 전에 현재 하는 일에서 보여줄 수 있는 결과 하나를 골라보세요." : "새 역할을 맡기 전에 누가 결정하고 무엇을 끝내야 하는지 확인하는 과정을 넣어보세요.",
-      evidence: `만들어내는 활동(식상 ${facts.outputStarCount}개)과 역할·규율(관성 ${facts.officerStarCount}개)을 비교했습니다. ${facts.outputStarCount === facts.officerStarCount ? "개수가 같아 어느 쪽이 강하다고 정하지 않고, 작은 시안의 반응을 출발점으로 삼았습니다." : outputFirst ? "식상이 더 많아 시안에 대한 반응을 먼저 확인하는 과제를 골랐습니다. 이 비교 방향이 같으면 같은 과제를 제안합니다." : "관성이 더 많아 역할과 완료 기준을 먼저 합의하는 과제를 골랐습니다."} 직업 적합성이나 이직 성패를 판정하는 검사는 아닙니다.`,
-      experiment: outputFirst ? "지금 맡은 일에서 작은 시안 하나를 만들고 실제로 쓰는 사람 한 명에게 수정할 점 두 가지를 받아보세요. 시작 전 소요시간 상한을 정하세요." : "진행 중인 업무 한 건의 담당·마감·완료 기준을 한 장으로 정리하고 관계자와 확인하세요. 일주일 뒤 수정 요청이 어디서 나왔는지 기록하세요.",
-      checkpoint: "투입 시간과 재작업 횟수를 비교하세요. 계약·수입·업무 조건이 확인되지 않았다면 이 해석만으로 이직이나 사업 확대를 결정하지 마세요.",
-      changeWhen: outputFirst
-        ? "피드백이 담당자나 완료 기준에 대한 혼선으로 모이면 다음 시안을 만들기 전에 역할 합의로 바꾸세요. 소요시간 상한을 넘기면 결과물의 범위를 줄이세요."
-        : "담당·마감·완료 기준에 합의했는데도 같은 수정이 반복되면 문서를 더 늘리지 말고 작은 시안 하나로 기대한 결과를 확인하세요.",
-      monthlyActions: {
-        실험: outputFirst ? "시안 하나를 이용자 한 명에게 보여주고 수정점 두 가지를 받는 단계를 배치해보세요." : "진행 중인 일 한 건의 담당·마감·완료 기준을 한 장으로 정리해 관계자와 합의해보세요.",
-        유지: outputFirst ? "받은 수정점 중 하나만 반영해 다시 보여주세요. 아직 피드백이 없다면 시안 하나의 반응을 먼저 받으세요." : "합의한 완료 기준으로 업무 한 건을 마무리해보세요. 아직 합의하지 못했다면 그 확인부터 시작하세요.",
-        점검: outputFirst ? "최근 결과물 한 건의 투입시간과 수정 요청을 적어보세요. 결과물이 없다면 시안의 시간 상한과 보여줄 사람부터 정하세요." : "최근 수정 요청 한 건이 역할 혼선 때문이었는지 살펴보세요. 기록이 없다면 현재 업무 한 건의 담당자부터 확인하세요.",
-      },
-    },
-    money: {
-      headline: moneyBalanced ? "선택한 이유와 실제 지출을 함께 비교하기" : moneyFirst ? "눈에 보이는 결과와 실제 남는 자원 구분하기" : "검토한 내용을 작은 기록 습관으로 옮기기",
-      scene: moneyBalanced ? "결정 전에 적은 이유가 지출 뒤에도 납득되는지, 예상 비용과 함께 한 기록에서 확인해보세요." : moneyFirst ? "성과가 커 보였던 선택 하나를 돌아보며 그 뒤에 들어간 시간과 지출까지 함께 적어보세요." : "정보를 모으는 동안 정작 내 지출과 약속이 어떻게 바뀌었는지 놓친 적이 있는지 살펴보세요.",
-      evidence: `자원·결과(재성 ${facts.wealthStarCount}개)와 검토·정보(인성 ${facts.resourceStarCount}개)를 비교한 해석입니다. ${moneyBalanced ? "동점이므로 어느 쪽도 우선 성향으로 정하지 않고, 선택 이유와 비용을 함께 확인하는 과제를 골랐습니다." : moneyFirst ? "재성이 더 많아 예상한 결과에서 빠진 비용을 먼저 확인하는 과제를 골랐습니다." : "인성이 더 많아 생각한 내용과 실제 거래 기록의 차이를 먼저 확인하는 과제를 골랐습니다."} 자산이나 부채, 투자 성향을 측정한 값은 아닙니다.`,
-      experiment: moneyBalanced ? "예정된 지출 한 건의 선택 이유와 예상 비용을 먼저 적고, 지출 뒤 실제 비용과 만족한 점을 같은 줄에 기록하세요. 새 지출을 만들 필요는 없습니다." : moneyFirst ? "최근 지출 세 건의 예상 비용과 실제 비용을 나란히 적고 차이가 난 이유를 한 줄씩 남기세요." : "15분만 시간을 내서 최근 거래 내역을 확인하고 기억과 달랐던 항목 세 개에 표시하세요. 새 금융상품을 고르는 과제로 바꾸지 마세요.",
-      checkpoint: "예상과 기록의 차이가 줄었는지 확인하세요. 월별 해석은 투자·대출·매매 시점이나 수익을 알려주지 않습니다.",
-      changeWhen: moneyBalanced
-        ? "비용은 예상과 맞지만 만족하지 못했다면 다음 선택의 이유부터 바꿔보세요. 이유는 납득되는데 예상 비용을 넘겼다면 빠뜨린 비용 항목부터 확인하세요."
-        : moneyFirst ? "예상 비용을 반복해서 넘기면 기록 건수를 늘리기보다 결정 전에 빠뜨린 비용 항목을 확인하는 방식으로 바꾸세요."
-          : "기억과 내역의 차이가 반복되면 확인하는 날을 더 자주 정해보세요. 차이가 줄었다면 같은 주기로 이어가며 기록 항목을 늘리지 않아도 됩니다.",
-      monthlyActions: {
-        실험: moneyBalanced ? "이미 예정된 지출 한 건에 선택 이유와 예상 비용을 함께 적고 실제 결과와 비교해보세요." : moneyFirst ? "이미 예정된 지출의 예상 비용과 실제 비용을 나란히 적는 방식을 써보세요. 새 지출을 만들 필요는 없습니다." : "15분을 정해 최근 거래 내역에서 기억과 달랐던 항목을 찾아보세요.",
-        유지: moneyBalanced ? "선택 이유와 비용이 모두 납득됐던 기록 방식을 이어가세요. 아직 기록이 없다면 최근 지출 한 건부터 비교하세요." : moneyFirst ? "예상과 실제 비용을 빠짐없이 적을 수 있었던 방식을 이어가세요. 기록이 없다면 최근 지출 한 건부터 시작하세요." : "거래 기억과 내역을 비교했던 주기를 이어가세요. 기록이 없다면 주 1회 확인할 시간을 먼저 정하세요.",
-        점검: moneyBalanced ? "지난 지출 한 건에서 선택 이유에 대한 아쉬움과 예상 밖 비용을 나눠 적어보세요." : moneyFirst ? "최근 지출에서 예상에 빠졌던 비용이 있는지 확인하세요. 기록이 없다면 영수증이나 거래 내역 한 건부터 보세요." : "최근 거래 기억과 내역이 달랐던 항목을 돌아보세요. 비교 기록이 없다면 한 건부터 대조하세요.",
-      },
-    },
-    wellbeing: {
-      headline: active ? "바쁜 날에도 남길 여백 정하기" : "생각을 멈추고 생활 리듬 확인하기",
-      scene: active ? "약속과 할 일이 몰렸던 날, 쉬는 시간을 먼저 지웠는지 돌아보세요." : "충분히 쉬었다고 생각한 날에도 머릿속 일이 계속 이어졌는지 기록해보세요.",
-      evidence: `활동·책임 신호 ${facts.outputStarCount + facts.officerStarCount}개와 검토·정리 신호 ${facts.resourceStarCount}개를 생활 습관의 질문으로 바꿨습니다. 건강 상태나 질병을 추론하지 않습니다.`,
-      experiment: active ? "일정 사이에 비워둘 10분을 한 칸 정하고 실제로 지킨 날만 표시하세요. 못 지킨 날에는 밀려온 일정 하나를 적으세요." : "하루 끝에 5분만 써서 머릿속에 남은 일과 내일로 넘길 일을 나눠 적으세요. 기록 뒤 새 할 일을 더하지 않아도 됩니다.",
-      checkpoint: "전후 일주일의 주관적인 부담을 비교하세요. 차이가 없으면 시간을 바꿔보세요. 몸의 증상은 이 리포트로 판단하지 마세요.",
-      changeWhen: "정한 시간을 반복해서 못 지켰다면 시간을 더 확보하려고 밀어붙이기보다 배치할 시각을 바꿔보세요. 부담이 커지면 기록할 항목을 하나로 줄이세요.",
-      monthlyActions: {
-        실험: active ? "일정 사이에 비워둘 10분 한 칸을 정하고 실제 지킨 날을 표시해보세요." : "하루 끝 5분 동안 남은 일과 내일로 넘길 일을 나눠 적어보세요.",
-        유지: "부담이 줄었던 시간 배치를 이어가세요. 아직 확인한 경험이 없다면 하루만 기록해 시작하세요.",
-        점검: "쉬거나 정리할 시간이 밀린 날의 일정 하나를 살펴보세요. 기록이 없다면 어제의 일정부터 되짚어보세요.",
-      },
-    },
-  };
-  const template = templates[key];
-  const stages = annual.months.map((month) => ({ label: month.label, emphasis: month.comparisons.find((item) => item.domain === key)!.emphasis }));
-  const changes = stages.filter((stage, index) => index === 0 || stage.emphasis !== stages[index - 1].emphasis);
-  return {
-    key, label: ({ love_relationship: "연애·관계", money: "재물", work: "직장·일", wellbeing: "생활 리듬" })[key], headline: template.headline,
-    paragraphs: [template.scene, template.evidence],
-    experiment: template.experiment,
-    checkpoint: template.checkpoint,
-    changeWhen: template.changeWhen,
-    monthlyActions: template.monthlyActions,
-    timing: changes.length > 1
-      ? `${changes.slice(0, 3).map((stage) => `${stage.label} ${stage.emphasis}`).join(" → ")} 순으로 제안이 바뀝니다. 월별 표에서 이 분야의 흐름을 비교하세요. 달보다 실제 일정과 기록을 우선하세요.`
-      : "12개월의 차이가 뚜렷하지 않아 특정 달을 따로 권하지 않습니다. 실제 일정에 맞춰 위의 행동을 시도해보세요.",
-  };
+export function buildPremiumPeriods(annual: SajuAnnualOutlook): PremiumPeriod[] {
+  const periods: PremiumPeriod[] = [];
+  const signatures: string[] = [];
+  for (const month of annual.months) {
+    const signals = month.comparisons[0].signals;
+    const groups = [...new Set(signals?.month ?? [])].sort() as TenGodGroup[];
+    const year = [...new Set(signals?.year ?? [])].sort() as TenGodGroup[];
+    const signature = JSON.stringify([groups, year]);
+    const prior = periods.at(-1);
+    if (prior && signatures.at(-1) === signature) {
+      prior.months.push(month.label);
+      prior.label = `${prior.months[0]} ~ ${month.label}`;
+      continue;
+    }
+    const domains = (["love_relationship", "money", "work"] as const).flatMap(key => {
+      const texts = groups.flatMap(group => MONTH_DOMAINS[key][group] ? [MONTH_DOMAINS[key][group]!] : []);
+      return texts.length ? [{ key, label: ({ love_relationship: "연애·관계", money: "재물", work: "직장·일" })[key], text: texts.join(" ") }] : [];
+    });
+    periods.push({
+      label: month.label, months: [month.label],
+      headline: groups.length ? groups.map(g => MONTH_THEME[g].label).join(" · ") : "뚜렷한 월별 주제를 구분하기 어려운 달",
+      reading: groups.map(g => MONTH_THEME[g].reading).join(" "),
+      basis: groups.length ? `태어난 날의 기운과 이달의 기운을 견주면 ${groups.map(g => `‘${GROUP_LABEL[g]}’`).join(", ")}의 의미가 나타납니다.${year.length ? ` 이 해 전체에는 ${year.map(g => `‘${GROUP_LABEL[g]}’`).join(", ")}의 의미가 배경으로 놓입니다.` : ""}` : "계산된 월의 해석 요소가 없어 이 기간의 분야별 의미를 덧붙이지 않았습니다.",
+      domains,
+    });
+    signatures.push(signature);
+  }
+  return periods;
 }
 
 export function buildPremiumReport(input: {
   facts: SajuFacts;
-  // Only the compact recap consumes free copy; the plan has its own inputs.
-  freeReport: FreeSajuReport;
+  freeReport?: FreeSajuReport;
   focus?: SajuFocus;
   referenceDate?: Date;
   leftPalm?: PalmFacts | null;
@@ -184,23 +239,21 @@ export function buildPremiumReport(input: {
 }): PremiumReport {
   const { facts } = input;
   const annual = buildSajuAnnualOutlook(facts, input.referenceDate);
-  const { first, second, basis, places } = profile(facts);
-  const domains = (["love_relationship", "money", "work", "wellbeing"] as const)
-    .map((key) => domainSection(key, facts, annual));
-  const palm = input.leftPalm && input.rightPalm && input.dominantHand
-    ? buildPalmBilateralReading(input.leftPalm, input.rightPalm, input.dominantHand) : null;
+  const overall = overallReading(facts);
+  const periods = buildPremiumPeriods(annual);
+  const first = periods[0];
+  const change = periods.find(p => p.headline !== first.headline);
+  const background = facts.hasTimeInput && facts.currentDaeun
+    ? [...new Set([TEN_GOD_GROUP[facts.currentDaeun.stemTenGod], TEN_GOD_GROUP[facts.currentDaeun.branchTenGod]].filter(Boolean))] : [];
   return {
-    title: "프리미엄 통합 연간 리포트", focus: "overall",
-    summary: `${annual.startLabel}부터 ${annual.endLabel}까지. ‘${first.meaning}’에 ‘${second.meaning}’를 더하는 방향으로 연애·재물·직장을 함께 살펴봅니다.`,
-    freeSummary: input.freeReport.snapshot?.text.split(/(?<=[.!?])\s+/)[0] ?? "",
-    corePatterns: [
-      `‘${first.meaning}’가 먼저 떠오를 때, ‘${second.meaning}’도 함께 해보세요. ${basis}라는 구성을 생활에 대입해본 해석입니다.`,
-      `${places || "입력된 원국"} 자리에 ${first.key}${iGa(first.key)} 보입니다. 이 영역에서 ${first.risk}${iGa(first.risk)} 있었는지 최근 사례 한 건을 적어보세요. 해당 경험이 없다면 이 가설은 내려놓아도 됩니다.`,
-      facts.dayStrengthReliable
-        ? `${facts.dayStrength === "weak" ? "한꺼번에 벌이는 일의 수를 줄이는" : facts.dayStrength === "strong" ? "혼자 정하기 전에 외부 반응을 받는" : "실행과 검토에 쓸 시간을 나누는"} 방식을 시험해보세요. 강약 분류(${facts.dayStrengthGrade})를 생활 방식에 연결했으며 체력이나 정신 상태를 뜻하지 않습니다.`
-        : "출생시간이 없어 강약 분류와 시주를 이용한 세밀한 가설은 생략했습니다. 세 기둥의 해석을 실제 경험과 비교하며 실제 상황에 맞는 부분만 참고하세요.",
-    ],
-    balance: balanceItems(facts), domains, annual, palm,
-    note: "전통적 해석을 생활에 적용한 참고 리포트입니다. 미래·수익·건강을 보장하지 않으며 실제 상황과 판단을 우선해주세요.",
+    version: PREMIUM_REPORT_VERSION,
+    title: "프리미엄 통합 연간 리포트",
+    summary: `${overall.headline}으로 읽힙니다. ${annual.startLabel}부터 ${annual.endLabel}까지, 관계와 돈, 일에서 이 성향이 어떻게 드러날지 함께 읽습니다.`,
+    overall, domains: domainReadings(facts), annual, periods,
+    annualIntroduction: change
+      ? `${first.label}에는 ‘${first.headline}’이 첫 주제입니다. 이후 ${change.label}에는 ‘${change.headline}’으로 읽는 초점이 달라집니다. 아래에서는 같은 해석이 이어지는 달을 묶어 한 해의 변화를 살펴봅니다.`
+      : "이 기간에는 월별로 뚜렷하게 나뉘는 주제가 적습니다. 차이가 없는 달을 억지로 다르게 해석하지 않고 같은 흐름으로 묶었습니다.",
+    annualBackground: background.length ? `현재의 큰 흐름에는 ${background.map(g => `‘${GROUP_LABEL[g]}’`).join(", ")}의 의미가 놓여 있습니다. 이를 한 해의 배경으로 두고, 달마다 달라지는 주제를 따로 살펴봅니다.` : null,
+    note: `전통적 해석을 바탕으로 한 자기이해용 풀이이며 미래·수익·건강을 보장하지 않습니다. 월별 흐름은 매월 중순을 기준으로 읽어 절기 경계나 기간 중 큰 운의 전환을 정밀하게 반영하지 않습니다.${facts.hasTimeInput ? "" : " 출생시간이 없어 그 정보에 따라 달라지는 세부 성향과 큰 운의 배경은 생략했습니다."}`,
   };
 }

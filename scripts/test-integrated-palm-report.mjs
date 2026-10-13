@@ -52,26 +52,40 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const requests = [], errors = [];
   await context.route("**/*", route => { const u = new URL(route.request().url()); if (u.origin !== BASE) return route.abort(); if (u.pathname.startsWith("/api/")) { requests.push(u.pathname); return route.abort(); } return route.continue(); });
-  await context.addInitScript(({ normal, birthFixture }) => {
+  await context.addInitScript(({ normal, birthFixture, prior }) => {
     const key = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender].join(":") + ":palm";
-    if (!sessionStorage.getItem(key)) sessionStorage.setItem(key, JSON.stringify({ stage: "result", palmFacts: normal.palmFacts, leftPalmFacts: normal.leftPalmFacts, rightPalmFacts: normal.rightPalmFacts, dominantHand: "right", bilateralReading: { summary: "LEGACY_REPEATED_COPY", items: [] }, futurePalmTimeline: { windows: [{ combined: "LEGACY_FUTURE" }] }, finalReport: normal.freeReport.report, tripleCompare: normal.tripleCompare, verdict: normal.verdict }));
-  }, { normal, birthFixture });
+    if (!sessionStorage.getItem(key)) sessionStorage.setItem(key, JSON.stringify({ stage: "result", palmFacts: normal.palmFacts, leftPalmFacts: normal.leftPalmFacts, rightPalmFacts: normal.rightPalmFacts, dominantHand: "right", bilateralReading: prior, finalReport: normal.freeReport.report, tripleCompare: normal.tripleCompare, verdict: normal.verdict }));
+  }, { normal, birthFixture, prior });
   const page = await context.newPage(); page.on("pageerror", e => errors.push(e.message));
   const url = BASE + "/diagnosis/palm?" + new URLSearchParams(birthFixture);
   await page.goto(url);
   await page.getByText("양손 분석 완료", { exact: true }).waitFor();
+  const storageKey = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender, "palm"].join(":");
+  const saved = () => page.evaluate(key => JSON.parse(sessionStorage.getItem(key)), storageKey);
+  await page.getByText("저장 당시 손금 문장 보기", { exact: true }).click();
+  assert.deepEqual((await saved()).bilateralReading, prior, "re-entry preserves the exact old narrative");
+  assert.ok((await page.locator("body").innerText()).includes(prior.summary));
+  await page.getByRole("button", { name: "현재 형식으로 손금 정리", exact: true }).click();
+  await page.waitForFunction(key => JSON.parse(sessionStorage.getItem(key)).bilateralReading?.version, storageKey);
+  assert.deepEqual((await saved()).previousBilateralReading, prior);
+  assert.deepEqual((await saved()).bilateralReading, next);
   const text = await page.locator("body").innerText();
-  assert.ok(!text.includes("LEGACY_") && !text.includes("유파마다") && !text.includes("과거는 제외"));
   for (const item of next.items) assert.equal(text.split(item.text).length - 1, 1);
   await page.getByText("양손에서 보이는 특징과 해석", { exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: evidence + "/palm-observations-restored.png" });
   await page.reload(); await page.getByText("양손 분석 완료", { exact: true }).waitFor();
+  assert.deepEqual((await saved()).bilateralReading, next);
+  await page.getByRole("button", { name: "다른 손금 저장본 보기", exact: true }).click();
+  await page.getByRole("button", { name: "현재 형식으로 손금 정리", exact: true }).waitFor();
+  assert.deepEqual((await saved()).bilateralReading, prior);
+  await page.reload(); await page.getByRole("button", { name: "현재 형식으로 손금 정리", exact: true }).waitFor();
+  assert.deepEqual((await saved()).bilateralReading, prior, "selected older edition also survives reload");
   assert.deepEqual(requests, [], "restoration must not trigger a generation or analytics call");
   await page.goto(url + "&mbti=ENTJ");
   await page.getByRole("alert").filter({ hasText: "성향 정보가 달라졌어요" }).waitFor();
   assert.equal(await page.getByText("양손 분석 완료", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "촬영 유지하고 리포트 다시 받기" }).waitFor();
   assert.deepEqual(errors, []);
-  console.log("PASS legacy session re-entry regenerates new copy from observed facts, no duplicate/stale generation; changed personality requires retry with hands retained");
+  console.log("PASS exact old palm snapshot preserved; explicit migration retains previous edition; switching/reload never silently regenerates; changed personality retains hands for retry");
   fs.writeFileSync(evidence + "/palm-duplication.json", JSON.stringify({ synthetic: true, previousDuplicateParagraphs: [prior.items[0].text, prior.items[1].text], newReading: next, partialReading: partial, restoredWithoutRequests: true, errors }, null, 2));
 } finally { await browser.close(); }

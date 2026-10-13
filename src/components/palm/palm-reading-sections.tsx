@@ -61,7 +61,7 @@ export function PalmBilateralSection({ reading }: { reading: PalmBilateralReadin
           {reading.items.map((item) => (
             <div key={item.title} className="rounded-xl bg-accent p-4">
               <h3 className="text-sm font-semibold text-(--gold)">{item.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-(--gold)"><strong>사진에서 보이는 특징: </strong>{item.observation}</p>
+              {item.observation && <p className="mt-2 text-sm leading-6 text-(--gold)"><strong>사진에서 보이는 특징: </strong>{item.observation}</p>}
               <p className="mt-2 text-base leading-7 text-muted-foreground"><strong>전통 해석: </strong>{item.text}</p>
             </div>
           ))}

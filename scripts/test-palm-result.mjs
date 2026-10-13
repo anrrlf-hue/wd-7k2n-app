@@ -3,7 +3,8 @@
 // 3개 후보 중 하나이고 동일 입력에서 결정론적인지, 손금 스킵/성향 없음
 // 등 데이터가 부분적으로 빠진 경우에도 안전하게 동작하는지.
 
-const BASE = "http://localhost:3000";
+const BASE = process.env.TEST_BASE_URL || "http://localhost:3000";
+if (!/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(BASE)) throw new Error("local test server required");
 
 const BIRTH = { year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남" };
 
@@ -83,9 +84,9 @@ async function main() {
     if (!verdictOk) allPass = false;
 
     // 나이 오류 수정 확인: 대운 시작 나이(ageRange)와 실제 현재 나이(currentAge)가
-    // 둘 다 명시적으로 구분되어 등장해야 한다 — "지금 만 OO세, XX세부터 이어지는".
-    const ageOk = /지금 만 \d+세, \d+세부터 이어지는/.test(json.verdict?.text ?? "");
-    console.log(`실제 현재 나이 표기(지금 만 OO세, XX세부터): ${ageOk ? "PASS" : "FAIL"}`);
+    // 둘 다 명시적으로 구분되어야 한다. 기존 원문의 불확실성 표현 "전후"도 허용한다.
+    const ageOk = /지금 만 \d+세, \d+세(?: 전후)?부터 이어지는/.test(json.verdict?.text ?? "");
+    console.log(`실제 현재 나이와 대운 시작 시점 구분: ${ageOk ? "PASS" : "FAIL"}`);
     if (!ageOk) allPass = false;
 
     const idOk = VALID_IDS.has(json.primaryCandidateId);

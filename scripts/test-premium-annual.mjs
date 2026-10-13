@@ -8,62 +8,69 @@ import { renderToStaticMarkup } from "react-dom/server";
 const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
 const { enrichSajuFacts } = await import("../src/lib/oh-my-saju-adapter.ts");
 const { buildFreeSajuReport } = await import("../src/lib/free-report-mock.ts");
-const { buildFocusedSajuReport } = await import("../src/lib/free-saju-focus-report.ts");
 const { buildPremiumReport } = await import("../src/lib/premium-report.ts");
-const { isRenderablePremiumReport } = await import("../src/lib/premium-report-validation.ts");
+const { isRenderablePremiumReport, isStoredPremiumReport } = await import("../src/lib/premium-report-validation.ts");
 const { PremiumReportView } = await import("../src/components/premium/premium-report-view.tsx");
-const oldSource = execFileSync("git", ["show", "c3392b1:src/lib/premium-report.ts"], { encoding: "utf8" });
-const js = ts.transpileModule(oldSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
-const { buildPremiumReport: previous } = await import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
+async function previous(path) {
+  const source = execFileSync("git", ["show", `ae7e854:${path}`], { encoding: "utf8" });
+  let js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
+  js = js.replace('"@fullstackfamily/manseryeok"', JSON.stringify(import.meta.resolve("@fullstackfamily/manseryeok")));
+  return import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
+}
+const { buildPremiumReport: oldPremium } = await previous("src/lib/premium-report.ts");
+const { buildSajuAnnualOutlook: oldAnnual } = await previous("src/lib/saju-timing.ts");
 const births = [
   { year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남" },
   { year: 1988, month: 12, day: 2, hour: 6, minute: 15, gender: "여" },
   { year: 2001, month: 2, day: 3, hour: null, minute: null, gender: "여" },
 ];
-const date = new Date("2026-10-13T00:00:00Z");
-const prose = v => typeof v === "string" ? [v] : v && typeof v === "object" ? Object.values(v).flatMap(prose) : [];
-const out = ["# 무료 / 통합 프리미엄 비교 — 2026-10-13", "합성 입력 3개. 실제 계산·문장 생성·React 렌더 사용. 외부 API 없음. 중복은 무료/분야 풀이의 40자 이상 문자열이 프리미엄에 그대로 포함되는 개수이며 의미적 차별성이나 예측 정확도 점수가 아닙니다."];
+const referenceDate = new Date("2026-10-13T00:00:00Z");
 const reports = [];
+const out = ["# 해설 중심 리포트 실제 비교 — 2026-10 개정판", "합성 입력 3개, 실제 계산과 React 렌더. 외부 모델/API 없음. 수정 전은 ae7e854. 같은 입력·기준월·풀이판에서 결정론적이며, 같은 해석 요소는 같은 문장을 낼 수 있습니다. 유료 가치·예측 정확도 검증이 아닙니다."];
+const prose = value => typeof value === "string" ? [value] : value && typeof value === "object" ? Object.values(value).flatMap(prose) : [];
 for (const [i, birth] of births.entries()) {
   const shallow = computeSajuFacts(birth);
   const facts = birth.hour === null ? shallow : enrichSajuFacts(shallow, birth);
   const freeReport = buildFreeSajuReport(facts, { mbti: null, check: null });
-  const freeDomains = ["love_relationship", "money", "work", "wellbeing"].map(focus => buildFocusedSajuReport(facts, freeReport, focus));
-  const input = { facts, freeReport, referenceDate: date };
+  const input = { facts, freeReport, referenceDate };
+  const before = oldPremium(input);
   const report = buildPremiumReport(input);
   reports.push(report);
-  assert.equal(isRenderablePremiumReport(report), true);
-  assert.equal(isRenderablePremiumReport({ ...report, annual: null }), false);
-  assert.equal(isRenderablePremiumReport({ ...report, domains: [] }), false);
-  assert.equal(isRenderablePremiumReport({ ...report, annual: { ...report.annual, months: report.annual.months.slice(1) } }), false);
+  assert.ok(isRenderablePremiumReport(report));
+  assert.ok(isStoredPremiumReport(before), "old saved report still has a reader");
+  assert.ok(!isRenderablePremiumReport(before));
+  assert.ok(!isRenderablePremiumReport({ ...report, periods: [] }));
+  const missingMonth = structuredClone(report); missingMonth.periods[0].months.shift();
+  assert.ok(!isRenderablePremiumReport(missingMonth));
+  assert.deepEqual(buildPremiumReport(input), report, "stable input/date/edition");
+  for (const focus of ["overall", "love_relationship", "money", "work", "wellbeing"]) assert.deepEqual(buildPremiumReport({ ...input, focus }), report);
+  const calculation = structuredClone(report.annual);
+  calculation.months.forEach(m => m.comparisons.forEach(c => delete c.signals));
+  assert.deepEqual(calculation, oldAnnual(facts, referenceDate), "new narrative must not alter annual scores, stages, dates, or precision");
+  assert.deepEqual(report.periods.flatMap(p => p.months), report.annual.months.map(m => m.label));
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report }));
-  const body = prose({ ...report, freeSummary: "" }).join("\n");
-  const overlap = [...new Set(prose([freeReport, freeDomains]).filter(s => s.length >= 40))].filter(s => body.includes(s));
-  assert.equal(overlap.length, 0);
-  for (const focus of ["overall", "love_relationship", "money", "work", "wellbeing"]) assert.deepEqual(buildPremiumReport({ ...input, focus }), report, "legacy focus cannot omit or reprioritize fields");
-  assert.deepEqual(report.annual, previous(input).annual, "preserve annual calculation, precision and every month's evidence");
-  assert.equal(report.annual.months.length, 12);
-  assert.equal(new Set(report.domains.map(d => d.experiment)).size, 4);
-  assert.doesNotMatch(html, /2주|선택한 분야|분야 선택|유파마다|과거는 제외/);
-  assert.ok(!html.includes(report.freeSummary), "do not repeat the free recap");
-  const anchors = ['id="premium-overall"', 'id="premium-domain-love_relationship"', 'id="premium-domain-money"', 'id="premium-domain-work"', 'id="premium-annual"'];
-  const positions = anchors.map(s => html.indexOf(s));
-  assert.ok(positions.every((p, j) => p >= 0 && (!j || p > positions[j - 1])), "integrated reading order");
-  assert.equal((html.match(/<tr/g) || []).length, 13);
-  assert.equal((html.match(/<td/g) || []).length, 48);
-  for (const domain of report.domains.filter(d => d.key !== "wellbeing")) {
-    assert.ok(html.includes(domain.paragraphs[1]));
-    assert.ok(html.includes(domain.experiment));
-    assert.equal(html.split(domain.changeWhen).length - 1, 1);
+  assert.doesNotMatch(html, /비겁|관성|인성|식상|재성|신강|태약|과제|가설|실험|비교 방향|2주|기록하세요|완료 기준/);
+  assert.equal(html.split(report.note).length - 1, 1, "uncertainty notice in one place");
+  assert.ok(!html.includes("<table"), "annual content cannot be just a stage table");
+  for (const period of report.periods) assert.ok(html.includes(period.basis));
+  for (const d of report.domains) {
+    assert.ok(html.indexOf(d.paragraphs[0]) < html.indexOf(d.tip));
+    assert.ok(d.paragraphs.length >= 2 && d.opportunity && d.caution);
   }
-  if (!facts.hasTimeInput) assert.equal(report.annual.precision, "broad");
-  out.push(`\n## 샘플 ${i + 1}: ${JSON.stringify(birth)}`, `무료 긴 문장 그대로 재사용: ${overlap.length}개.`,
-    `무료 요약: ${freeReport.snapshot.text}`, `무료 직장: ${freeDomains[2].sections[0].paragraph.text}`,
-    `프리미엄 요약: ${report.summary}`, `프리미엄 총운: ${report.corePatterns.join(" ")}`);
-  for (const d of report.domains.filter(d => d.key !== "wellbeing")) out.push(`### ${d.label}`, d.headline, ...d.paragraphs, `행동 예시: ${d.experiment}`, `상황이 달라졌을 때: ${d.changeWhen}`);
-  out.push("|월|연애·관계|재물|직장·일|생활 리듬|", "|---|---|---|---|---|", ...report.annual.months.map(m => `|${m.label}|${report.domains.map(d => m.comparisons.find(c => c.domain === d.key).emphasis).join("|")}|`));
-  console.log(`PASS sample ${i + 1}: integrated order, all legacy focuses equal, zero verbatim free overlap, unchanged 12x4 calculation`);
+  const copy = prose({ summary:report.summary, overall:report.overall, domains:report.domains, periods:report.periods }).join("\n");
+  const overlap = [...new Set(prose(freeReport).filter(s => s.length >= 40))].filter(s => copy.includes(s));
+  assert.equal(overlap.length, 0);
+  if (!facts.hasTimeInput) { assert.equal(report.annualBackground, null); assert.ok(report.note.includes("출생시간")); }
+  out.push(`## 샘플 ${i + 1} · ${JSON.stringify(birth)}`, `무료 원문: ${freeReport.snapshot.text}`, `수정 전 총운: ${before.corePatterns.join(" ")}`, `수정 전 재물: ${before.domains.find(d => d.key === "money").experiment}`, `수정 전 직장: ${before.domains.find(d => d.key === "work").experiment}`, `### 새 요약\n${report.summary}`);
+  for (const [name, reading] of [["총운", report.overall], ...report.domains.map(d => [d.label, d])]) out.push(`### ${name}\n${reading.headline}`, ...reading.paragraphs, `기회: ${reading.opportunity}`, `주의: ${reading.caution}`, `접힌 쉬운 근거: ${reading.basis}`, `선택적 짧은 참고: ${reading.tip}`);
+  out.push("### 연간 흐름", report.annualIntroduction, report.annualBackground || "시간 미상으로 큰 운 배경 생략");
+  for (const period of report.periods) out.push(`**${period.label} · ${period.headline}**`, period.reading, `이 시기로 읽은 이유: ${period.basis}`, ...period.domains.map(d => `${d.label}: ${d.text}`));
+  out.push(report.note, `무료의 40자 이상 문자열 동일 재사용 ${overlap.length}개. 의미적 차별성 점수는 아님.`);
+  console.log(`PASS sample ${i+1}: narrative before optional tips, plain rationale, ${report.periods.length} explained periods cover 12 months, unchanged calculation, stable edition, no verbatim free overlap`);
 }
-assert.notEqual(reports[0].summary, reports[1].summary);
-assert.notDeepEqual(reports[0].domains.map(d => d.paragraphs), reports[1].domains.map(d => d.paragraphs));
+assert.notDeepEqual(reports[0].domains, reports[1].domains);
+// Same monthly structure stays the same; don't fabricate distinctions between
+// two different births whose annual signals coincide.
+assert.deepEqual(reports[0].periods, reports[1].periods);
+assert.notDeepEqual(reports[1].periods, reports[2].periods);
 if (process.env.PREMIUM_SAMPLE_OUTPUT) fs.writeFileSync(process.env.PREMIUM_SAMPLE_OUTPUT, out.join("\n\n") + "\n");
