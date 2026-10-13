@@ -159,8 +159,8 @@ assert(resultSource.includes("내 사주를 이어서 보면"), "broad overall S
 assert(resultSource.includes("관계에서는 이렇게 나타나요") || resultSource.includes("buildFreeConsultationSections"), "relationship consultation section missing from free result");
 assert(resultSource.includes("에너지를 쓰고 회복하는 방식도 보입니다") || resultSource.includes("buildFreeConsultationSections"), "life rhythm consultation section missing from free result");
 assert(!resultSource.includes("나의 재물사주"), "money-only free-result heading remains");
-assert(resultSource.includes("다음은 손금으로 이어봅니다"), "free Saju must lead to palm before detailed topics");
-assert(resultSource.includes("손금까지 본 뒤 연애·관계"), "post-Saju sequence must explain detail topics after palm");
+assert(resultSource.includes("다음은 손금으로 이어봅니다"), "free Saju must offer palm before the integrated report");
+assert(resultSource.includes("통합 연간 리포트와 공유") && resultSource.includes("손금 없이 결과 마무리하기"), "post-Saju sequence must explain the integrated report and explicit palm skip");
 assert(!resultSource.includes("내 질문 답과 시기 보기"), "question CTA must not interrupt Saju -> palm sequence");
 
 const homeSource = fs.readFileSync(path.join(root, "src/app/page.tsx"), "utf8");
@@ -184,8 +184,8 @@ assert(
 assert(diagnosisSource.includes('setFocus("overall")') && diagnosisSource.includes('setStep("date")'), "free Saju must start broad without an overall chooser");
 assert(focusStepSource.includes("SAJU_DETAIL_FOCUS_VALUES"), "detail chooser must use only four detailed topics");
 assert(!focusStepSource.includes("SAJU_FOCUS_VALUES.map"), "overall must not remain in the visible detail choices");
-assert(postReadingSource.includes("이제 더 깊게 볼 차례입니다"), "post-palm detail chooser missing");
-assert(postReadingSource.includes("연애·관계") || postReadingSource.includes("SAJU_FOCUS_LABELS"), "relationship detail path missing");
+assert(postReadingSource.includes("<PremiumReportView") && !postReadingSource.includes("SAJU_DETAIL_FOCUS_VALUES.map"), "post-palm flow must show the integrated report without a detail chooser");
+assert(postReadingSource.includes("총운부터 연애·재물·직장까지"), "integrated report must explain the included reading domains");
 assert(postReadingSource.includes("PersonCompareCard"), "person compare must move after the personal reading");
 assert(postReadingSource.includes("프리미엄 보기"), "premium report CTA missing");
 assert(postReadingSource.includes("/api/premium-report"), "premium report API handoff missing");
@@ -262,5 +262,5 @@ assert(!reportSectionSource.includes("왜 이렇게 봤나요"), "why-explanatio
 assert(!reportSectionSource.includes("어떻게 할까요"), "action-guidance toggle remains in free report");
 assert(resultSource.includes("다른 영역은 한눈에"), "focused reading should summarize other areas instead of repeating full sections");
 
-console.log("PASS FREE SAJU V10: Saju-first + optional palm + detail topics + premium annual report");
+console.log("PASS FREE SAJU: Saju-first + optional palm/explicit skip + integrated premium annual report");
 hooks.deregister?.();
