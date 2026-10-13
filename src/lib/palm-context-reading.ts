@@ -6,7 +6,33 @@ const LINES = { headLine: "두뇌선", heartLine: "감정선", lifeLine: "생명
 type LineKey = keyof typeof LINES;
 function describe(line: OnnxLineDetail | undefined): string {
   if (!line?.detected) return "판독하지 못함";
-  return [line.length && `길이 ${line.length}`, line.curve, line.depthStrength && `사진에서의 선명도 ${line.depthStrength}`].filter(Boolean).join(" · ") || "선 후보만 확인";
+  const source = line.sourceVariant === "enhanced" ? "보정 영상 검출" : line.sourceVariant === "raw" ? "원본 영상 검출" : "검출";
+  const segmentLength = line.length && line.attributeSupport?.length !== "not_supported" ? `검출 구간 ${line.length}` : null;
+  const signal = line.depthStrength && line.attributeSupport?.depth !== "not_supported" ? `마스크 신호 ${line.depthStrength}` : null;
+  return [source, segmentLength, line.curve, signal].filter(Boolean).join(" · ") || "선 후보만 확인";
+}
+
+const LINE_LOCATIONS = {
+  headLine: "손바닥 중앙을 가로지르는 두뇌선으로 부르는 자리",
+  heartLine: "손가락 아래쪽을 가로지르는 감정선으로 부르는 자리",
+  lifeLine: "엄지 밑을 감싸 손목 쪽으로 내려가는 생명선으로 부르는 자리",
+} as const;
+
+function sourcePhrase(line: OnnxLineDetail): string {
+  return line.sourceVariant === "enhanced" ? "보정 영상에서" : line.sourceVariant === "raw" ? "원본 영상에서" : "사진에서";
+}
+
+function lineNarrative(key: LineKey, line: OnnxLineDetail): string {
+  const curve = line.curve && line.attributeSupport?.curve !== "not_supported" ? line.curve : null;
+  const shape = curve ? `${curve}인 검출 구간` : "확인된 검출 구간";
+  const ending = "모델의 끝점은 검출 구간의 양끝을 나타내며, 손금 전체 경로와 실제 끝점은 확인하지 않았습니다.";
+  if (key === "heartLine") {
+    return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 마음을 표현하고 관계의 기대를 주고받는 방식과 연결해 봅니다. 예를 들어 약속이나 계획이 바뀔 때 상대의 사정과 내가 기대한 점을 함께 말하고, 둘 다 가능한 새 약속을 정하는 장면으로 옮겨볼 수 있습니다. 이 문장은 감정이나 성격을 확정하는 판단이 아니라 사진에서 확인된 모양을 생활 장면에 비춰보는 참고입니다. ${ending}`;
+  }
+  if (key === "headLine") {
+    return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생각을 정리하고 선택 조건을 세우는 방식과 연결해 봅니다. 예를 들어 목적은 유지한 채 비교할 조건을 먼저 정하고, 그 조건 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다. 이 문장은 판단 속도나 능력을 확정하는 말이 아니라 사진에서 확인된 모양을 생활 장면에 비춰보는 참고입니다. ${ending}`;
+  }
+  return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생활 기반과 활동 리듬을 살펴보는 자리로 연결해 봅니다. 예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다. 건강이나 수명, 체력의 좋고 나쁨을 판단하는 내용은 아닙니다. ${ending}`;
 }
 
 /** One composition from observed features, with traceable interpretation rules.
@@ -25,12 +51,14 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
     const facts = hand === "left" ? left : right;
     for (const key of Object.keys(LINES) as LineKey[]) {
       const line = facts.onnxLines?.[key];
-      for (const field of ["detected", "length", "curve", "depthStrength"] as const) {
-        plan.evidence.push({ id: `${hand}.${key}.${field}`, kind: "observed", source: `${hand}PalmFacts.onnxLines.${key}.${field}`, value: line?.[field] ?? null });
+      for (const field of ["detected", "length", "curve", "depthStrength", "sourceVariant", "rawDetected", "enhancedDetected", "endpointEvidence", "pathCompleteness", "attributeSupport"] as const) {
+        const rawValue = line?.[field];
+        const value = rawValue == null ? null : typeof rawValue === "object" ? JSON.stringify(rawValue) : rawValue;
+        plan.evidence.push({ id: `${hand}.${key}.${field}`, kind: "observed", source: `${hand}PalmFacts.onnxLines.${key}.${field}`, value });
       }
     }
   }
-  const refs = (key: LineKey) => (["left", "right"] as const).flatMap(hand => ["detected", "length", "curve", "depthStrength"].map(field => `${hand}.${key}.${field}`));
+  const refs = (key: LineKey) => (["left", "right"] as const).flatMap(hand => ["detected", "length", "curve", "depthStrength", "sourceVariant", "rawDetected", "enhancedDetected", "endpointEvidence", "pathCompleteness", "attributeSupport"].map(field => `${hand}.${key}.${field}`));
   const usableHead = head?.detected && head.curve;
   const usableHeart = heart?.detected && heart.curve;
   const curvedHead = head?.curve === "완만한 곡선";
@@ -56,21 +84,13 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
       plan.passages.push({ id: `${key}-unread`, kind: "observation", text: `${label}의 ${LINES[key]}을 충분히 읽지 못해 이 선의 해석은 보류합니다.`, evidenceIds: refs(key) });
       continue;
     }
-    if (!(usableHead && usableHeart) && line.curve && (key === "headLine" || key === "heartLine") && line.length !== "김" && line.length !== "짧음") {
-      const text = key === "headLine"
-        ? line.curve === "완만한 곡선" ? "확인된 두뇌선의 곡선은 생각을 한 답으로 고정하기보다 여러 가능성을 비교하는 모습으로 읽어볼 수 있습니다. 다른 선과의 조합은 확인하지 못해 사고와 감정이 함께 움직이는 방식까지 연결하지는 않습니다." : "확인된 두뇌선의 직선에 가까운 모양은 이유와 기준을 정리하며 판단하는 모습으로 읽어볼 수 있습니다. 이 관측만으로 마음을 표현하는 방식도 같다고 보지는 않습니다."
-        : line.curve === "완만한 곡선" ? "확인된 감정선의 곡선은 마음이 표정과 말의 반응에 실리는 모습으로 읽어볼 수 있습니다. 사고방식과의 조합은 확인하지 못했으므로 생각까지 같은 방식으로 움직인다고 연결하지는 않습니다." : "확인된 감정선의 직선에 가까운 모양은 애정을 꾸준한 행동과 약속에 담는 모습으로 읽어볼 수 있습니다. 이 선만으로 판단 방식이나 표현 능력을 정하지는 않습니다.";
-      plan.passages.push({ id: `${key}-standalone`, kind: "traditional", text, evidenceIds: refs(key) });
+    if (line?.detected) {
+      plan.passages.push({ id: `${key}-reading`, kind: "traditional", text: lineNarrative(key, line), evidenceIds: refs(key) });
     }
-    if (key === "headLine" && line.curve && (line.length === "김" || line.length === "짧음")) {
-      const lengthText = line.length === "김" ? "길게 이어진 형태는 한 가지 선택의 앞뒤 맥락까지 생각하는 이야기로 연결합니다." : line.length === "짧음" ? "짧게 읽힌 형태는 생각의 범위를 좁혀 눈앞의 문제부터 다루는 이야기로 연결합니다." : "";
-      plan.passages.push({ id: "head-length-curve", kind: "traditional", text: `${lengthText} ${line.curve === "완만한 곡선" ? "곡선 모양과 함께 보면, 정답을 하나로 고정하기보다 가능한 방법을 비교해보는 쪽에 해석의 무게가 있습니다." : "직선에 가까운 모양과 함께 보면, 떠오르는 생각을 일관된 기준으로 정리하는 쪽에 해석의 무게가 있습니다."}`, evidenceIds: refs(key) });
-    } else if (key === "heartLine" && line.curve && (line.length === "김" || line.length === "짧음")) {
-      const lengthText = line.length === "김" ? "길게 이어지는 형태는 관계에서 중요하게 여기는 기대를 쉽게 접지 않는 이야기로 읽습니다." : line.length === "짧음" ? "짧게 읽힌 형태는 마음을 넓게 드러내기보다 가까운 관계의 범위를 정해두는 이야기로 읽습니다." : "";
-      plan.passages.push({ id: "heart-length-curve", kind: "traditional", text: `${lengthText} ${line.curve === "완만한 곡선" ? "이 손에서는 곡선이라는 관측을 중심으로, 마음이 표정이나 말의 반응에 실리는 모습을 읽을 수 있습니다. 표현을 했다는 것과 상대가 같은 뜻으로 받아들였다는 것은 다를 수 있습니다." : "이 손에서는 직선에 가까운 관측을 중심으로, 애정을 꾸준한 행동과 약속에 담는 모습을 읽을 수 있습니다. 충분히 챙겼다고 느껴도 상대는 마음을 말로 듣고 싶을 수 있습니다."}`, evidenceIds: refs(key) });
-    }
-    if (l?.detected && r?.detected && (l.length !== r.length || l.curve !== r.curve)) {
-      plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}의 좌우 모양이 달라, 위 설명은 주로 쓰는 ${label}을 기준으로 읽었습니다.`, evidenceIds: refs(key) });
+    if (l?.detected && r?.detected && l.curve === r.curve) {
+      plan.passages.push({ id: `${key}-bilateral-common`, kind: "observation", text: `${LINES[key]}은 두 사진의 검출 구간에서 같은 방향(${l.curve ?? "확인 안 됨"})으로 관찰됩니다. 같은 사람의 두 사진이라는 점에서 공통으로 보이는 참고점이지만, 좌우가 실제 어느 손인지는 이 검수에서 확정하지 않습니다.`, evidenceIds: refs(key) });
+    } else if (l?.detected && r?.detected && l.curve !== r.curve) {
+      plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}의 두 검출 구간은 서로 다른 방향으로 분류됐습니다. 사진 각도·조명·보정 차이의 영향도 배제하지 않으며, 이 차이를 시간에 따른 변화나 실제 좌우 특성으로 확정하지 않습니다.`, evidenceIds: refs(key) });
     }
   }
   const detected = (Object.keys(LINES) as LineKey[]).filter(key => primary.onnxLines?.[key].detected);

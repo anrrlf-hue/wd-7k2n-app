@@ -8,6 +8,16 @@ const onnxLineDetailSchema = z.object({
   start: z.object({ x: z.number(), y: z.number() }).nullable(),
   end: z.object({ x: z.number(), y: z.number() }).nullable(),
   branchDetected: z.null(),
+  sourceVariant: z.enum(["raw", "enhanced", "unknown"]).optional(),
+  rawDetected: z.boolean().optional(),
+  enhancedDetected: z.boolean().optional(),
+  endpointEvidence: z.enum(["segment_extrema", "none"]).optional(),
+  pathCompleteness: z.enum(["not_verified", "unavailable"]).optional(),
+  attributeSupport: z.object({
+    length: z.enum(["segment_only", "not_supported"]),
+    curve: z.enum(["segment_only", "not_supported"]),
+    depth: z.enum(["mask_signal_only", "not_supported"]),
+  }).optional(),
 });
 
 const onnxPalmLinesSchema = z.object({

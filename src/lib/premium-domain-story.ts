@@ -313,6 +313,8 @@ function observedBridge(area: Domain, connection: IntegratedPassage | undefined,
   const key = area === "work" ? "headLine" : "heartLine";
   const main = hands[hands.dominant].onnxLines?.[key], other = hands[hands.dominant === "left" ? "right" : "left"].onnxLines?.[key];
   if (!readable(main)) return "";
+  const observedPassage = connection.plan.passages.find(p => p.id === `${area}-palm-observation`)?.text;
+  if (observedPassage) return observedPassage;
   const label = area === "work" ? "두뇌선" : "감정선";
   const lens = area === "work"
     ? main!.curve === "완만한 곡선" ? "여러 방법을 비교하는" : "판단 기준을 정리하는"
