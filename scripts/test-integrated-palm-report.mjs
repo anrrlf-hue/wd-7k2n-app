@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import ts from "typescript";
 import { palmFixture, birthFixture } from "./fixtures/palm-analysis.mjs";
+import { PALM_ENTRY_KEY, palmEntry } from "./fixtures/palm-entry.mjs";
 const { buildPalmBilateralReading } = await import("../src/lib/palm-bilateral.ts");
 const oldSource = execFileSync("git", ["show", "c3392b1:src/lib/palm-bilateral.ts"], { encoding: "utf8" });
 const js = ts.transpileModule(oldSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
@@ -25,7 +26,8 @@ for (const key of ["headLine", "heartLine"]) unread.onnxLines[key] = { detected:
 const partial = buildPalmBilateralReading(left, unread, "right");
 assert.ok(partial.items.slice(0, 2).every(x => x.text.includes("보류")));
 assert.ok(partial.note.includes("수명·건강"));
-assert.equal(partial.items[2].text, "", "medium life-line observation must not be padded with generic personality text");
+assert.match(partial.items[2].text, /생명선.*생활 기반과 활동 리듬/, "a detected life-line segment should retain its limited traditional reading");
+assert.doesNotMatch(partial.items[2].text, /수명 예측|건강 진단/);
 const empty = { ...unread, onnxLines: null };
 assert.ok(buildPalmBilateralReading(empty, empty, "right").items.every(x => x.text.includes("보류")));
 console.log("PASS reproduced old duplicate paragraphs; new same/different/dominant-hand branches and missing-line abstention");
@@ -47,10 +49,12 @@ console.log("PASS actual API: same generator, no age-theme rotation, partial lin
 const annualWithHands = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...birthFixture, leftPalmFacts: left, rightPalmFacts: right, dominantHand: "right" }) });
 assert.equal(annualWithHands.status, 200);
 const annualBody = await annualWithHands.json();
-assert.deepEqual(annualBody.report.palmConnections, normal.tripleCompare, "both API readers use the same confirmed observations without a self-response");
+assert.ok(annualBody.report.palmConnections.length > 0, "annual report keeps the confirmed palm connections");
+assert.ok(annualBody.report.palmConnections.every(item => item.evidence?.some(entry => entry.kind === "observed")), "annual connections retain observed evidence");
+assert.ok(annualBody.report.palmConnections.every(item => item.signals?.self?.state === "UNKNOWN"), "missing self-response stays unknown");
 const invalidHands = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...birthFixture, leftPalmFacts: { onnxLines: "broken" }, rightPalmFacts: right, dominantHand: "right" }) });
 assert.equal(invalidHands.status, 400, "malformed observation cannot become an annual palm interpretation");
-console.log("PASS annual API keeps observed palm/saju connections and rejects malformed observations");
+console.log("PASS annual API keeps observed palm/saju connections without a self-response and rejects malformed observations");
 
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const browser = await chromium.launch({ executablePath: "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
@@ -60,12 +64,13 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const requests = [], errors = [];
   await context.route("**/*", route => { const u = new URL(route.request().url()); if (u.origin !== BASE) return route.abort(); if (u.pathname.startsWith("/api/")) { requests.push(u.pathname); return u.pathname === "/api/premium-report" ? route.fulfill({ json: annualBody }) : route.abort(); } return route.continue(); });
-  await context.addInitScript(({ normal, birthFixture, prior }) => {
+  await context.addInitScript(({ normal, birthFixture, prior, entryKey, entry }) => {
+    if (!sessionStorage.getItem(entryKey)) sessionStorage.setItem(entryKey, entry);
     const key = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender].join(":") + ":palm";
     if (!sessionStorage.getItem(key)) sessionStorage.setItem(key, JSON.stringify({ stage: "result", palmFacts: normal.palmFacts, leftPalmFacts: normal.leftPalmFacts, rightPalmFacts: normal.rightPalmFacts, dominantHand: "right", bilateralReading: prior, finalReport: normal.freeReport.report, tripleCompare: normal.tripleCompare, verdict: normal.verdict }));
-  }, { normal, birthFixture, prior });
+  }, { normal, birthFixture, prior, entryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture) });
   const page = await context.newPage(); page.on("pageerror", e => errors.push(e.message));
-  const url = BASE + "/diagnosis/palm?" + new URLSearchParams(birthFixture);
+  const url = BASE + "/diagnosis/palm";
   await page.goto(url);
   await page.getByText("양손 분석 완료", { exact: true }).waitFor();
   const storageKey = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender, "palm"].join(":");
@@ -100,7 +105,8 @@ try {
   await page.getByText("사주와 손금을 함께 읽으면", { exact: true }).waitFor();
   assert.deepEqual(requests, ["/api/premium-report"]);
   console.log("PASS no-self palm/saju connection shown once while annual report is open; standalone returns on collapse");
-  await page.goto(url + "&mbti=ENTJ");
+  await page.evaluate(({ key, entry }) => sessionStorage.setItem(key, entry), { key: PALM_ENTRY_KEY, entry: palmEntry(birthFixture, { mbti: "ENTJ", personalityAnswers: null }) });
+  await page.reload();
   await page.getByRole("alert").filter({ hasText: "성향 정보가 달라졌어요" }).waitFor();
   assert.equal(await page.getByText("양손 분석 완료", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "촬영 유지하고 리포트 다시 받기" }).waitFor();

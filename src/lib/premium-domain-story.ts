@@ -319,8 +319,9 @@ function observedBridge(area: Domain, connection: IntegratedPassage | undefined,
     : main!.curve === "완만한 곡선" ? "말로 마음을 전하는" : "행동에 마음을 담아 전하는";
   const mainName = hands.dominant === "left" ? "왼손" : "오른손";
   const otherName = hands.dominant === "left" ? "오른손" : "왼손";
-  const otherNote = readable(other) && main!.curve !== other!.curve ? ` ${otherName}의 검출 구간은 ${other!.curve}으로 분류되어 비교 질문으로 남깁니다.` : "";
-  return `${mainName} ${label}의 ${main!.curve}인 검출 구간은 ${lens} 관점을 보완합니다.${otherNote}`;
+  const curveDescription = (curve: OnnxLineDetail["curve"]) => curve === "완만한 곡선" ? "완만하게 휜" : "직선에 가까운";
+  const otherNote = readable(other) && main!.curve !== other!.curve ? ` ${otherName}의 검출 구간은 ${curveDescription(other!.curve)} 모양으로 분류되어 비교 질문으로 남깁니다.` : "";
+  return `${mainName} ${label}에서 검출된 ${curveDescription(main!.curve)} 구간은 ${lens} 관점을 보완합니다.${otherNote}`;
 }
 
 /** Money has three decisions that the overall and work sections do not own.

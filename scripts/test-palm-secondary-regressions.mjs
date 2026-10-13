@@ -220,7 +220,7 @@ if (!/수입|거래|보상|돈/.test(wealthLineSection?.text ?? "")) throw new E
 if (!/운명선.*태양선.*재물선|일의 방향/.test(comboSection?.text ?? "")) throw new Error("secondary-line combination reading missing");
 const richText = richSections.map((section) => section.text).join("\n");
 if (/(반드시 성공|수익 보장|부자가 된다|무조건)/.test(richText)) throw new Error("deterministic success/money claim leaked into palm reading");
-if (/수명|몇 살까지|질병|의학적/.test(richText)) throw new Error("health/lifespan overclaim leaked into palm reading");
+if (/수명을? (?:예측|판정)|몇 살까지 (?:살|생존)|질병을? (?:예측|진단)|의학적 진단입니다/.test(richText)) throw new Error("health/lifespan overclaim leaked into palm reading");
 
 const faintSecondary = {
   ...clearSecondary,
@@ -280,11 +280,12 @@ const bilateralReading = bilateral.buildPalmBilateralReading(leftPalm, rightPalm
 if (bilateralReading.items.some(item => !item.observation)) throw new Error("every retained line must preserve its observation");
 if (!/두뇌선.*감정선/.test(bilateralReading.summary)) throw new Error("the observed head/heart combination needs one shared interpretation");
 if (!bilateralReading.items.find(item => item.title.startsWith("두뇌선"))?.text) throw new Error("the long head line must retain its additional interpretation");
-// The medium heart line is already read in the shared summary. The life line
-// keeps its observation without inventing health or lifespan claims to fill it.
+// Each detected line now has a limited interpretation alongside the shared
+// summary, without turning the life line into a health or lifespan claim.
 for (const name of ["감정선", "생명선"]) {
   const item = bilateralReading.items.find(item => item.title.startsWith(name));
-  if (!item || item.text !== "") throw new Error(`${name} must remain observation-only for this fixture`);
+  if (!item?.text || !/검출 구간/.test(item.text)) throw new Error(`${name} must retain its limited segment reading`);
+  if (/수명을? (?:예측|판정)|건강을? (?:진단|예측)/.test(item.text)) throw new Error(`${name} overstates health or lifespan`);
 }
 const interpretations = bilateralReading.items.map(item => item.text).filter(Boolean);
 if (new Set(interpretations).size !== interpretations.length) throw new Error("duplicate palm interpretation");

@@ -6,7 +6,7 @@ const LINES = { headLine: "두뇌선", heartLine: "감정선", lifeLine: "생명
 type LineKey = keyof typeof LINES;
 function describe(line: OnnxLineDetail | undefined): string {
   if (!line?.detected) return "판독하지 못함";
-  const source = line.sourceVariant === "enhanced" ? "보정 영상 검출" : line.sourceVariant === "raw" ? "원본 영상 검출" : "검출";
+  const source = line.sourceVariant === "enhanced" ? "보정 영상 검출" : line.sourceVariant === "raw" ? "원본 사진 검출" : "검출";
   const segmentLength = line.length && line.attributeSupport?.length !== "not_supported" ? `검출 구간 ${line.length}` : null;
   const signal = line.depthStrength && line.attributeSupport?.depth !== "not_supported" ? `마스크 신호 ${line.depthStrength}` : null;
   return [source, segmentLength, line.curve, signal].filter(Boolean).join(" · ") || "선 후보만 확인";
@@ -19,7 +19,7 @@ const LINE_LOCATIONS = {
 } as const;
 
 function sourcePhrase(line: OnnxLineDetail): string {
-  return line.sourceVariant === "enhanced" ? "보정 영상에서" : line.sourceVariant === "raw" ? "원본 영상에서" : "사진에서";
+  return line.sourceVariant === "enhanced" ? "보정 영상의" : line.sourceVariant === "raw" ? "원본 사진의" : "사진의";
 }
 
 function lineNarrative(key: LineKey, line: OnnxLineDetail): string {
@@ -28,12 +28,12 @@ function lineNarrative(key: LineKey, line: OnnxLineDetail): string {
     ? `${curve === "직선에 가까움" ? "직선에 가까운" : "완만한 곡선의"} 검출 구간`
     : "확인된 검출 구간";
   if (key === "heartLine") {
-    return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 마음을 표현하고 관계의 기대를 주고받는 방식과 연결해 봅니다. 예를 들어 상대가 기쁜 소식을 전했을 때 축하를 먼저 말하고 내 반응도 짧게 덧붙이는 장면으로 옮겨볼 수 있습니다.`;
+    return `${sourcePhrase(line)} ${LINE_LOCATIONS[key]}에서 ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 마음을 표현하고 관계의 기대를 주고받는 방식과 연결해 봅니다. 예를 들어 상대가 기쁜 소식을 전했을 때 축하를 먼저 말하고 내 반응도 짧게 덧붙이는 장면으로 옮겨볼 수 있습니다.`;
   }
   if (key === "headLine") {
-    return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생각을 정리하고 선택 조건을 세우는 방식과 연결해 봅니다. 예를 들어 목적은 유지한 채 비교할 조건을 먼저 정하고, 그 조건 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다.`;
+    return `${sourcePhrase(line)} ${LINE_LOCATIONS[key]}에서 ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생각을 정리하고 선택 조건을 세우는 방식과 연결해 봅니다. 예를 들어 목적은 유지한 채 비교할 조건을 먼저 정하고, 그 조건 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다.`;
   }
-  return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생활 기반과 활동 리듬을 살펴보는 자리로 연결해 봅니다. 예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다.`;
+  return `${sourcePhrase(line)} ${LINE_LOCATIONS[key]}에서 ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생활 기반과 활동 리듬을 살펴보는 자리로 연결해 봅니다. 예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다.`;
 }
 
 /** One composition from observed features, with traceable interpretation rules.
