@@ -11,13 +11,14 @@ import type {
 
 const LINE_LABEL = { heartLine: "감정선", headLine: "두뇌선", lifeLine: "생명선" } as const;
 const CURVE = { "완만한 곡선": "완만한 곡선을 이루는", "직선에 가까움": "직선에 가까운" } as const;
+const COMMON_SCOPE_NOTE = "사진에서 추정한 선의 모양을 전통적 상징으로 읽는 참고 풀이이며, 실제 성격·적성·건강·수명·미래를 판정하지 않습니다. 검출 구간의 양끝은 모델이 잡은 구간 끝점일 뿐, 손금 전체 경로와 실제 끝점·전체 길이는 확인하지 않았습니다.";
 
 function observation(label: string, d: OnnxLineDetail): string {
   if (!d.detected) return `${label}은 이번 사진에서 뚜렷하게 확인되지 않았습니다.`;
   const source = d.sourceVariant === "enhanced" ? "보정 영상에서" : d.sourceVariant === "raw" ? "원본 사진에서" : "사진에서";
   const curve = d.curve && d.attributeSupport?.curve !== "not_supported" ? `검출 구간은 ${CURVE[d.curve]} 모습` : "검출 구간의 세부 모양";
   const length = d.length && d.attributeSupport?.length !== "not_supported" ? `상대 길이는 ${d.length}로 분류` : "전체 길이는 확인되지 않음";
-  return `${label}은 ${source} ${curve}이고 ${length}입니다. 모델이 잡은 양끝은 검출 구간의 끝점일 뿐 전체 선의 실제 끝점은 아닙니다.`;
+  return `${label}은 ${source} ${curve}이고 ${length}입니다.`;
 }
 
 function clarityReading(d: OnnxLineDetail): string | null {
@@ -87,7 +88,7 @@ function coreStoryReading(
     );
   }
 
-  if (life.detected) parts.push("엄지 밑을 감싸는 생명선 검출 구간은 생활 기반과 활동 리듬을 살펴보는 전통적 상징으로만 연결합니다. 건강이나 수명, 체력을 판단하지 않습니다.");
+  if (life.detected) parts.push("엄지 밑을 감싸는 생명선 검출 구간은 생활 기반과 활동 리듬을 살펴보는 전통적 상징으로만 연결합니다.");
 
   if (fateClear) {
     parts.push(
@@ -145,7 +146,7 @@ function heartReading(d: OnnxLineDetail): string {
   if (d.curve === "직선에 가까움") parts.push("감정을 크게 드러내기보다 약속을 지키거나 필요한 일을 챙기는 방식으로 마음을 보여주는 쪽에 가깝습니다.");
   const clarity = clarityReading(d);
   if (clarity) parts.push(clarity);
-  parts.push("예를 들어 약속이 바뀔 때 상대의 사정과 내가 기대한 점을 함께 말하고, 둘 다 가능한 새 약속을 정하는 장면으로 옮겨볼 수 있습니다. 전체 선의 길이는 확인하지 않았으므로 이 검출 구간을 실제 감정선의 길이 차이로 단정하지 않습니다.");
+  parts.push("예를 들어 상대가 기쁜 소식을 전했을 때 축하를 먼저 말하고 내 반응도 짧게 덧붙이는 장면으로 옮겨볼 수 있습니다.");
   return parts.join(" ");
 }
 
@@ -156,7 +157,7 @@ function headReading(d: OnnxLineDetail): string {
   if (d.curve === "직선에 가까움") parts.push("기준과 근거를 세워 판단하는 편이라 숫자, 비교, 순서를 정리하면 결정이 빨라질 수 있습니다.");
   const clarity = clarityReading(d);
   if (clarity) parts.push(clarity);
-  parts.push("예를 들어 목적은 유지한 채 비교할 조건을 먼저 정하고, 그 조건 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다. 전체 선의 길이는 확인하지 않았으므로 검출 구간의 상대 길이를 실제 사고 범위나 판단 속도로 단정하지 않습니다.");
+  parts.push("예를 들어 회의에서 선택 기준 세 가지를 먼저 적고, 그 기준 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다.");
   return parts.join(" ");
 }
 
@@ -167,7 +168,7 @@ function lifeReading(d: OnnxLineDetail): string {
   if (d.curve === "직선에 가까움") parts.push("에너지를 여러 곳에 흩기보다 필요한 곳에 집중해서 쓰는 편으로 볼 수 있습니다.");
   const clarity = clarityReading(d);
   if (clarity) parts.push(clarity);
-  parts.push("예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다. 검출 구간의 상대 길이는 전체 생명선의 실제 길이나 건강·수명을 뜻하지 않습니다.");
+  parts.push("예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다.");
   return parts.join(" ");
 }
 
@@ -357,8 +358,8 @@ export function buildPalmReadingSections(
       key: "overview",
       title: "먼저 보이는 전체 인상",
       observation: context?.handSide === "left" ? "왼손 사진 기준" : context?.handSide === "right" ? "오른손 사진 기준" : "이번 손 사진 기준",
-      summary: overview,
-      text: overview,
+      summary: `${overview} ${COMMON_SCOPE_NOTE}`,
+      text: `${overview} ${COMMON_SCOPE_NOTE}`,
     });
   }
 
@@ -442,7 +443,7 @@ export function buildPalmReadingSections(
         ? "마음을 표현하는 방식과 생각을 정리하는 방식의 결이 비슷한 편입니다. 그래서 내가 느끼는 것과 실제 선택이 비교적 한 방향으로 움직일 수 있습니다."
         : "마음을 쓰는 방식과 판단하는 방식이 서로 다른 결을 보입니다. 관계에서는 감정적으로 반응하면서도 중요한 결정에서는 냉정해지거나, 반대로 마음은 조심스럽지만 생각은 자유롭게 펼치는 모습이 함께 나타날 수 있습니다.",
     ];
-    if (life.detected) parts.push("생명선 검출 구간은 생활 기반과 활동 리듬을 살펴보는 참고점으로만 더합니다. 전체 경로와 실제 길이는 확인하지 않았으므로 건강·수명이나 변화 속도를 뜻하지 않습니다.");
+    if (life.detected) parts.push("생명선 검출 구간은 생활 기반과 활동 리듬을 살펴보는 참고점으로만 더합니다.");
     parts.push("강점이 한 방향으로 너무 세게 몰릴 때는 다른 시각을 한 번 더 확인하는 것이 균형을 잡는 데 도움이 됩니다.");
     const text = parts.join(" ");
 
