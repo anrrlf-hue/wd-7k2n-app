@@ -96,8 +96,8 @@ assert.equal(samples[5].after.profileRule, "agency-value-understanding");
 assert.doesNotMatch(samples[5].after.domains.find(d => d.key === "work").paragraphs.join(" "), /자신의 생각을 보여주는 힘과 맡은 역할을 지키려는 마음이 비슷/);
 const feb1 = samples[0].after.periods.find(p => p.months.includes("2027년 2월"));
 const feb2 = samples[1].after.periods.find(p => p.months.includes("2027년 2월"));
-assert.match(feb1.reading, /꾸준히 만들어|자원과 쓰임/);
-assert.match(feb2.reading, /표현|교환 조건/);
+assert.match(feb1.headline, /반복 가능한 결과.*새로운 쓰임/);
+assert.match(feb2.headline, /고친 설명.*지속할 조건/);
 assert.notEqual(feb1.reading, feb2.reading);
 const december4 = samples[3].after.periods.find(p => p.months.includes("2026년 12월"));
 assert.ok(buildContextualMonthReading(samples[3].facts, samples[3].after.annual.months.find(m => m.label === "2026년 12월")).passages.some(p => p.id === "duty-to-return"), "the original broad-group rule is retained as evidence");
@@ -114,7 +114,7 @@ for (const sample of samples.slice(0, 2)) {
     assert.notEqual(first.symbols.month.stemTenGod, second.symbols.month.stemTenGod);
     assert.notEqual(first.symbols.month.branchTenGod, second.symbols.month.branchTenGod);
     assert.notEqual(first.reading, second.reading);
-    assert.ok(second.interpretation.passages.some(p => p.id === "month-precise-contrast"));
+    assert.ok(second.interpretation.passages.some(p => p.id === "month-decision-shift"));
   }
 }
 for (const sample of [samples[3], samples[4]]) {

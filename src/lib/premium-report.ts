@@ -17,7 +17,7 @@ import { buildPremiumEditorialPlan } from "@/lib/premium-editorial-plan";
 import { composePremiumDomainStory, composePremiumOverallStory } from "@/lib/premium-domain-story";
 import { validateReadingPlan } from "@/lib/reading-plan";
 
-export const PREMIUM_REPORT_VERSION = "distinct-reading-2026-10-v9" as const;
+export const PREMIUM_REPORT_VERSION = "decision-reading-2026-10-v10" as const;
 export interface PremiumReading {
   headline: string;
   paragraphs: string[];
@@ -42,7 +42,7 @@ export interface PremiumPeriod {
   symbols?: AnnualMonthSymbols;
 }
 export interface PremiumReport {
-  version: typeof PREMIUM_REPORT_VERSION | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
+  version: typeof PREMIUM_REPORT_VERSION | "distinct-reading-2026-10-v9" | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
   title: string;
   summary: string;
   overall: PremiumReading;
@@ -81,11 +81,12 @@ export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts)
       continue;
     }
     const narrative = interpretation.passages;
-    const context = interpretation.evidence.filter(e => ["비겁", "식상", "재성", "관성", "인성", "strength", "position", "daeun"].includes(e.id));
+    const used = new Set(interpretation.passages.flatMap(p => p.evidenceIds));
+    const interpreted = interpretation.evidence.filter(e => used.has(e.id));
     periods.push({
       label: month.label, months: [month.label], headline: interpretation.headline,
       reading: (narrative.length ? narrative : interpretation.passages).map(p => p.text).join(" "),
-      basis: `${month.comparisons[0].basis}. 정편·자리 근거: 월간 ${symbols.month.stem}/${symbols.month.stemTenGod ?? "미확인"}, 월지 ${symbols.month.branch}/${symbols.month.branchTenGod ?? "미확인"}, 세운 ${symbols.year.ganzhi}의 ${symbols.year.stemTenGod ?? "미확인"}/${symbols.year.branchTenGod ?? "미확인"}. 원국과 연결한 값: ${context.map(e => `${e.id === "strength" ? "강약" : e.id === "position" ? "관련 자리" : e.id === "daeun" ? "현재 대운" : e.id} ${e.value ?? "미사용"}`).join(" / ")}.`,
+      basis: `해석에 사용한 근거: ${interpreted.map(e => `${e.id} ${e.value ?? "미확인"}`).join(" / ")}. 계산 참고(월별 본문에 사용하지 않음): ${month.comparisons[0].basis}.`,
       domains: [], interpretation, symbols,
     });
     previousSignature = signature;
@@ -97,7 +98,11 @@ export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts)
  * No invented auspicious ranking; chronological labels explain what was selected. */
 function annualHighlights(periods: PremiumPeriod[]): string[] {
   const selected = periods.slice(0, 1);
-  const exchange = periods.find(p => p.interpretation?.passages.some(s => s.id.startsWith("output-")));
+  const exchange = periods.find(p => {
+    const groups = [p.symbols?.month.stemTenGod, p.symbols?.month.branchTenGod]
+      .map(god => god ? TEN_GOD_GROUP[god] : null);
+    return groups.includes("식상") && groups.includes("재성");
+  });
   if (exchange && !selected.includes(exchange)) selected.push(exchange);
   const later = periods.find(p => periods.indexOf(p) > periods.indexOf(selected.at(-1)!) && !selected.some(s => s.headline === p.headline));
   if (later) selected.push(later);

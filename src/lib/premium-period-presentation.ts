@@ -56,7 +56,7 @@ export function buildPremiumPeriodPresentation(report: PremiumReport): Map<Premi
   const seenDaeun = new Set<string>();
   const result = new Map<PremiumPeriod, PremiumPeriodPresentation>();
   for (const period of [...highlights, ...report.periods.filter(p => !highlights.includes(p))]) {
-    if (report.version === "distinct-reading-2026-10-v9") {
+    if (["distinct-reading-2026-10-v9", "decision-reading-2026-10-v10"].includes(report.version)) {
       const paragraphs: string[] = [], shared: PremiumPeriod[] = [];
       for (const passage of period.interpretation?.passages ?? []) {
         const prior = firstOccurrence.get(passage.text);

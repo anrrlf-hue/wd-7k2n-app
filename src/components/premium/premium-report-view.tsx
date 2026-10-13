@@ -22,7 +22,7 @@ function ReadingContent({ reading, showTip = true }: { reading: PremiumReading; 
 }
 
 export function PremiumReportView({ report }: { report: PremiumReport }) {
-  const currentLayout = ["integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9"].includes(report.version);
+  const currentLayout = ["integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", "decision-reading-2026-10-v10"].includes(report.version);
   const highlights = report.annualHighlights?.flatMap(label => {
     const period = report.periods.find(p => p.months[0] === label);
     return period ? [period] : [];
