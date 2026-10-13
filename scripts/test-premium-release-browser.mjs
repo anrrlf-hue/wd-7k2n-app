@@ -5,6 +5,7 @@ import fs from "node:fs";
 import http from "node:http";
 import { createRequire } from "node:module";
 import { birthFixture } from "./fixtures/palm-analysis.mjs";
+import { PALM_ENTRY_KEY, palmEntry } from "./fixtures/palm-entry.mjs";
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const BASE = process.env.TEST_BASE_URL || "http://127.0.0.1:3027";
 assert.match(BASE, /^http:\/\/(localhost|127\.0\.0\.1):\d+$/);
@@ -38,7 +39,7 @@ await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const stubUrl = `http://127.0.0.1:${server.address().port}/premium`;
 const browser = await chromium.launch({ executablePath: "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
 const errors = [], unexpected = [];
-const url = BASE + "/diagnosis/palm?" + new URLSearchParams(birthFixture);
+const url = BASE + "/diagnosis/palm";
 async function open({ blockedStorage = false, width = 390 } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 844 } });
   await context.route("**/*", route => {
@@ -49,13 +50,11 @@ async function open({ blockedStorage = false, width = 390 } = {}) {
     if (u.pathname.startsWith("/api/")) { unexpected.push(u.pathname); return route.abort(); }
     return route.continue();
   });
-  await context.addInitScript(({ stubUrl, blockedStorage }) => {
+  await context.addInitScript(({ stubUrl, palmEntryKey, entry }) => {
+    if (!sessionStorage.getItem(palmEntryKey)) sessionStorage.setItem(palmEntryKey, entry);
     const original = window.fetch;
     window.fetch = (input, init) => original(input === "/api/premium-report" ? stubUrl : input, init);
-    if (blockedStorage) {
-      for (const key of ["getItem", "setItem"]) Object.defineProperty(Storage.prototype, key, { value: () => { throw new DOMException("blocked", "SecurityError"); } });
-    }
-  }, { stubUrl, blockedStorage });
+  }, { stubUrl, palmEntryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture) });
   const page = await context.newPage(); page.setDefaultTimeout(15000);
   page.on("pageerror", e => errors.push(e.message));
   await page.goto(url);
@@ -63,6 +62,9 @@ async function open({ blockedStorage = false, width = 390 } = {}) {
   await page.getByRole("button", { name: "손금 없이 계속 볼게요", exact: true }).click();
   try { await page.getByRole("button", { name: "프리미엄 보기", exact: true }).waitFor(); }
   catch (error) { fs.writeFileSync(`${evidence}/premium-entry-failure.txt`, JSON.stringify({ body: await page.locator("body").innerText(), errors, unexpected }, null, 2)); throw error; }
+  if (blockedStorage) await page.evaluate(() => {
+    for (const key of ["getItem", "setItem"]) Object.defineProperty(Storage.prototype, key, { value: () => { throw new DOMException("blocked", "SecurityError"); } });
+  });
   return { context, page };
 }
 async function start(s) { await s.page.getByRole("button", { name: "프리미엄 보기", exact: true }).click(); }
@@ -76,7 +78,8 @@ try {
     assert.equal(await p.locator("#premium-report input").count(), 0);
     const body = await p.locator("body").innerText();
     assert.doesNotMatch(body, /2주|분야 선택|유파마다|과거는 제외/);
-    assert.doesNotMatch(await p.locator("#premium-report").innerText(), /비겁|관성|인성|신강|가설|실험|과제/);
+    assert.doesNotMatch(await p.locator("#premium-report").innerText(), /확정된 미래|반드시 수입이 늘|질병을 예측/);
+    assert.ok((await p.locator("#premium-annual").innerText()).includes("세운"));
     assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     const shareAfter = await p.evaluate(() => !!(document.querySelector('#premium-report').compareDocumentPosition(document.querySelector('[aria-label="무료 사주 링크 공유"]')) & Node.DOCUMENT_POSITION_FOLLOWING));
     assert.equal(shareAfter, true);
@@ -92,7 +95,8 @@ try {
     await p.reload(); await result(s);
     assert.equal(requests.length, count, "reopen/reload must not regenerate same input and month");
     // A different person's input must not restore the previous report.
-    await p.goto(BASE + "/diagnosis/palm?" + new URLSearchParams({ ...birthFixture, day: 16 }));
+    await p.evaluate(({ key, entry }) => sessionStorage.setItem(key, entry), { key: PALM_ENTRY_KEY, entry: palmEntry({ ...birthFixture, day: 16 }) });
+    await p.goto(url);
     await p.getByRole("button", { name: "손금 없이 계속 볼게요", exact: true }).click();
     assert.equal(await p.locator("#premium-report").count(), 0);
     await s.context.close();

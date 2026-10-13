@@ -6,6 +6,7 @@ import http from "node:http";
 import { setTimeout as delay } from "node:timers/promises";
 import { createRequire } from "node:module";
 import { palmFixture, birthFixture } from "./fixtures/palm-analysis.mjs";
+import { PALM_ENTRY_KEY, palmEntry } from "./fixtures/palm-entry.mjs";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const BASE = process.env.TEST_BASE_URL || "http://localhost:3000";
@@ -38,7 +39,7 @@ const server = http.createServer(async (req, res) => {
     res.write('{"usable":true,');
     return;
   }
-  const result = { ...realResult, verdict: { ...realResult.verdict, text: `검증 결과 ${item.id}` } };
+  const result = { ...realResult, annualReport: { ...realResult.annualReport, summary: `검증 결과 ${item.id}` } };
   if (mode === "delayed") { delayed.push(() => res.end(JSON.stringify(result))); return; }
   if (mode === "invalid") { res.end("not JSON"); return; }
   res.setHeader("content-type", "application/json");
@@ -47,11 +48,12 @@ const server = http.createServer(async (req, res) => {
 await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const stubUrl = `http://127.0.0.1:${server.address().port}/interpret`;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
-const url = BASE + "/diagnosis/palm?" + new URLSearchParams(birthFixture);
+const url = BASE + "/diagnosis/palm";
 const errors = [];
 const observations = [];
 async function open(mock = true) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await context.addInitScript(({ key, entry }) => sessionStorage.setItem(key, entry), { key: PALM_ENTRY_KEY, entry: palmEntry(birthFixture) });
   if (mock) await context.addInitScript(({ fixture, stubUrl }) => {
     window.__palmTest = { mode: "normal", analyses: 0, terminated: 0, phases: [] };
     const originalFetch = window.fetch;
@@ -95,6 +97,8 @@ async function twoHands(session) {
 }
 async function result(session) {
   await session.page.getByText("양손 분석 완료", { exact: true }).waitFor({ timeout: 10000 });
+  await session.page.getByRole("heading", { name: "프리미엄 통합 연간 리포트", exact: true }).waitFor();
+  assert.equal(await session.page.getByRole("button", { name: "프리미엄 보기", exact: true }).count(), 0, "both hands open the full annual report without another request or purchase");
 }
 try {
   let s = await open();
@@ -117,6 +121,20 @@ try {
   assert.equal(await s.page.evaluate(() => window.__palmTest.analyses), 1, "only left hand needs analysis after refresh");
   await s.context.close();
   console.log("PASS first completed hand survives reload; continue with left hand without recapturing right");
+
+  s = await open();
+  await hand(s);
+  await s.page.getByText("이제 왼손을 찍어주세요", { exact: true }).waitFor();
+  await s.page.locator('img[alt="오른손 촬영 완료"]').waitFor();
+  await s.page.evaluate(() => {
+    dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
+    dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+  });
+  await s.page.locator('img[alt="오른손 촬영 완료"]').waitFor({ state: "detached" });
+  await hand(s); await result(s);
+  assert.equal(await s.page.evaluate(() => window.__palmTest.analyses), 2);
+  await s.context.close();
+  console.log("PASS simulated screen leave releases preview while completed right-hand facts still allow left-hand completion");
 
   // Full production deadline (30s), without a test-only timeout override.
   for (mode of (process.env.TEST_SKIP_DEADLINES ? [] : ["hang", "body-hang"])) {

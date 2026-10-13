@@ -22,13 +22,14 @@ function ReadingContent({ reading, showTip = true }: { reading: PremiumReading; 
 }
 
 export function PremiumReportView({ report }: { report: PremiumReport }) {
-  const currentLayout = ["integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8"].includes(report.version);
+  const currentLayout = ["integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9"].includes(report.version);
   const highlights = report.annualHighlights?.flatMap(label => {
     const period = report.periods.find(p => p.months[0] === label);
     return period ? [period] : [];
   });
   const narratives = buildPremiumPeriodPresentation(report);
   const narrative = (period: PremiumPeriod) => <>
+    {period.symbols && <p className="mt-2 text-sm leading-6 text-(--gold)">세운 {period.symbols.year.ganzhi} · 월운 {period.symbols.month.ganzhi} · 천간 {period.symbols.month.stemTenGod} / 지지 {period.symbols.month.branchTenGod}</p>}
     {narratives.get(period)?.paragraphs.map(text => <p key={text} className="mt-3 text-base leading-8 text-muted-foreground">{text}</p>)}
     {!!narratives.get(period)?.shared.length && <details className="mt-3 text-sm">
       <summary className="cursor-pointer text-muted-foreground">앞서 나온 공통 주제 함께 보기</summary>

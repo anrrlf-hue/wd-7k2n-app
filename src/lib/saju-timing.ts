@@ -123,6 +123,35 @@ function hanjaPillarsForDate(year: number, month: number, day: number) {
   };
 }
 
+export interface AnnualPillarSymbols {
+  ganzhi: string;
+  stem: string;
+  branch: string;
+  stemTenGod: string | null;
+  branchTenGod: string | null;
+}
+
+export interface AnnualMonthSymbols {
+  year: AnnualPillarSymbols;
+  month: AnnualPillarSymbols;
+}
+
+/** Expose the exact symbols already used by the annual calculation. The branch
+ * uses its main hidden stem, as pillarGroups does; this is evidence, not a new
+ * score or a claim about an event. */
+export function describeAnnualMonthSymbols(facts: SajuFacts, month: Pick<SajuAnnualMonthOutlook, "year" | "month">): AnnualMonthSymbols {
+  const pillars = hanjaPillarsForDate(month.year, month.month, 15);
+  const describe = (ganzhi: string): AnnualPillarSymbols => {
+    const [stem = "", branch = ""] = Array.from(ganzhi);
+    return {
+      ganzhi, stem, branch,
+      stemTenGod: tenGodFor(facts.dayStem, stem),
+      branchTenGod: tenGodFor(facts.dayStem, BRANCH_MAIN_STEM[branch] ?? ""),
+    };
+  };
+  return { year: describe(pillars.yearPillar), month: describe(pillars.monthPillar) };
+}
+
 const SIGNAL_LABEL: Record<TenGodGroup, string> = {
   비겁: "사람·협업·경쟁",
   식상: "표현·실행·성과",

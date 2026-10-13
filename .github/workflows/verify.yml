@@ -76,6 +76,7 @@ jobs:
           node scripts/test-premium-annual.mjs
           node scripts/test-premium-annual-grouping.mjs
           node scripts/test-context-readings.mjs
+          node scripts/test-premium-semantic-allocation.mjs
 
       - name: Build
         run: pnpm build

@@ -120,15 +120,15 @@ const STORIES: Record<EditorialArcId, DomainStories> = {
     },
     money: {
       ground: "사주에서는 결과를 밖에 보여주는 통로와 그 결과의 쓰임·대가를 묻는 자리를 함께 읽습니다.",
-      tension: "작은 결과를 보여준 뒤 수정 요청이 더해져도 어디까지가 처음 합의한 결과인지는 따로 확인할 수 있습니다.",
-      example: "가령 새 수정을 부탁받는다면 사용할 목적과 고칠 범위, 추가 시간과 대가를 함께 물어볼 수 있습니다.",
-      alternative: "해낸 일을 낮추지 않으면서 새 요청을 별도 합의로 만드는 선택입니다.",
+      tension: "완성도가 높다는 평가와 누가 실제로 쓰며 어떤 조건으로 계속 교환할지는 다른 판단입니다. 한 번의 호응을 반복 가능한 보상으로 단정할 수 없습니다.",
+      example: "가령 만든 결과의 값을 살필 때에는 사용할 사람과 쓰는 횟수, 유지에 드는 시간, 교환할 조건을 나란히 물어볼 수 있습니다.",
+      alternative: "더 만들어야 한다는 결론보다 이미 만든 것이 남기는 가치와 그것을 지킬 비용을 구별하는 관점입니다.",
     },
     work: {
       ground: "사주에서는 반복한 요구를 이해하고 설명할 결과로 옮기는 순서를 살핍니다.",
-      tension: "완료 기준을 묻기 전에 모든 요구를 받아 적으면 작은 시안과 끝낼 결과의 경계가 흐려질 수 있습니다.",
-      example: "가령 요청을 받으면 완료 기준 하나를 확인하고 작은 결과를 보여준 뒤, 함께 고칠 부분과 필요한 자료를 정해볼 수 있습니다.",
-      alternative: "요구를 덜 듣는 대신 이해한 기준을 상대가 확인할 수 있는 결과로 번역하는 선택입니다.",
+      tension: "익힌 기준만 오래 정리하면 실제 실행에서 맞는지 알기 어렵고, 검토 없이 바로 완성하면 고칠 여지가 사라질 수 있습니다.",
+      example: "가령 새 일을 맡는 상황이라면 이해한 기준을 시안에 적용해 보여주고 피드백을 받아볼 수 있습니다. 그 뒤에 같은 목적을 이루는 여러 방법 중 자신이 결정할 부분을 구분해볼 수 있습니다.",
+      alternative: "일의 핵심은 모든 요구를 미리 합의하는 것보다 배운 기준을 실행 가능한 방법으로 번역하고 검토하는 과정입니다.",
     },
   },
   "duty-boundaries": {
@@ -237,24 +237,25 @@ const STORIES: Record<EditorialArcId, DomainStories> = {
  * belongs in the relevant relationship or work scene below, not in a second
  * copy of the same introductory interpretation. */
 const OVERALL: Record<EditorialArcId, string> = {
-  "agency-duty": "사주에서는 책임을 맡을 이유를 이해하려는 태도와 자기 판단을 함께 읽습니다. 근거가 부족한 제안 앞에서는 준비가 길어질 수 있지만, 아직 몰라서 필요한 질문과 실제로 고를 수 있는 방법은 다른 문제입니다. 가령 처음 받은 요청을 한 문장으로 정리하고 판단에 꼭 필요한 조건 하나를 물어볼 수 있습니다. 책임을 늘리기 전에 이유를 확인하는 선택입니다.",
-  "agency-duty-supported": "사주에서는 무엇을 납득해 맡을지와 그 일을 누구의 자료와 협력으로 끝낼지를 한 질문으로 봅니다. 목적에 동의한 뒤 준비가 비어 있으면 자기 판단이 빈틈을 메우는 일까지 넓어질 수 있습니다. 가령 제안에는 동의하지만 자료 담당자가 정해지지 않았다면 지금 결정할 범위와 지원을 받아 정할 범위를 나눠볼 수 있습니다. 좋은 방향을 고르는 것과 모든 실행을 혼자 맡는 것은 다른 선택입니다.",
-  "creation-exchange": "사주에서는 생각을 밖에 보이는 일과 그것이 실제로 어디에 쓰이는지를 함께 읽습니다. 반응이 좋을수록 새 가능성을 계속 보태기 쉽지만, 후속 작업의 조건까지 정해진 것은 아닐 수 있습니다. 가령 작은 결과를 보여준 뒤 누가 사용할지와 다음 단계에 필요한 범위를 묻는 장면을 떠올릴 수 있습니다. 제안을 줄이는 것이 아니라 쓸 수 있는 한 가지를 고르는 선택입니다.",
-  "creation-exchange-supported": "사주에서는 반응을 얻는 가능성과 그것을 끝까지 이어갈 사람·시간·자료의 조건을 함께 읽습니다. 여러 제안이 모두 좋아 보여도 시작의 호응만으로 끝낼 수 있는 범위가 정해지지는 않습니다. 가령 두 제안 가운데 어느 쪽을 진행할지 고를 때 필요한 지원과 담당자를 나란히 적어볼 수 있습니다. 가능성의 수보다 완성할 조건을 고르는 선택입니다.",
-  "duty-supported": "사주에서는 약속을 꾸준히 이어가는 일과 그 약속을 지킬 지원을 함께 봅니다. 믿고 맡긴다는 말 뒤에 자료와 판단을 나눌 사람이 비어 있으면 책임 범위가 조용히 넓어질 수 있습니다. 가령 새 역할을 받기 전 이미 맡은 일과 새 결과, 도움받을 지점을 함께 확인해볼 수 있습니다. 책임을 피하기보다 오래 지킬 수 있게 만드는 선택입니다.",
+  "agency-duty": "사주에서는 책임의 이유를 이해하려는 태도, 그 이유가 자기 판단과 맞는지 살피는 태도를 함께 읽습니다. 새 정보가 선택 자체를 바꾸는 경우와 이미 가진 판단을 설명할 차례인 경우는 다릅니다. 이 차이를 분간하는 것이 전체 풀이의 중심이며, 구체적인 재량과 실행은 일의 장면에서 따로 살핍니다.",
+  "agency-duty-supported": "사주에서는 납득한 목적과 그 목적을 감당할 사람·자료의 조건이 동시에 놓인 것으로 읽습니다. 옳은 방향을 이해했다는 사실과 혼자서 모든 준비를 끝낼 수 있다는 가정은 이어지지 않습니다. 어느 판단은 스스로 내리고 어느 부분은 도움을 받아야 하는지 살피는 것이 중심입니다.",
+  "creation-exchange": "사주에서는 생각을 드러내는 힘과 실제 쓰임을 따지는 감각을 함께 읽습니다. 호응은 가능성을 열어주지만 그 결과가 계속 쓰일지는 다른 질문입니다. 무엇을 새로 만들고 무엇이 실제로 필요한지 구별하는 긴장이 이 풀이의 중심이며, 관계·재물·일은 그 답이 서로 다를 수 있습니다.",
+  "creation-exchange-supported": "사주에서는 제안을 넓히는 관심과 끝까지 이어갈 사람·시간·자료의 조건을 함께 봅니다. 좋은 반응이 여러 곳에서 와도 그것들이 모두 같은 무게의 약속은 아닙니다. 가능성을 발견하는 단계와 지속할 하나를 선택하는 단계를 구분하는 것이 이 풀이의 중심입니다.",
+  "duty-supported": "사주에서는 맡은 약속을 지키려는 태도와 그 약속을 뒷받침할 지원을 함께 읽습니다. 책임을 잘 이해하는 사람에게도 결정에 필요한 자료나 협력은 별개의 조건입니다. 신뢰가 어떤 지원 위에서 오래 이어지는지 살피되, 실제 역할이나 능력을 이 상징만으로 판정하지 않습니다.",
   "duty-translation": "",
-  "duty-boundaries": "사주에서는 맡은 약속을 지키는 일과 추가로 받아들일 범위의 경계를 함께 읽습니다. 요청이 더해질 때마다 기존 책임의 연장으로 넘기면 무엇을 먼저 끝낼지 흐려질 수 있습니다. 가령 급한 새 일이 생겼을 때 이미 합의한 결과와 새 요청을 따로 적어 우선순위를 확인해볼 수 있습니다. 같은 책임감을 더 넓게 쓰는 대신 지킬 약속을 분명히 하는 선택입니다.",
-  "agency-value": "사주에서는 스스로 납득한 선택의 이유와 실제 결과의 쓰임을 함께 읽습니다. 목적이 분명해도 함께할 사람에게 그 가치가 전해졌다는 뜻은 아닙니다. 가령 어느 제안을 고르기 전 내게 중요한 이유와 상대가 필요로 하는 결과를 나란히 놓아볼 수 있습니다. 판단을 바꾸라는 말이 아니라 선택의 근거가 공유될 조건을 확인하는 관점입니다.",
-  "understanding-duty": "사주에서는 충분히 이해한 내용을 언제 맡을 일로 옮길지 살핍니다. 더 알아볼 조건을 찾는 동안 이미 작은 범위에서 확인할 수 있는 결과가 뒤로 밀릴 수 있습니다. 가령 새 일을 시작할 때 지금 적용해볼 부분과 확인받아야 할 질문을 나눠볼 수 있습니다. 준비를 포기하지 않고 다음 이해를 만드는 실행을 더하는 선택입니다.",
-  "agency-expression": "사주에서는 먼저 움직여 생각을 보여주는 힘과 함께할 사람이 선택할 시간을 같이 읽습니다. 제안이 분명해도 상대가 무엇을 바꿀 수 있는지 듣지 못하면 빠른 시작이 오래 갈 합의가 되기 어렵습니다. 가령 작은 시안을 보여준 뒤 상대가 꼭 지키고 싶은 조건을 하나 물어볼 수 있습니다. 속도를 늦추기보다 함께 쓸 결과로 이어가는 선택입니다.",
-  balanced: "사주에서 여러 기준이 비슷하게 놓인다면 이번 선택의 중심을 하나로 미리 단정하지 않습니다. 가능한 방법을 모두 열어두면 무엇을 완료로 볼지 정하기 어려워질 수 있습니다. 가령 두 선택지를 놓고 각자의 쓰임과 필요한 조건을 비교해 이번에 먼저 지킬 기준을 골라볼 수 있습니다. 성격을 한 방향으로 묶기보다 상황에 맞는 기준을 고르는 선택입니다.",
+  "duty-boundaries": "사주에서는 약속을 지키는 기준이 강할수록 새로운 요구를 같은 책임의 일부로 받아들이기 쉬운 긴장을 읽습니다. 기존 역할을 안정적으로 유지하는 일과 새 역할을 선택하는 일은 다른 판단입니다. 어느 약속을 지켜야 하는지 먼저 알아야 새 요청도 제대로 읽을 수 있습니다.",
+  "agency-value": "사주에서는 스스로 납득한 가치와 다른 사람이 실제로 쓸 수 있는 가치를 나눠 읽습니다. 자기 기준이 분명한 것과 그 기준이 상대에게 전달된 것은 같은 일이 아닙니다. 이 차이를 어떻게 확인할지는 관계의 바람, 재물의 쓰임, 일의 방법마다 달라집니다.",
+  "understanding-duty": "사주에서는 이해와 준비가 맡은 역할에 앞서 놓일 때의 장점과 긴장을 읽습니다. 더 배우면 선택이 달라질 정보가 남아 있는지, 아니면 이미 가진 이해를 적용할 차례인지 구분할 필요가 있습니다. 이 질문은 서두르거나 무조건 기다리라는 결론이 아닙니다.",
+  "agency-expression": "사주에서는 먼저 자기 생각을 드러내는 태도와 그 결과를 함께 쓸 사람의 선택을 함께 읽습니다. 분명한 제안이 상대에게도 충분한 선택지를 남기는지는 확인되지 않은 문제입니다. 주도적인 시작과 함께 받아들일 수 있는 결과 사이의 간격을 이 풀이의 중심으로 둡니다.",
+  balanced: "사주에서 여러 근거가 비슷하게 놓였다면 한 가지 성격이나 답으로 묶기 어렵습니다. 같은 사람에게도 친밀함, 돈의 조건, 일의 방식은 서로 다른 판단을 요구할 수 있습니다. 전체 풀이에서는 각 기준이 함께 있다는 사실만 확인하고, 어느 기준을 앞세울지는 분야별로 따로 살핍니다.",
 };
 
 export function composePremiumOverallStory(plan: PremiumEditorialPlan): string {
   if (plan.id === "duty-translation") {
     const duty = placementPhrase(plan, "관성")!, understanding = placementPhrase(plan, "인성")!;
     const expression = placementPhrase(plan, "식상")!;
-    return `사주에서는 ${duty}으로 거듭 놓인 기준을 ${understanding}으로 이해하고 ${expression}으로 설명할 결과로 옮기는 상징적 흐름을 읽습니다. 요구를 모두 떠맡는 이야기보다 무엇을 완료로 볼지 파악하고, 이해한 것을 상대가 확인할 결과로 설명하는 질문이 중심입니다. 가령 복잡한 요청을 받았다면 완료 기준 하나를 묻고 작은 결과를 보여준 뒤 수정할 범위를 함께 정해볼 수 있습니다. 실제 능력이나 경력을 확인했다는 뜻은 아닙니다.`;
+    const agency = placementPhrase(plan, "비겁");
+    return `사주에서는 ${duty}으로 거듭 놓인 외부 기준, ${understanding}으로 이해하는 방식, ${expression}으로 생각을 드러내는 통로를 함께 읽습니다.${agency ? ` ${agency}는 그 사이에서 자기 판단을 남기는 근거입니다.` : ""} 요구를 이해하는 일과 그 요구를 자신의 방법으로 표현하는 일은 이어질 수 있지만 같은 일은 아닙니다. 이 연결이 총운의 중심이며 실제 능력·경력이나 특정 결과를 확인했다는 뜻은 아닙니다.`;
   }
   return OVERALL[plan.id];
 }
@@ -295,6 +296,23 @@ function observedBridge(area: Domain, connection: IntegratedPassage | undefined,
   return `주로 쓰는 ${mainName} ${label}은 ${main!.curve}으로 판독됐으며, 이를 ${lens} 관점으로만 더합니다.${otherNote}`;
 }
 
+/** Money has three decisions that the overall and work sections do not own.
+ * Exposed natal groups select the interpretive questions; they do not tell us
+ * a person's income, account balance, or actual spending. */
+function moneyDecisions(plan: PremiumEditorialPlan): string {
+  const counts = plan.natalEvidence.counts;
+  const acquiring = counts.식상 > 0 && counts.재성 > 0
+    ? "보여준 결과가 실제 쓰일 때 어떤 대가를 합의할지"
+    : counts.재성 > 0 ? "확인된 쓰임에 어떤 교환 조건을 붙일지" : "해낸 일의 쓰임과 받을 조건을 따로 확인할지";
+  const keeping = counts.관성 > 0
+    ? "이미 맡은 약속을 이어가는 데 필요한 시간과 자원을 얼마나 남길지"
+    : "다음 결과를 만들 시간과 자원을 얼마나 남길지";
+  const spending = counts.인성 > 0
+    ? "배움과 준비에 드는 비용이 지금 필요한 선택을 돕는지"
+    : counts.비겁 > 0 ? "함께 쓰는 몫이 자기 선택과도 맞는지" : "선택한 쓰임이 처음 목적과 맞는지";
+  return `재물을 읽을 때에도 획득은 ${acquiring}, 관리는 ${keeping}, 지출은 ${spending}로 질문을 나눕니다. 이는 실제 수입이나 소비 내역을 확인했다는 뜻이 아닙니다.`;
+}
+
 export function composePremiumDomainStory(area: Domain, plan: PremiumEditorialPlan, connection: IntegratedPassage | undefined,
   hands: { left: PalmFacts; right: PalmFacts; dominant: DominantHand } | null): string {
   const story = STORIES[plan.id][area];
@@ -315,5 +333,6 @@ export function composePremiumDomainStory(area: Domain, plan: PremiumEditorialPl
       if (close) ground = `사주에서는 일지 ${close.symbol}의 ${close.tenGod}을 가까운 관계의 기준과 약속을 묻는 상징으로 읽되, 상대의 마음까지 안다고 보지는 않습니다.`;
     }
   }
-  return [ground, observedBridge(area, connection, hands), story.tension, story.example, story.alternative].filter(Boolean).join(" ");
+  return [ground, observedBridge(area, connection, hands), story.tension, story.example, story.alternative,
+    area === "money" ? moneyDecisions(plan) : ""].filter(Boolean).join(" ");
 }

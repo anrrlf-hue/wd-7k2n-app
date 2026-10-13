@@ -56,6 +56,19 @@ export function buildPremiumPeriodPresentation(report: PremiumReport): Map<Premi
   const seenDaeun = new Set<string>();
   const result = new Map<PremiumPeriod, PremiumPeriodPresentation>();
   for (const period of [...highlights, ...report.periods.filter(p => !highlights.includes(p))]) {
+    if (report.version === "distinct-reading-2026-10-v9") {
+      const paragraphs: string[] = [], shared: PremiumPeriod[] = [];
+      for (const passage of period.interpretation?.passages ?? []) {
+        const prior = firstOccurrence.get(passage.text);
+        if (prior) { if (!shared.includes(prior)) shared.push(prior); }
+        else { firstOccurrence.set(passage.text, period); paragraphs.push(passage.text); }
+      }
+      // The exact month symbols make the first passage unique. Still keep a
+      // readable pointer if a future pair really shares every explanation.
+      if (!paragraphs.length) paragraphs.push(`${period.label}의 근거는 앞선 구간과 같습니다. 아래 계산 근거와 앞선 해설을 함께 보세요.`);
+      result.set(period, { paragraphs, shared, daeun: null });
+      continue;
+    }
     const source = period.interpretation?.passages.filter(p => (p.kind === "traditional" && p.id !== "daeun-context")
       || (["integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8"].includes(report.version) && p.kind === "reflection" && p.id.endsWith("scene"))).map(p => p.text) ?? [period.reading];
     const paragraphs: string[] = [], shared: PremiumPeriod[] = [];

@@ -4,21 +4,20 @@ import type { DominantHand } from "@/lib/palm-bilateral";
 import type { SajuFacts } from "@/lib/saju-facts";
 import { TEN_GOD_GROUP } from "@/lib/saju-facts";
 import type { SajuFocus, SajuDetailFocus } from "@/lib/saju-focus";
-import { buildSajuAnnualOutlook, type SajuAnnualOutlook } from "@/lib/saju-timing";
+import { buildSajuAnnualOutlook, type AnnualMonthSymbols, type SajuAnnualOutlook } from "@/lib/saju-timing";
 
-import { buildContextualMonthReading } from "@/lib/premium-context-reading";
+import { buildPremiumMonthNarrative, traditionalSymbolSubject } from "@/lib/premium-month-narrative";
 import { buildPersonalReading, PERSONAL_GROUP_LABEL } from "@/lib/personal-reading";
 import type { ReadingPlan } from "@/lib/reading-plan";
 import { buildTripleCompare, type CompareItem } from "@/lib/triple-compare";
 import { isPalmFactsUsable } from "@/lib/palm-facts";
 import { READING_GUIDE } from "@/lib/reading-guide";
 import { buildIntegratedPalmReading } from "@/lib/integrated-palm-reading";
-import { buildPremiumEditorialPlan, type PremiumEditorialPlan } from "@/lib/premium-editorial-plan";
+import { buildPremiumEditorialPlan } from "@/lib/premium-editorial-plan";
 import { composePremiumDomainStory, composePremiumOverallStory } from "@/lib/premium-domain-story";
-import { selectPremiumMonthFocus } from "@/lib/premium-month-focus";
 import { validateReadingPlan } from "@/lib/reading-plan";
 
-export const PREMIUM_REPORT_VERSION = "evidence-reading-2026-10-v8" as const;
+export const PREMIUM_REPORT_VERSION = "distinct-reading-2026-10-v9" as const;
 export interface PremiumReading {
   headline: string;
   paragraphs: string[];
@@ -40,9 +39,10 @@ export interface PremiumPeriod {
   basis: string;
   domains: Array<{ key: "love_relationship" | "money" | "work"; label: string; text: string }>;
   interpretation?: ReadingPlan;
+  symbols?: AnnualMonthSymbols;
 }
 export interface PremiumReport {
-  version: typeof PREMIUM_REPORT_VERSION | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
+  version: typeof PREMIUM_REPORT_VERSION | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
   title: string;
   summary: string;
   overall: PremiumReading;
@@ -61,27 +61,15 @@ export interface PremiumReport {
 
 /** Equal contextual readings may be grouped, but a year boundary remains visible.
  * The complete calendar is kept even when the main report selects a few topics. */
-export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts, editorial?: PremiumEditorialPlan): PremiumPeriod[] {
+export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts): PremiumPeriod[] {
   const periods: PremiumPeriod[] = [];
   let previousSignature = "";
   for (const [monthIndex, month] of annual.months.entries()) {
-    const original = buildContextualMonthReading(facts, month);
-    const monthGroups = month.comparisons[0]?.signals?.month ?? [];
-    const previousGroups = annual.months[monthIndex - 1]?.comparisons[0]?.signals?.month ?? [];
-    const chosenScene = editorial ? selectPremiumMonthFocus(editorial, monthGroups, previousGroups) : null;
-    const interpretation = chosenScene ? {
-      ...original,
-      evidence: [...original.evidence,
-        { id: "editorial-arc", kind: "calculated" as const, source: "composeNatalReadings(facts).rule", value: editorial!.id },
-        { id: "editorial-previous-month", kind: "calculated" as const, source: "annual.months[previous].comparisons[0].signals.month", value: previousGroups.join("·") || null }],
-      passages: original.passages.map(p => p.kind === "reflection" && p.id.endsWith("scene")
-        ? { ...p, text: chosenScene, evidenceIds: [...p.evidenceIds, "editorial-arc", "editorial-previous-month"] } : p),
-    } : original;
+    const { plan: interpretation, symbols } = buildPremiumMonthNarrative(facts, month, annual.months[monthIndex - 1] ?? null);
     validateReadingPlan(interpretation);
-    const signals = month.comparisons[0].signals;
     const signature = JSON.stringify([
-      [...new Set(signals?.month ?? [])].sort(), [...new Set(signals?.year ?? [])].sort(),
-      editorial ? [...new Set(previousGroups)].sort() : null,
+      symbols.year.ganzhi, symbols.month.ganzhi,
+      symbols.month.stemTenGod, symbols.month.branchTenGod,
       interpretation.passages.map(p => [p.id, p.text]),
     ]);
     const prior = periods.at(-1);
@@ -92,13 +80,13 @@ export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts,
       prior.basis += ` / ${month.comparisons[0].basis}`;
       continue;
     }
-    const narrative = interpretation.passages.filter(p => (p.kind === "traditional" && p.id !== "daeun-context") || (p.kind === "reflection" && p.id.endsWith("scene")));
+    const narrative = interpretation.passages;
     const context = interpretation.evidence.filter(e => ["비겁", "식상", "재성", "관성", "인성", "strength", "position", "daeun"].includes(e.id));
     periods.push({
       label: month.label, months: [month.label], headline: interpretation.headline,
       reading: (narrative.length ? narrative : interpretation.passages).map(p => p.text).join(" "),
-      basis: `${month.comparisons[0].basis}. 원국과 연결한 값: ${context.map(e => `${e.id === "strength" ? "강약" : e.id === "position" ? "관련 자리" : e.id === "daeun" ? "현재 대운" : e.id} ${e.value ?? "미사용"}`).join(" / ")}.`,
-      domains: [], interpretation,
+      basis: `${month.comparisons[0].basis}. 정편·자리 근거: 월간 ${symbols.month.stem}/${symbols.month.stemTenGod ?? "미확인"}, 월지 ${symbols.month.branch}/${symbols.month.branchTenGod ?? "미확인"}, 세운 ${symbols.year.ganzhi}의 ${symbols.year.stemTenGod ?? "미확인"}/${symbols.year.branchTenGod ?? "미확인"}. 원국과 연결한 값: ${context.map(e => `${e.id === "strength" ? "강약" : e.id === "position" ? "관련 자리" : e.id === "daeun" ? "현재 대운" : e.id} ${e.value ?? "미사용"}`).join(" / ")}.`,
+      domains: [], interpretation, symbols,
     });
     previousSignature = signature;
   }
@@ -165,7 +153,9 @@ export function buildPremiumReport(input: {
     signals: priorSignals[area === "love_relationship" ? 1 : 0]?.signals,
     evidence: item.plan.evidence,
   }));
-  const periods = buildPremiumPeriods(annual, facts, editorial);
+  const periods = buildPremiumPeriods(annual, facts);
+  const yearlySymbols = [...new Map(periods.map(period => [period.symbols!.year.ganzhi, period.symbols!.year])).values()];
+  const yearContext = yearlySymbols.map(year => `세운 ${year.ganzhi}의 배경은 천간 ${year.stemTenGod ?? "미확인"}의 ${traditionalSymbolSubject(year.stemTenGod)}, 지지 ${year.branchTenGod ?? "미확인"}의 ${traditionalSymbolSubject(year.branchTenGod)}입니다.`).join(" ");
   const highlights = annualHighlights(periods);
   const selectedPeriods = periods.filter(period => highlights.includes(period.months[0]));
   const background = facts.hasTimeInput && facts.currentDaeun
@@ -179,7 +169,7 @@ export function buildPremiumReport(input: {
     closing: natal.closing,
     annualHighlights: highlights,
     palmConnections,
-    annualIntroduction: `${selectedPeriods.map(period => period.label).join(", ")}의 흐름을 먼저 살펴봅니다. 첫 구간부터 주제가 달라지는 지점을 짚고, 12개월 전체는 아래에서 이어 읽을 수 있습니다.`,
+    annualIntroduction: `${selectedPeriods.map(period => period.label).join(", ")}의 흐름을 먼저 살펴봅니다. ${yearContext} 세운 배경과 각 달의 천간·지지 질문을 구분하며, 12개월 전체는 아래에서 이어 읽을 수 있습니다.`,
     annualBackground: background.length ? `현재의 큰 흐름에는 ${background.map(g => `‘${PERSONAL_GROUP_LABEL[g]}’`).join(", ")}의 의미가 놓여 있습니다. 이를 한 해의 배경으로 두고, 달마다 달라지는 주제를 따로 살펴봅니다.` : null,
     annualMethod: `월별 흐름은 매월 중순의 세운·월운을 기준으로 묶었습니다. 절기 경계와 기간 중 큰 운의 전환일은 세밀하게 나누지 않았습니다.${facts.hasTimeInput ? "" : " 출생시간을 몰라 큰 운의 배경과 강약에 따른 보완은 생략했습니다."}`,
     note: READING_GUIDE,

@@ -1,22 +1,27 @@
-import "./register-test-typescript.mjs";
-import assert from "node:assert/strict";
-const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
-const { buildPremiumReport, buildPremiumPeriods } = await import("../src/lib/premium-report.ts");
-const facts = computeSajuFacts({ year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남" });
-const report = buildPremiumReport({ facts, referenceDate: new Date("2026-10-13T00:00:00Z") });
+import './register-test-typescript.mjs';
+import assert from 'node:assert/strict';
+const { computeSajuFacts } = await import('../src/lib/saju-facts.ts');
+const { enrichSajuFacts } = await import('../src/lib/oh-my-saju-adapter.ts');
+const { buildPremiumReport, buildPremiumPeriods } = await import('../src/lib/premium-report.ts');
+
+// Invented fixture. Flatten the five broad signals on purpose: exact annual
+// symbols still distinguish the months and keep the chronological order.
+const birth = { year: 2000, month: 1, day: 1, hour: 12, minute: 0, gender: '남' };
+const facts = enrichSajuFacts(computeSajuFacts(birth), birth);
+const report = buildPremiumReport({ facts, referenceDate: new Date('2026-10-13T00:00:00Z') });
 const annual = structuredClone(report.annual);
-annual.months.forEach(m => m.comparisons.forEach(c => { c.signals = { year: ["관성"], month: ["식상"], background: [] }; }));
-const uniform = buildPremiumPeriods(annual, facts);
-assert.equal(uniform.length, 1);
-assert.equal(uniform[0].label, "2026년 10월 ~ 2027년 9월");
-assert.equal(uniform[0].months.length, 12);
-annual.months[3].comparisons.forEach(c => { c.signals.month = ["인성"]; });
-const different = buildPremiumPeriods(annual, facts);
-assert.equal(different.length, 3, "non-adjacent same themes must not imply the intervening month belongs to them");
-assert.equal(different[1].label, "2027년 1월");
-assert.notEqual(different[0].reading, different[1].reading);
-assert.deepEqual(different.flatMap(p => p.months), annual.months.map(m => m.label));
-assert.ok(!different[1].domains.some(d => d.key === "money"), "don't manufacture a money signal when the existing calculation gives only preparation");
-annual.months[1].comparisons.forEach(c => { c.signals.year = ["재성"]; });
-assert.notEqual(buildPremiumPeriods(annual, facts)[0].basis, buildPremiumPeriods(annual, facts)[1].basis, "same monthly theme may have a different year background");
-console.log("PASS narrative periods: identical months grouped, interruptions retained, year context explained, absent signals not invented");
+annual.months.forEach(month => month.comparisons.forEach(comparison => {
+  comparison.signals = { year: ['관성'], month: ['식상'], background: [] };
+}));
+const periods = buildPremiumPeriods(annual, facts);
+assert.equal(periods.length, 12);
+assert.deepEqual(periods.flatMap(p => p.months), annual.months.map(m => m.label));
+assert.equal(new Set(periods.map(p => p.symbols.month.ganzhi)).size, 12);
+assert.ok(periods.every(p => p.reading.includes(p.symbols.month.ganzhi)));
+assert.notEqual(periods[4].reading, periods[5].reading);
+assert.notEqual(periods[10].reading, periods[11].reading);
+assert.notEqual(periods[3].symbols.year.ganzhi, periods[4].symbols.year.ganzhi,
+  'the annual background changes at the solar-year boundary');
+assert.ok(periods[4].reading.includes(periods[3].symbols.year.ganzhi)
+  && periods[4].reading.includes(periods[4].symbols.year.ganzhi));
+console.log('PASS exact monthly stem/branch, year boundary and 12 chronological readings despite identical broad groups');

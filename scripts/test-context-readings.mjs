@@ -56,7 +56,11 @@ for (const [i, birth] of births.entries()) {
   assert.ok(after.palmConnections.length > 0, "no self-response is required for independent palm/saju reading");
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report: after }));
   assert.ok(html.indexOf("premium-overall") < html.indexOf("1년의 주요 구간"));
-  assert.ok(html.includes("손금과 사주를 연결해 읽기"));
+  assert.ok(!html.includes('aria-label="손금과 사주를 연결해 읽기"'), "v5 integrates observations into the corresponding reading rather than repeating a separate card");
+  for (const connection of after.palmConnections) {
+    const passage = connection.text.split("\n\n")[0];
+    assert.ok(html.includes(passage), "the integrated passage remains visible in the report body");
+  }
   assert.ok(html.indexOf("1년의 주요 구간") < html.indexOf("12개월 전체 흐름 펼쳐보기"));
   const displayed = buildPremiumPeriodPresentation(after);
   const presentation = after.periods.map(p => ({ label: p.label, months: p.months, highlight: after.annualHighlights.includes(p.months[0]),
@@ -86,34 +90,36 @@ for (const [i, birth] of births.entries()) {
 assert.deepEqual(samples[0].before.periods, samples[1].before.periods, "reproduce the published collision");
 assert.notDeepEqual(samples[0].after.periods, samples[1].after.periods);
 assert.notEqual(samples[0].after.overall.paragraphs[0], samples[1].after.overall.paragraphs[0]);
-assert.notEqual(samples[0].after.overall.paragraphs[1], samples[4].after.overall.paragraphs[1], "the same three themes with different strength must not collapse to identical prose");
+assert.notEqual(samples[0].after.overall.paragraphs[0], samples[4].after.overall.paragraphs[0], "the same three themes with different strength must not collapse to identical prose");
 assert.equal(samples[3].after.profileRule, "duty-with-support");
 assert.equal(samples[5].after.profileRule, "agency-value-understanding");
 assert.doesNotMatch(samples[5].after.domains.find(d => d.key === "work").paragraphs.join(" "), /자신의 생각을 보여주는 힘과 맡은 역할을 지키려는 마음이 비슷/);
 const feb1 = samples[0].after.periods.find(p => p.months.includes("2027년 2월"));
 const feb2 = samples[1].after.periods.find(p => p.months.includes("2027년 2월"));
-assert.match(feb1.reading, /보상|대가/);
-assert.match(feb2.reading, /지원|맡을 몫/);
+assert.match(feb1.reading, /꾸준히 만들어|자원과 쓰임/);
+assert.match(feb2.reading, /표현|교환 조건/);
 assert.notEqual(feb1.reading, feb2.reading);
 const december4 = samples[3].after.periods.find(p => p.months.includes("2026년 12월"));
-assert.ok(december4.interpretation.passages.some(p => p.id === "duty-to-return"), "officer 4 outweighs output 1 / wealth 1, even when strength is weak");
-assert.ok(!december4.interpretation.passages.some(p => p.id === "output-return-with-support"));
-assert.ok(feb2.interpretation.passages.some(p => p.id === "output-return-with-support"), "output 2 / wealth 2 remains a leading pair in sample 2");
-for (const sample of samples.filter(s => [1, 2, 4, 5].includes(s.id))) {
-  for (const month of ["2027년 6월", "2027년 8월"]) {
-    const item = sample.presentation.find(p => p.months.includes(month));
-    assert.ok(item.paragraphs.length && item.shared.length);
-  }
+assert.ok(buildContextualMonthReading(samples[3].facts, samples[3].after.annual.months.find(m => m.label === "2026년 12월")).passages.some(p => p.id === "duty-to-return"), "the original broad-group rule is retained as evidence");
+assert.ok(december4.symbols.month.stemTenGod && december4.symbols.month.branchTenGod);
+assert.ok(buildContextualMonthReading(samples[1].facts, samples[1].after.annual.months.find(m => m.label === "2027년 2월")).passages.some(p => p.id === "output-return-with-support"));
+for (const sample of samples) {
+  assert.equal(sample.presentation.length, 12);
+  assert.equal(new Set(sample.presentation.map(item => item.paragraphs.join(" "))).size, 12, "each displayed month adds its own meaning");
 }
 for (const sample of samples.slice(0, 2)) {
-  const june = sample.presentation.find(p => p.months.includes("2027년 6월"));
-  assert.match(june.paragraphs.join(" "), /역할과 약속.*보상과 실제 쓰임.*함께 강조되지는 않습니다/);
-  const late = sample.presentation.find(p => p.months.includes("2027년 8월"));
-  assert.match(late.paragraphs.join(" "), /2027년 1월과 같은/);
+  for (const [a, b] of [["2027년 2월", "2027년 3월"], ["2027년 8월", "2027년 9월"]]) {
+    const first = sample.after.periods.find(p => p.months.includes(a));
+    const second = sample.after.periods.find(p => p.months.includes(b));
+    assert.notEqual(first.symbols.month.stemTenGod, second.symbols.month.stemTenGod);
+    assert.notEqual(first.symbols.month.branchTenGod, second.symbols.month.branchTenGod);
+    assert.notEqual(first.reading, second.reading);
+    assert.ok(second.interpretation.passages.some(p => p.id === "month-precise-contrast"));
+  }
 }
 for (const sample of [samples[3], samples[4]]) {
   const april = sample.presentation.find(p => p.months.includes("2027년 4월"));
-  assert.match(april.paragraphs.join(" "), /보상과 실제 쓰임.*대신.*자기 판단과 동등한 몫/);
+  assert.ok(april.paragraphs.some(text => text.includes("월운")));
 }
 for (const field of ["peerStarCount", "officerStarCount", "resourceStarCount"]) {
   const counterfactual = { ...samples[1].facts, [field]: 4 };
