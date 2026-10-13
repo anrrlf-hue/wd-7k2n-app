@@ -1,10 +1,11 @@
 import { ReportSection } from "@/components/diagnosis/report-section";
 import { buildPalmReadingSections, buildTraditionalReadingText } from "@/lib/palm-observation-text";
-import type { PalmFacts } from "@/lib/palm-facts";
+import { normalizePalmFactsObservation, type PalmFacts } from "@/lib/palm-facts";
 import type { CompareItem } from "@/lib/triple-compare";
 import type { PalmBilateralReading } from "@/lib/palm-bilateral";
 
 export function PalmReadingSections({ facts, title = "손금에서 보이는 나의 모습", step = "2" }: { facts: PalmFacts; title?: string; step?: string }) {
+  facts = normalizePalmFactsObservation(facts);
   const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines, {
     handShape: facts.handShape,
     handSide: facts.handSide,

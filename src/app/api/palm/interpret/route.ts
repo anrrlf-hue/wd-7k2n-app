@@ -4,7 +4,7 @@ import { palmFactsSchema } from "@/lib/palm-input-schema";
 import { computeSajuFacts, type SajuFacts } from "@/lib/saju-facts";
 import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
-import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
+import { isPalmFactsUsable, normalizePalmFactsObservation, type PalmFacts } from "@/lib/palm-facts";
 import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { buildFortuneCandidates, selectPrimaryCandidate } from "@/lib/fortune-candidates";
@@ -56,13 +56,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const leftPalmFacts = (parsed.data.leftPalmFacts ?? null) as PalmFacts | null;
-  const rightPalmFacts = (parsed.data.rightPalmFacts ?? null) as PalmFacts | null;
+  const leftPalmFacts = parsed.data.leftPalmFacts ? normalizePalmFactsObservation(parsed.data.leftPalmFacts as PalmFacts) : null;
+  const rightPalmFacts = parsed.data.rightPalmFacts ? normalizePalmFactsObservation(parsed.data.rightPalmFacts as PalmFacts) : null;
   const dominantHand = (parsed.data.dominantHand ?? "right") as DominantHand;
   const bilateralReady = Boolean(leftPalmFacts && rightPalmFacts);
   const bilateralPrimary =
     dominantHand === "left" ? leftPalmFacts ?? rightPalmFacts : rightPalmFacts ?? leftPalmFacts;
-  const palmFacts = ((parsed.data.palmFacts ?? bilateralPrimary) ?? null) as PalmFacts | null;
+  const palmFacts = parsed.data.palmFacts ? normalizePalmFactsObservation(parsed.data.palmFacts as PalmFacts) : bilateralPrimary;
   const palmSkipped = palmFacts === null;
 
   if (palmFacts?.pipelineDiagnostics) {

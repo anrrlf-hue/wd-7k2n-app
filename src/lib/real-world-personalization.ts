@@ -26,7 +26,7 @@ import type { MbtiType } from "@/lib/mbti-facts";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
 import { buildTripleCompare } from "@/lib/triple-compare";
 import { daeunFlavor, deriveDaeunShift } from "@/lib/fortune-candidates";
-import { dayStemImagery, dayStrengthLabel } from "@/lib/saju-labels";
+import { buildSajuReadingCoherence } from "@/lib/saju-reading-coherence";
 
 // 이번 라운드: 원국+대운(daeunAnalysis)+MBTI/6문항+손금을 "지금 이 시기엔
 // 이렇게 나타난다"는 하나의 문단으로 묶는다. 손금은 별도 해석을 새로
@@ -411,12 +411,9 @@ export function buildComprehensiveVerdict(
   const sentences: string[] = [];
   const evidenceParts: string[] = [`일간 ${facts.dayStemKo}(${facts.dayElement})`, `격국 ${facts.geukguk}`];
 
-  const imagery = dayStemImagery(facts.dayStemKo);
-  sentences.push(
-    facts.dayStrengthReliable
-      ? `당신은 ${imagery.image}처럼 ${imagery.core} 사람입니다. ${dayStrengthLabel(facts.dayStrength)}의 기질이 깔려 있어, 중요한 순간의 자기 기준이 어떻게 드러나는지 함께 볼 수 있습니다.`
-      : `당신은 ${imagery.image}처럼 ${imagery.core} 사람입니다. 출생시간이 없어 자기주도성의 강약은 한쪽으로 단정하지 않고, 확인되는 일간·오행·십성 구조만 이어서 봅니다.`,
-  );
+  const coherent = buildSajuReadingCoherence(facts);
+  evidenceParts.push(`해석 계획 ${coherent.arcId}`);
+  sentences.push(coherent.verdictLead);
 
   sentences.push(
     facts.wealthOpportunityDaeunCount === null
@@ -449,7 +446,7 @@ export function buildComprehensiveVerdict(
     if (palmClause) sentences.push(palmClause);
   }
 
-  sentences.push("정리하면, 타고난 성향과 지금의 흐름은 같은 방향만 보여주지는 않습니다. 잘하는 방식은 분명하지만, 그 강점이 과해질 때 어디서 흔들리는지도 함께 보는 것이 이 사람을 더 정확하게 이해하는 핵심입니다.");
+  sentences.push("이 해석이 실제 선택에 맞는지는 맡은 범위와 필요한 도움, 직접 확인한 결과를 생활에서 돌아보며 살펴볼 수 있습니다.");
 
   return {
     text: sentences.join(" "),

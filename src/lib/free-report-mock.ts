@@ -41,7 +41,8 @@ import { deriveSajuWorkCore } from "@/lib/saju-work-core";
 import type { SajuFacts, PillarFact } from "@/lib/saju-facts";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { PersonalityInput } from "@/lib/personality-check";
-import { dayStrengthShort, elementTemperamentPhrase } from "@/lib/saju-labels";
+import { dayStrengthShort } from "@/lib/saju-labels";
+import { buildSajuReadingCoherence } from "@/lib/saju-reading-coherence";
 import { buildRealWorldPersonalization, buildNextMove, buildTimingShift } from "@/lib/real-world-personalization";
 
 // ---------- 문장 구조 다양화 유틸 ----------
@@ -95,21 +96,6 @@ function levelOf(count: number): "없음" | "적음" | "보통" | "강함" {
 // (be-realdeveloper/saju)의 interpretation.md 해석 사전을 그대로 옮긴 것이지
 // 이번에 새로 지어낸 판정이 아니다. 신살은 "양념"이라 실제로 검출된 것만
 // 풀이하고(없으면 억지로 안 만듦), 의미를 모르는 신살은 이름을 대지 않는다.
-const STAGE_ENERGY_PHRASE: Record<string, string> = {
-  장생: "새로운 걸 막 시작할 때 힘이 붙는",
-  목욕: "시행착오를 겪으며 다듬어가는",
-  관대: "본격적으로 성장기에 들어선",
-  건록: "가장 힘 있게 밀어붙이는",
-  제왕: "정점에서 주도권을 쥐는",
-  쇠: "속도를 늦추고 정리하는",
-  병: "잠시 쉬어가며 회복하는",
-  사: "멈춰서 방향을 다시 보는",
-  묘: "안으로 쌓아두고 갈무리하는",
-  절: "완전히 새로 시작하기 직전의",
-  태: "씨앗처럼 가능성만 있는",
-  양: "천천히 준비하며 키워가는",
-};
-
 const SINSAL_MEANING: Record<string, { meaning: string; tone: "길" | "주의" }> = {
   도화: { meaning: "사람을 끌어당기는 매력", tone: "길" },
   역마: { meaning: "이동·변화와 잘 맞는 활동성", tone: "길" },
@@ -179,33 +165,14 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     : "출생시간 미상으로 신강신약 확정하지 않음";
   // Use the same composite reading as the deeper report, before any palm input.
   const personal = buildPersonalReading(facts);
+  const coherent = buildSajuReadingCoherence(facts);
   const snapshot: ReportParagraph = {
     text: personal.preview,
     evidence: `일간 ${dayStemKo}(${dayElement}), ${facts.hasTimeInput ? `격국 ${geukguk}` : "격국 미확정"}, ${strengthEvidence}, 비겁 ${peerStarCount}개, 식상 ${outputStarCount}개, 관성 ${officerStarCount}개, 인성 ${resourceStarCount}개, 재성 ${wealthStarCount}개. 전통적 성향 해석이며 실제 성격·관계·직업·자산 상태를 측정한 결과는 아닙니다.`,
   };
 
-  // ② 타고난 성향
-  const temperament = compose(seedFor(2), {
-    claim: dayStrengthReliable
-      ? `기본적으로 ${elementTemperamentPhrase(dayElement)}입니다. ${dayStrength === "strong" ? "한번 납득한 방향은 쉽게 바꾸지 않고, 중요한 순간일수록 자기 기준이 더 선명해집니다" : dayStrength === "weak" ? "주변 분위기와 상황을 빠르게 읽고, 필요한 만큼 자신을 조정해 흐름을 맞추는 편입니다" : "상황에 따라 태도와 속도를 유연하게 바꾸되, 극단적으로 한쪽에 치우치지는 않습니다"}.`
-      : `기본적으로 ${elementTemperamentPhrase(dayElement)}입니다. 다만 출생시간에 따라 달라질 수 있는 자기주도성의 강약은 한쪽으로 단정하지 않습니다.`,
-    scene: dayStrengthReliable
-      ? dayStrength === "strong"
-        ? "주변 의견이 갈리는 순간에도 쉽게 휩쓸리기보다, 스스로 납득한 기준을 중심으로 방향을 잡는 편입니다."
-        : dayStrength === "weak"
-          ? "혼자 결론을 서두르기보다 분위기와 사람들의 반응을 살핀 뒤 움직이는 편입니다."
-          : "상황에 따라 표현 방식이나 속도가 달라질 수 있지만, 그 변화 자체가 이 사람의 유연함에 가깝습니다."
-      : "출생시간 없이도 확인되는 일간과 세 기둥의 오행·십성 구조를 중심으로 성향을 넓게 봅니다.",
-    evidence: `일간 ${dayStemKo}(${dayElement}) · ${strengthEvidence}, 오행 최다 ${dominantElement}`,
-  });
-  // 일지(자기·내면 궁위) 12운성 — 겉으로 드러나는 태도와 별개로, 결정적인
-  // 순간에 어떤 에너지 단계가 깔려 있는지를 한 겹 더 보여준다.
-  const dayStage = pillarStages.find((s) => s.pillar === "day")?.geo;
-  const dayStagePhrase = dayStage ? STAGE_ENERGY_PHRASE[dayStage] : null;
-  if (dayStagePhrase) {
-    temperament.text += ` 평소 태도와 별개로 본바탕에는 ${dayStagePhrase} 기운이 깔려 있어, 정작 중요한 순간에는 평소와 다른 얼굴이 나올 수 있습니다.`;
-    temperament.evidence += `, 일지 12운성 ${dayStage}`;
-  }
+  // The free summary and later verdict use the premium report's natal question.
+  const temperament = coherent.temperament;
 
   // 사람과 관계를 맺는 방식 — 상대의 마음을 예측하지 않고, 관계에서
   // 본인이 어떤 기준과 반응 방식을 쓰기 쉬운지만 설명한다.
@@ -372,16 +339,7 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
             evidence: `관성 ${officerStarCount}개·인성 ${resourceStarCount}개의 균형`,
           };
 
-  const decisionStyle: ReportParagraph = {
-    text: !dayStrengthReliable
-      ? "출생시간이 없어 결정을 밀고 나가는 힘과 주변을 살피는 힘 중 어느 쪽이 더 강한지는 확정하지 않습니다. 대신 확인되는 오행과 십성 구조를 바탕으로 결정에서 중요하게 보는 기준을 넓게 살펴봅니다. 실제 선택에서는 충분한 정보와 내 기준이 함께 있는지를 확인하는 편이 좋습니다."
-      : dayStrength === "neutral"
-      ? "결정을 내릴 때 자기 기준과 주변 상황을 함께 보는 편입니다. 처음부터 한쪽으로 밀어붙이기보다 지킬 기준과 조정할 부분을 나누어 생각합니다. 균형감은 좋지만, 선택지를 오래 열어두면 결론이 늦어질 수 있습니다."
-      : dayStrength === "strong"
-        ? "결정을 쉽게 남에게 맡기는 편은 아닙니다. 스스로 납득할 기준이 서야 움직이고, 한번 방향을 정하면 쉽게 흔들리지 않습니다. 중요한 순간에는 추진력이 강하지만, 이미 마음이 기운 뒤에는 다른 의견을 놓칠 수 있습니다."
-        : "결정을 내리기 전에 필요한 정보와 주변 의견을 충분히 모으는 편입니다. 성급한 선택을 피하는 장점이 있지만, 기준이 많아질수록 결론을 미루기 쉬워집니다. 어느 정도 확인하면 결정할지 기준을 미리 정해두는 방식이 잘 맞습니다.",
-    evidence: `일간 ${dayStemKo}(${dayStrengthReliable ? dayStrengthShort(dayStrength) : "강약 미확정"}), 강약과 속도는 다른 의미`,
-  };
+  const decisionStyle = coherent.decisionStyle;
 
   // ⑬ 기회를 잡는 방식
   const luckySinsal = findNamedSinsal(pillarStages, "길");
@@ -400,124 +358,8 @@ export function buildFreeSajuReport(facts: SajuFacts, personality?: PersonalityI
     evidence: `정점(건록·제왕) 자리 ${pillarNamesKo(peakStagePillars) || "없음"}, 길신 ${gilsin.join(", ") || "없음"}${luckySinsal ? `, 신살 ${luckySinsal.name}` : ""}`,
   });
 
-  // ⑭ 강점 3개 — 실제 신호가 있는 항목만 후보로 넣는다. 이전에는 서로 다른
-  // 단위(재성 개수 vs 길신 개수×2 같은 임의 가중치)를 억지로 비교해 Top3를
-  // 뽑았다 — 카테고리마다 단위가 달라 비교 자체가 의미 없는 산술이었다.
-  // 지금은 "이 항목의 근거가 실제로 있는가(present)"만 보고, 있는 항목을
-  // 고정 우선순위로 나열한다 — 서로 다른 카테고리의 크기를 비교하지 않는다.
-  // 실제 신호가 3개 미만이면(드문 경우) 근거가 약한 사람에게도 거짓으로
-  // 확신 있는 강점을 지어내지 않고, 목록 끝에 둔 정직한 대체 문항으로 채운다.
-  const strengthPool: { title: string; detail: string; evidence: string; present: boolean }[] = [
-    {
-      title: "재물을 알아보는 감각",
-      detail: "돈이 될 만한 것을 남들보다 먼저 알아채는 감각이 있습니다.",
-      evidence: `재성 ${wealthStarCount}개(${facts.wealthStarTypes.join(", ") || "없음"})`,
-      present: wealthStarCount > 0,
-    },
-    {
-      title: "직접 밀어붙이는 추진력",
-      detail: "남에게 미루지 않고 직접 부딪혀서 해결하는 실행력이 강점입니다.",
-      evidence: `비겁 ${peerStarCount}개`,
-      present: peerStarCount > 0,
-    },
-    {
-      title: "만들어내고 표현하는 힘",
-      detail: "아이디어를 실제 결과물로 바꾸는 표현력과 실행력이 있습니다.",
-      evidence: `식상 ${outputStarCount}개`,
-      present: outputStarCount > 0,
-    },
-    {
-      title: "귀인의 도움을 받는 힘",
-      detail: "중요한 순간에 사람이나 상황의 도움을 받아 다음 단계로 넘어가는 흐름이 나타날 수 있습니다.",
-      evidence: `길신 ${gilsin.join(", ") || "없음"}`,
-      present: gilsin.length > 0,
-    },
-    {
-      title: "안정적으로 신뢰를 쌓는 힘",
-      detail: "정해진 틀 안에서 꾸준히 신뢰를 쌓아 결과를 만들어내는 힘이 있습니다.",
-      evidence: `관성 ${officerStarCount}개`,
-      present: officerStarCount > 0,
-    },
-    {
-      title: "기회를 놓치지 않는 순발력",
-      detail: "기회가 왔을 때 반응 속도가 빠릅니다.",
-      evidence: `정점 자리 ${peakStagePillars.length}곳`,
-      present: peakStagePillars.length > 0,
-    },
-    {
-      title: "상황에 맞춰 균형을 잡는 힘",
-      detail: "하나로 확 튀는 강점보다, 상황에 따라 필요한 쪽으로 무게중심을 옮기는 유연함이 있습니다.",
-      evidence: "특정 십성으로 뚜렷하게 쏠리지 않은 균형 구조",
-      present: true,
-    },
-  ];
-  const strengths = strengthPool
-    .filter((c) => c.present)
-    // 전체 사주에서는 재물 한 축이 성향·관계·일보다 앞서 보이지 않게 한다.
-    // 돈·재물 상세를 선택했을 때 해당 구조를 충분히 깊게 보여준다.
-    .sort((a, b) => Number(a.title === "재물을 알아보는 감각") - Number(b.title === "재물을 알아보는 감각"))
-    .slice(0, 3)
-    .map(({ title, detail, evidence }) => ({ title, detail, evidence }));
-
-  // ⑮ 조심할 점 3개 — 강점과 같은 원칙. "확실히 조심해야 할 이유가 있는지
-  // (present)"만 보고 고정 우선순위로 나열, 임의 가중치로 비교하지 않는다.
-  const cautionPool: { title: string; detail: string; evidence: string; present: boolean }[] = [
-    {
-      title: "감정이 앞서는 순간",
-      detail: "기분이 크게 올라가거나 불편함이 커진 순간에는 조건을 끝까지 보기보다 빨리 결정해 상황을 끝내고 싶어질 수 있습니다. 이때 중요한 제안이나 관계를 필요 이상으로 받아들이거나, 반대로 괜찮은 선택도 순간 감정 때문에 너무 빨리 끊어낼 수 있습니다. 결정이 되돌릴 수 있는지와 내가 정말 원하는 것이 무엇인지 감정이 가라앉은 뒤 다시 확인하는 편이 좋습니다.",
-      evidence: `흉신 ${hyungsin.join(", ")}`,
-      present: hyungsin.length > 0,
-    },
-    {
-      title: "지나친 확신",
-      detail: "내 판단에 확신이 생기면 새로운 정보가 들어와도 처음 생각을 유지하려는 힘이 강해질 수 있습니다. 그래서 이미 비용을 넣은 선택을 오래 끌거나, 반대로 처음 마음에 들지 않았다는 이유만으로 실제 조건이 좋은 제안을 놓칠 수 있습니다. 큰 선택일수록 반대 근거 하나와 중단 기준 하나를 먼저 정해두는 것이 좋습니다.",
-      evidence: `일간 ${dayStrengthShort(dayStrength)}`,
-      present: dayStrengthReliable && dayStrength === "strong",
-    },
-    {
-      title: "정보가 부족한 상태에서의 결정",
-      detail: "충분한 기준이 잡히기 전에 혼자 답을 내리려 하면 무엇을 더 확인해야 하는지 놓치기 쉽습니다. 그러면 결정을 오래 미루다 타이밍을 놓치거나, 가장 확신 있게 말하는 사람의 의견을 그대로 따라 불리한 조건을 받아들일 수 있습니다. 선택 전에 비교할 항목을 두세 개로 고정하고, 모르는 부분만 확인하는 방식이 잘 맞습니다.",
-      evidence: `일간 ${dayStrengthShort(dayStrength)}`,
-      present: dayStrengthReliable && dayStrength === "weak",
-    },
-    {
-      title: "스트레스가 큰 때의 성급한 정리",
-      detail: "생각이 복잡하고 예민해질수록 당장 불편한 상황을 끝내는 선택에 마음이 기울 수 있습니다. 사람과의 갈등이나 일의 답답함 때문에 관련된 선택까지 한꺼번에 정리하면 나중에 다시 볼 여지가 줄어듭니다. 중요한 선택은 스트레스의 원인과 실제 문제를 분리해서 보는 편이 좋습니다.",
-      evidence: gwimunRelations.join(", "),
-      present: gwimunRelations.length > 0,
-    },
-    {
-      title: "시작은 빠른데 마무리가 분산되는 패턴",
-      detail: "새로운 일과 아이디어를 시작하는 힘이 강한 대신 동시에 여러 가지를 벌이면 시간과 집중력이 여러 곳으로 나뉠 수 있습니다. 기회가 없어서 놓치는 것이 아니라, 끝까지 완성해 결과로 바꿀 여력이 부족해져 좋은 시작도 중간에서 힘이 빠질 수 있습니다. 새 일을 시작하기 전에 지금 끝낼 한 가지를 먼저 정하는 편이 유리합니다.",
-      evidence: `식상 ${outputStarCount}개`,
-      present: outputStarCount >= 2,
-    },
-    {
-      title: "부족한 기운이 필요한 순간",
-      detail: `타고난 기운 중 ${이가(missingElements.join(", "))} 비어 있어, 평소에는 문제가 없어도 그 성향이 꼭 필요한 순간에 반응이 한쪽으로 치우칠 수 있습니다. 결단이 필요한데 지나치게 미루거나, 반대로 상황을 바꿔야 하는데 익숙한 방식만 붙들면 변화의 타이밍을 놓치기 쉽습니다. 부족한 부분은 사람·환경·체크리스트처럼 바깥 기준을 이용해 보완하는 편이 좋습니다.`,
-      evidence: `없는 오행 ${missingElements.join(", ")}`,
-      present: missingElements.length > 0,
-    },
-    {
-      title: "비교가 길어져 결정 시점을 놓치는 패턴",
-      detail: "여러 조건을 고르게 보려는 장점이 있지만, 모든 조건이 만족될 때까지 비교하면 결정을 내릴 시점이 늦어질 수 있습니다. 특히 기회가 일정 기간만 열려 있을 때는 더 알아보는 동안 선택지가 사라지거나, 반대로 급해진 마지막 순간에 원하지 않던 조건을 받아들이게 될 수 있습니다. 반드시 지킬 기준 한두 개와 포기해도 되는 조건을 미리 나누는 편이 좋습니다.",
-      evidence: "특정 십성으로 뚜렷하게 쏠리지 않은 균형 구조",
-      present: true,
-    },
-  ];
-  const cautions = cautionPool
-    .filter((c) => c.present)
-    .slice(0, 3)
-    .map(({ title, detail, evidence }) => ({ title, detail, evidence }));
-  // Some valid charts select only two source cautions. Reuse a caution already
-  // explained by this personal reading instead of inventing a new risk to fill
-  // the report schema. Keep all selected source cautions in their original order.
-  for (const reading of [personal.overall, ...personal.domains]) {
-    if (cautions.length >= 3) break;
-    if (!cautions.some(item => item.detail === reading.caution)) {
-      cautions.push({ title: reading.headline, detail: `${reading.caution} ${personal.closing.remember}`, evidence: reading.basis });
-    }
-  }
+  const strengths = coherent.strengths;
+  const cautions = coherent.cautions;
 
   // ⑯ 왜 이런 결과가 나왔나 — 전체 리포트용 "근거 요약" 보조 섹션. 여기는
   // 전문용어를 써도 된다(이 필드 자체가 펼쳐보는 근거 영역이라서).

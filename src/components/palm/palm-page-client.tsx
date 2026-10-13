@@ -15,7 +15,7 @@ import {
   assessPalmCaptureFrame,
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
-import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
+import { isPalmFactsUsable, describePalmFailureReasons, normalizePalmFactsObservation, type PalmFacts } from "@/lib/palm-facts";
 import { PalmReadingSections, PalmBilateralSection, TripleCompareSection } from "@/components/palm/palm-reading-sections";
 import { PostReadingDetailFlow } from "@/components/palm/post-reading-detail-flow";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
@@ -249,9 +249,9 @@ export function PalmPageClient({
         setRetryMode("report");
         setErrorMsg("입력한 성향 정보가 달라졌어요. 촬영 정보는 유지하고 현재 입력으로 리포트를 다시 받아주세요.");
       }
-      setPalmFacts(saved.palmFacts);
-      setLeftPalmFacts(saved.leftPalmFacts ?? null);
-      setRightPalmFacts(saved.rightPalmFacts ?? null);
+      setPalmFacts(saved.palmFacts ? normalizePalmFactsObservation(saved.palmFacts) : null);
+      setLeftPalmFacts(saved.leftPalmFacts ? normalizePalmFactsObservation(saved.leftPalmFacts) : null);
+      setRightPalmFacts(saved.rightPalmFacts ? normalizePalmFactsObservation(saved.rightPalmFacts) : null);
       setDominantHand(saved.dominantHand ?? null);
       setBilateralReading(isStoredPalmReading(saved.bilateralReading) ? saved.bilateralReading : null);
       setPreviousBilateralReading(isStoredPalmReading(saved.previousBilateralReading) ? saved.previousBilateralReading : null);

@@ -156,6 +156,35 @@ export interface PalmFacts {
   warnings: string[];
 }
 
+/** Older saved observations predate per-line provenance. Recover only what the
+ * retained pipeline diagnostics actually establish; never turn a mask score or
+ * MediaPipe confidence into a probability of a traditional interpretation. */
+export function normalizePalmFactsObservation(facts: PalmFacts): PalmFacts {
+  if (!facts.onnxLines) return facts;
+  const diagnostics = facts.pipelineDiagnostics;
+  const keys = ["heartLine", "headLine", "lifeLine"] as const;
+  const normalized = { ...facts.onnxLines };
+  for (const key of keys) {
+    const line = facts.onnxLines[key];
+    const sourceVariant = line.detected
+      ? line.sourceVariant && line.sourceVariant !== "unknown" ? line.sourceVariant : diagnostics?.chosenVariant?.[key] ?? "unknown"
+      : "unknown";
+    const rawDetected = line.rawDetected ?? (line.detected && sourceVariant === "raw" ? true
+      : diagnostics?.rawDetectedLineCount === 0 || diagnostics?.rawPixelCount?.[key] === 0 ? false : undefined);
+    const enhancedDetected = line.enhancedDetected ?? (line.detected && sourceVariant === "enhanced" ? true
+      : diagnostics?.enhancedAttempted === false || diagnostics?.enhancedDetectedLineCount === 0 || diagnostics?.enhancedPixelCount?.[key] === 0 ? false : undefined);
+    normalized[key] = {
+      ...line, sourceVariant, rawDetected, enhancedDetected,
+      endpointEvidence: line.endpointEvidence ?? (line.detected ? "segment_extrema" : "none"),
+      pathCompleteness: line.pathCompleteness ?? (line.detected ? "not_verified" : "unavailable"),
+      attributeSupport: line.attributeSupport ?? (line.detected
+        ? { length: "segment_only", curve: "segment_only", depth: "mask_signal_only" }
+        : { length: "not_supported", curve: "not_supported", depth: "not_supported" }),
+    };
+  }
+  return { ...facts, onnxLines: normalized };
+}
+
 /** 실제 ONNX가 검출한 선 개수(0~3). majorLines(Sobel+ONNX 합집합)는 성공
  * 판정에 쓰지 않는다 — Sobel 혼자 "검출됐다"고 우겨도 손금 리포트를
  * 만들어서는 안 되기 때문이다(그럴듯해 보이는 가짜 결과 방지). */

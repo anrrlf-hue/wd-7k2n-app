@@ -61,7 +61,8 @@ export function buildTripleCompare(facts: SajuFacts, palm: OnnxPalmLines | null,
       : curved
         ? "사주의 지원을 살피는 관점과 손금의 유연한 사고 해석을 함께 놓으면, 다른 사람의 반응을 들으며 생각을 구체화하는 장면을 떠올릴 수 있습니다. 도움을 받아 방향을 찾는 것과 상대 반응에 맞춰 내 기준까지 바꾸는 것은 구분해서 읽습니다."
         : "사주에서는 선택을 뒷받침할 조건을, 손금에서는 생각을 정리하는 기준을 읽습니다. 도움을 듣더라도 자기 말로 결론을 설명할 수 있을 때 두 관점을 생활의 같은 장면에 연결해볼 수 있습니다.";
-    decisionParts.push(`손금에서 확인한 두뇌선은 ${palm.headLine.length ? `길이 ${palm.headLine.length}, ` : ""}${palm.headLine.curve}입니다. ${linked}`);
+    const source = palm.headLine.sourceVariant === "enhanced" ? "보정 영상" : palm.headLine.sourceVariant === "raw" ? "원본 사진" : "사진";
+    decisionParts.push(`${source}에서 확인한 두뇌선 검출 구간은 ${palm.headLine.length ? `상대 길이 ${palm.headLine.length}, ` : ""}${palm.headLine.curve}으로 분류됐습니다. 손금 전체의 길이나 실제 시작·끝점은 확인하지 않았습니다. ${linked}`);
   }
   if (decision.self.state === "NEUTRAL") decisionParts.push("직접 답한 결정 속도는 ‘중간’입니다. 중요한 선택과 일상적인 선택에서 속도가 어떻게 달라지는지 함께 떠올려 보세요.");
   else if (decision.self.state === "DIRECTIONAL") decisionParts.push(check?.levels.speed === "왼쪽"

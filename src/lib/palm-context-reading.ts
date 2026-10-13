@@ -1,4 +1,5 @@
 import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
+import { normalizePalmFactsObservation } from "@/lib/palm-facts";
 import type { DominantHand } from "@/lib/palm-bilateral";
 import { validateReadingPlan, type ReadingPlan } from "@/lib/reading-plan";
 
@@ -39,6 +40,8 @@ function lineNarrative(key: LineKey, line: OnnxLineDetail): string {
 /** One composition from observed features, with traceable interpretation rules.
  * Image confidence/depth never becomes confidence in a personality prediction. */
 export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, dominantHand: DominantHand): ReadingPlan {
+  left = normalizePalmFactsObservation(left);
+  right = normalizePalmFactsObservation(right);
   const primary = dominantHand === "right" ? right : left;
   const label = dominantHand === "right" ? "오른손" : "왼손";
   const head = primary.onnxLines?.headLine;

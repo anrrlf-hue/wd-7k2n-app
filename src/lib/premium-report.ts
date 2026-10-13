@@ -10,7 +10,7 @@ import { buildPremiumMonthNarrative, traditionalSymbolSubject } from "@/lib/prem
 import { buildPersonalReading, PERSONAL_GROUP_LABEL } from "@/lib/personal-reading";
 import type { ReadingPlan } from "@/lib/reading-plan";
 import { buildTripleCompare, type CompareItem } from "@/lib/triple-compare";
-import { isPalmFactsUsable } from "@/lib/palm-facts";
+import { isPalmFactsUsable, normalizePalmFactsObservation } from "@/lib/palm-facts";
 import { READING_GUIDE } from "@/lib/reading-guide";
 import { buildIntegratedPalmReading } from "@/lib/integrated-palm-reading";
 import { buildPremiumEditorialPlan } from "@/lib/premium-editorial-plan";
@@ -118,6 +118,10 @@ export function buildPremiumReport(input: {
   rightPalm?: PalmFacts | null;
   dominantHand?: DominantHand | null;
 }): PremiumReport {
+  input = { ...input,
+    leftPalm: input.leftPalm ? normalizePalmFactsObservation(input.leftPalm) : input.leftPalm,
+    rightPalm: input.rightPalm ? normalizePalmFactsObservation(input.rightPalm) : input.rightPalm,
+  };
   const { facts } = input;
   const annual = buildSajuAnnualOutlook(facts, input.referenceDate);
   const natal = buildPersonalReading(facts);

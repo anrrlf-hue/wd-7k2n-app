@@ -1,4 +1,5 @@
 import { buildPalmContextReading } from "@/lib/palm-context-reading";
+import { normalizePalmFactsObservation } from "@/lib/palm-facts";
 import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
 
 export type DominantHand = "left" | "right";
@@ -34,6 +35,8 @@ function observed(line: OnnxLineDetail | null | undefined): string {
  * The dominant-hand convention is a traditional lens, not evidence of change
  * over time: both photos were taken now, under potentially different lighting. */
 export function buildPalmBilateralReading(left: PalmFacts, right: PalmFacts, dominantHand: DominantHand): PalmBilateralReading {
+  left = normalizePalmFactsObservation(left);
+  right = normalizePalmFactsObservation(right);
   const current = dominantHand === "right" ? right : left;
   const currentLabel = dominantHand === "right" ? "오른손" : "왼손";
   const plan = buildPalmContextReading(left, right, dominantHand);
