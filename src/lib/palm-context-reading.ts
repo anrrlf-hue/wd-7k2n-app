@@ -25,14 +25,13 @@ function sourcePhrase(line: OnnxLineDetail): string {
 function lineNarrative(key: LineKey, line: OnnxLineDetail): string {
   const curve = line.curve && line.attributeSupport?.curve !== "not_supported" ? line.curve : null;
   const shape = curve ? `${curve}인 검출 구간` : "확인된 검출 구간";
-  const ending = "모델의 끝점은 검출 구간의 양끝을 나타내며, 손금 전체 경로와 실제 끝점은 확인하지 않았습니다.";
   if (key === "heartLine") {
-    return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 마음을 표현하고 관계의 기대를 주고받는 방식과 연결해 봅니다. 예를 들어 약속이나 계획이 바뀔 때 상대의 사정과 내가 기대한 점을 함께 말하고, 둘 다 가능한 새 약속을 정하는 장면으로 옮겨볼 수 있습니다. 이 문장은 감정이나 성격을 확정하는 판단이 아니라 사진에서 확인된 모양을 생활 장면에 비춰보는 참고입니다. ${ending}`;
+    return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 마음을 표현하고 관계의 기대를 주고받는 방식과 연결해 봅니다. 예를 들어 약속이나 계획이 바뀔 때 상대의 사정과 내가 기대한 점을 함께 말하고, 둘 다 가능한 새 약속을 정하는 장면으로 옮겨볼 수 있습니다. 이 문장은 감정이나 성격을 확정하는 판단이 아니라 사진에서 확인된 모양을 생활 장면에 비춰보는 참고입니다.`;
   }
   if (key === "headLine") {
-    return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생각을 정리하고 선택 조건을 세우는 방식과 연결해 봅니다. 예를 들어 목적은 유지한 채 비교할 조건을 먼저 정하고, 그 조건 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다. 이 문장은 판단 속도나 능력을 확정하는 말이 아니라 사진에서 확인된 모양을 생활 장면에 비춰보는 참고입니다. ${ending}`;
+    return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생각을 정리하고 선택 조건을 세우는 방식과 연결해 봅니다. 예를 들어 목적은 유지한 채 비교할 조건을 먼저 정하고, 그 조건 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다. 이 문장은 판단 속도나 능력을 확정하는 말이 아니라 사진에서 확인된 모양을 생활 장면에 비춰보는 참고입니다.`;
   }
-  return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생활 기반과 활동 리듬을 살펴보는 자리로 연결해 봅니다. 예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다. 건강이나 수명, 체력의 좋고 나쁨을 판단하는 내용은 아닙니다. ${ending}`;
+  return `${LINE_LOCATIONS[key]}에서 ${sourcePhrase(line)} ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생활 기반과 활동 리듬을 살펴보는 자리로 연결해 봅니다. 예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다. 건강이나 수명, 체력의 좋고 나쁨을 판단하는 내용은 아닙니다.`;
 }
 
 /** One composition from observed features, with traceable interpretation rules.
@@ -45,7 +44,7 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
   const plan: ReadingPlan = {
     headline: "양손에서 확인한 모양을 함께 읽기",
     passages: [], evidence: [],
-    limits: ["사진에서 추정한 선의 모양을 전통적 상징으로 읽는 참고 풀이이며, 실제 성격·적성·수명·건강·미래를 판정하지 않습니다. 양손 사진은 현재의 관측으로, 좌우 차이가 시간에 따른 변화의 증거는 아닙니다."],
+    limits: ["사진에서 추정한 선의 모양을 전통적 상징으로 읽는 참고 풀이이며, 실제 성격·적성·수명·건강·미래를 판정하지 않습니다. 사용자가 선택한 주손을 기준으로 읽고 반대 사진은 비교 참고로 둡니다. 검출 구간의 양끝은 모델이 잡은 구간 끝점일 뿐, 손금 전체 경로와 실제 끝점·전체 길이는 확인하지 않았습니다."],
   };
   for (const hand of ["left", "right"] as const) {
     const facts = hand === "left" ? left : right;
@@ -88,9 +87,9 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
       plan.passages.push({ id: `${key}-reading`, kind: "traditional", text: lineNarrative(key, line), evidenceIds: refs(key) });
     }
     if (l?.detected && r?.detected && l.curve === r.curve) {
-      plan.passages.push({ id: `${key}-bilateral-common`, kind: "observation", text: `${LINES[key]}은 두 사진의 검출 구간에서 같은 방향(${l.curve ?? "확인 안 됨"})으로 관찰됩니다. 같은 사람의 두 사진이라는 점에서 공통으로 보이는 참고점이지만, 좌우가 실제 어느 손인지는 이 검수에서 확정하지 않습니다.`, evidenceIds: refs(key) });
+      plan.passages.push({ id: `${key}-bilateral-common`, kind: "observation", text: `${LINES[key]}은 두 사진의 검출 구간에서 같은 방향(${l.curve ?? "확인 안 됨"})으로 관찰됩니다. 두 사진에서 공통으로 보이는 참고점으로 사용합니다.`, evidenceIds: refs(key) });
     } else if (l?.detected && r?.detected && l.curve !== r.curve) {
-      plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}의 두 검출 구간은 서로 다른 방향으로 분류됐습니다. 사진 각도·조명·보정 차이의 영향도 배제하지 않으며, 이 차이를 시간에 따른 변화나 실제 좌우 특성으로 확정하지 않습니다.`, evidenceIds: refs(key) });
+      plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}의 두 검출 구간은 서로 다른 방향으로 분류됐습니다. 사진 각도·조명·보정 차이의 영향도 있어, 이번 비교에서는 두 관측의 차이로만 남깁니다.`, evidenceIds: refs(key) });
     }
   }
   const detected = (Object.keys(LINES) as LineKey[]).filter(key => primary.onnxLines?.[key].detected);
