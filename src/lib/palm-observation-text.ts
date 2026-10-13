@@ -10,25 +10,21 @@ import type {
 } from "@/lib/palm-facts";
 
 const LINE_LABEL = { heartLine: "감정선", headLine: "두뇌선", lifeLine: "생명선" } as const;
-const LENGTH = { 김: "길게 뻗은", 보통: "중간 길이의", 짧음: "짧게 이어진" } as const;
 const CURVE = { "완만한 곡선": "완만한 곡선을 이루는", "직선에 가까움": "직선에 가까운" } as const;
+const COMMON_SCOPE_NOTE = "사진에서 추정한 선의 모양을 전통적 상징으로 읽는 참고 풀이이며, 실제 성격·적성·건강·수명·미래를 판정하지 않습니다. 검출 구간의 양끝은 모델이 잡은 구간 끝점일 뿐, 손금 전체 경로와 실제 끝점·전체 길이는 확인하지 않았습니다.";
 
 function observation(label: string, d: OnnxLineDetail): string {
   if (!d.detected) return `${label}은 이번 사진에서 뚜렷하게 확인되지 않았습니다.`;
-  if (d.length && d.curve) return `${label}은 ${LENGTH[d.length]} 형태이고 ${CURVE[d.curve]} 모습입니다.`;
-  if (d.length) return `${label}은 ${LENGTH[d.length]} 형태로 보입니다.`;
-  if (d.curve) return `${label}은 ${CURVE[d.curve]} 모습입니다.`;
-  return `${label}의 위치는 보이지만 세부 모양은 이번 사진에서 선명하게 확인되지 않았습니다.`;
+  const source = d.sourceVariant === "enhanced" ? "보정 영상에서" : d.sourceVariant === "raw" ? "원본 사진에서" : "사진에서";
+  const curve = d.curve && d.attributeSupport?.curve !== "not_supported" ? `검출 구간은 ${CURVE[d.curve]} 모습` : "검출 구간의 세부 모양";
+  const length = d.length && d.attributeSupport?.length !== "not_supported" ? `상대 길이는 ${d.length}로 분류` : "전체 길이는 확인되지 않음";
+  return `${label}은 ${source} ${curve}이고 ${length}입니다.`;
 }
 
 function clarityReading(d: OnnxLineDetail): string | null {
   if (!d.detected) return null;
-  if (d.depthStrength === "강함") {
-    return "사진에서도 이 선이 비교적 뚜렷하게 잡혀, 이 주제가 다른 특징보다 눈에 띄는 편입니다.";
-  }
-  if (d.depthStrength === "약함") {
-    return "선은 확인되지만 비교적 가늘게 잡혀, 강한 단정거리보다 보조적인 성향으로 보는 편이 자연스럽습니다.";
-  }
+  if (d.depthStrength === "강함") return "검출 신호는 비교적 강했지만 실제 선의 깊이·두께·전체 경로를 측정한 값은 아닙니다.";
+  if (d.depthStrength === "약함") return "검출 신호가 약해 세부 모양은 보조적으로만 봅니다.";
   return null;
 }
 
@@ -43,9 +39,9 @@ function handOverviewReading(context?: PalmReadingContext): string | null {
 
   const side =
     context?.handSide === "left"
-      ? "이번 사진은 왼손으로 인식됐습니다. "
+      ? "앱에서 왼손 슬롯으로 입력한 사진입니다. 실제 좌우는 사진 방향만으로 확정하지 않습니다. "
       : context?.handSide === "right"
-        ? "이번 사진은 오른손으로 인식됐습니다. "
+        ? "앱에서 오른손 슬롯으로 입력한 사진입니다. 실제 좌우는 사진 방향만으로 확정하지 않습니다. "
         : "";
 
   const shapeText: Record<Exclude<PalmFacts["handShape"], "unknown">, string> = {
@@ -77,11 +73,7 @@ function coreStoryReading(
   const wealthClear = secondaryLines?.wealth.status === "clear";
 
   if (head.detected) {
-    if (head.length === "김" && head.curve === "완만한 곡선") {
-      parts.push("생각을 깊게 확장하면서 직감과 아이디어까지 함께 쓰는 두뇌선이 중심에 있습니다.");
-    } else if (head.length === "김" && head.curve === "직선에 가까움") {
-      parts.push("한 번 판단을 시작하면 충분히 따져보고 기준을 세운 뒤 결론 내리려는 두뇌선이 중심에 있습니다.");
-    } else if (head.curve === "완만한 곡선") {
+    if (head.curve === "완만한 곡선") {
       parts.push("정답 하나만 찾기보다 상황과 아이디어를 함께 보려는 두뇌선이 눈에 띕니다.");
     } else if (head.curve === "직선에 가까움") {
       parts.push("감보다 기준과 순서를 세워 판단하려는 두뇌선이 눈에 띕니다.");
@@ -96,13 +88,7 @@ function coreStoryReading(
     );
   }
 
-  if (life.detected) {
-    if (life.length === "김") {
-      parts.push("생명선도 길게 잡혀, 한 번 정한 생활 방식이나 목표를 오래 이어가는 힘을 같이 보는 편입니다.");
-    } else if (life.length === "짧음") {
-      parts.push("생명선은 비교적 짧게 잡혀, 한 방향만 오래 붙들기보다 상황 변화에 맞춰 생활 방식을 바꾸는 편으로 볼 수 있습니다.");
-    }
-  }
+  if (life.detected) parts.push("엄지 밑을 감싸는 생명선 검출 구간은 생활 기반과 활동 리듬을 살펴보는 전통적 상징으로만 연결합니다.");
 
   if (fateClear) {
     parts.push(
@@ -155,40 +141,34 @@ export interface PalmReadingSection {
 
 function heartReading(d: OnnxLineDetail): string {
   const parts: string[] = [];
-  if (d.length === "김") parts.push("한번 마음을 주면 관계를 가볍게 끊기보다 오래 가져가려는 편으로 읽힙니다.");
-  if (d.length === "보통") parts.push("가까워질 사람과 거리를 둘 사람을 비교적 자연스럽게 구분하는 편으로 읽힙니다.");
-  if (d.length === "짧음") parts.push("관계에서 내 공간과 기준을 중요하게 여기고, 쉽게 마음을 다 보여주지는 않는 편으로 읽힙니다.");
+  parts.push("손가락 아래쪽의 감정선으로 부르는 위치에서 확인된 검출 구간을 마음을 표현하고 관계의 기대를 주고받는 방식과 연결해 봅니다.");
   if (d.curve === "완만한 곡선") parts.push("마음을 느끼는 것에서 끝나지 않고 표정이나 말로 반응해주는 편이라, 친해질수록 따뜻함이 더 잘 드러날 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("감정을 크게 드러내기보다 약속을 지키거나 필요한 일을 챙기는 방식으로 마음을 보여주는 쪽에 가깝습니다.");
   const clarity = clarityReading(d);
   if (clarity) parts.push(clarity);
-  parts.push("관계에서는 내가 얼마나 좋아하는지보다, 상대가 내 표현 방식을 제대로 알아듣고 있는지가 더 중요할 수 있습니다.");
+  parts.push("예를 들어 상대가 기쁜 소식을 전했을 때 축하를 먼저 말하고 내 반응도 짧게 덧붙이는 장면으로 옮겨볼 수 있습니다.");
   return parts.join(" ");
 }
 
 function headReading(d: OnnxLineDetail): string {
   const parts: string[] = [];
-  if (d.length === "김") parts.push("결정을 내리기 전에 앞뒤 맥락과 가능성을 충분히 살펴보는 편으로 읽힙니다.");
-  if (d.length === "보통") parts.push("전체 흐름을 보면서도 당장 해결해야 할 현실적인 문제를 놓치지 않는 편으로 읽힙니다.");
-  if (d.length === "짧음") parts.push("복잡하게 오래 고민하기보다 핵심을 잡고 빨리 움직이는 쪽에 가까울 수 있습니다.");
+  parts.push("손바닥 중앙의 두뇌선으로 부르는 위치에서 확인된 검출 구간을 생각을 정리하고 선택 조건을 세우는 방식과 연결해 봅니다.");
   if (d.curve === "완만한 곡선") parts.push("정답 하나만 찾기보다 직감과 아이디어를 함께 쓰는 편이라 새로운 방식이나 창의적인 해결책에 강점이 생길 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("기준과 근거를 세워 판단하는 편이라 숫자, 비교, 순서를 정리하면 결정이 빨라질 수 있습니다.");
   const clarity = clarityReading(d);
   if (clarity) parts.push(clarity);
-  parts.push("중요한 선택에서는 평소 강점이 과해져 너무 오래 고민하거나 반대로 너무 빨리 결론 내리는지만 살펴보면 좋습니다.");
+  parts.push("예를 들어 회의에서 선택 기준 세 가지를 먼저 적고, 그 기준 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다.");
   return parts.join(" ");
 }
 
 function lifeReading(d: OnnxLineDetail): string {
   const parts: string[] = [];
-  if (d.length === "김") parts.push("생활의 흐름을 한 번 잡으면 오래 이어가는 힘이 있는 편으로 읽힙니다.");
-  if (d.length === "보통") parts.push("안정과 변화를 한쪽으로 몰지 않고 상황에 맞춰 조절하는 편으로 읽힙니다.");
-  if (d.length === "짧음") parts.push("한 가지 생활 패턴을 오래 유지하기보다 변화가 생길 때 빠르게 맞춰가는 쪽에 가까울 수 있습니다.");
+  parts.push("엄지 밑을 감싸 손목 쪽으로 내려가는 생명선으로 부르는 위치의 검출 구간을 생활 기반과 활동 리듬을 살펴보는 전통적 상징으로 연결해 봅니다.");
   if (d.curve === "완만한 곡선") parts.push("익숙한 환경 안에서도 활동 반경을 넓히거나 새로운 경험을 받아들이는 편으로 볼 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("에너지를 여러 곳에 흩기보다 필요한 곳에 집중해서 쓰는 편으로 볼 수 있습니다.");
   const clarity = clarityReading(d);
   if (clarity) parts.push(clarity);
-  parts.push("생활 리듬에서는 한 가지 흐름을 오래 이어가는 편인지, 변화에 맞춰 빠르게 전환하는 편인지가 함께 드러납니다.");
+  parts.push("예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다.");
   return parts.join(" ");
 }
 
@@ -378,8 +358,8 @@ export function buildPalmReadingSections(
       key: "overview",
       title: "먼저 보이는 전체 인상",
       observation: context?.handSide === "left" ? "왼손 사진 기준" : context?.handSide === "right" ? "오른손 사진 기준" : "이번 손 사진 기준",
-      summary: overview,
-      text: overview,
+      summary: `${overview} ${COMMON_SCOPE_NOTE}`,
+      text: `${overview} ${COMMON_SCOPE_NOTE}`,
     });
   }
 
@@ -463,15 +443,7 @@ export function buildPalmReadingSections(
         ? "마음을 표현하는 방식과 생각을 정리하는 방식의 결이 비슷한 편입니다. 그래서 내가 느끼는 것과 실제 선택이 비교적 한 방향으로 움직일 수 있습니다."
         : "마음을 쓰는 방식과 판단하는 방식이 서로 다른 결을 보입니다. 관계에서는 감정적으로 반응하면서도 중요한 결정에서는 냉정해지거나, 반대로 마음은 조심스럽지만 생각은 자유롭게 펼치는 모습이 함께 나타날 수 있습니다.",
     ];
-    if (life.detected) {
-      if (life.length === "김") {
-        parts.push("생명선도 길게 이어져, 마음과 판단으로 정한 방향을 생활 속에서 오래 이어가는 힘을 함께 보는 편입니다.");
-      } else if (life.length === "짧음") {
-        parts.push("생명선은 비교적 짧게 잡혀, 마음과 판단이 정해져도 생활 방식은 상황 변화에 맞춰 빠르게 바꾸는 쪽으로 볼 수 있습니다.");
-      } else {
-        parts.push("생명선까지 함께 보면 감정·판단·생활 리듬을 한쪽으로 몰기보다 상황에 맞춰 조절하는 모습이 더 잘 드러납니다.");
-      }
-    }
+    if (life.detected) parts.push("생명선 검출 구간은 생활 기반과 활동 리듬을 살펴보는 참고점으로만 더합니다.");
     parts.push("강점이 한 방향으로 너무 세게 몰릴 때는 다른 시각을 한 번 더 확인하는 것이 균형을 잡는 데 도움이 됩니다.");
     const text = parts.join(" ");
 

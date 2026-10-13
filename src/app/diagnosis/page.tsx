@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StepShell } from "@/components/diagnosis/step-shell";
 import { BirthDateStep } from "@/components/diagnosis/birth-date-step";
@@ -19,6 +19,8 @@ import type { RealityAnswerEngineResult } from "@/lib/reality-answer-engine";
 import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
 import { track } from "@/lib/analytics";
 import { findSavedSelf, upsertSavedPerson } from "@/lib/saved-people";
+import { runWithDeadline } from "@/lib/palm-analysis-task";
+import type { ReadingReference, CautionExplanation } from "@/lib/reading-reference";
 
 type JourneyMode = "free" | "question";
 type Step =
@@ -31,6 +33,7 @@ type Step =
   | "answering"
   | "result"
   | "answer"
+  | "reference"
   | "error";
 
 const FREE_STORAGE_KEY = "saju-app:diagnosis-session:v3";
@@ -102,6 +105,23 @@ export default function DiagnosisPage() {
   const [questionAnswer, setQuestionAnswer] = useState<RealityAnswer | null>(null);
   const [questionPlan, setQuestionPlan] = useState<QuestionEnginePlan | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Current response only: never infer a reference from restored sessions or
+  // persist extra text/history. Model answers do not receive these references.
+  const readingReference = useRef<ReadingReference | null>(null);
+  const questionRequest = useRef<AbortController | null>(null);
+  const [referenceExplanation, setReferenceExplanation] = useState<CautionExplanation | null>(null);
+
+  useEffect(() => {
+    const cancel = () => {
+      questionRequest.current?.abort();
+      questionRequest.current = null;
+    };
+    window.addEventListener("pagehide", cancel);
+    return () => {
+      cancel();
+      window.removeEventListener("pagehide", cancel);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,9 +134,9 @@ export default function DiagnosisPage() {
         const urlFocus = focusParam ? parseSajuFocus(focusParam) : null;
         setMode(nextMode);
 
-        // A service invitation starts the recipient's own free reading. Preserve
-        // saved readings, but do not unexpectedly restore one into this entry.
-        if (nextMode === "free" && params.get("from") === "share") {
+        // A service invitation or an old palm link starts a fresh free reading.
+        // Preserve saved readings, but do not restore another person's input.
+        if (nextMode === "free" && ["share", "palm-return"].includes(params.get("from") ?? "")) {
           setFocus("overall");
           setStep("date");
           return;
@@ -229,6 +249,10 @@ export default function DiagnosisPage() {
   }
 
   function restart() {
+    questionRequest.current?.abort();
+    questionRequest.current = null;
+    readingReference.current = null;
+    setReferenceExplanation(null);
     clearCurrentSession();
     const params = new URLSearchParams(window.location.search);
     const focusParam = params.get("focus");
@@ -357,32 +381,45 @@ export default function DiagnosisPage() {
       return;
     }
 
+    questionRequest.current?.abort();
+    const controller = new AbortController();
+    questionRequest.current = controller;
+    const isCurrent = () => questionRequest.current === controller && !controller.signal.aborted;
+    setQuestion(effectiveQuestion);
+    setReferenceExplanation(null);
     setStep("answering");
     setError(null);
 
-    const controller = new AbortController();
-    const clientTimeout = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
-
     try {
-      const res = await fetch("/api/reality-answer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...birthInput,
-          question: effectiveQuestion,
-          focusHint: effectiveFocus,
-          previousQuestion: questionAnswer?.question.raw ?? questionPlan?.raw ?? null,
-          previousDomain: questionAnswer?.question.domain ?? questionPlan?.domain ?? null,
-          mbti: mbti !== "모름" ? mbti : undefined,
-        }),
-        signal: controller.signal,
-      });
+      const data = await runWithDeadline(
+        controller.signal,
+        CLIENT_TIMEOUT_MS,
+        "답과 시기를 보는 데 평소보다 오래 걸리고 있어요. 잠시 후 다시 시도해주세요.",
+        async (signal) => {
+          const res = await fetch("/api/reality-answer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...birthInput,
+              question: effectiveQuestion,
+              focusHint: effectiveFocus,
+              previousQuestion: questionAnswer?.question.raw ?? questionPlan?.raw ?? null,
+              previousDomain: questionAnswer?.question.domain ?? questionPlan?.domain ?? null,
+              readingReference: readingReference.current,
+              mbti: mbti !== "모름" ? mbti : undefined,
+            }),
+            signal,
+          });
 
-      const data = (await res.json()) as RealityAnswerEngineResult & {
-        error?: string;
-        questionPlan?: QuestionEnginePlan;
-      };
-      if (!res.ok) throw new Error(data.error || "사주답변을 만들지 못했습니다.");
+          const data = (await res.json()) as RealityAnswerEngineResult & {
+            error?: string;
+            questionPlan?: QuestionEnginePlan;
+          };
+          if (!res.ok) throw new Error(data.error || "사주답변을 만들지 못했습니다.");
+          return data;
+        },
+      );
+      if (!isCurrent()) return;
 
       if (data.status === "needs_clarification") {
         setError(data.reason);
@@ -390,6 +427,13 @@ export default function DiagnosisPage() {
         return;
       }
 
+      if (data.status === "reference_answer") {
+        setReferenceExplanation(data.explanation);
+        setStep("reference");
+        return;
+      }
+
+      readingReference.current = data.source === "fallback" ? data.readingReference ?? null : null;
       setQuestionAnswer(data.answer);
       setQuestionPlan(data.questionPlan ?? null);
       setQuestion(data.answer.question.raw);
@@ -418,7 +462,8 @@ export default function DiagnosisPage() {
         // 저장 실패는 현재 결과 표시를 막지 않는다.
       }
     } catch (err) {
-      const isTimeout = err instanceof DOMException && err.name === "AbortError";
+      if (!isCurrent()) return;
+      const isTimeout = err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError");
       setError(
         isTimeout
           ? "답과 시기를 보는 데 평소보다 오래 걸리고 있어요. 잠시 후 다시 시도해주세요."
@@ -428,7 +473,7 @@ export default function DiagnosisPage() {
       );
       setStep("error");
     } finally {
-      clearTimeout(clientTimeout);
+      if (questionRequest.current === controller) questionRequest.current = null;
     }
   }
 
@@ -540,7 +585,24 @@ export default function DiagnosisPage() {
       )}
 
       {step === "loading" && <LoadingStep />}
-      {step === "answering" && <LoadingStep mode="question" />}
+      {step === "answering" && <>
+        <LoadingStep mode="question" />
+        <Button variant="outline" onClick={() => {
+          questionRequest.current?.abort();
+          questionRequest.current = null;
+          setStep("question");
+        }}>취소하고 질문으로 돌아가기</Button>
+      </>}
+
+      {step === "reference" && referenceExplanation && <div className="space-y-5 pb-8">
+        <h1 className="text-2xl font-semibold">{referenceExplanation.question}</h1>
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="font-semibold">앞서 보신 주의점</h2>
+          <blockquote className="mt-3 leading-7">{referenceExplanation.quote}</blockquote>
+          <p className="mt-4 leading-7 text-muted-foreground">{referenceExplanation.explanation}</p>
+        </section>
+        <Button onClick={askAgain}>다른 질문하기</Button>
+      </div>}
 
       {step === "error" && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">

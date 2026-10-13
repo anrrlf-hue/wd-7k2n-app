@@ -15,7 +15,9 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
   const p = facts.peerStarCount, o = facts.outputStarCount, w = facts.wealthStarCount;
   const d = facts.officerStarCount, r = facts.resourceStarCount;
   const weak = facts.dayStrengthReliable && facts.dayStrength === "weak";
-  const basis = `드러난 글자의 십성 집계: 비겁 ${p}, 식상 ${o}, 재성 ${w}, 관성 ${d}, 인성 ${r}. ${facts.dayStrengthReliable ? `강약 분류 ‘${facts.dayStrengthGrade}’${eulReul(facts.dayStrengthGrade)} 함께 읽을 수 있습니다.` : "출생시간 미상으로 강약 해석은 제외했습니다."} 개수는 성격·능력 점수가 아닙니다.`;
+  const day = facts.pillars.find(p => p.pillar === "day");
+  const close = day && TEN_GOD_GROUP[day.branchTenGod];
+  const basis = `드러난 글자의 십성 집계: 비겁 ${p}, 식상 ${o}, 재성 ${w}, 관성 ${d}, 인성 ${r}. ${facts.dayStrengthReliable ? `강약 분류 ‘${facts.dayStrengthGrade}’${eulReul(facts.dayStrengthGrade)} 함께 읽었습니다.` : "출생시간 미상으로 강약 해석은 제외했습니다."}`;
   const overall = { ...fallback.overall, paragraphs: [...fallback.overall.paragraphs], basis };
   const domains = fallback.domains.map(domain => ({ ...domain, paragraphs: [...domain.paragraphs], basis: `${domain.basis} ${basis}` }));
   const love = domains.find(d => d.key === "love_relationship")!;
@@ -23,31 +25,38 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
   const work = domains.find(d => d.key === "work")!;
   let rule = "group-balance";
 
-  if (p > 0 && d > 0 && r > 0 && Math.min(p, d, r) >= Math.max(o, w)) {
+  // A strictly leading officer group is not a three-way composite merely
+  // because the smaller groups are all present at the output/wealth level.
+  const officerLeads = d > Math.max(p, o, w, r);
+  const confirmedPillars = facts.pillars.filter(pillar => facts.hasTimeInput || pillar.pillar !== "hour");
+  const dutyTranslation = officerLeads && r > 0 && o > 0
+    && confirmedPillars.some(pillar => TEN_GOD_GROUP[pillar.stemTenGod] === "인성" || TEN_GOD_GROUP[pillar.branchTenGod] === "인성")
+    && confirmedPillars.some(pillar => TEN_GOD_GROUP[pillar.stemTenGod] === "식상" || TEN_GOD_GROUP[pillar.branchTenGod] === "식상");
+  if (!officerLeads && p > 0 && d > 0 && r > 0 && Math.min(p, d, r) >= Math.max(o, w)) {
     rule = "agency-duty-understanding";
-    overall.headline = "내가 납득한 방식으로, 맡은 일을 제대로 해내고 싶은 마음";
+    overall.headline = "이유가 분명할 때, 자기 판단과 책임이 함께 움직입니다";
     overall.paragraphs = [
-      "스스로 판단하려는 마음, 맡은 약속을 지키려는 마음, 충분히 이해하고 싶은 마음이 함께 놓여 있습니다. 그래서 단순히 자기 뜻대로 하고 싶은 사람이라기보다, 이유를 납득한 일에는 자신의 기준을 더해 제대로 끝내고 싶은 모습으로 읽힙니다.",
+      "스스로 납득한 일을 맡으면, 어떻게 완성할지까지 판단하고 싶어 하는 모습으로 읽힙니다. 자기 기준과 책임, 충분히 이해하려는 태도가 함께 놓여 있어, 목적을 알 때 세부를 스스로 다듬는 쪽에 의미가 실립니다. 맡을 일의 범위와 방법을 고를 여지가 함께 주어지는 장면에서 이 조합의 장점을 떠올릴 수 있습니다.",
       "목적을 이해하면 지시받지 않은 빈틈까지 채우는 힘이 될 수 있습니다. 반대로 왜 필요한지 설명이 부족하면, 겉으로는 신중히 준비하는 동안 속에서는 쉽게 동의하지 못하는 마음이 남을 수 있습니다. 성실함과 자기 기준이 같은 편에 설 때 강점이 살아나고, 둘이 어긋날 때 준비가 길어지는 긴장을 함께 봅니다.",
     ];
     overall.opportunity = "방법을 정할 여지가 있고 그 판단의 이유를 설명할 수 있는 자리에서, 책임감이 수동적인 부담보다 자기 일이라는 감각으로 이어지기 좋습니다.";
     overall.caution = "내가 충분히 생각했다는 사실만으로 다른 사람도 같은 결론에 도착했다고 여기면, 맡은 일은 잘 끝내도 과정에서는 답답함을 남길 수 있습니다.";
     overall.tip = "의견이 엇갈릴 때는 지키고 싶은 목적과 바꿔도 되는 방법을 나누어 말해보세요.";
-    love.headline = "마음의 크기를 약속과 이해로 확인하는 관계";
+    love.headline = "배려의 이유를 나눌 때 단단해지는 관계";
     love.paragraphs = [
       "가까워지는 속도보다, 서로 한 말을 기억하고 지키는지가 마음을 놓는 조건이 될 수 있습니다. 상대를 챙기는 행동에도 자신의 기준이 있어, ‘이 정도는 당연히 해주는 것’이라 여긴 배려에 애정이 담기는 모습으로 읽힙니다.",
       "그만큼 약속이 달라졌을 때 단순한 일정 변경보다 나를 얼마나 중요하게 생각하는지의 문제로 받아들일 여지도 있습니다. 상대는 사정을 설명했다고 생각하고, 나는 마음을 충분히 설명받지 못했다고 느끼는 장면이 이 긴장의 한 예입니다. 관계의 기준을 지키는 힘과 상대가 다른 방식으로 마음을 전할 여지를 함께 봅니다.",
     ];
     love.opportunity = "말과 행동이 이어지고 서로의 이유를 편하게 묻는 관계에서는, 쉽게 흔들리지 않는 신뢰가 장점으로 드러나기 좋습니다.";
     love.caution = "배려하는 방식이 정답이 되면, 상대의 다른 표현을 부족한 마음으로 오해할 수 있습니다.";
-    money.headline = "잘해낸 일의 가치와 돌아오는 보상을 연결하는 재물 태도";
+    money.headline = "추가로 해낸 일의 가치까지 서로 합의하기";
     money.paragraphs = [
-      w === 0 ? "이 원국에서는 돈 자체를 좇는 이야기보다, 실력과 책임을 쌓아 인정받는 과정을 먼저 읽습니다. 보상을 직접 뜻하는 요소가 드러난 글자에 없다는 사실을 돈복이나 능력의 부재로 해석하지 않았습니다. 성실히 해낸 몫과 어떤 조건으로 돌려받을지는 별도로 설명해야 할 수 있다는 관점입니다." : "이 원국에서는 결과에 대한 관심과 함께 실력과 책임을 쌓아 인정받으려는 태도를 읽습니다. 보상이 중요하지 않은 것이 아니라, 내 기준에 맞게 잘해냈다는 만족도 선택에 함께 놓인 모습입니다. 성실히 해낸 몫과 어떤 조건으로 돌려받을지는 별도로 설명해야 할 수 있습니다.",
+      w === 0 ? "이 원국에서는 돈 자체를 좇는 이야기보다, 실력과 책임을 쌓아 인정받는 과정을 먼저 읽습니다. 성실히 해낸 몫과 어떤 조건으로 돌려받을지는 별도로 설명해야 할 수 있다는 관점입니다." : "이 원국에서는 결과에 대한 관심과 함께 실력과 책임을 쌓아 인정받으려는 태도를 읽습니다. 보상이 중요하지 않은 것이 아니라, 내 기준에 맞게 잘해냈다는 만족도 선택에 함께 놓인 모습입니다. 성실히 해낸 몫과 어떤 조건으로 돌려받을지는 별도로 설명해야 할 수 있습니다.",
       "예를 들어 맡은 일을 더 잘하려고 추가 작업을 했는데 상대는 처음 약속한 범위 안의 일로 여기는 상황을 떠올릴 수 있습니다. 자신의 수고를 낮게 봐서가 아니라, 완성도에 쓴 관심에 비해 대가를 이야기하는 시점이 늦어지는 긴장입니다. 전문성과 신뢰가 쌓이는 과정에 보상 조건도 함께 놓일 때 이 해석의 균형이 맞습니다.",
     ];
     money.opportunity = "기여한 내용이 보이고 역할과 대가를 서로 이해하는 일에서는, 오래 쌓은 신뢰를 현실적인 만족으로 연결하기 좋습니다.";
     money.caution = "상대도 내 수고를 알 것이라는 기대와 실제로 합의한 조건 사이에는 차이가 남을 수 있습니다.";
-    work.headline = "목적을 이해하면 빈틈을 채우는 책임감";
+    work.headline = "판단할 여지가 있어야 책임도 자기 일이 됩니다";
     work.paragraphs = [
       "일의 목적과 책임 범위가 분명해지면, 주어진 절차를 따르는 데 그치지 않고 완성도를 높일 방법을 스스로 찾는 모습으로 읽힙니다. 누가 시켜서 하는 일보다 왜 필요한지 이해한 일에서 주도성과 책임감이 같은 방향을 향합니다.",
       "반면 설명 없이 방식만 정해져 있으면 판단할 여지가 없다는 답답함과 그래도 잘 끝내야 한다는 마음이 함께 남을 수 있습니다. 이때 겉으로는 일을 받아들였어도 준비와 검토가 길어질 여지가 있습니다. 특정 직업의 적합성보다, 책임에 걸맞게 방법을 판단하고 의견을 설명할 수 있는 환경이 중요하다는 풀이입니다.",
@@ -55,9 +64,37 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
     work.opportunity = "기준을 세우고 빈틈을 조정하며 끝까지 이어가는 역할에서, 자기 판단이 공동의 신뢰로 연결되기 좋습니다.";
     work.caution = "책임감을 이유로 판단권 없는 일까지 떠안으면, 잘하는 방식이 오히려 부담을 키울 수 있습니다.";
     if (weak) {
-      overall.paragraphs[1] = "이유를 이해하면 자신의 방식으로 책임을 다하려는 마음이 살아날 수 있습니다. 다만 주변 조건과 도움을 함께 보는 원국이어서, 납득했다는 이유만으로 실행까지 혼자 떠안으면 잘하고 싶은 마음이 부담으로 이어질 여지도 있습니다. 스스로 판단할 여지와 그 판단을 이어갈 지원이 함께 있을 때 장점이 드러나기 좋은 모습입니다.";
-      work.paragraphs[1] = "방법을 정할 수 있어도 필요한 정보나 함께할 사람이 부족하면, 책임감만으로 빈틈을 메우려 할 수 있습니다. 일을 이해한 정도와 혼자 맡아야 할 범위를 같은 것으로 여기지 않는 환경이 중요합니다. 질문하거나 도움을 구하는 일이 신뢰를 낮추는 행동처럼 느껴지지 않을 때 자기 판단도 편하게 쓰기 좋습니다.";
-      money.paragraphs[1] = "조건에 납득한 일이라도 필요한 도움까지 자신의 비용으로 채우면, 기대한 보상과 남는 만족 사이에 간격이 생길 수 있습니다. 함께할 사람과 사용할 자원을 먼저 이야기하는 일은 기여의 가치를 낮추는 것이 아니라, 잘해낼 수 있는 조건을 보상과 함께 정하는 과정으로 읽습니다.";
+      overall.headline = "납득한 선택을 끝까지 잇는 데, 함께할 조건이 중요합니다";
+      overall.paragraphs = [
+        "이유를 이해한 일에 자신의 판단을 보태고 책임을 다하려는 모습으로 읽힙니다. 이 조합에서는 무엇을 하고 싶은지 정하는 일과, 그 선택을 어떤 도움과 조건 속에서 이어갈지를 함께 봅니다. 방법에 납득했어도 실행할 사람과 정보가 충분한지는 따로 살펴볼 부분입니다.",
+        "예를 들어 좋은 방향이라고 생각해 맡은 일에 다른 사람의 준비나 조율까지 더해진다면, 처음의 동의가 어디까지였는지 모호해질 수 있습니다. 잘해내고 싶은 마음이 빈틈을 모두 메우는 이유가 되지 않도록, 직접 판단할 부분과 함께 맡을 부분을 나누는 데 이 풀이의 초점이 있습니다. 도움을 활용한다는 해석은 의지나 능력의 크기를 평가하는 말이 아닙니다.",
+      ];
+      overall.opportunity = "자신의 판단을 존중하면서 필요한 정보와 역할을 함께 조정할 수 있는 자리에서, 이해한 내용을 끝까지 구체화하기 좋습니다.";
+      overall.caution = "일의 방향에 동의한 것을 모든 준비와 실행을 혼자 맡겠다는 약속으로 넓히지 않는지 살펴볼 만합니다.";
+      overall.tip = "납득해서 맡은 일이라도 직접 책임질 부분과 도움이 필요한 부분을 나누어 생각해보세요.";
+      love.headline = close === "식상" ? "맞춰주는 마음에 내 바람도 말로 담는 관계" : "서로 기대고 도울 몫을 함께 정하는 관계";
+      love.paragraphs = [
+        close === "식상"
+          ? "가까운 관계를 읽는 자리에는 표현과 교류의 의미가 놓여 있습니다. 서로의 이유를 이해하려는 태도에, 대화하며 자신의 바람도 꺼내는 모습이 더해집니다. 상대에게 필요한 것을 알아차려 챙기는 일과 내가 편하게 주고받을 수 있는지를 함께 살피는 관계로 읽습니다."
+          : "서로의 이유를 이해하고 믿을 만한 약속을 쌓으려는 마음을 중심으로 읽습니다. 배려가 오래 이어지려면 상대에게 맞출 수 있는 부분과 자신도 도움을 받고 싶은 부분을 함께 드러낼 여지가 중요할 수 있습니다.",
+        "가령 함께할 시간을 정하면서 상대의 사정을 이해해 일정과 준비를 모두 맞춰준 상황을 떠올려볼 수 있습니다. 그 동의가 다음에도 늘 같은 몫을 맡겠다는 뜻은 아닐 수 있습니다. 이해받고 싶은 마음을 뒤로 미루지 않고 각자가 편한 방식을 말할 때, 배려가 한쪽의 역할로 굳는 긴장을 줄일 수 있습니다.",
+      ];
+      love.opportunity = "서로의 사정을 들으면서도 이번에는 어떤 도움을 받고 싶은지 말할 수 있는 관계에서, 배려와 표현이 함께 살아나기 좋습니다.";
+      love.caution = "상대를 이해한다는 말 뒤에 자신의 바람까지 접어두면, 말하지 않은 몫은 서로 다르게 받아들일 수 있습니다.";
+      money.headline = "돌아올 보상과 내가 감당할 몫을 함께 살피기";
+      money.paragraphs = [
+        "결과의 쓰임을 살피는 관심과 자신의 기준에 맞게 잘해내고 싶은 마음을 함께 읽습니다. 이때 보상의 크기만큼 그 결과를 만드는 데 필요한 준비와 역할의 배분도 의미가 있습니다. 같은 조건이라도 어떤 도움을 받을 수 있는지에 따라 본인이 받아들이는 부담은 달라질 수 있습니다.",
+        "조건이 괜찮아 보이는 일을 맡았는데 준비 비용이나 다른 사람의 역할까지 자신의 몫으로 더해진 경우를 가정해볼 수 있습니다. 약속한 보상은 그대로여도 그 일을 이어가는 데 드는 몫은 달라진 상황입니다. 대가와 필요한 사람·자료를 함께 살피는 일이, 잘해내고 싶은 마음을 지속할 조건을 확인하는 과정으로 이어집니다.",
+      ];
+      money.opportunity = "제공할 결과와 필요한 도움, 돌아올 대가를 함께 설명할 수 있는 자리에서 기여와 부담의 간격을 줄이기 좋습니다.";
+      money.caution = "조건에 납득한 뒤 더해진 준비까지 자신의 비용으로 채우면, 처음 기대한 만족과 실제로 남는 여유가 달라질 수 있습니다.";
+      work.headline = "잘할 방법과 함께 끝낼 조건을 나누어 보는 일";
+      work.paragraphs = [
+        "목적을 이해하면 스스로 방법을 고민하고 완성도를 높이고 싶어 하는 모습입니다. 여기에 그 방법을 실행할 정보와 함께할 사람이 있는지를 함께 보는 관점이 더해집니다. 질문하거나 역할을 나누는 과정도 책임을 끝까지 이어가는 방식으로 읽을 수 있습니다.",
+        "예를 들어 방법을 제안할 수는 있지만 필요한 자료를 받거나 함께 판단할 상대가 정해지지 않은 상황을 떠올려볼 수 있습니다. 진행이 막힐 때마다 혼자 해결할 몫을 늘리기보다, 본인의 판단으로 풀 부분과 다른 사람의 협력이 필요한 부분을 구분하는 환경에서 장점을 쓰기 좋습니다.",
+      ];
+      work.opportunity = "선택할 여지와 함께 질문에 답할 사람, 필요한 자료, 역할을 조정할 통로가 있을 때 자신의 판단을 구체적인 결과로 이어가기 좋습니다.";
+      work.caution = "일의 내용을 이해했다는 사실만으로 준비와 조율까지 모두 본인의 책임이라고 받아들이지는 않는지 돌아볼 만합니다.";
     }
   } else if (hasExpressionReturnEmphasis(facts)) {
     rule = weak ? "creation-exchange-support" : "creation-exchange";
@@ -94,8 +131,8 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
     ];
     work.opportunity = "제안에 반응을 주는 상대와 마무리를 함께할 구조가 있을 때, 생각이 일회성 아이디어에 머물지 않고 실제 쓰임으로 이어지기 좋습니다.";
     work.caution = "가능성이 많다는 이유만으로 담당 범위를 넓히면, 무엇을 끝냈는지보다 무엇을 시작했는지만 남을 수 있습니다.";
-  } else if (d > Math.max(p, o, w, r)) {
-    rule = weak ? "duty-with-support" : "duty-and-boundaries";
+  } else if (officerLeads) {
+    rule = dutyTranslation ? "duty-translation" : weak ? "duty-with-support" : "duty-and-boundaries";
     overall.headline = "기대를 알아차리는 책임감과 내 몫의 경계";
     overall.paragraphs = [
       "원국에서는 맡은 역할과 약속을 뜻하는 요소가 다른 요소보다 두드러집니다. 무엇이 필요한지 먼저 알아차리고 빠뜨리지 않으려는 태도가 신뢰로 이어질 수 있습니다. 해야 할 일이 분명할수록 자신의 자리를 이해하기 쉬운 모습으로 읽힙니다.",
@@ -115,6 +152,14 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
     work.paragraphs = ["정해진 기준을 이해하고 일이 빠지지 않게 이어가는 역할에서 강점을 떠올릴 수 있습니다. 눈에 띄는 한 번의 제안보다 여러 번 함께 일하며 쌓이는 신뢰가 중요하게 읽힙니다.", weak ? "사람이나 자료가 부족한 상황까지 혼자 메우면, 잘해내는 범위보다 맡는 범위가 빠르게 넓어질 수 있습니다. 문제가 생겼을 때 누구와 판단을 나눌지 정해진 조직에서 책임감을 쓰기 편한 모습입니다." : "일을 잘 안다는 이유로 모든 판단이 몰리면, 익숙한 일을 지속하는 것만으로도 새로운 선택의 여지가 줄어들 수 있습니다. 기준을 공유하고 다른 사람도 마무리할 수 있게 하는 환경에서 꾸준함이 더 넓은 신뢰로 이어지기 좋습니다."];
     work.opportunity = "완료 기준과 결정권이 분명하고 담당 범위를 함께 조정하는 팀에서 꾸준한 실행이 인정받기 좋습니다.";
     work.caution = "‘이 사람에게 맡기면 된다’는 평판이 늘 추가 업무를 맡아야 하는 이유가 되지 않는지 돌아볼 만합니다.";
+    if (dutyTranslation) {
+      overall.headline = "복잡한 요구를 이해해 설명할 결과로 옮기는 흐름";
+      work.headline = "완료 기준을 이해하고 결과와 수정 범위를 설명하기";
+      money.headline = "결과의 쓰임과 수정 범위에 맞는 조건 합의";
+      // The current premium story composes these from confirmed placements.
+      // This older natal layer keeps a matching question for the free preview.
+      overall.tip = "요구의 완료 기준을 확인하고 보여줄 결과, 수정할 범위, 합의할 조건을 나누어보세요.";
+    }
   } else if (p > 0 && w > 0 && r > 0 && o === 0 && d === 0) {
     rule = "agency-value-understanding";
     overall.headline = "스스로 납득한 가치에 무게를 두는 선택";
@@ -146,7 +191,7 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
     overall.opportunity = "직접 제안하고 작은 결과에 반응을 받을 수 있는 자리에서, 추진력이 구체적인 방향으로 모이기 좋습니다.";
     overall.caution = "방법을 빨리 찾았다는 사실이 함께할 사람의 동의를 대신하지는 않습니다.";
   }
-  if (["agency-duty-understanding", "creation-exchange", "creation-exchange-support", "duty-with-support", "duty-and-boundaries", "agency-value-understanding"].includes(rule)) {
+  if (["agency-duty-understanding", "creation-exchange", "creation-exchange-support", "duty-with-support", "duty-and-boundaries", "duty-translation", "agency-value-understanding"].includes(rule)) {
     for (const domain of domains) {
       domain.basis = basis;
       // The composite paragraphs contain their own concrete scenes. Do not
@@ -156,8 +201,6 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
   }
   // The day position contextualizes the relationship rather than being a
   // decorative citation. No partner's identity or actual relationship is inferred.
-  const day = facts.pillars.find(p => p.pillar === "day");
-  const close = day && TEN_GOD_GROUP[day.branchTenGod];
   const closeCopy = {
     인성: "가까운 관계를 읽는 자리에는 이해와 보살핌의 의미가 놓여 있습니다. 겉으로 얼마나 적극적인지와 별개로, 자신의 이유를 편하게 설명하고 기대어도 된다는 느낌이 친밀함의 바탕이 될 수 있습니다.",
     비겁: "가까운 관계를 읽는 자리에는 동등함과 자기 뜻의 의미가 놓여 있습니다. 서로 챙기면서도 각자의 선택이 남아 있는지가 관계를 편하게 느끼는 중요한 조건으로 읽힙니다.",
@@ -165,7 +208,68 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
     관성: "가까운 관계를 읽는 자리에는 역할과 약속의 의미가 놓여 있습니다. 서로 어떤 관계를 원하고 무엇을 기대하는지가 분명해질수록 편안함을 얻는 모습으로 연결해볼 수 있습니다.",
     식상: "가까운 관계를 읽는 자리에는 표현과 교류의 의미가 놓여 있습니다. 마음을 혼자 정리하는 시간뿐 아니라 서로의 생각에 반응하는 대화가 친밀함을 만드는 통로로 읽힙니다.",
   };
-  if (rule !== "group-balance" && close) love.paragraphs.push(closeCopy[close]);
+  if (rule !== "group-balance" && close && !(rule === "agency-duty-understanding" && weak && close === "식상")) love.paragraphs.push(closeCopy[close]);
   if (close) love.basis += ` 가까운 관계의 자리: 일주 ${day!.ganzhi}의 일지 ${day!.ganzhi.slice(-1)}, ${day!.branchTenGod}.`;
-  return { overall, domains, rule };
+  // One editorial conclusion controls both the short free opening and the
+  // report's visible ending. It is a reflection on these symbols, not advice
+  // based on an assumed job, relationship or real event.
+  const conclusions: Record<string, { preview: string; remember: string; question: string }> = {
+    "agency-duty-understanding": weak ? {
+      preview: "이해한 선택에 책임을 다하고 싶으면서, 그 선택을 이어갈 도움과 조건도 함께 보는 모습으로 읽힙니다. 좋은 방향이라는 판단과 모든 실행을 맡겠다는 약속은 따로 살필 수 있습니다. 함께할 사람과 필요한 자료를 이야기할 여지가 장점을 이어가는 조건이 됩니다.",
+      remember: "납득해서 맡은 일이라도 직접 책임질 부분과 도움이 필요한 부분을 나누어 생각해보세요.",
+      question: "내가 원해서 고른 방향을 이어가는 데, 스스로 정할 부분과 함께 준비할 부분은 어떻게 다른가요?",
+    } : {
+      preview: "이유를 납득한 일에 자기 판단을 보태며 책임을 다하는 모습으로 읽힙니다. 맡은 일을 어떤 방식으로 완성할지 정할 여지가 있을 때 장점을 쓰기 좋습니다. 설명이 부족해 검토가 길어진다면, 아직 필요한 정보와 지키고 싶은 기준을 나누어 볼 수 있습니다.",
+      remember: "의견이 엇갈릴 때는 지키고 싶은 목적과 바꿔도 되는 방법을 나누어 말해보세요.",
+      question: "결정을 더 살펴보는 이유가 아직 필요한 정보인지, 상대와 나누지 못한 내 기준인지 구분할 수 있나요?",
+    },
+    "creation-exchange-support": {
+      preview: "생각을 꺼내고 실제 반응에서 가능성을 찾는 모습으로 읽힙니다. 관심을 얻은 일을 모두 이어가기보다 자신의 몫과 도움받을 조건이 맞는 쪽에 깊이를 더할 수 있습니다. 표현한 생각이 어떤 지원 속에서 마무리되는지가 함께 볼 지점입니다.",
+      remember: "좋은 반응을 얻은 일이라도 본인이 맡을 몫과 함께 이어갈 조건을 같이 살펴보세요.",
+      question: "펼쳐둔 가능성 중 지금의 역할과 도움으로 마무리할 수 있는 것은 무엇인가요?",
+    },
+    "creation-exchange": {
+      preview: "생각을 표현하고 그것이 어디에 쓰이는지 살피며 방향을 찾는 모습으로 읽힙니다. 실제 반응을 받는 과정이 생각을 구체화하는 데 의미가 있습니다. 새 가능성을 더하는 일과 이미 한 약속을 끝까지 이어가는 조건을 함께 볼 수 있습니다.",
+      remember: "새로운 가능성을 고를 때는 흥미뿐 아니라 누구와 어떻게 이어갈 수 있는지도 함께 이야기해보세요.",
+      question: "반응을 보고 바꿔도 되는 부분과, 처음의 상대와 끝까지 지키고 싶은 약속은 무엇인가요?",
+    },
+    "duty-with-support": {
+      preview: "맡은 역할에서 필요한 것을 알아차리고 약속을 지키려는 태도가 중심으로 읽힙니다. 기대를 잘 이해하는 만큼, 함께 맡을 사람과 조건도 중요하게 볼 수 있습니다. 믿고 맡긴다는 말과 실제로 정한 책임 범위가 같은지 살피는 관점입니다.",
+      remember: "책임이 더해지는 상황이라면, 함께 조정할 역할과 필요한 조건도 있는지 살펴보세요.",
+      question: "기대에 응하고 싶은 마음과 내가 받아들이기로 한 범위는 어디에서 만나는가요?",
+    },
+    "duty-and-boundaries": {
+      preview: "역할과 약속을 꾸준히 지키며 신뢰를 쌓는 모습으로 읽힙니다. 주변의 기대를 이해하는 만큼 스스로 맡을 일을 고르는 판단도 중요할 수 있습니다. 잘해내는 일과 계속 더 맡는 일이 같은 뜻인지를 나누어 보는 관점입니다.",
+      remember: "맡은 일을 지키려는 마음과 다음 역할을 고르는 판단을 함께 두어보세요.",
+      question: "익숙해서 맡는 일 가운데, 앞으로도 같은 범위로 이어가고 싶은 것은 무엇인가요?",
+    },
+    "duty-translation": {
+      preview: "요구와 약속의 기준이 두드러지고, 이를 이해하는 관점과 결과로 설명하는 관점도 함께 읽힙니다. 무엇을 끝내야 하는지 확인한 뒤 보여줄 결과와 수정할 범위를 나누어볼 수 있습니다. 이 해석은 실제 일하는 방식이나 성과를 판정하지 않습니다.",
+      remember: "완료 기준을 물은 뒤 보여줄 결과와 수정할 범위·조건을 함께 정해보세요.",
+      question: "이 요청에서 먼저 이해할 기준과 결과로 보여줄 부분, 새로 합의할 조건은 각각 무엇인가요?",
+    },
+    "agency-value-understanding": {
+      preview: "자신이 납득한 이유와 실제 쓰임을 함께 살피며 선택하는 모습으로 읽힙니다. 충분히 생각한 기준은 버팀목이 될 수 있지만, 그 이유가 상대에게도 전해졌는지는 따로 볼 부분입니다. 자기 판단을 함께 이해할 수 있는 설명으로 잇는 데 의미가 있습니다.",
+      remember: "자신이 납득한 선택이라도 상대가 질문하고 고를 여지를 남겨보세요.",
+      question: "내게는 분명한 선택의 이유 중, 함께하는 사람에게 아직 설명하지 않은 부분은 무엇인가요?",
+    },
+    "understanding-duty": {
+      preview: "충분히 이해한 내용을 믿고 맡길 수 있는 결과로 이어가려는 모습입니다. 기대를 세심하게 파악하는 태도와 자신이 원하는 방식을 함께 살필 때 준비의 방향이 선명해질 수 있습니다.",
+      remember: "준비가 충분한지와 모든 기대를 만족시켰는지를 나누어 생각해보세요.",
+      question: "더 알아보고 싶은 부분은 내 선택에 필요한 정보인가요, 주변의 기대에 더 맞추기 위한 조건인가요?",
+    },
+    "agency-expression": {
+      preview: "스스로 정한 방향을 말이나 작은 결과로 꺼내며 확인하는 모습입니다. 먼저 시도하는 힘에 함께하는 사람의 반응을 들을 여지가 더해질 때, 생각을 공동의 방향으로 이어가기 좋습니다.",
+      remember: "새 방법을 찾았을 때 함께할 사람이 이해하고 선택할 시간도 남겨보세요.",
+      question: "내가 바꾸고 싶은 방법과 함께 정해둔 약속 사이에서 먼저 설명할 부분은 무엇인가요?",
+    },
+  };
+  const conclusion = conclusions[rule] ?? {
+    preview: `${overall.headline}으로 읽습니다. 선택의 이유와 함께하는 사람이 이해한 조건을 나누어 살펴볼 수 있습니다.`,
+    remember: overall.tip,
+    question: "이번 선택에서 내가 가장 중요하게 두는 기준은 무엇이고, 함께 정할 부분은 무엇인가요?",
+  };
+  overall.tip = conclusion.remember;
+  return { overall, domains, rule, preview: conclusion.preview,
+    closing: { remember: conclusion.remember, question: conclusion.question, basis } };
 }

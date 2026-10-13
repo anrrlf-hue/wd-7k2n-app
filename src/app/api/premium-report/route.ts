@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { palmFactsSchema } from "@/lib/palm-input-schema";
+import { normalizePalmFactsObservation, type PalmFacts } from "@/lib/palm-facts";
 import { computeSajuFacts } from "@/lib/saju-facts";
 import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { buildPremiumReport } from "@/lib/premium-report";
@@ -30,7 +31,10 @@ export async function POST(request: Request) {
   try {
     const shallow = computeSajuFacts(parsed.data);
     const facts = parsed.data.hour === null ? shallow : enrichSajuFacts(shallow, parsed.data);
-    const report = buildPremiumReport({ facts, leftPalm: parsed.data.leftPalmFacts, rightPalm: parsed.data.rightPalmFacts, dominantHand: parsed.data.dominantHand });
+    const report = buildPremiumReport({ facts,
+      leftPalm: parsed.data.leftPalmFacts ? normalizePalmFactsObservation(parsed.data.leftPalmFacts as PalmFacts) : null,
+      rightPalm: parsed.data.rightPalmFacts ? normalizePalmFactsObservation(parsed.data.rightPalmFacts as PalmFacts) : null,
+      dominantHand: parsed.data.dominantHand });
 
     return NextResponse.json({ report });
   } catch (error) {

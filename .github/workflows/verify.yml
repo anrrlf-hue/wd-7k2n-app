@@ -68,6 +68,12 @@ jobs:
       - name: Free Saju V3 regression
         run: node scripts/test-free-saju-v3.mjs
 
+      - name: Reading coherence and saved palm provenance
+        run: node scripts/test-report-coherence-and-provenance.mjs
+
+      - name: External model opt-in regression
+        run: node scripts/test-external-model-opt-in.mjs
+
       - name: Relationship share V1
         run: node scripts/test-relationship-share-v1.mjs
 
@@ -76,6 +82,7 @@ jobs:
           node scripts/test-premium-annual.mjs
           node scripts/test-premium-annual-grouping.mjs
           node scripts/test-context-readings.mjs
+          node scripts/test-premium-semantic-allocation.mjs
 
       - name: Build
         run: pnpm build

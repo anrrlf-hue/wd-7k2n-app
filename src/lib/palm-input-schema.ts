@@ -8,6 +8,16 @@ const onnxLineDetailSchema = z.object({
   start: z.object({ x: z.number(), y: z.number() }).nullable(),
   end: z.object({ x: z.number(), y: z.number() }).nullable(),
   branchDetected: z.null(),
+  sourceVariant: z.enum(["raw", "enhanced", "unknown"]).optional(),
+  rawDetected: z.boolean().optional(),
+  enhancedDetected: z.boolean().optional(),
+  endpointEvidence: z.enum(["segment_extrema", "none"]).optional(),
+  pathCompleteness: z.enum(["not_verified", "unavailable"]).optional(),
+  attributeSupport: z.object({
+    length: z.enum(["segment_only", "not_supported"]),
+    curve: z.enum(["segment_only", "not_supported"]),
+    depth: z.enum(["mask_signal_only", "not_supported"]),
+  }).optional(),
 });
 
 const onnxPalmLinesSchema = z.object({
@@ -28,6 +38,19 @@ const secondaryLineSignalSchema = z.object({
   modelConfidence: z.number().min(0).max(1).nullable().optional(),
   modelVerticalSpan: z.number().min(0).max(1).nullable().optional(),
   corroborated: z.boolean().optional(),
+});
+
+const linePixelCountsSchema = z.object({ heartLine: z.number(), headLine: z.number(), lifeLine: z.number() });
+const pipelineDiagnosticsSchema = z.object({
+  sourceWidth: z.number(), sourceHeight: z.number(), averageBrightness: z.number(), sharpness: z.number(),
+  highlightRatio: z.number(), adaptiveMargin: z.number(), rawCropWidth: z.number(), rawCropHeight: z.number(),
+  enhancedCropWidth: z.number(), enhancedCropHeight: z.number(), rawDetectedLineCount: z.number(),
+  enhancedAttempted: z.boolean(), enhancedDetectedLineCount: z.number(),
+  rawPixelCount: linePixelCountsSchema, enhancedPixelCount: linePixelCountsSchema,
+  fateModelConfidence: z.number().nullable().optional(), fateModelVerticalSpan: z.number().nullable().optional(),
+  fateModelCorroborated: z.boolean().optional(), threeLineElapsedMs: z.number().optional(),
+  fateModelElapsedMs: z.number().optional(), totalModelElapsedMs: z.number().optional(),
+  chosenVariant: z.object({ heartLine: z.enum(["raw", "enhanced"]), headLine: z.enum(["raw", "enhanced"]), lifeLine: z.enum(["raw", "enhanced"]) }),
 });
 
 export const palmFactsSchema = z.object({
@@ -53,5 +76,6 @@ export const palmFactsSchema = z.object({
     wealth: secondaryLineSignalSchema,
   }).optional(),
   confidence: z.number().min(0).max(1),
+  pipelineDiagnostics: pipelineDiagnosticsSchema.optional(),
   warnings: z.array(z.string()),
 });

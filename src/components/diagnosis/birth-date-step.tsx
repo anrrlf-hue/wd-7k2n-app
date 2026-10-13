@@ -78,7 +78,9 @@ export function BirthDateStep({
           className="mt-1 size-4"
         />
         <span className="text-sm leading-6 text-muted-foreground">
-          사주 분석에 필요한 출생정보 처리에 동의합니다.{" "}
+          출생정보를 서버에서 계산하고 기기에 저장하는 데 동의합니다.
+          <span className="mt-2 block">입력·풀이·손금 특징은 이 탭에, 내 출생정보는 이 기기에 자동 저장됩니다.</span>
+          <span className="mt-2 block">운영자가 외부 해석을 켜면 계산된 사주 정보와 입력한 MBTI·질문이 Anthropic에 전송될 수 있습니다.</span>
           <Link href="/privacy" target="_blank" className="font-medium text-foreground underline underline-offset-4">
             개인정보처리방침 보기
           </Link>

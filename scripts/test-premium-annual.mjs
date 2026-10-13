@@ -50,21 +50,35 @@ for (const [i, birth] of births.entries()) {
   assert.deepEqual(report.periods.flatMap(p => p.months), report.annual.months.map(m => m.label));
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report }));
   const readerBody = [report.summary, ...report.overall.paragraphs, ...report.domains.flatMap(d => d.paragraphs), ...report.periods.map(p => p.reading)].join(" ");
-  assert.doesNotMatch(readerBody, /비겁|관성|인성|식상|재성|신강|태약|과제|가설|실험|비교 방향|2주|기록하세요|완료 기준/);
-  // Exact calculation terms belong in expandable evidence, not in main prose.
+  assert.doesNotMatch(readerBody, /반드시|확정된 미래|실제 수입이 늘어납니다/);
+  // The exact monthly symbols are now visible so adjacent months with the
+  // same five-group theme can still explain their 정/편 and position changes.
+  assert.ok(report.periods.every(p => p.symbols && p.reading.includes(p.symbols.month.ganzhi)));
   assert.ok(html.includes("1년의 주요 구간"));
   assert.equal(html.split(report.note).length - 1, 1, "uncertainty notice in one place");
   assert.ok(!html.includes("<table"), "annual content cannot be just a stage table");
   for (const period of report.periods) assert.ok(html.includes(period.basis));
   for (const d of report.domains) {
     if (d.tip) assert.ok(html.indexOf(d.paragraphs[0]) < html.indexOf(d.tip));
-    assert.ok(html.includes(d.paragraphs[0]));
-    assert.ok(d.paragraphs.length >= 2 && d.opportunity && d.caution);
+    assert.equal(d.paragraphs.length, d.key === "money" ? 3 : 1,
+      "money separates earning, management and spending; other domains keep one scene");
+    assert.equal(new Set(d.paragraphs).size, d.paragraphs.length, "each passage contributes a distinct explanation");
+    for (const text of d.paragraphs) assert.equal(html.split(text).length - 1, 1, "every passage is rendered once");
+    if (d.key === "money") {
+      assert.match(d.paragraphs[0], /획득에서는/);
+      assert.match(d.paragraphs[1], /관리에서는.*가령/);
+      assert.match(d.paragraphs[2], /지출에서는.*가령/);
+    }
+    assert.equal(d.opportunity, "", "the same example is not repeated in a second card");
+    assert.equal(d.caution, "", "the already explained caution is not repeated below");
   }
   const copy = prose({ summary:report.summary, overall:report.overall, domains:report.domains, periods:report.periods }).join("\n");
-  const overlap = [...new Set(prose(freeReport).filter(s => s.length >= 40))].filter(s => copy.includes(s));
+  // A shared core caution/evidence is intentional continuity. Deep paragraphs
+  // must still add their own explanation rather than repeat the free sections.
+  const sharedCore = new Set([report.overall, ...report.domains].flatMap(d => [d.caution, d.basis]));
+  const overlap = [...new Set(prose(freeReport).filter(s => s.length >= 40 && !sharedCore.has(s)))].filter(s => copy.includes(s));
   assert.equal(overlap.length, 0);
-  if (!facts.hasTimeInput) { assert.equal(report.annualBackground, null); assert.ok(report.note.includes("출생시간")); }
+  if (!facts.hasTimeInput) { assert.equal(report.annualBackground, null); assert.ok(report.annualMethod.includes("출생시간")); }
   out.push(`## 샘플 ${i + 1} · ${JSON.stringify(birth)}`, `무료 원문: ${freeReport.snapshot.text}`, `수정 전 총운: ${before.corePatterns.join(" ")}`, `수정 전 재물: ${before.domains.find(d => d.key === "money").experiment}`, `수정 전 직장: ${before.domains.find(d => d.key === "work").experiment}`, `### 새 요약\n${report.summary}`);
   for (const [name, reading] of [["총운", report.overall], ...report.domains.map(d => [d.label, d])]) out.push(`### ${name}\n${reading.headline}`, ...reading.paragraphs, `기회: ${reading.opportunity}`, `주의: ${reading.caution}`, `접힌 쉬운 근거: ${reading.basis}`, `선택적 짧은 참고: ${reading.tip}`);
   out.push("### 연간 흐름", report.annualIntroduction, report.annualBackground || "시간 미상으로 큰 운 배경 생략");

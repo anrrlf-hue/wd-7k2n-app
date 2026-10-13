@@ -63,6 +63,12 @@ const bodySchema = z.object({
   question: z.string().trim().min(1).max(500),
   previousQuestion: z.string().trim().max(500).nullable().optional(),
   previousDomain: z.enum(REALITY_ANSWER_DOMAINS).nullable().optional(),
+  readingReference: z.object({
+    edition: z.string().max(80),
+    area: z.string().max(80),
+    evidence: z.string().max(80),
+    domain: z.enum(REALITY_ANSWER_DOMAINS),
+  }).nullable().optional(),
   focusHint: z.enum(SAJU_FOCUS_VALUES).nullable().optional(),
   year: z.number().int().min(1900).max(2035),
   month: z.number().int().min(1).max(12),
@@ -122,6 +128,8 @@ export async function POST(request: Request) {
       focusHint: questionPlan.focus,
       domainHint: questionPlan.domain,
       questionPlan,
+      readingReference: parsed.data.readingReference,
+      previousDomain: parsed.data.previousDomain,
     });
 
     return NextResponse.json({ ...result, questionPlan });

@@ -4,7 +4,7 @@ import { palmFactsSchema } from "@/lib/palm-input-schema";
 import { computeSajuFacts, type SajuFacts } from "@/lib/saju-facts";
 import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
-import { isPalmFactsUsable, type PalmFacts } from "@/lib/palm-facts";
+import { isPalmFactsUsable, normalizePalmFactsObservation, type PalmFacts } from "@/lib/palm-facts";
 import { scorePersonalityCheck } from "@/lib/personality-check";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { buildFortuneCandidates, selectPrimaryCandidate } from "@/lib/fortune-candidates";
@@ -12,6 +12,7 @@ import { buildTripleCompare } from "@/lib/triple-compare";
 import { buildLifetimeStory, buildComprehensiveVerdict } from "@/lib/real-world-personalization";
 import { classifyWealthType } from "@/lib/wealth-type";
 import { buildPalmBilateralReading, type DominantHand } from "@/lib/palm-bilateral";
+import { buildPremiumReport } from "@/lib/premium-report";
 
 // 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe/ONNX로
 // 이미 분석해 만든 PalmFacts(구조화 JSON)만 받는다. palmFacts가 없으면
@@ -55,27 +56,22 @@ export async function POST(request: Request) {
     );
   }
 
-  const leftPalmFacts = (parsed.data.leftPalmFacts ?? null) as PalmFacts | null;
-  const rightPalmFacts = (parsed.data.rightPalmFacts ?? null) as PalmFacts | null;
+  const leftPalmFacts = parsed.data.leftPalmFacts ? normalizePalmFactsObservation(parsed.data.leftPalmFacts as PalmFacts) : null;
+  const rightPalmFacts = parsed.data.rightPalmFacts ? normalizePalmFactsObservation(parsed.data.rightPalmFacts as PalmFacts) : null;
   const dominantHand = (parsed.data.dominantHand ?? "right") as DominantHand;
   const bilateralReady = Boolean(leftPalmFacts && rightPalmFacts);
   const bilateralPrimary =
     dominantHand === "left" ? leftPalmFacts ?? rightPalmFacts : rightPalmFacts ?? leftPalmFacts;
-  const palmFacts = ((parsed.data.palmFacts ?? bilateralPrimary) ?? null) as PalmFacts | null;
+  const palmFacts = parsed.data.palmFacts ? normalizePalmFactsObservation(parsed.data.palmFacts as PalmFacts) : bilateralPrimary;
   const palmSkipped = palmFacts === null;
 
   if (palmFacts?.pipelineDiagnostics) {
     console.info(
       "[palm-pipeline-client]",
       JSON.stringify({
-        ...palmFacts.pipelineDiagnostics,
-        secondaryLines: palmFacts.secondaryLines
-          ? {
-              fate: palmFacts.secondaryLines.fate,
-              sun: palmFacts.secondaryLines.sun,
-              wealth: palmFacts.secondaryLines.wealth,
-            }
-          : null,
+        threeLineElapsedMs: palmFacts.pipelineDiagnostics.threeLineElapsedMs,
+        fateModelElapsedMs: palmFacts.pipelineDiagnostics.fateModelElapsedMs,
+        totalModelElapsedMs: palmFacts.pipelineDiagnostics.totalModelElapsedMs,
       }),
     );
   }
@@ -124,6 +120,9 @@ export async function POST(request: Request) {
       bilateralReady && leftPalmFacts && rightPalmFacts
         ? buildPalmBilateralReading(leftPalmFacts, rightPalmFacts, dominantHand)
         : null;
+    const annualReport = bilateralReady
+      ? buildPremiumReport({ facts: deepFacts, leftPalm: leftPalmFacts, rightPalm: rightPalmFacts, dominantHand })
+      : null;
 
     return NextResponse.json({
       usable: true,
@@ -133,6 +132,7 @@ export async function POST(request: Request) {
       rightPalmFacts,
       dominantHand,
       bilateralReading,
+      annualReport,
       freeReport: { source: "mock", report: freeReport },
       fortuneCandidates,
       tripleCompare,

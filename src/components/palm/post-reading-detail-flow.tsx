@@ -18,13 +18,14 @@ import { isCurrentPremiumReport, isRenderablePremiumReport, isStoredPremiumRepor
 type Stage = "ready" | "loading" | "premium";
 const STORAGE_KEY = "saju-app:integrated-premium:v1";
 
-export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFacts, rightPalmFacts, dominantHand, onPalmConnectionsVisibleChange }: {
+export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFacts, rightPalmFacts, dominantHand, initialReport, onPalmConnectionsVisibleChange }: {
   birthInput: BirthInput;
   personalityInput?: PersonalityInputEcho;
   palmFacts?: PalmFacts | null;
   leftPalmFacts?: PalmFacts | null;
   rightPalmFacts?: PalmFacts | null;
   dominantHand?: RealityDominantHand | null;
+  initialReport?: PremiumReport | null;
   onPalmConnectionsVisibleChange?: (visible: boolean) => void;
 }) {
   const [stage, setStage] = useState<Stage>("ready");
@@ -50,13 +51,24 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
       if (!mounted) return;
       setStage("ready"); setPremiumReport(null); setPreviousReport(null); setError(null);
       setRefreshRequested(false);
+      let prior: StoredPremiumReport | null = null;
+      let previous: StoredPremiumReport | null = null;
       try {
         const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "null");
         if ((saved?.identity === identity || saved?.identity?.endsWith(`:${identity}`)) && isStoredPremiumReport(saved.report)) {
-          setPremiumReport(saved.report); setStage("premium");
-          if (isStoredPremiumReport(saved.previousReport)) setPreviousReport(saved.previousReport);
+          prior = saved.report;
+          if (isStoredPremiumReport(saved.previousReport)) previous = saved.previousReport;
         }
       } catch { /* Storage may be unavailable; the report still works. */ }
+      if (isCurrentPremiumReport(initialReport)) {
+        // A fresh two-hand submission opens its complete report. Restoring a
+        // saved session never requests a new edition in the background.
+        previous = prior && JSON.stringify(prior) !== JSON.stringify(initialReport) ? prior : previous;
+        setPremiumReport(initialReport); setPreviousReport(previous); setStage("premium");
+        try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ identity, report: initialReport, previousReport: previous })); } catch { /* Optional storage. */ }
+      } else if (prior) {
+        setPremiumReport(prior); setPreviousReport(previous); setStage("premium");
+      }
     });
     let interrupted = false;
     const onHide = () => { interrupted = slot.hasActive(); slot.cancel(); };
@@ -68,7 +80,7 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
     window.addEventListener("pagehide", onHide);
     window.addEventListener("pageshow", onRestore);
     return () => { mounted = false; slot.cancel(); window.removeEventListener("pagehide", onHide); window.removeEventListener("pageshow", onRestore); };
-  }, [identity]);
+  }, [identity, initialReport]);
 
   function persist(report: StoredPremiumReport, previous: StoredPremiumReport | null) {
     try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ identity, report, previousReport: previous })); } catch { /* Storage is optional. */ }
@@ -115,7 +127,7 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
       <Button size="lg" onClick={() => void loadPremium()} className="mt-4 h-14 w-full rounded-full text-base">{refreshRequested ? "새 리포트 다시 요청" : premiumReport ? "프리미엄 다시 보기" : "프리미엄 보기"}</Button>
       {refreshRequested && premiumReport && <Button variant="outline" className="mt-3 min-h-11 w-full" onClick={() => { setRefreshRequested(false); setError(null); setStage("premium"); }}>저장된 리포트 보기</Button>}
       <p className="mt-2 text-center text-xs leading-6 text-muted-foreground">현재 베타 기간에는 무료로 바로 볼 수 있습니다.</p>
-      <p className="mt-1 text-center text-xs leading-6 text-muted-foreground">같은 탭에서 다시 열 수 있어요. 탭을 닫으면 보관이 끝납니다.</p>
+      <p className="mt-1 text-center text-xs leading-6 text-muted-foreground">같은 탭의 세션 저장소에서 다시 열 수 있어요. 브라우저가 탭을 복원하면 다시 나타날 수 있습니다.</p>
       {error && <p role="alert" className="mt-4 text-sm leading-6 text-destructive">{error}</p>}
     </section>}
     {stage === "loading" && <div className="rounded-3xl border border-(--gold-soft) bg-card p-7 text-center">
@@ -124,17 +136,18 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
       <Button variant="outline" onClick={cancel} className="mt-4">리포트 요청 취소</Button>
     </div>}
     {stage === "premium" && premiumReport && <>
-      <div className="rounded-2xl border border-border p-4 text-sm leading-7">
+      {isRenderablePremiumReport(premiumReport) ? <PremiumReportView report={premiumReport} /> : <LegacyPremiumReportView report={premiumReport} />}
+      <details className="mt-5 rounded-2xl border border-border p-4 text-sm leading-7">
+        <summary className="cursor-pointer">저장된 리포트와 다른 풀이판</summary>
         <p>{isCurrentPremiumReport(premiumReport) ? "근거 연결 개정판 · 저장된 원문" : "이전 풀이판 · 저장된 원문"}</p>
         <p className="text-muted-foreground">{premiumReport.annual.startLabel} ~ {premiumReport.annual.endLabel}의 보고서입니다. 다시 열어도 문장과 기간은 그대로 유지됩니다.</p>
         {(!isCurrentPremiumReport(premiumReport) || premiumReport.annual.startLabel !== currentMonth) && <Button variant="outline" onClick={() => void loadPremium(true)} className="mt-3 min-h-11">{isCurrentPremiumReport(premiumReport) ? "이번 달부터 새 리포트 만들기" : "새 풀이판으로 리포트 만들기"}</Button>}
         {previousReport && <button type="button" onClick={() => {
           setPremiumReport(previousReport); setPreviousReport(premiumReport); persist(previousReport, premiumReport);
         }} className="mt-3 block min-h-11 underline underline-offset-4">다른 저장본 보기</button>}
-      </div>
-      {isRenderablePremiumReport(premiumReport) ? <PremiumReportView report={premiumReport} /> : <LegacyPremiumReportView report={premiumReport} />}
+      </details>
       <button type="button" onClick={() => setStage("ready")} className="mt-5 min-h-10 w-full text-sm text-muted-foreground underline underline-offset-4">프리미엄 접기</button>
     </>}
-    {stage !== "loading" && <><ServiceShareCard /><PersonCompareCard me={birthInput} /></>}
+    {stage !== "loading" && <><ServiceShareCard /><details className="mt-6"><summary className="cursor-pointer text-sm">다른 사람과의 관계도 보고 싶다면</summary><PersonCompareCard me={birthInput} /></details></>}
   </section>;
 }

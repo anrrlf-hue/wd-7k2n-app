@@ -15,13 +15,15 @@ import {
   assessPalmCaptureFrame,
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
-import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
+import { isPalmFactsUsable, describePalmFailureReasons, normalizePalmFactsObservation, type PalmFacts } from "@/lib/palm-facts";
 import { PalmReadingSections, PalmBilateralSection, TripleCompareSection } from "@/components/palm/palm-reading-sections";
 import { PostReadingDetailFlow } from "@/components/palm/post-reading-detail-flow";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import type { SajuFocus } from "@/lib/saju-focus";
+import type { PremiumReport } from "@/lib/premium-report";
+import { isCurrentPremiumReport } from "@/lib/premium-report-validation";
 import { track } from "@/lib/analytics";
 import { buildPalmBilateralReading, isStoredPalmReading, PALM_READING_VERSION, type DominantHand, type PalmBilateralReading } from "@/lib/palm-bilateral";
 
@@ -49,6 +51,7 @@ interface PalmReportResponse {
   freeReport?: { report: FreeSajuReport };
   tripleCompare?: CompareItem[];
   verdict?: ReportParagraph;
+  annualReport?: PremiumReport | null;
 }
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
@@ -196,6 +199,7 @@ export function PalmPageClient({
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
   const [tripleCompare, setTripleCompare] = useState<CompareItem[]>([]);
   const [annualPalmConnectionsVisible, setAnnualPalmConnectionsVisible] = useState(false);
+  const [initialAnnualReport, setInitialAnnualReport] = useState<{ report: PremiumReport; identity: string } | null>(null);
   const [verdict, setVerdict] = useState<ReportParagraph | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retakeAttempts, setRetakeAttempts] = useState(0);
@@ -245,9 +249,9 @@ export function PalmPageClient({
         setRetryMode("report");
         setErrorMsg("입력한 성향 정보가 달라졌어요. 촬영 정보는 유지하고 현재 입력으로 리포트를 다시 받아주세요.");
       }
-      setPalmFacts(saved.palmFacts);
-      setLeftPalmFacts(saved.leftPalmFacts ?? null);
-      setRightPalmFacts(saved.rightPalmFacts ?? null);
+      setPalmFacts(saved.palmFacts ? normalizePalmFactsObservation(saved.palmFacts) : null);
+      setLeftPalmFacts(saved.leftPalmFacts ? normalizePalmFactsObservation(saved.leftPalmFacts) : null);
+      setRightPalmFacts(saved.rightPalmFacts ? normalizePalmFactsObservation(saved.rightPalmFacts) : null);
       setDominantHand(saved.dominantHand ?? null);
       setBilateralReading(isStoredPalmReading(saved.bilateralReading) ? saved.bilateralReading : null);
       setPreviousBilateralReading(isStoredPalmReading(saved.previousBilateralReading) ? saved.previousBilateralReading : null);
@@ -271,18 +275,36 @@ export function PalmPageClient({
     const worker = analyzer.current;
     const stop = () => { slot.cancel(); worker.dispose(); };
     let interrupted = false;
-    const onHide = () => { interrupted = slot.hasActive(); stop(); };
+    const releasePhotoMemory = () => {
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+      setCameraOpen(false);
+      if (cameraProbeCanvasRef.current) {
+        cameraProbeCanvasRef.current.width = 0;
+        cameraProbeCanvasRef.current.height = 0;
+      }
+      const captured = capturedCanvas.current;
+      if (captured) { captured.canvas.width = 0; captured.canvas.height = 0; }
+      capturedCanvas.current = null;
+      setPreviewUrl(null);
+      setRightPreviewUrl(null);
+      setLeftPreviewUrl(null);
+    };
+    const onHide = () => { interrupted = slot.hasActive(); stop(); releasePhotoMemory(); };
     const onRestore = (event: PageTransitionEvent) => {
       if (!event.persisted || !interrupted) return;
       interrupted = false;
       setStage("error");
-      setRetryMode(retryReport.current ? "report" : capturedCanvas.current ? "photo" : null);
-      setErrorMsg("화면을 떠나 분석이 중단됐어요. 저장된 촬영 정보로 다시 시도해주세요.");
+      setRetryMode(retryReport.current ? "report" : null);
+      setErrorMsg(retryReport.current
+        ? "화면을 떠나 분석이 중단됐어요. 완료된 손 분석으로 리포트를 다시 요청해주세요."
+        : "화면을 떠나 분석이 중단됐어요. 사진을 다시 선택하거나 촬영해주세요.");
     };
     window.addEventListener("pagehide", onHide);
     window.addEventListener("pageshow", onRestore);
     return () => {
       stop();
+      releasePhotoMemory();
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("pageshow", onRestore);
     };
@@ -445,7 +467,11 @@ export function PalmPageClient({
       setStage("retake");
       return;
     }
+    if (leftFacts && rightFacts && !isCurrentPremiumReport(data.annualReport)) {
+      throw new Error("통합 리포트 내용을 확인하지 못했어요. 촬영한 양손을 유지한 채 다시 받을 수 있습니다.");
+    }
     retryReport.current = null;
+    setInitialAnnualReport(data.annualReport ? { report: data.annualReport, identity: `${resumeKey}:${personalityKey}` } : null);
     setBilateralReading(data.bilateralReading ?? null);
     setPreviousBilateralReading(null);
     setFinalReport(data.freeReport?.report ?? null);
@@ -593,7 +619,12 @@ export function PalmPageClient({
       setErrorMsg("먼저 평소 주로 쓰는 손을 선택해주세요.");
       return;
     }
-    capturedCanvas.current = null;
+    if (capturedCanvas.current) {
+      capturedCanvas.current.canvas.width = 0;
+      capturedCanvas.current.canvas.height = 0;
+      capturedCanvas.current = null;
+    }
+    replacePreview(null);
     await processPalmCanvas(() => fileToCanvas(file));
   }
 
@@ -611,7 +642,11 @@ export function PalmPageClient({
   function retryCurrentHand() {
     tasks.current.cancel();
     analyzer.current.dispose();
-    capturedCanvas.current = null;
+    if (capturedCanvas.current) {
+      capturedCanvas.current.canvas.width = 0;
+      capturedCanvas.current.canvas.height = 0;
+      capturedCanvas.current = null;
+    }
     retryReport.current = null;
     if (captureHand === "right") { setRightPalmFacts(null); setRightPreviewUrl(null); }
     else { setLeftPalmFacts(null); setLeftPreviewUrl(null); }
@@ -648,12 +683,12 @@ export function PalmPageClient({
       className={`journey-surface ${stage === "result" || stage === "saju_only" ? "result-bright" : ""}`}
     >
       <div className="journey-shell">
-      <JourneyHeader chapter={stage === "result" || stage === "saju_only" ? 3 : 2} />
+      <JourneyHeader annualJourney chapter={stage === "result" || stage === "saju_only" ? 3 : 2} />
       <div>
       <CompanionHeading showCompanion={stage !== "upload"} state={stage === "upload" ? "palm-guide" : "palm-observing"} presence={stage === "upload" ? "transition" : "quiet"}>
-      <p className="section-eyebrow">두 번째 분석 · 손금</p>
+      <p className="section-eyebrow">{stage === "result" ? "나의 통합 풀이" : "두 번째 분석 · 손금"}</p>
       <h1 className="mt-2 text-xl leading-snug font-semibold tracking-tight">
-        {stage === "result" ? "양손에서 읽는 나의 모습" : stage === "saju_only" ? "사주 풀이를 연간 흐름으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
+        {stage === "result" ? "사주와 양손을 함께 읽는 나의 이야기" : stage === "saju_only" ? "사주 풀이를 연간 흐름으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
       </h1>
       </CompanionHeading>
       </div>
@@ -724,7 +759,7 @@ export function PalmPageClient({
                 <div className="mt-5 rounded-2xl border border-(--gold-soft) bg-card p-4">
                   <p className="text-sm font-semibold text-foreground">평소 주로 쓰는 손을 먼저 알려주세요</p>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    양손 차이를 해석할 때 참고하며, 한쪽을 무조건 타고난 운으로 단정하지 않습니다.
+                    주로 쓰는 손을 중심으로 두 손의 모양을 비교합니다.
                   </p>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <Button
@@ -925,6 +960,8 @@ export function PalmPageClient({
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   두 손의 같은 선을 나란히 보고, 읽힌 특징만 해석에 사용합니다.
                 </p>
+                <details className="mt-3" open={!annualPalmConnectionsVisible}>
+                <summary className="cursor-pointer text-sm">촬영한 양손 확인</summary>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-accent p-3">
                     {innatePreviewUrl && (
@@ -947,6 +984,7 @@ export function PalmPageClient({
                     <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[currentPalmFacts.handShape]}</p>
                   </div>
                 </div>
+                </details>
               </>
             ) : (
               <p className="text-xs text-muted-foreground">
@@ -956,7 +994,9 @@ export function PalmPageClient({
             )}
           </motion.div>
 
-          <div className="mt-5">
+          <details className="mt-5" open={!annualPalmConnectionsVisible}>
+            <summary className="cursor-pointer text-sm">손금 관측과 개별 풀이 자세히 보기</summary>
+          <div className="mt-3">
             {rightPalmFacts && leftPalmFacts ? (
               <>
                 {bilateralReading?.version === PALM_READING_VERSION ? <PalmBilateralSection reading={bilateralReading} /> : <div className="rounded-2xl border border-border p-4">
@@ -977,8 +1017,9 @@ export function PalmPageClient({
             )}
             {(!annualPalmConnectionsVisible || personalityInput?.personalityAnswers) && <TripleCompareSection items={tripleCompare} withSelf={Boolean(personalityInput?.personalityAnswers)} />}
           </div>
+          </details>
 
-          {verdict && <VerdictCard verdict={verdict} />}
+          {verdict && !annualPalmConnectionsVisible && <VerdictCard verdict={verdict} />}
         </div>
       )}
 
@@ -1003,6 +1044,7 @@ export function PalmPageClient({
           leftPalmFacts={leftPalmFacts}
           rightPalmFacts={rightPalmFacts}
           dominantHand={dominantHand}
+          initialReport={initialAnnualReport?.identity === `${resumeKey}:${personalityKey}` ? initialAnnualReport.report : null}
           onPalmConnectionsVisibleChange={setAnnualPalmConnectionsVisible}
         />
       )}

@@ -1,6 +1,7 @@
 import type { SajuFacts } from "@/lib/saju-facts";
 import type { PersonalityCheckFacts, PersonalityCheckLevel } from "@/lib/personality-check";
 import type { OnnxPalmLines } from "@/lib/palm-facts";
+import type { ReadingEvidence } from "@/lib/reading-plan";
 
 export type CompareKind = "일치" | "차이" | "보완" | "중립" | "미확인" | "비교 불가";
 export interface CompareSignal {
@@ -12,6 +13,7 @@ export interface CompareItem {
   kind: CompareKind;
   text: string;
   signals: { saju: CompareSignal; palm: CompareSignal; self: CompareSignal };
+  evidence?: ReadingEvidence[];
 }
 
 function selfSignal(level: PersonalityCheckLevel | undefined, left: string, right: string): CompareSignal {
@@ -51,7 +53,7 @@ export function buildTripleCompare(facts: SajuFacts, palm: OnnxPalmLines | null,
     const linked = facts.dayStrengthReliable && facts.dayStrength === "strong"
       ? curved
         ? "두 관점을 함께 놓으면 중요한 기준은 지키면서 방법은 유연하게 찾는 모습으로 읽어볼 수 있습니다. 사주는 무엇을 납득해야 움직이는지를, 손금의 곡선 해석은 그 답을 어떤 방식으로 찾아가는지를 다르게 비춥니다. 기준이 분명한 것과 방법을 하나로 고집하는 것은 같은 뜻이 아닙니다."
-        : "두 관점 모두 기준을 분명히 세우는 생활 장면으로 이어집니다. 다만 서로 같은 성격을 검증했다는 뜻은 아닙니다. 일관성을 지키는 힘이 상대의 다른 방법을 받아들일 여지와 어떻게 함께 놓이는지 읽어볼 수 있습니다."
+        : "두 관점 모두 기준을 분명히 세우는 생활 장면으로 이어집니다. 일관성을 지키는 힘이 상대의 다른 방법을 받아들일 여지와 어떻게 함께 놓이는지 읽어볼 수 있습니다."
       : !facts.dayStrengthReliable
         ? "출생시간이 없어 사주의 강약과 연결한 성향을 덧붙이지 않았습니다. 손금의 모양을 읽은 내용은 별도로 남기며, 부족한 사주 정보를 손금으로 대신 채우지는 않았습니다."
       : facts.dayStrength === "neutral"
@@ -59,7 +61,8 @@ export function buildTripleCompare(facts: SajuFacts, palm: OnnxPalmLines | null,
       : curved
         ? "사주의 지원을 살피는 관점과 손금의 유연한 사고 해석을 함께 놓으면, 다른 사람의 반응을 들으며 생각을 구체화하는 장면을 떠올릴 수 있습니다. 도움을 받아 방향을 찾는 것과 상대 반응에 맞춰 내 기준까지 바꾸는 것은 구분해서 읽습니다."
         : "사주에서는 선택을 뒷받침할 조건을, 손금에서는 생각을 정리하는 기준을 읽습니다. 도움을 듣더라도 자기 말로 결론을 설명할 수 있을 때 두 관점을 생활의 같은 장면에 연결해볼 수 있습니다.";
-    decisionParts.push(`손금에서 확인한 두뇌선은 ${palm.headLine.length ? `길이 ${palm.headLine.length}, ` : ""}${palm.headLine.curve}입니다. ${linked}`);
+    const source = palm.headLine.sourceVariant === "enhanced" ? "보정 영상" : palm.headLine.sourceVariant === "raw" ? "원본 사진" : "사진";
+    decisionParts.push(`${source}에서 확인한 두뇌선 검출 구간은 ${palm.headLine.length ? `상대 길이 ${palm.headLine.length}, ` : ""}${palm.headLine.curve}으로 분류됐습니다. 손금 전체의 길이나 실제 시작·끝점은 확인하지 않았습니다. ${linked}`);
   }
   if (decision.self.state === "NEUTRAL") decisionParts.push("직접 답한 결정 속도는 ‘중간’입니다. 중요한 선택과 일상적인 선택에서 속도가 어떻게 달라지는지 함께 떠올려 보세요.");
   else if (decision.self.state === "DIRECTIONAL") decisionParts.push(check?.levels.speed === "왼쪽"

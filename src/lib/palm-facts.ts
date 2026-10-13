@@ -57,6 +57,21 @@ export interface OnnxLineDetail {
   end: { x: number; y: number } | null;
   /** 이 모델은 분기(fork) 검출을 지원하지 않는다 — 항상 null. */
   branchDetected: null;
+  /** Which crop produced the selected mask observation. */
+  sourceVariant?: "raw" | "enhanced" | "unknown";
+  /** Whether each available crop independently detected this class. */
+  rawDetected?: boolean;
+  enhancedDetected?: boolean;
+  /** The endpoints are PCA extrema of a detected segment, not anatomical endpoints. */
+  endpointEvidence?: "segment_extrema" | "none";
+  /** The model does not establish the complete anatomical path of a line. */
+  pathCompleteness?: "not_verified" | "unavailable";
+  /** Interpretability is intentionally narrower than detection. */
+  attributeSupport?: {
+    length: "segment_only" | "not_supported";
+    curve: "segment_only" | "not_supported";
+    depth: "mask_signal_only" | "not_supported";
+  };
 }
 
 export interface OnnxPalmLines {
@@ -139,6 +154,35 @@ export interface PalmFacts {
   pipelineDiagnostics?: PalmPipelineDiagnostics;
   /** 사용자에게 보여줄 경고/재촬영 사유 */
   warnings: string[];
+}
+
+/** Older saved observations predate per-line provenance. Recover only what the
+ * retained pipeline diagnostics actually establish; never turn a mask score or
+ * MediaPipe confidence into a probability of a traditional interpretation. */
+export function normalizePalmFactsObservation(facts: PalmFacts): PalmFacts {
+  if (!facts.onnxLines) return facts;
+  const diagnostics = facts.pipelineDiagnostics;
+  const keys = ["heartLine", "headLine", "lifeLine"] as const;
+  const normalized = { ...facts.onnxLines };
+  for (const key of keys) {
+    const line = facts.onnxLines[key];
+    const sourceVariant = line.detected
+      ? line.sourceVariant && line.sourceVariant !== "unknown" ? line.sourceVariant : diagnostics?.chosenVariant?.[key] ?? "unknown"
+      : "unknown";
+    const rawDetected = line.rawDetected ?? (line.detected && sourceVariant === "raw" ? true
+      : diagnostics?.rawDetectedLineCount === 0 || diagnostics?.rawPixelCount?.[key] === 0 ? false : undefined);
+    const enhancedDetected = line.enhancedDetected ?? (line.detected && sourceVariant === "enhanced" ? true
+      : diagnostics?.enhancedAttempted === false || diagnostics?.enhancedDetectedLineCount === 0 || diagnostics?.enhancedPixelCount?.[key] === 0 ? false : undefined);
+    normalized[key] = {
+      ...line, sourceVariant, rawDetected, enhancedDetected,
+      endpointEvidence: line.endpointEvidence ?? (line.detected ? "segment_extrema" : "none"),
+      pathCompleteness: line.pathCompleteness ?? (line.detected ? "not_verified" : "unavailable"),
+      attributeSupport: line.attributeSupport ?? (line.detected
+        ? { length: "segment_only", curve: "segment_only", depth: "mask_signal_only" }
+        : { length: "not_supported", curve: "not_supported", depth: "not_supported" }),
+    };
+  }
+  return { ...facts, onnxLines: normalized };
 }
 
 /** 실제 ONNX가 검출한 선 개수(0~3). majorLines(Sobel+ONNX 합집합)는 성공

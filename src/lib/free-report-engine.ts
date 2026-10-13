@@ -14,6 +14,7 @@ import { validateFreeSajuReport, type FreeSajuReport } from "@/lib/free-report-s
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
 import { deriveSajuWorkCore } from "@/lib/saju-work-core";
 import { buildRealWorldPersonalization, buildNextMove, buildTimingShift } from "@/lib/real-world-personalization";
+import { isExternalInterpretationEnabled, externalInterpretationSkipReason } from "@/lib/external-interpretation-policy";
 
 export interface FreeSajuReportResult {
   source: "llm" | "mock";
@@ -24,6 +25,7 @@ export interface FreeSajuReportResult {
 const DEFAULT_TIMEOUT_MS = 9000;
 
 async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: number): Promise<unknown> {
+  if (!isExternalInterpretationEnabled()) return null;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
@@ -76,7 +78,7 @@ export async function getFreeSajuReport(
 
   try {
     raw = await callClaude(FREE_SAJU_REPORT_SYSTEM_PROMPT, userPrompt, timeoutMs);
-    if (!raw) fallbackReason = "no-api-key";
+    if (!raw) fallbackReason = externalInterpretationSkipReason();
   } catch (err) {
     raw = null;
     fallbackReason = err instanceof Error ? err.message : String(err);
@@ -85,9 +87,11 @@ export async function getFreeSajuReport(
   if (raw) {
     const validation = validateFreeSajuReport(raw);
     if (validation.ok && validation.data) {
+      const personalReport = buildFreeSajuReport(facts, options?.personality);
       // These interdependent fields share the exact deterministic frame used by fallback.
       return { source: "llm", report: { ...validation.data, ...deriveSajuWorkCore(facts).sections,
-        decisionStyle: buildFreeSajuReport(facts).decisionStyle,
+        snapshot: personalReport.snapshot,
+        decisionStyle: personalReport.decisionStyle,
         realWorldPersonalization: options?.personality ? buildRealWorldPersonalization(facts, options.personality) : null,
         nextMove: buildNextMove(facts, options?.personality), timingShift: buildTimingShift(facts),
       } };
