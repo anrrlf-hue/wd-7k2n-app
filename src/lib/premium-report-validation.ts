@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { PremiumReport } from "@/lib/premium-report";
+import { PREMIUM_REPORT_VERSION, type PremiumReport } from "@/lib/premium-report";
 import type { LegacyPremiumReport } from "@/lib/legacy-premium-report";
 
 const text = z.string();
@@ -12,17 +12,37 @@ const annual = z.object({
   })).length(12),
 });
 const reading = z.object({ headline: text, paragraphs: z.array(text).min(1), opportunity: text, caution: text, tip: text, basis: text });
+const interpretation = z.object({
+  headline: text,
+  passages: z.array(z.object({ id: text, kind: z.enum(["observation", "traditional", "reflection"]), text, evidenceIds: z.array(text).min(1) })).min(1),
+  evidence: z.array(z.object({ id: text, kind: z.enum(["calculated", "observed"]), source: text, value: z.union([text, z.number(), z.boolean(), z.null()]) })),
+  limits: z.array(text),
+}).refine(plan => {
+  const ids = new Set(plan.evidence.map(e => e.id));
+  return ids.size === plan.evidence.length && plan.passages.every(p => p.evidenceIds.every(id => ids.has(id)));
+});
 const renderableReport = z.object({
-  version: z.literal("annual-reading-2026-10-v2"),
+  version: z.enum(["annual-reading-2026-10-v2", PREMIUM_REPORT_VERSION]),
   title: z.literal("프리미엄 통합 연간 리포트"), summary: text, note: text,
   overall: reading,
   domains: z.array(reading.extend({ key: z.enum(keys), label: text })).length(3).refine(items => items.every((item, i) => item.key === keys[i])),
   annual,
   annualIntroduction: text, annualBackground: text.nullable(),
+  annualHighlights: z.array(text).optional(),
+  palmConnections: z.array(z.object({ topic: text, text })).optional(),
+  profileRule: text.optional(),
   periods: z.array(z.object({ label: text, months: z.array(text).min(1), headline: text, reading: text, basis: text,
     domains: z.array(z.object({ key: z.enum(keys), label: text, text })),
+    interpretation: interpretation.optional(),
   })).min(1),
-}).refine(report => JSON.stringify(report.periods.flatMap(period => period.months)) === JSON.stringify(report.annual.months.map(month => month.label)));
+}).refine(report => JSON.stringify(report.periods.flatMap(period => period.months)) === JSON.stringify(report.annual.months.map(month => month.label)))
+  .refine(report => report.version !== PREMIUM_REPORT_VERSION || (
+    Boolean(report.profileRule) && Array.isArray(report.palmConnections)
+    && !!report.annualHighlights?.length && report.annualHighlights.length <= 3
+    && new Set(report.annualHighlights).size === report.annualHighlights.length
+    && report.annualHighlights.every(label => report.periods.some(period => period.months[0] === label))
+    && report.periods.every(period => period.interpretation)
+  ));
 
 // Preserve saved v1 prose in its original view; only an explicit request creates
 // the new edition. Accept no half-written report that could crash either view.
@@ -39,6 +59,9 @@ const legacyReport = z.object({
 export type StoredPremiumReport = PremiumReport | LegacyPremiumReport;
 export function isRenderablePremiumReport(value: unknown): value is PremiumReport {
   return renderableReport.safeParse(value).success;
+}
+export function isCurrentPremiumReport(value: unknown): value is PremiumReport {
+  return isRenderablePremiumReport(value) && value.version === PREMIUM_REPORT_VERSION;
 }
 export function isStoredPremiumReport(value: unknown): value is StoredPremiumReport {
   return isRenderablePremiumReport(value) || legacyReport.safeParse(value).success;

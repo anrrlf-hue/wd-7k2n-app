@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { palmFactsSchema } from "@/lib/palm-input-schema";
 import { computeSajuFacts, type SajuFacts } from "@/lib/saju-facts";
 import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { buildFreeSajuReport } from "@/lib/free-report-mock";
@@ -26,62 +27,6 @@ import { buildPalmBilateralReading, type DominantHand } from "@/lib/palm-bilater
 // 사주/손금/자기보고를 세 덩어리로 이어붙이는 구조였다. 이번에는 그 비교
 // 로직을 free-report-mock.ts의 관련 주제별 섹션(재물 구조/의사결정/사람과
 // 돈/기회) 안으로 옮겨서, 진짜 하나의 리포트로 만든다.
-
-const onnxLineDetailSchema = z.object({
-  detected: z.boolean(),
-  length: z.enum(["짧음", "보통", "김"]).nullable(),
-  curve: z.enum(["완만한 곡선", "직선에 가까움"]).nullable(),
-  depthStrength: z.enum(["약함", "보통", "강함"]).nullable(),
-  start: z.object({ x: z.number(), y: z.number() }).nullable(),
-  end: z.object({ x: z.number(), y: z.number() }).nullable(),
-  branchDetected: z.null(),
-});
-
-const onnxPalmLinesSchema = z.object({
-  modelExecuted: z.literal(true),
-  heartLine: onnxLineDetailSchema,
-  headLine: onnxLineDetailSchema,
-  lifeLine: onnxLineDetailSchema,
-  fateLine: z.object({ presence: z.literal("unknown"), note: z.string() }),
-  mounts: z.literal("unknown"),
-  marks: z.literal("unknown"),
-});
-
-const secondaryLineSignalSchema = z.object({
-  status: z.enum(["clear", "faint", "not_seen"]),
-  strength: z.number().min(0).max(1),
-  span: z.number().min(0).max(1),
-  note: z.string(),
-  modelConfidence: z.number().min(0).max(1).nullable().optional(),
-  modelVerticalSpan: z.number().min(0).max(1).nullable().optional(),
-  corroborated: z.boolean().optional(),
-});
-
-const palmFactsSchema = z.object({
-  handSide: z.enum(["left", "right", "unknown"]),
-  imageQuality: z.enum(["good", "no_hand_detected", "too_dark", "too_blurry", "overexposed", "hand_cropped"]),
-  handShape: z.enum(["square", "rectangular", "elongated", "slender", "unknown"]),
-  majorLines: z.array(z.enum(["생명선", "감정선", "두뇌선"])),
-  lineFeatures: z.array(
-    z.object({
-      name: z.enum(["생명선", "감정선", "두뇌선"]),
-      detected: z.boolean(),
-      length: z.enum(["짧음", "보통", "김"]).nullable(),
-      direction: z.enum(["완만한 곡선", "직선에 가까움"]).nullable(),
-      confidence: z.number().min(0).max(1),
-    }),
-  ),
-  /** 실제 ONNX 모델(samuelwbarber/palm-line-reader) 추론 결과. 클라이언트에서
-   * 추론이 실패했으면 null — 서버는 그 값을 그대로 통과시킨다(억지로 채우지 않음). */
-  onnxLines: onnxPalmLinesSchema.nullable(),
-  secondaryLines: z.object({
-    fate: secondaryLineSignalSchema,
-    sun: secondaryLineSignalSchema,
-    wealth: secondaryLineSignalSchema,
-  }).optional(),
-  confidence: z.number().min(0).max(1),
-  warnings: z.array(z.string()),
-});
 
 const bodySchema = z.object({
   year: z.number().int().min(1900).max(2035),

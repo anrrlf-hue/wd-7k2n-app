@@ -1,0 +1,119 @@
+// Synthetic, offline reading comparison. These checks establish traceability
+// and branch behavior, not predictive accuracy or reader value.
+import "./register-test-typescript.mjs";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import { execFileSync } from "node:child_process";
+import ts from "typescript";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { palmFixture } from "./fixtures/palm-analysis.mjs";
+const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
+const { enrichSajuFacts } = await import("../src/lib/oh-my-saju-adapter.ts");
+const { buildFreeSajuReport } = await import("../src/lib/free-report-mock.ts");
+const { buildPremiumReport } = await import("../src/lib/premium-report.ts");
+const { buildContextualMonthReading } = await import("../src/lib/premium-context-reading.ts");
+const { buildPalmBilateralReading } = await import("../src/lib/palm-bilateral.ts");
+const { buildPalmContextReading } = await import("../src/lib/palm-context-reading.ts");
+const { buildTripleCompare } = await import("../src/lib/triple-compare.ts");
+const { validateReadingPlan } = await import("../src/lib/reading-plan.ts");
+const { isRenderablePremiumReport, isCurrentPremiumReport } = await import("../src/lib/premium-report-validation.ts");
+const { PremiumReportView } = await import("../src/components/premium/premium-report-view.tsx");
+const { TripleCompareSection } = await import("../src/components/palm/palm-reading-sections.tsx");
+const baseline = "f0757a3cbe3235b5f86a3a047bc07168b8c6ebc0";
+const oldSource = execFileSync("git", ["show", `${baseline}:src/lib/premium-report.ts`], { encoding: "utf8" });
+const oldJs = ts.transpileModule(oldSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
+const { buildPremiumReport: oldBuild } = await import(`data:text/javascript;base64,${Buffer.from(oldJs).toString("base64")}`);
+const births = [
+  { year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남" },
+  { year: 1988, month: 12, day: 2, hour: 6, minute: 15, gender: "여" },
+  { year: 2001, month: 2, day: 3, hour: null, minute: null, gender: "여" },
+  { year: 1975, month: 8, day: 21, hour: 20, minute: 0, gender: "남" },
+  { year: 1997, month: 3, day: 8, hour: 9, minute: 10, gender: "여" },
+  { year: 1964, month: 11, day: 11, hour: 2, minute: 0, gender: "남" },
+];
+const date = new Date("2026-10-13T00:00:00Z");
+const left = { ...structuredClone(palmFixture), handSide: "left" }, right = structuredClone(palmFixture);
+const samples = [];
+for (const [i, birth] of births.entries()) {
+  const shallow = computeSajuFacts(birth);
+  const facts = birth.hour === null ? shallow : enrichSajuFacts(shallow, birth);
+  const free = buildFreeSajuReport(facts, { mbti: null, check: null });
+  const input = { facts, freeReport: free, referenceDate: date, leftPalm: left, rightPalm: right, dominantHand: "right" };
+  const before = oldBuild(input), after = buildPremiumReport(input);
+  assert.ok(isRenderablePremiumReport(before)); assert.ok(!isCurrentPremiumReport(before));
+  const preserved = JSON.stringify(before);
+  assert.ok(isCurrentPremiumReport(after));
+  assert.deepEqual(after.annual, before.annual, "narrative changes must not silently alter the calculation");
+  assert.equal(JSON.stringify(before), preserved, "previous edition remains immutable");
+  assert.deepEqual(buildPremiumReport(input), after, "same evidence and period must give stable prose");
+  assert.deepEqual(after.periods.flatMap(p => p.months), after.annual.months.map(m => m.label));
+  for (const p of after.periods) validateReadingPlan(p.interpretation);
+  assert.ok(after.palmConnections.length > 0, "no self-response is required for independent palm/saju reading");
+  const html = renderToStaticMarkup(createElement(PremiumReportView, { report: after }));
+  assert.ok(html.indexOf("premium-overall") < html.indexOf("1년의 주요 구간"));
+  assert.ok(html.includes("손금과 사주를 연결해 읽기"));
+  assert.ok(html.indexOf("1년의 주요 구간") < html.indexOf("12개월 전체 흐름 펼쳐보기"));
+  // Opening the auxiliary calendar must not repeat the same full paragraphs.
+  const decode = html.replaceAll("&#x27;", "'").replaceAll("&quot;", '"').replaceAll("&amp;", "&");
+  for (const text of new Set(after.periods.flatMap(p => p.interpretation.passages.filter(s => s.kind === "traditional" && s.id !== "daeun-context").map(s => s.text)))) {
+    assert.equal(decode.split(text).length - 1, 1, "each shared annual passage is rendered once with navigable references");
+  }
+  if (!facts.dayStrengthReliable) {
+    assert.equal(after.annualBackground, null);
+    assert.ok(after.periods.every(p => !p.interpretation.passages.some(s => s.id === "strength-context" || s.id === "daeun-context")));
+  }
+  samples.push({ id: i + 1, birth, facts, free, before, after, palm: buildPalmBilateralReading(left, right, "right") });
+}
+assert.deepEqual(samples[0].before.periods, samples[1].before.periods, "reproduce the published collision");
+assert.notDeepEqual(samples[0].after.periods, samples[1].after.periods);
+assert.notEqual(samples[0].after.overall.paragraphs[0], samples[1].after.overall.paragraphs[0]);
+assert.notEqual(samples[0].after.overall.paragraphs[1], samples[4].after.overall.paragraphs[1], "the same three themes with different strength must not collapse to identical prose");
+assert.equal(samples[3].after.profileRule, "duty-with-support");
+assert.equal(samples[5].after.profileRule, "agency-value-understanding");
+assert.doesNotMatch(samples[5].after.domains.find(d => d.key === "work").paragraphs.join(" "), /자신의 생각을 보여주는 힘과 맡은 역할을 지키려는 마음이 비슷/);
+const feb1 = samples[0].after.periods.find(p => p.months.includes("2027년 2월"));
+const feb2 = samples[1].after.periods.find(p => p.months.includes("2027년 2월"));
+assert.match(feb1.reading, /보상|대가/);
+assert.match(feb2.reading, /지원|맡을 몫/);
+assert.notEqual(feb1.reading, feb2.reading);
+const first = samples[0];
+const changedStrength = { ...first.facts, dayStrength: "weak" };
+assert.notDeepEqual(buildContextualMonthReading(changedStrength, first.after.annual.months[0]), first.after.periods[0].interpretation);
+const withoutDaeun = { ...first.facts, currentDaeun: null };
+assert.ok(!buildContextualMonthReading(withoutDaeun, first.after.annual.months[0]).passages.some(p => p.id === "daeun-context"));
+const changedDaeun = { ...first.facts, currentDaeun: { ...first.facts.currentDaeun, stemTenGod: "편인", branchTenGod: "정인" } };
+assert.notEqual(buildContextualMonthReading(changedDaeun, first.after.annual.months[0]).passages.find(p => p.id === "daeun-context").text, first.after.periods[0].interpretation.passages.find(p => p.id === "daeun-context").text);
+const noTime = { ...first.facts, hasTimeInput: false, dayStrengthReliable: false };
+assert.ok(!buildContextualMonthReading(noTime, first.after.annual.months[0]).passages.some(p => p.id === "daeun-context" || p.id === "strength-context"));
+const bad = structuredClone(first.after); bad.periods[0].interpretation.passages[0].evidenceIds = ["invented"];
+assert.ok(!isRenderablePremiumReport(bad));
+bad.periods[0].interpretation = { passages: null };
+assert.ok(!isRenderablePremiumReport(bad), "bad stored plan must not crash the renderer");
+
+const palmCases = [];
+for (const [name, hand] of [["same", right], ["different", structuredClone(right)], ["missing", structuredClone(right)], ["faint", structuredClone(right)]]) {
+  if (name === "different") { hand.onnxLines.headLine.curve = "직선에 가까움"; hand.onnxLines.headLine.length = "김"; }
+  if (name === "missing") { hand.onnxLines.headLine.detected = false; hand.onnxLines.headLine.curve = null; hand.onnxLines.headLine.length = null; }
+  if (name === "faint") hand.onnxLines.headLine.depthStrength = "약함";
+  const plan = buildPalmContextReading(left, hand, "right"); validateReadingPlan(plan);
+  const report = buildPalmBilateralReading(left, hand, "right");
+  palmCases.push({ name, left, right: hand, plan, report });
+}
+assert.notEqual(palmCases[0].report.summary, palmCases[1].report.summary);
+assert.ok(!palmCases[0].plan.passages.some(p => p.id.endsWith("bilateral-difference")));
+assert.ok(palmCases[1].plan.passages.some(p => p.id.endsWith("bilateral-difference")));
+assert.match(palmCases[2].report.items[0].text, /보류/);
+assert.ok(!palmCases[2].plan.passages.some(p => p.id === "head-heart-composition"));
+assert.match(palmCases[2].report.items[1].text, /확인된 감정선/, "partial medium-length lines may use known curvature without inventing the missing combination");
+assert.equal(palmCases[0].report.summary, palmCases[3].report.summary, "photo contrast is not strength of personality");
+assert.doesNotMatch(JSON.stringify(palmCases), /37~41|운명이 바뀌었|보통 범위여서/);
+const compare = buildTripleCompare(first.facts, right.onnxLines, null);
+const compareHtml = renderToStaticMarkup(createElement(TripleCompareSection, { items: compare, withSelf: false }));
+assert.ok(compareHtml.includes("사주와 손금을 함께 읽으면"));
+assert.ok(compareHtml.includes("기준은 지키면서 방법은 유연하게"));
+assert.equal(buildPremiumReport({ facts: first.facts, referenceDate: date }).palmConnections.length, 0);
+console.log("PASS 6 calculated synthetic charts; unchanged calculation; context-sensitive periods; immutable v2; evidence validation; major-year sections; no-self palm comparison; same/different/missing/faint observations");
+if (process.env.CONTEXT_SAMPLE_OUTPUT) {
+  fs.writeFileSync(process.env.CONTEXT_SAMPLE_OUTPUT, JSON.stringify({ generatedAt: new Date().toISOString(), baseline, referenceDate: date.toISOString(), synthetic: true, actualRecognition: false, samples, palmCases }, null, 2));
+}

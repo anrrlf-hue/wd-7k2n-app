@@ -13,7 +13,7 @@ const left = { ...palmFixture, handSide: "left" }, right = structuredClone(palmF
 const prior = old.buildPalmBilateralReading(left, right, "right");
 const next = buildPalmBilateralReading(left, right, "right");
 assert.equal(prior.items[0].text, prior.items[1].text, "reproduce full duplicated hand narratives on same features");
-assert.equal(new Set(next.items.map(x => x.text)).size, next.items.length);
+assert.equal(new Set(next.items.map(x => x.text).filter(Boolean)).size, next.items.filter(x => x.text).length);
 assert.ok(next.items.every(x => x.observation.startsWith("양손:")));
 const different = structuredClone(right);
 different.onnxLines.headLine.curve = "직선에 가까움";
@@ -24,7 +24,8 @@ const unread = structuredClone(right);
 for (const key of ["headLine", "heartLine"]) unread.onnxLines[key] = { detected: false, length: null, curve: null, depthStrength: null, start: null, end: null, branchDetected: null };
 const partial = buildPalmBilateralReading(left, unread, "right");
 assert.ok(partial.items.slice(0, 2).every(x => x.text.includes("보류")));
-assert.ok(partial.items[2].text.includes("수명·건강을 판단할 수는 없습니다"));
+assert.ok(partial.note.includes("수명·건강"));
+assert.equal(partial.items[2].text, "", "medium life-line observation must not be padded with generic personality text");
 const empty = { ...unread, onnxLines: null };
 assert.ok(buildPalmBilateralReading(empty, empty, "right").items.every(x => x.text.includes("보류")));
 console.log("PASS reproduced old duplicate paragraphs; new same/different/dominant-hand branches and missing-line abstention");
@@ -43,6 +44,13 @@ assert.equal((await call(left, empty)).usable, false);
 const skipped = await call(null, null);
 assert.equal(skipped.palmSkipped, true); assert.equal(skipped.bilateralReading, null);
 console.log("PASS actual API: same generator, no age-theme rotation, partial lines preserved, rejected/skip never forged success");
+const annualWithHands = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...birthFixture, leftPalmFacts: left, rightPalmFacts: right, dominantHand: "right" }) });
+assert.equal(annualWithHands.status, 200);
+const annualBody = await annualWithHands.json();
+assert.deepEqual(annualBody.report.palmConnections, normal.tripleCompare, "both API readers use the same confirmed observations without a self-response");
+const invalidHands = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...birthFixture, leftPalmFacts: { onnxLines: "broken" }, rightPalmFacts: right, dominantHand: "right" }) });
+assert.equal(invalidHands.status, 400, "malformed observation cannot become an annual palm interpretation");
+console.log("PASS annual API keeps observed palm/saju connections and rejects malformed observations");
 
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const browser = await chromium.launch({ executablePath: "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
@@ -51,7 +59,7 @@ fs.mkdirSync(evidence, { recursive: true });
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const requests = [], errors = [];
-  await context.route("**/*", route => { const u = new URL(route.request().url()); if (u.origin !== BASE) return route.abort(); if (u.pathname.startsWith("/api/")) { requests.push(u.pathname); return route.abort(); } return route.continue(); });
+  await context.route("**/*", route => { const u = new URL(route.request().url()); if (u.origin !== BASE) return route.abort(); if (u.pathname.startsWith("/api/")) { requests.push(u.pathname); return u.pathname === "/api/premium-report" ? route.fulfill({ json: annualBody }) : route.abort(); } return route.continue(); });
   await context.addInitScript(({ normal, birthFixture, prior }) => {
     const key = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender].join(":") + ":palm";
     if (!sessionStorage.getItem(key)) sessionStorage.setItem(key, JSON.stringify({ stage: "result", palmFacts: normal.palmFacts, leftPalmFacts: normal.leftPalmFacts, rightPalmFacts: normal.rightPalmFacts, dominantHand: "right", bilateralReading: prior, finalReport: normal.freeReport.report, tripleCompare: normal.tripleCompare, verdict: normal.verdict }));
@@ -70,7 +78,7 @@ try {
   assert.deepEqual((await saved()).previousBilateralReading, prior);
   assert.deepEqual((await saved()).bilateralReading, next);
   const text = await page.locator("body").innerText();
-  for (const item of next.items) assert.equal(text.split(item.text).length - 1, 1);
+  for (const item of next.items.filter(item => item.text)) assert.equal(text.split(item.text).length - 1, 1);
   await page.getByText("양손에서 보이는 특징과 해석", { exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: evidence + "/palm-observations-restored.png" });
   await page.reload(); await page.getByText("양손 분석 완료", { exact: true }).waitFor();
@@ -81,6 +89,17 @@ try {
   await page.reload(); await page.getByRole("button", { name: "현재 형식으로 손금 정리", exact: true }).waitFor();
   assert.deepEqual((await saved()).bilateralReading, prior, "selected older edition also survives reload");
   assert.deepEqual(requests, [], "restoration must not trigger a generation or analytics call");
+  await page.getByRole("button", { name: "프리미엄 보기", exact: true }).click();
+  await page.locator("#premium-report").waitFor();
+  await page.waitForFunction(() => !document.body.innerText.includes("사주와 손금을 함께 읽으면"));
+  for (const item of annualBody.report.palmConnections) {
+    const paragraph = item.text.split("\n\n")[0];
+    assert.equal((await page.locator("body").innerText()).split(paragraph).length - 1, 1, "annual expansion must not duplicate the standalone comparison");
+  }
+  await page.getByRole("button", { name: "프리미엄 접기", exact: true }).click();
+  await page.getByText("사주와 손금을 함께 읽으면", { exact: true }).waitFor();
+  assert.deepEqual(requests, ["/api/premium-report"]);
+  console.log("PASS no-self palm/saju connection shown once while annual report is open; standalone returns on collapse");
   await page.goto(url + "&mbti=ENTJ");
   await page.getByRole("alert").filter({ hasText: "성향 정보가 달라졌어요" }).waitFor();
   assert.equal(await page.getByText("양손 분석 완료", { exact: true }).count(), 0);

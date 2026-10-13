@@ -75,6 +75,7 @@ jobs:
         run: |
           node scripts/test-premium-annual.mjs
           node scripts/test-premium-annual-grouping.mjs
+          node scripts/test-context-readings.mjs
 
       - name: Build
         run: pnpm build
