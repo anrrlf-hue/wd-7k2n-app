@@ -60,8 +60,15 @@ for (const [i, birth] of births.entries()) {
   for (const period of report.periods) assert.ok(html.includes(period.basis));
   for (const d of report.domains) {
     if (d.tip) assert.ok(html.indexOf(d.paragraphs[0]) < html.indexOf(d.tip));
-    assert.ok(html.includes(d.paragraphs[0]));
-    assert.equal(d.paragraphs.length, 1, "the domain scene is explained once with its tension and alternate choice");
+    assert.equal(d.paragraphs.length, d.key === "money" ? 3 : 1,
+      "money separates earning, management and spending; other domains keep one scene");
+    assert.equal(new Set(d.paragraphs).size, d.paragraphs.length, "each passage contributes a distinct explanation");
+    for (const text of d.paragraphs) assert.equal(html.split(text).length - 1, 1, "every passage is rendered once");
+    if (d.key === "money") {
+      assert.match(d.paragraphs[0], /획득에서는/);
+      assert.match(d.paragraphs[1], /관리에서는.*가령/);
+      assert.match(d.paragraphs[2], /지출에서는.*가령/);
+    }
     assert.equal(d.opportunity, "", "the same example is not repeated in a second card");
     assert.equal(d.caution, "", "the already explained caution is not repeated below");
   }
