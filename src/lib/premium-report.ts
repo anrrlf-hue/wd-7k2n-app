@@ -146,10 +146,10 @@ export function buildPremiumReport(input: {
     const area = reading.key;
     if (area === "wellbeing") continue;
     const connection = integration[area];
-    reading.paragraphs = [composePremiumDomainStory(area, editorial, connection,
-      hasPalms ? { left: input.leftPalm!, right: input.rightPalm!, dominant: input.dominantHand! } : null)];
-    // The single passage already contains its example and caution. Saved
-    // editions still render their separate cards unchanged.
+    reading.paragraphs = composePremiumDomainStory(area, editorial, connection,
+      hasPalms ? { left: input.leftPalm!, right: input.rightPalm!, dominant: input.dominantHand! } : null).split("\n\n");
+    // Each passage owns its example and consequence; money keeps earning,
+    // management and spending apart. Stored editions retain their own cards.
     reading.opportunity = "";
     reading.caution = "";
     reading.tip = "";
@@ -158,7 +158,7 @@ export function buildPremiumReport(input: {
   }
   const priorSignals = hasPalms ? buildTripleCompare(facts, (input.dominantHand === "left" ? input.leftPalm! : input.rightPalm!).onnxLines, null) : [];
   const palmConnections: CompareItem[] = Object.entries(integration).filter(([area]) => area !== "overall").map(([area, item]) => ({
-    topic: item.plan.headline, kind: "보완", text: domains.find(domain => domain.key === area)?.paragraphs[0] ?? item.plan.passages.map(p => p.text).join("\n\n"),
+    topic: item.plan.headline, kind: "보완", text: domains.find(domain => domain.key === area)?.paragraphs.join("\n\n") ?? item.plan.passages.map(p => p.text).join("\n\n"),
     signals: priorSignals[area === "love_relationship" ? 1 : 0]?.signals,
     evidence: item.plan.evidence,
   }));

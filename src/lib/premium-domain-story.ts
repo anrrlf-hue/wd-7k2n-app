@@ -2,6 +2,7 @@ import type { PremiumEditorialPlan, EditorialArcId } from "@/lib/premium-editori
 import type { IntegratedPassage } from "@/lib/integrated-palm-reading";
 import type { DominantHand } from "@/lib/palm-bilateral";
 import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
+import { buildSajuMoneyMeaning } from "@/lib/saju-money-meaning";
 
 type Domain = "love_relationship" | "money" | "work";
 type Story = { ground: string; tension: string; example: string; alternative: string };
@@ -279,23 +280,12 @@ function overallEvidenceBridge(plan: PremiumEditorialPlan): string {
 
 export function composePremiumOverallStory(plan: PremiumEditorialPlan): string {
   if (plan.id === "duty-translation") {
-    const duty = placementPhrase(plan, "관성")!, understanding = placementPhrase(plan, "인성")!;
-    const expression = placementPhrase(plan, "식상")!;
-    const agency = placementPhrase(plan, "비겁");
-    return `사주에서는 ${duty}으로 거듭 놓인 외부 기준, ${understanding}으로 이해하는 방식, ${expression}으로 생각을 드러내는 통로를 함께 읽습니다.${agency ? ` ${agency}는 그 사이에서 자기 판단을 남기는 근거입니다.` : ""} 요구를 이해하는 일과 그 요구를 자신의 방법으로 표현하는 일은 이어질 수 있지만 같은 일은 아닙니다. 이 연결이 총운의 중심이며 실제 능력·경력이나 특정 결과를 확인했다는 뜻은 아닙니다.`;
+    return `사주에서는 맡은 약속의 기준이 두드러지고, 그 뜻을 이해하는 관점과 자신의 말이나 결과로 설명하는 통로가 함께 놓인 것으로 읽습니다. 같은 기준을 이해했더라도 관계에서는 마음을 나눌 답이, 돈에서는 실제로 남는 조건이, 일에서는 검토할 방법이 필요할 수 있습니다. 하나의 책임감으로 세 분야를 모두 해결하기보다 각 장면이 요구하는 다른 판단을 살피는 것이 전체 풀이의 중심입니다. ${overallEvidenceBridge(plan)}`;
   }
   return [OVERALL[plan.id], overallEvidenceBridge(plan)].filter(Boolean).join(" ");
 }
 
 const positionName = { year: "연", month: "월", day: "일", hour: "시" } as const;
-function placementPhrase(plan: PremiumEditorialPlan, group: "관성" | "인성" | "식상" | "비겁" | "재성"): string | null {
-  const positions = plan.natalEvidence.placements.filter(item => item.group === group);
-  if (!positions.length) return null;
-  const places = positions.map(item => `${positionName[item.pillar]}${item.part === "stem" ? "간" : "지"} ${item.symbol}`).join("·");
-  const gods = [...new Set(positions.map(item => item.tenGod))].join("·");
-  return `${places}의 ${gods}`;
-}
-
 function readable(line?: OnnxLineDetail): boolean {
   return Boolean(line?.detected && line.curve && line.depthStrength !== "약함");
 }
@@ -327,40 +317,21 @@ function observedBridge(area: Domain, connection: IntegratedPassage | undefined,
 /** Money has three decisions that the overall and work sections do not own.
  * Exposed natal groups select the interpretive questions; they do not tell us
  * a person's income, account balance, or actual spending. */
-function moneyDecisions(plan: PremiumEditorialPlan): string {
-  const counts = plan.natalEvidence.counts;
-  const acquiring = counts.식상 > 0 && counts.재성 > 0
-    ? "보여준 결과가 실제 쓰일 때 어떤 대가를 합의할지"
-    : counts.재성 > 0 ? "확인된 쓰임에 어떤 교환 조건을 붙일지" : "해낸 일의 쓰임과 받을 조건을 따로 확인할지";
-  const keeping = counts.관성 > 0
-    ? "이미 맡은 약속을 이어가는 데 필요한 시간과 자원을 얼마나 남길지"
-    : "다음 결과를 만들 시간과 자원을 얼마나 남길지";
-  const spending = counts.인성 > 0
-    ? "배움과 준비에 드는 비용이 지금 필요한 선택을 돕는지"
-    : counts.비겁 > 0 ? "함께 쓰는 몫이 자기 선택과도 맞는지" : "선택한 쓰임이 처음 목적과 맞는지";
-  return `재물을 읽을 때에도 획득은 ${acquiring}, 관리는 ${keeping}, 지출은 ${spending}로 질문을 나눕니다. 이는 실제 수입이나 소비 내역을 확인했다는 뜻이 아닙니다.`;
-}
-
 export function composePremiumDomainStory(area: Domain, plan: PremiumEditorialPlan, connection: IntegratedPassage | undefined,
   hands: { left: PalmFacts; right: PalmFacts; dominant: DominantHand } | null): string {
   const story = STORIES[plan.id][area];
   let ground = story.ground;
   if (plan.id === "duty-translation") {
-    const duty = placementPhrase(plan, "관성")!, understanding = placementPhrase(plan, "인성")!;
-    const expression = placementPhrase(plan, "식상")!;
     if (area === "work") {
-      const agency = placementPhrase(plan, "비겁");
-      ground = `사주에서는 ${duty}으로 반복된 요구를 ${understanding}으로 풀고 ${expression}으로 상대가 확인할 결과로 옮기는 흐름을 읽습니다.${agency ? ` ${agency}는 그 과정에서 스스로 고를 방법을 살피는 자리입니다.` : ""}`;
+      ground = "일에서는 요청의 뜻을 이해한 뒤 실제 적용에서 맞는지 검토하는 과정을 읽습니다. 기준을 그대로 따르는 것과 그 기준에 맞는 방법을 찾아 설명하는 일은 구별할 수 있습니다.";
     } else if (area === "money") {
-      const value = placementPhrase(plan, "재성");
-      ground = value
-        ? `사주에서는 ${expression}에서 결과를 밖에 보여주는 통로와 ${value}에서 쓰임·조건을 묻는 자리를 함께 읽습니다.`
-        : `사주에서는 ${expression}에서 결과를 밖에 보여주는 통로를 읽되, 실제 교환 조건은 별도로 확인해야 합니다.`;
+      ground = "돈에서는 만든 결과를 설명하는 과정과 그것이 실제로 쓰이며 남길 몫을 따로 살핍니다. 획득·관리·지출은 같은 기준으로 한꺼번에 답할 수 있는 문제가 아닙니다.";
     } else {
-      const close = plan.natalEvidence.placements.find(item => item.pillar === "day" && item.part === "branch");
-      if (close) ground = `사주에서는 일지 ${close.symbol}의 ${close.tenGod}을 가까운 관계의 기준과 약속을 묻는 상징으로 읽되, 상대의 마음까지 안다고 보지는 않습니다.`;
+      ground = "가까운 관계에서는 서로 기대한 약속의 뜻이 같은지 살핍니다. 한 사람이 기준을 잘 이해해 행동했더라도 상대가 그 순간 원한 마음의 표현까지 대신 알 수는 없습니다.";
     }
   }
-  return [ground, observedBridge(area, connection, hands), story.tension, story.example, story.alternative,
-    area === "money" ? moneyDecisions(plan) : ""].filter(Boolean).join(" ");
+  const money = area === "money" ? buildSajuMoneyMeaning(plan) : null;
+  const main = [ground, observedBridge(area, connection, hands), area === "money" ? `획득에서는 ${story.tension}` : story.tension,
+    story.example, story.alternative].filter(Boolean).join(" ");
+  return [main, money?.premiumManagement, money?.premiumSpending].filter(Boolean).join("\n\n");
 }

@@ -97,7 +97,11 @@ for (const day of [1, 7]) {
   const love = report.domains.find(d => d.key === 'love_relationship').paragraphs.join(' ');
   const money = report.domains.find(d => d.key === 'money').paragraphs.join(' ');
   const work = report.domains.find(d => d.key === 'work').paragraphs.join(' ');
-  assert.match(money, /획득.*관리는.*지출은/);
+  assert.match(money, /획득에서는.*관리에서는.*지출에서는/);
+  const moneyParagraphs = report.domains.find(d => d.key === 'money').paragraphs;
+  assert.equal(moneyParagraphs.length, 3);
+  assert.ok(moneyParagraphs.slice(1).every(text => /가령/.test(text) && /선택|구별/.test(text)),
+    'management and spending must explain a conditional scene and what the choice changes');
   assert.notEqual(love, money); assert.notEqual(money, work); assert.notEqual(love, work);
   console.log(`PASS invented fixture ${day}: 12 exact-symbol month readings, visible evidence, separate domain scenes`);
 }

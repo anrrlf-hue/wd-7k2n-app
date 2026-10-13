@@ -45,6 +45,26 @@ assert.equal(premium.periods.length, 12);
 const cautionTexts = free.cautions.map(item => item.detail);
 assert.equal(new Set(cautionTexts).size, 3);
 assert.ok(cautionTexts.every(text => text.length >= 70));
+assert.doesNotMatch(free.snapshot.text, /해보세요|물어보세요|수정할 범위/,
+  "the opening owns the natal structure rather than repeating the later action");
+assert.match(free.decisionStyle.text, /정보가 비어.*판단은 끝났지만 실행을 약속하지/,
+  "missing decision information and a pending execution commitment need different next steps");
+assert.deepEqual(free.cautions.map(item => item.title), ["바뀌는 기준의 비용", "정보의 쓰임", "시연과 후속 약속"]);
+assert.match(free.strengths[0].detail, /목적.*검토의 순서/);
+assert.match(free.strengths[1].detail, /설명을 들은 뒤.*실제 적용/);
+assert.match(free.strengths[2].detail, /의견을 줄 사람.*바꾸고 싶은 부분/);
+const freeText = JSON.stringify(free);
+assert.doesNotMatch(freeText, /움직이는 시간과 혼자 정리하는 시간이 모두 필요한 편|상황에 맞춰 대응하는 폭이 넓은 편|능력이 강점/);
+assert.match(free.keepingStyle.text, /기존 일을 마칠.*새 선택.*이전 약속/);
+assert.match(free.leakPattern.text, /도구·수업.*적용할 작업.*실제 시도는 미뤄/);
+const money = premium.domains.find(item => item.key === "money");
+assert.equal(money.paragraphs.length, 3, "earning, management and spending retain separate readable passages");
+assert.match(money.paragraphs[1], /가령.*따로 남기는 선택.*모두 다른 일에 쓰는 선택/);
+assert.match(money.paragraphs[2], /가령.*부족한 부분이 확인.*아직 한 번도 적용하지.*작은 시험/);
+for (const domain of premium.domains) {
+  assert.doesNotMatch(domain.paragraphs[0].split(/[.!?]/)[0], /[\u3400-\u9fff]|편관|정관|정인|식신/,
+    "the domain explanation must be understood before reading its technical basis");
+}
 console.log("PASS invented natal edge: free, verdict and premium share duty-translation while retaining distinct roles");
 
 for (const [index, year] of [1988, 1991, 1994, 1997, 2000].entries()) {
