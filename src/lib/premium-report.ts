@@ -80,7 +80,7 @@ function overallReading(facts: SajuFacts): PremiumReading {
     opportunity: equal ? "서로 다른 장점을 함께 쓸 수 있는 자리가 어울립니다. " + leaders.map(g => g.chance).join(" ") : leaders[0].chance,
     caution: equal ? "중요하게 여기는 기준이 여럿이라 한쪽을 택하면 다른 쪽이 마음에 걸릴 수 있습니다. 특히 내 방식과 주변의 기대가 다른 장면에서는 선택보다 마음을 정리하는 데 시간이 들 수 있습니다." : leaders[0].caution,
     tip: "주변의 기대와 내가 원하는 방향이 다를 때는, 이번 선택에서 놓치고 싶지 않은 것 하나만 먼저 말해보세요.",
-    basis: `태어난 연·월·일${facts.hasTimeInput ? "·시" : ""}를 함께 읽을 때 ${leaders.map(g => `‘${g.label}’`).join(", ")}${equal ? "의 비중이 나란히 두드러집니다." : "의 비중이 두드러집니다."} ${places.length ? `이런 요소가 놓인 자리는 ${places.join(", ")}에 연결해 읽었습니다.` : ""}`,
+    basis: `태어난 연·월·일${facts.hasTimeInput ? "·시" : ""}의 구성에서 ${leaders.map(g => `‘${g.label}’`).join(", ")}${equal ? "의 비중이 나란히 두드러집니다." : "의 비중이 두드러집니다."} ${places.length ? `이런 요소가 놓인 자리는 ${places.join(", ")}에 연결해 읽었습니다.` : ""}`,
   };
 }
 
@@ -245,8 +245,8 @@ export function buildPremiumReport(input: {
   const natal = composeNatalReadings(facts, { overall: overallReading(facts), domains: domainReadings(facts) });
   const { overall, domains } = natal;
   const periods = buildPremiumPeriods(annual, facts);
-  const first = periods[0];
-  const change = periods.find(p => p.headline !== first.headline);
+  const highlights = annualHighlights(periods);
+  const selectedPeriods = periods.filter(period => highlights.includes(period.months[0]));
   const background = facts.hasTimeInput && facts.currentDaeun
     ? [...new Set([TEN_GOD_GROUP[facts.currentDaeun.stemTenGod], TEN_GOD_GROUP[facts.currentDaeun.branchTenGod]].filter(Boolean))] : [];
   return {
@@ -255,13 +255,11 @@ export function buildPremiumReport(input: {
     summary: `${overall.headline}. 관계와 돈, 일에서 달리 나타나는 모습을 읽고, ${annual.startLabel}부터 ${annual.endLabel}까지 그 성향과 시기의 주제가 어떻게 만나는지 살펴봅니다.`,
     overall, domains, annual, periods,
     profileRule: natal.rule,
-    annualHighlights: annualHighlights(periods),
+    annualHighlights: highlights,
     palmConnections: input.leftPalm && input.rightPalm && input.dominantHand
       && isPalmFactsUsable(input.leftPalm) && isPalmFactsUsable(input.rightPalm)
       ? buildTripleCompare(facts, (input.dominantHand === "left" ? input.leftPalm : input.rightPalm).onnxLines, null) : [],
-    annualIntroduction: change
-      ? `${first.label}에는 ‘${first.headline}’이 첫 주제입니다. 이후 ${change.label}에는 ‘${change.headline}’으로 읽는 초점이 달라집니다. 기간의 시작과 다른 조합이 나타나는 구간을 먼저 읽고, 12개월 전체는 아래에서 펼쳐볼 수 있습니다. 중요한 사건이 생길 달을 고른 것은 아닙니다.`
-      : "이 기간에는 월별로 뚜렷하게 나뉘는 주제가 적습니다. 차이가 없는 달을 억지로 다르게 해석하지 않고 같은 흐름으로 묶었습니다.",
+    annualIntroduction: `${selectedPeriods.map(period => period.label).join(", ")}의 흐름을 먼저 살펴봅니다. 기간의 시작과 다른 조합이 나타나는 구간을 골랐으며, 12개월 전체는 아래에서 펼쳐볼 수 있습니다. 중요한 사건이 생길 달을 고른 것은 아닙니다.`,
     annualBackground: background.length ? `현재의 큰 흐름에는 ${background.map(g => `‘${GROUP_LABEL[g]}’`).join(", ")}의 의미가 놓여 있습니다. 이를 한 해의 배경으로 두고, 달마다 달라지는 주제를 따로 살펴봅니다.` : null,
     note: `전통적 해석을 바탕으로 한 자기이해용 풀이이며 미래·수익·건강을 보장하지 않습니다. 월별 흐름은 매월 중순을 기준으로 읽어 절기 경계나 기간 중 큰 운의 전환을 정밀하게 반영하지 않습니다.${facts.hasTimeInput ? "" : " 출생시간이 없어 그 정보에 따라 달라지는 세부 성향과 큰 운의 배경은 생략했습니다."}`,
   };

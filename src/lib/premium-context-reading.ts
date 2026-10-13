@@ -1,6 +1,7 @@
 import { TEN_GOD_GROUP, type SajuFacts, type TenGodGroup } from "@/lib/saju-facts";
 import type { SajuAnnualMonthOutlook } from "@/lib/saju-timing";
 import { validateReadingPlan, type ReadingEvidence, type ReadingPlan } from "@/lib/reading-plan";
+import { hasExpressionReturnEmphasis } from "@/lib/premium-natal-reading";
 
 const COUNTS = {
   비겁: "peerStarCount", 식상: "outputStarCount", 재성: "wealthStarCount",
@@ -40,18 +41,21 @@ export function buildContextualMonthReading(facts: SajuFacts, month: SajuAnnualM
   // not a concatenation of two independent dictionary definitions.
   if (groups.includes("식상") && groups.includes("재성")) {
     plan.headline = "만든 것을 보여주는 일과 보상 조건을 함께 읽는 달";
-    if (counts.식상 > 0 && counts.재성 > 0 && facts.dayStrengthReliable && facts.dayStrength === "weak") {
+    if (hasExpressionReturnEmphasis(facts) && facts.dayStrengthReliable && facts.dayStrength === "weak") {
       plan.headline = "펼친 가능성 중 내 몫과 지원이 맞는 일을 깊게 잇는 구간";
-      add("output-return-with-support", "이미 원국에서도 표현과 성과에 관심이 함께 놓여 있습니다. 이 시기는 새로운 표현을 처음 시작하는 달보다, 펼쳐둔 가능성 중 자신이 맡을 몫과 지원이 맞는 일을 골라 깊게 연결하는 구간으로 읽습니다. 반응이 좋은 일을 모두 이어가는 것과, 도움을 받으며 자신의 결과로 마무리할 수 있는 일은 다를 수 있습니다.", ["식상", "재성", "strength"]);
+      add("output-return-with-support", "이미 원국에서도 표현과 성과에 관심이 함께 놓여 있습니다. 이 시기는 새로운 표현을 처음 시작하는 달보다, 펼쳐둔 가능성 중 자신이 맡을 몫과 지원이 맞는 일을 골라 깊게 연결하는 구간으로 읽습니다. 반응이 좋은 일을 모두 이어가는 것과, 도움을 받으며 자신의 결과로 마무리할 수 있는 일은 다를 수 있습니다.", ["식상", "재성", "비겁", "관성", "인성", "strength"]);
     } else if (counts.재성 === 0) {
       plan.headline = "준비한 생각을 상대가 필요로 하는 결과로 꺼내는 구간";
       add("output-to-unfamiliar-return", "이번 달은 잘해낸 일과 그 일에 어떤 대가를 바라는지를 함께 살피는 쪽으로 읽습니다. 원국에서 성과와 보상을 직접 뜻하는 요소는 드러난 글자에 잡히지 않지만, 이달에는 표현과 보상의 주제가 함께 들어옵니다. 돈을 못 다룬다는 뜻이 아니라, 익숙한 역할을 성실히 해내는 것만으로 조건까지 정해졌다고 넘기지 말자는 해석입니다.", ["재성", "식상"]);
-    } else if (counts.식상 > 0 && counts.식상 >= counts.관성) {
-      add("output-return-already-present", "평소의 풀이에서도 생각을 결과로 만들고 그 쓰임을 확인하는 쪽이 두드러집니다. 이번 달에는 표현과 보상의 주제가 함께 겹쳐, 일을 더 벌이는 것보다 이미 만든 것을 어떤 조건으로 이어갈지에 초점을 둡니다. 반응이 좋았다는 사실과 서로 만족할 거래가 됐다는 사실을 나누어 보는 달로 읽을 수 있습니다.", ["식상", "관성", "재성"]);
-    } else if (counts.관성 > counts.식상) {
+    } else if (hasExpressionReturnEmphasis(facts)) {
+      add("output-return-already-present", "평소의 풀이에서도 생각을 결과로 만들고 그 쓰임을 확인하는 쪽이 두드러집니다. 이번 달에는 표현과 보상의 주제가 함께 겹쳐, 일을 더 벌이는 것보다 이미 만든 것을 어떤 조건으로 이어갈지에 초점을 둡니다. 반응이 좋았다는 사실과 서로 만족할 거래가 됐다는 사실을 나누어 보는 달로 읽을 수 있습니다.", ["식상", "재성", "비겁", "관성", "인성"]);
+    } else if (leaders.includes("관성") && counts.관성 > Math.max(counts.식상, counts.재성)) {
+      plan.headline = "맡아 해낸 일을 보이는 결과와 조건으로 연결하는 구간";
       add("duty-to-return", "맡은 역할을 충실히 해내는 태도에 비해, 이번 달의 주제는 내가 만든 결과를 밖에 보이고 보상과 연결하는 쪽으로 옮겨갑니다. 조용히 잘해내는 것만으로 충분했던 일인지, 기여와 조건을 직접 설명해야 하는 일인지 살펴볼 만합니다.", ["관성", "식상", "재성"]);
-    } else {
+    } else if (counts.식상 === 0) {
       add("judgment-to-expression", "원국에서는 결과의 쓰임을 살피는 요소에 비해 생각을 밖으로 표현하는 요소가 적게 드러납니다. 이달에는 판단한 가치를 상대가 이해할 수 있게 보여주는 과정에 초점을 둡니다. 스스로 좋은 선택이라고 납득하는 것과, 다른 사람도 그 이유를 알아보고 함께하기로 정하는 일 사이를 연결해볼 수 있습니다.", ["식상", "재성"]);
+    } else {
+      add("output-return-in-context", `원국에서는 ‘${leaders.map(g => LABEL[g]).join(" · ")}’에 더 무게가 실립니다. 이달에는 생각을 밖에 보이는 과정과 그 결과의 쓰임을 함께 살펴봅니다. 평소 중요하게 여긴 기준이 상대에게도 전달되는지, 함께하는 일의 조건에 어떻게 반영되는지를 연결해볼 수 있습니다.`, ["식상", "재성", ...leaders]);
     }
     add("output-return-scene", "예를 들어 추가 작업을 부탁받았다면, 먼저 해준 뒤 인정받기를 기다리기보다 어디까지가 원래 약속이고 무엇이 새 요청인지 함께 확인해보세요. 결과물을 보여주는 일과 조건을 이야기하는 일을 같은 대화에서 다루는 방식입니다.", ["식상", "재성"], "reflection");
   } else if (groups.includes("인성")) {
@@ -65,7 +69,7 @@ export function buildContextualMonthReading(facts: SajuFacts, month: SajuAnnualM
           : "원국에서 이미 두드러지는 이해와 준비의 태도가 이달의 주제와 겹칩니다. 충분히 이해한 뒤 움직이는 장점이 있는 한편, 새 정보가 생길 때마다 결정을 뒤로 미루는 장면도 함께 살펴볼 만합니다.";
       add("resource-reinforced", context, ["인성", "관성", "식상", "재성"]);
     } else {
-      const dominant = leaders.map(g => LABEL[g]).join("과 ");
+      const dominant = leaders.map(g => LABEL[g]).join(" · ");
       add("resource-counterweight", `평소 풀이에서는 ${dominant}에 무게가 실립니다. 이번 달은 그 방향을 더 밀기보다, 선택을 뒷받침할 설명과 도움을 확보하는 쪽에 초점을 둡니다. 진행이 더딘 달이라는 뜻이 아니라, 이해하지 못한 조건을 남긴 채 속도만 높이지 말자는 해석입니다.`, ["인성", ...leaders]);
     }
     if (groups.includes("식상")) add("resource-expression-tension", "다만 준비만을 뜻하는 달은 아닙니다. 생각을 밖으로 드러내는 주제도 함께 있어, 자료를 더 쌓는 일과 작은 결과를 보여주는 일 사이의 균형이 중요해집니다. 완성될 때까지 설명을 미루기보다 지금 확인받을 수 있는 부분부터 꺼내는 장면으로 읽습니다.", ["식상", "인성"]);
@@ -110,12 +114,16 @@ export function buildContextualMonthReading(facts: SajuFacts, month: SajuAnnualM
     const daeun = facts.currentDaeun;
     const background = [...new Set([TEN_GOD_GROUP[daeun.stemTenGod], TEN_GOD_GROUP[daeun.branchTenGod]].filter(Boolean))];
     evidence.push({ id: "daeun", kind: "calculated", source: "facts.currentDaeun", value: `${daeun.ganzhi}:${daeun.stemTenGod}/${daeun.branchTenGod}` });
-    const shares = background.filter(g => groups.includes(g));
-    add("daeun-context", shares.length
-      ? `현재 대운에서도 ${shares.map(g => LABEL[g]).join("과 ")}를 주제로 읽습니다. 이번 달에는 그 배경과 같은 주제가 이어지므로 새로운 사건을 기대하기보다, 진행 중인 선택이 있다면 그 조건을 구체화하는 흐름으로 볼 수 있습니다.`
-      : background.includes("재성") && background.includes("비겁") && groups.includes("인성")
-        ? "현재 대운에는 자기 기준으로 맡을 몫을 정하는 주제와 결과·보상을 살피는 주제가 함께 놓입니다. 여기에 이달의 준비와 이해가 더해지면, 어떤 일을 어떤 조건으로 맡을지 판단 기준을 구체화하는 과정으로 볼 수 있습니다. 충분히 이해한 일에 책임을 다하려는 성향이 실제 역할과 보상에 어떻게 이어지는지가 이 구간의 연결점입니다."
-        : `현재 대운의 배경은 ‘${background.map(g => LABEL[g]).join(" · ")}’입니다. 이달의 강조점과는 차이가 있어, 평소 밀고 가던 방향과 그 방향을 뒷받침할 준비 사이의 관계로 읽을 수 있습니다. 같은 주제가 여러 층에서 반복되는 경우와 구분한 해석입니다.`, ["daeun"]);
+    // Only authored, explainable combinations add a period-level paragraph.
+    // Other backgrounds remain once in the annual introduction, never a
+    // generic "direction versus preparation" paragraph for every combination.
+    if (background.includes("재성") && groups.includes("식상") && groups.includes("재성")) {
+      add("daeun-context", "현재 대운에서 읽는 결과와 보상의 관심에, 이 구간의 표현 주제가 더해집니다. 생각하거나 준비한 내용을 상대가 살펴볼 수 있게 보여주고, 그 쓰임과 조건을 함께 이야기하는 연결로 읽을 수 있습니다.", ["daeun", "식상", "재성"]);
+    } else if (background.includes("재성") && groups.includes("관성") && groups.includes("재성")) {
+      add("daeun-context", "현재 대운의 보상 주제가 이 구간에서는 역할과 약속을 통해 구체화되는 모습으로 읽힙니다. 맡을 책임이 달라진다면 필요한 자원과 돌아오는 대가도 함께 정해져 있는지 살펴보는 연결입니다.", ["daeun", "관성", "재성"]);
+    } else if (background.includes("재성") && background.includes("비겁") && groups.includes("인성") && counts.인성 > 0 && counts.관성 > 0) {
+      add("daeun-context", "현재 대운에는 자기 기준으로 맡을 몫을 정하는 주제와 결과·보상을 살피는 주제가 함께 놓입니다. 여기에 이달의 준비와 이해가 더해지면, 어떤 일을 어떤 조건으로 맡을지 판단 기준을 구체화하는 과정으로 볼 수 있습니다. 충분히 이해한 일에 책임을 다하려는 성향이 실제 역할과 보상에 어떻게 이어지는지가 이 구간의 연결점입니다.", ["daeun", "인성", "관성"]);
+    }
   }
   validateReadingPlan(plan);
   return plan;

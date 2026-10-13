@@ -13,6 +13,7 @@ const { enrichSajuFacts } = await import("../src/lib/oh-my-saju-adapter.ts");
 const { buildFreeSajuReport } = await import("../src/lib/free-report-mock.ts");
 const { buildPremiumReport } = await import("../src/lib/premium-report.ts");
 const { buildContextualMonthReading } = await import("../src/lib/premium-context-reading.ts");
+const { buildPremiumPeriodPresentation } = await import("../src/lib/premium-period-presentation.ts");
 const { buildPalmBilateralReading } = await import("../src/lib/palm-bilateral.ts");
 const { buildPalmContextReading } = await import("../src/lib/palm-context-reading.ts");
 const { buildTripleCompare } = await import("../src/lib/triple-compare.ts");
@@ -48,14 +49,31 @@ for (const [i, birth] of births.entries()) {
   assert.equal(JSON.stringify(before), preserved, "previous edition remains immutable");
   assert.deepEqual(buildPremiumReport(input), after, "same evidence and period must give stable prose");
   assert.deepEqual(after.periods.flatMap(p => p.months), after.annual.months.map(m => m.label));
+  const selectedPeriods = after.periods.filter(p => after.annualHighlights.includes(p.months[0]));
+  assert.deepEqual(after.annualIntroduction.match(/\d{4}년 \d{1,2}월(?: ~ \d{4}년 \d{1,2}월)?/g), selectedPeriods.map(p => p.label), "the introduction names exactly the periods shown in the main report");
+  assert.doesNotMatch(JSON.stringify(after), /(?:감각|힘)[’']?를|태도과|(?:경계|달)[’']?으로|(?:신강|신약|태약)[’']?를|일지 [甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]/);
   for (const p of after.periods) validateReadingPlan(p.interpretation);
   assert.ok(after.palmConnections.length > 0, "no self-response is required for independent palm/saju reading");
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report: after }));
   assert.ok(html.indexOf("premium-overall") < html.indexOf("1년의 주요 구간"));
   assert.ok(html.includes("손금과 사주를 연결해 읽기"));
   assert.ok(html.indexOf("1년의 주요 구간") < html.indexOf("12개월 전체 흐름 펼쳐보기"));
+  const displayed = buildPremiumPeriodPresentation(after);
+  const presentation = after.periods.map(p => ({ label: p.label, months: p.months, highlight: after.annualHighlights.includes(p.months[0]),
+    paragraphs: displayed.get(p).paragraphs, shared: displayed.get(p).shared.map(other => other.label), daeun: displayed.get(p).daeun }));
+  for (const item of presentation.filter(p => !p.highlight)) assert.ok(item.paragraphs.some(text => text.length > 30), "every auxiliary month keeps readable prose before its detail links");
+  const daeun = presentation.map(p => p.daeun).filter(Boolean);
+  assert.equal(daeun.length, new Set(daeun).size, "the same background paragraph is never repeated across highlights");
+  if ([1, 4].includes(i)) {
+    assert.ok(after.annualBackground);
+    assert.equal(daeun.length, 0, "samples 2/5 use their annual background once without an unexplained direction/preparation relation");
+  }
   // Opening the auxiliary calendar must not repeat the same full paragraphs.
   const decode = html.replaceAll("&#x27;", "'").replaceAll("&quot;", '"').replaceAll("&amp;", "&");
+  for (const item of presentation) {
+    for (const text of item.paragraphs) assert.equal(decode.split(text).length - 1, 1, "displayed monthly prose, including recaps, appears exactly once in the actual report HTML");
+  }
+  if (after.annualBackground) assert.equal(decode.split(after.annualBackground).length - 1, 1);
   for (const text of new Set(after.periods.flatMap(p => p.interpretation.passages.filter(s => s.kind === "traditional" && s.id !== "daeun-context").map(s => s.text)))) {
     assert.equal(decode.split(text).length - 1, 1, "each shared annual passage is rendered once with navigable references");
   }
@@ -63,7 +81,7 @@ for (const [i, birth] of births.entries()) {
     assert.equal(after.annualBackground, null);
     assert.ok(after.periods.every(p => !p.interpretation.passages.some(s => s.id === "strength-context" || s.id === "daeun-context")));
   }
-  samples.push({ id: i + 1, birth, facts, free, before, after, palm: buildPalmBilateralReading(left, right, "right") });
+  samples.push({ id: i + 1, birth, facts, free, before, after, presentation, palm: buildPalmBilateralReading(left, right, "right") });
 }
 assert.deepEqual(samples[0].before.periods, samples[1].before.periods, "reproduce the published collision");
 assert.notDeepEqual(samples[0].after.periods, samples[1].after.periods);
@@ -77,13 +95,38 @@ const feb2 = samples[1].after.periods.find(p => p.months.includes("2027년 2월"
 assert.match(feb1.reading, /보상|대가/);
 assert.match(feb2.reading, /지원|맡을 몫/);
 assert.notEqual(feb1.reading, feb2.reading);
+const december4 = samples[3].after.periods.find(p => p.months.includes("2026년 12월"));
+assert.ok(december4.interpretation.passages.some(p => p.id === "duty-to-return"), "officer 4 outweighs output 1 / wealth 1, even when strength is weak");
+assert.ok(!december4.interpretation.passages.some(p => p.id === "output-return-with-support"));
+assert.ok(feb2.interpretation.passages.some(p => p.id === "output-return-with-support"), "output 2 / wealth 2 remains a leading pair in sample 2");
+for (const sample of samples.filter(s => [1, 2, 4, 5].includes(s.id))) {
+  for (const month of ["2027년 6월", "2027년 8월"]) {
+    const item = sample.presentation.find(p => p.months.includes(month));
+    assert.ok(item.paragraphs.length && item.shared.length);
+  }
+}
+for (const sample of samples.slice(0, 2)) {
+  const june = sample.presentation.find(p => p.months.includes("2027년 6월"));
+  assert.match(june.paragraphs.join(" "), /역할과 약속.*보상과 실제 쓰임.*함께 강조되지는 않습니다/);
+  const late = sample.presentation.find(p => p.months.includes("2027년 8월"));
+  assert.match(late.paragraphs.join(" "), /2027년 1월과 같은/);
+}
+for (const sample of [samples[3], samples[4]]) {
+  const april = sample.presentation.find(p => p.months.includes("2027년 4월"));
+  assert.match(april.paragraphs.join(" "), /보상과 실제 쓰임.*대신.*자기 판단과 동등한 몫/);
+}
+for (const field of ["peerStarCount", "officerStarCount", "resourceStarCount"]) {
+  const counterfactual = { ...samples[1].facts, [field]: 4 };
+  const month = samples[1].after.annual.months.find(m => m.label === "2027년 2월");
+  assert.ok(!buildContextualMonthReading(counterfactual, month).passages.some(p => p.id === "output-return-with-support"), `${field} dominance must not be overridden by mere presence of output/wealth`);
+}
 const first = samples[0];
 const changedStrength = { ...first.facts, dayStrength: "weak" };
 assert.notDeepEqual(buildContextualMonthReading(changedStrength, first.after.annual.months[0]), first.after.periods[0].interpretation);
 const withoutDaeun = { ...first.facts, currentDaeun: null };
 assert.ok(!buildContextualMonthReading(withoutDaeun, first.after.annual.months[0]).passages.some(p => p.id === "daeun-context"));
 const changedDaeun = { ...first.facts, currentDaeun: { ...first.facts.currentDaeun, stemTenGod: "편인", branchTenGod: "정인" } };
-assert.notEqual(buildContextualMonthReading(changedDaeun, first.after.annual.months[0]).passages.find(p => p.id === "daeun-context").text, first.after.periods[0].interpretation.passages.find(p => p.id === "daeun-context").text);
+assert.ok(!buildContextualMonthReading(changedDaeun, first.after.annual.months[0]).passages.some(p => p.id === "daeun-context"), "no generic relation is invented for an unauthored combination");
 const noTime = { ...first.facts, hasTimeInput: false, dayStrengthReliable: false };
 assert.ok(!buildContextualMonthReading(noTime, first.after.annual.months[0]).passages.some(p => p.id === "daeun-context" || p.id === "strength-context"));
 const bad = structuredClone(first.after); bad.periods[0].interpretation.passages[0].evidenceIds = ["invented"];

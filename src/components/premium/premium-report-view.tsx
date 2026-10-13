@@ -1,6 +1,7 @@
 "use client";
 import { CalendarDays, Crown } from "lucide-react";
 import type { PremiumPeriod, PremiumReading, PremiumReport } from "@/lib/premium-report";
+import { buildPremiumPeriodPresentation } from "@/lib/premium-period-presentation";
 
 function ReadingContent({ reading }: { reading: PremiumReading }) {
   return <>
@@ -24,23 +25,10 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
     const period = report.periods.find(p => p.months[0] === label);
     return period ? [period] : [];
   });
-  // Shared passages stay in each stored period for complete evidence. On the
-  // page, show them once and link later periods to that exact explanation.
-  const firstOccurrence = new Map<string, PremiumPeriod>();
-  const narratives = new Map<PremiumPeriod, { text: string[]; shared: PremiumPeriod[] }>();
-  for (const period of [...(highlights ?? []), ...report.periods.filter(p => !highlights?.includes(p))]) {
-    const paragraphs = period.interpretation?.passages.filter(p => p.kind === "traditional" && p.id !== "daeun-context").map(p => p.text) ?? [period.reading];
-    const text: string[] = [], shared: PremiumPeriod[] = [];
-    for (const paragraph of paragraphs) {
-      const prior = firstOccurrence.get(paragraph);
-      if (prior && period.interpretation) { if (!shared.includes(prior)) shared.push(prior); }
-      else { firstOccurrence.set(paragraph, period); text.push(paragraph); }
-    }
-    narratives.set(period, { text, shared });
-  }
+  const narratives = buildPremiumPeriodPresentation(report);
   const narrative = (period: PremiumPeriod) => <>
-    {narratives.get(period)?.text.map(text => <p key={text} className="mt-3 text-base leading-8 text-muted-foreground">{text}</p>)}
-    {narratives.get(period)?.shared.map(prior => <a key={prior.months[0]} href={`#premium-period-${report.periods.indexOf(prior)}`} className="mt-3 block text-sm text-(--gold) underline underline-offset-4">{prior.label}과 함께 읽는 흐름</a>)}
+    {narratives.get(period)?.paragraphs.map(text => <p key={text} className="mt-3 text-base leading-8 text-muted-foreground">{text}</p>)}
+    {narratives.get(period)?.shared.map(prior => <a key={prior.months[0]} href={`#premium-period-${report.periods.indexOf(prior)}`} className="mt-3 block text-sm text-(--gold) underline underline-offset-4">공통 주제의 상세 해설 · {prior.label}</a>)}
   </>;
   return <div id="premium-report" className="mt-5 space-y-5">
     <section className="rounded-3xl border border-(--gold-soft) bg-card p-5">
@@ -78,7 +66,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
           <p className="text-sm text-(--gold)">{period.label}</p>
           <h4 className="mt-2 text-lg leading-7 font-semibold">{period.headline}</h4>
           {narrative(period)}
-          {period.interpretation?.passages.filter(p => p.id === "daeun-context").map(p => <p key={p.id} className="mt-3 text-base leading-8 text-muted-foreground">{p.text}</p>)}
+          {narratives.get(period)?.daeun && <p className="mt-3 text-base leading-8 text-muted-foreground">{narratives.get(period)!.daeun}</p>}
           <details className="mt-3"><summary className="cursor-pointer text-sm">이 구간을 읽은 근거</summary><p className="mt-2 text-sm leading-7 text-muted-foreground">{period.basis}</p></details>
         </article>)}
       </div>}

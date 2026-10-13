@@ -1,5 +1,13 @@
 import { TEN_GOD_GROUP, type SajuFacts } from "@/lib/saju-facts";
 import type { PremiumDomainSection, PremiumReading } from "@/lib/premium-report";
+import { eulReul } from "@/lib/korean-particle";
+
+/** Presence alone is not emphasis. Both topics must be at least as prominent
+ * as the other exposed groups before calling their combination a natal focus. */
+export function hasExpressionReturnEmphasis(facts: SajuFacts): boolean {
+  const joint = Math.min(facts.outputStarCount, facts.wealthStarCount);
+  return joint > 0 && joint >= Math.max(facts.peerStarCount, facts.officerStarCount, facts.resourceStarCount);
+}
 
 /** Composite editorial rules, authored offline. They explain interactions in
  * calculated symbols; none is a validated personality/occupation classifier. */
@@ -7,7 +15,7 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
   const p = facts.peerStarCount, o = facts.outputStarCount, w = facts.wealthStarCount;
   const d = facts.officerStarCount, r = facts.resourceStarCount;
   const weak = facts.dayStrengthReliable && facts.dayStrength === "weak";
-  const basis = `드러난 글자의 십성 집계: 비겁 ${p}, 식상 ${o}, 재성 ${w}, 관성 ${d}, 인성 ${r}. ${facts.dayStrengthReliable ? `강약 분류 ‘${facts.dayStrengthGrade}’를 함께 읽을 수 있습니다.` : "출생시간 미상으로 강약 해석은 제외했습니다."} 개수는 성격·능력 점수가 아닙니다.`;
+  const basis = `드러난 글자의 십성 집계: 비겁 ${p}, 식상 ${o}, 재성 ${w}, 관성 ${d}, 인성 ${r}. ${facts.dayStrengthReliable ? `강약 분류 ‘${facts.dayStrengthGrade}’${eulReul(facts.dayStrengthGrade)} 함께 읽을 수 있습니다.` : "출생시간 미상으로 강약 해석은 제외했습니다."} 개수는 성격·능력 점수가 아닙니다.`;
   const overall = { ...fallback.overall, paragraphs: [...fallback.overall.paragraphs], basis };
   const domains = fallback.domains.map(domain => ({ ...domain, paragraphs: [...domain.paragraphs], basis: `${domain.basis} ${basis}` }));
   const love = domains.find(d => d.key === "love_relationship")!;
@@ -51,7 +59,7 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
       work.paragraphs[1] = "방법을 정할 수 있어도 필요한 정보나 함께할 사람이 부족하면, 책임감만으로 빈틈을 메우려 할 수 있습니다. 일을 이해한 정도와 혼자 맡아야 할 범위를 같은 것으로 여기지 않는 환경이 중요합니다. 질문하거나 도움을 구하는 일이 신뢰를 낮추는 행동처럼 느껴지지 않을 때 자기 판단도 편하게 쓰기 좋습니다.";
       money.paragraphs[1] = "조건에 납득한 일이라도 필요한 도움까지 자신의 비용으로 채우면, 기대한 보상과 남는 만족 사이에 간격이 생길 수 있습니다. 함께할 사람과 사용할 자원을 먼저 이야기하는 일은 기여의 가치를 낮추는 것이 아니라, 잘해낼 수 있는 조건을 보상과 함께 정하는 과정으로 읽습니다.";
     }
-  } else if (o > 0 && w > 0 && o >= d && w >= d) {
+  } else if (hasExpressionReturnEmphasis(facts)) {
     rule = weak ? "creation-exchange-support" : "creation-exchange";
     overall.headline = weak ? "가능성을 잘 펼치는 만큼, 함께 이어갈 조건이 중요한 모습" : "생각의 매력을 실제 쓰임으로 연결하려는 모습";
     overall.paragraphs = [
@@ -158,6 +166,6 @@ export function composeNatalReadings(facts: SajuFacts, fallback: { overall: Prem
     식상: "가까운 관계를 읽는 자리에는 표현과 교류의 의미가 놓여 있습니다. 마음을 혼자 정리하는 시간뿐 아니라 서로의 생각에 반응하는 대화가 친밀함을 만드는 통로로 읽힙니다.",
   };
   if (rule !== "group-balance" && close) love.paragraphs.push(closeCopy[close]);
-  if (close) love.basis += ` 가까운 관계의 자리: 일지 ${day!.ganzhi}, ${day!.branchTenGod}.`;
+  if (close) love.basis += ` 가까운 관계의 자리: 일주 ${day!.ganzhi}의 일지 ${day!.ganzhi.slice(-1)}, ${day!.branchTenGod}.`;
   return { overall, domains, rule };
 }

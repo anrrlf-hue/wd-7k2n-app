@@ -19,7 +19,7 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
   const plan: ReadingPlan = {
     headline: "양손에서 확인한 모양을 함께 읽기",
     passages: [], evidence: [],
-    limits: ["선의 모양은 사진에서 추정한 관측값이고, 성향 이야기는 전통적 상징을 생활에 대입한 풀이입니다. 실제 성격·적성·수명·건강·미래를 판정하지 않습니다. 양손 사진은 모두 현재의 모습이며 과거에서 현재로 바뀐 증거가 아닙니다."],
+    limits: ["사진에서 추정한 선의 모양을 전통적 상징으로 읽는 참고 풀이이며, 실제 성격·적성·수명·건강·미래를 판정하지 않습니다. 양손 사진은 현재의 관측으로, 좌우 차이가 시간에 따른 변화의 증거는 아닙니다."],
   };
   for (const hand of ["left", "right"] as const) {
     const facts = hand === "left" ? left : right;
@@ -77,7 +77,7 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
   const faint = detected.filter(key => primary.onnxLines?.[key].depthStrength === "약함");
   if (detected.length) plan.passages.push({ id: "visibility", kind: "observation", text: faint.length
     ? `${faint.map(key => LINES[key]).join("·")}은 사진에서 약하게 읽혔습니다. 끊겨 보이거나 짧게 잡힌 부분에 촬영 조건이 영향을 줄 수 있어 세부 해석을 확정하지 않습니다.`
-    : "사진에서의 선명도는 선을 구분하는 데 참고했습니다. 선이 더 뚜렷하다고 성격이나 의지가 더 강한 것으로 환산하지 않았으며, 생명선의 길이에서도 수명이나 건강 상태를 추론하지 않았습니다.", evidenceIds: detected.flatMap(refs) });
+    : "사진의 선명도는 판독에만 사용하며, 성격이나 의지의 강약으로 환산하지 않습니다.", evidenceIds: detected.flatMap(refs) });
   validateReadingPlan(plan);
   return plan;
 }
