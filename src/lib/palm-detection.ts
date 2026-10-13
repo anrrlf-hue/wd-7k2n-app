@@ -521,7 +521,14 @@ function detectSecondaryPalmLines(
   };
 }
 
-function mapOnnxObservation(obs: OnnxLineObservation): OnnxLineDetail {
+function mapOnnxObservation(
+  obs: OnnxLineObservation,
+  provenance: {
+    sourceVariant: "raw" | "enhanced" | "unknown";
+    rawDetected: boolean;
+    enhancedDetected: boolean;
+  },
+): OnnxLineDetail {
   if (!obs.detected) {
     return {
       detected: false,
@@ -531,6 +538,10 @@ function mapOnnxObservation(obs: OnnxLineObservation): OnnxLineDetail {
       start: null,
       end: null,
       branchDetected: null,
+      ...provenance,
+      endpointEvidence: "none",
+      pathCompleteness: "unavailable",
+      attributeSupport: { length: "not_supported", curve: "not_supported", depth: "not_supported" },
     };
   }
   const length = obs.lineLength < 150 ? "짧음" : obs.lineLength < 320 ? "보통" : "김";
@@ -545,6 +556,10 @@ function mapOnnxObservation(obs: OnnxLineObservation): OnnxLineDetail {
     start: norm(obs.start),
     end: norm(obs.end),
     branchDetected: null,
+    ...provenance,
+    endpointEvidence: "segment_extrema",
+    pathCompleteness: "not_verified",
+    attributeSupport: { length: "segment_only", curve: "segment_only", depth: "mask_signal_only" },
   };
 }
 
@@ -873,6 +888,11 @@ export async function analyzePalmFromCanvas(
   const heartChoice = chooseObservation("heart_line");
   const headChoice = chooseObservation("head_line");
   const lifeChoice = chooseObservation("life_line");
+  const provenanceFor = (choice: ReturnType<typeof chooseObservation>) => ({
+    sourceVariant: choice.observation ? choice.variant : "unknown" as const,
+    rawDetected: Boolean(onnxRaw?.observations.find((o) => o.class === choice.observation?.class)?.detected),
+    enhancedDetected: Boolean(onnxEnhanced?.observations.find((o) => o.class === choice.observation?.class)?.detected),
+  });
   const modelExecuted = Boolean(onnxRaw || onnxEnhanced);
 
   const missingObservation = (cls: OnnxLineClass): OnnxLineObservation => ({
@@ -891,9 +911,9 @@ export async function analyzePalmFromCanvas(
   const onnxLines: PalmFacts["onnxLines"] = modelExecuted
     ? {
         modelExecuted: true,
-        heartLine: mapOnnxObservation(heartChoice.observation ?? missingObservation("heart_line")),
-        headLine: mapOnnxObservation(headChoice.observation ?? missingObservation("head_line")),
-        lifeLine: mapOnnxObservation(lifeChoice.observation ?? missingObservation("life_line")),
+        heartLine: mapOnnxObservation(heartChoice.observation ?? missingObservation("heart_line"), provenanceFor(heartChoice)),
+        headLine: mapOnnxObservation(headChoice.observation ?? missingObservation("head_line"), provenanceFor(headChoice)),
+        lifeLine: mapOnnxObservation(lifeChoice.observation ?? missingObservation("life_line"), provenanceFor(lifeChoice)),
         fateLine: { presence: "unknown", note: "주요 3선 모델과 별도로 운명선 전용 보조 모델을 교차확인합니다." },
         mounts: "unknown",
         marks: "unknown",

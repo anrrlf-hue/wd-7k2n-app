@@ -57,6 +57,21 @@ export interface OnnxLineDetail {
   end: { x: number; y: number } | null;
   /** 이 모델은 분기(fork) 검출을 지원하지 않는다 — 항상 null. */
   branchDetected: null;
+  /** Which crop produced the selected mask observation. */
+  sourceVariant?: "raw" | "enhanced" | "unknown";
+  /** Whether each available crop independently detected this class. */
+  rawDetected?: boolean;
+  enhancedDetected?: boolean;
+  /** The endpoints are PCA extrema of a detected segment, not anatomical endpoints. */
+  endpointEvidence?: "segment_extrema" | "none";
+  /** The model does not establish the complete anatomical path of a line. */
+  pathCompleteness?: "not_verified" | "unavailable";
+  /** Interpretability is intentionally narrower than detection. */
+  attributeSupport?: {
+    length: "segment_only" | "not_supported";
+    curve: "segment_only" | "not_supported";
+    depth: "mask_signal_only" | "not_supported";
+  };
 }
 
 export interface OnnxPalmLines {

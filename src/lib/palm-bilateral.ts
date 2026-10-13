@@ -25,7 +25,8 @@ export function isStoredPalmReading(value: unknown): value is PalmBilateralReadi
 
 function observed(line: OnnxLineDetail | null | undefined): string {
   if (!line?.detected) return "판독하지 못함";
-  const parts = [line.length && `길이 ${line.length}`, line.curve, line.depthStrength && `사진에서의 선명도 ${line.depthStrength}`].filter(Boolean);
+  const source = line.sourceVariant === "enhanced" ? "보정 영상" : line.sourceVariant === "raw" ? "원본 사진" : "사진";
+  const parts = [source, line.length && `검출 구간 ${line.length}`, line.curve && `구간 방향 ${line.curve}`, line.depthStrength && `검출 신호 ${line.depthStrength}`].filter(Boolean);
   return parts.length ? parts.join(" · ") : "선 후보 확인, 세부 모양 미확인";
 }
 
@@ -38,12 +39,12 @@ export function buildPalmBilateralReading(left: PalmFacts, right: PalmFacts, dom
   const plan = buildPalmContextReading(left, right, dominantHand);
   const items: PalmBilateralItem[] = [];
   for (const [key, title, passageId] of [
-    ["headLine", "두뇌선 · 생각을 구체화하는 방식", "head-length-curve"],
-    ["heartLine", "감정선 · 마음을 주고받는 방식", "heart-length-curve"],
-    ["lifeLine", "생명선 · 확인된 범위", "lifeLine-reading"],
+    ["headLine", "두뇌선 · 생각을 구체화하는 방식", "headLine-reading"],
+    ["heartLine", "감정선 · 마음을 주고받는 방식", "heartLine-reading"],
+    ["lifeLine", "생명선 · 생활 기반을 살펴보는 방식", "lifeLine-reading"],
   ] as const) {
     const l = observed(left.onnxLines?.[key]), r = observed(right.onnxLines?.[key]);
-    const parts = plan.passages.filter(p => [passageId, `${key}-standalone`, `${key}-unread`, `${key}-bilateral-difference`].includes(p.id)).map(p => p.text);
+    const parts = plan.passages.filter(p => [passageId, `${key}-unread`, `${key}-bilateral-common`, `${key}-bilateral-difference`].includes(p.id)).map(p => p.text);
     if (!parts.length && !current.onnxLines?.[key].detected) parts.push(`${currentLabel}의 세부 모양을 충분히 읽지 못해 이 항목의 해석은 보류합니다.`);
     items.push({ title, observation: l === r ? `양손: ${l}.` : `왼손: ${l}. 오른손: ${r}.`, text: parts.join(" ") });
   }
