@@ -60,19 +60,15 @@ export function buildIntegratedPalmReading(facts: SajuFacts, left: PalmFacts, ri
       const line = hands[hand as DominantHand].onnxLines?.[key];
       return !readable(line) ? [`${HANDS[hand as DominantHand]} ${NAMES[key]}${line?.detected ? "의 세부 모양이 흐리거나 확인되지 않아" : "을 읽지 못해"} 이 부분은 연결 해석에서 제외했습니다.`] : [];
     }).join(" ") || null;
-    const variantNote = [a, b].some(line => line?.sourceVariant === "enhanced")
-      ? "보정 영상에서 확인된 선은 검출 구간의 방향만 참고하며, 전체 경로·실제 길이·깊이는 확인하지 않았습니다."
-      : "검출 구간의 양끝은 모델이 잡은 구간 끝점이며, 전체 경로·실제 길이·깊이는 확인하지 않았습니다.";
-    return { a, b, refs, summary, note: [note, variantNote].filter(Boolean).join(" "), usable: readable(a), both: readable(a) && readable(b), different: readable(a) && readable(b) && a!.curve !== b!.curve };
+    return { a, b, refs, summary, note, usable: readable(a), both: readable(a) && readable(b), different: readable(a) && readable(b) && a!.curve !== b!.curve };
   }
   const head = pair("headLine"), heart = pair("heartLine");
   const result: IntegratedPalmReading = {};
-  function add(area: Area, headline: string, text: string, scene: string | null, refs: string[], note: string | null = null, palmObservation?: string) {
+  function add(area: Area, headline: string, text: string, scene: string | null, refs: string[], note: string | null = null) {
     const ids = [...new Set(["saju.editorialArc", ...refs])];
     const plan: ReadingPlan = {
       headline,
       passages: [{ id: `${area}-connection`, kind: "traditional", text, evidenceIds: ids },
-        ...(palmObservation ? [{ id: `${area}-palm-observation`, kind: "observation" as const, text: palmObservation, evidenceIds: ids }] : []),
         ...(scene ? [{ id: `${area}-scene`, kind: "reflection" as const, text: scene, evidenceIds: ids }] : [])],
       evidence: evidence.filter(e => ids.includes(e.id)), limits: note ? [note] : [],
     };
@@ -86,14 +82,14 @@ export function buildIntegratedPalmReading(facts: SajuFacts, left: PalmFacts, ri
     const bilateral = contrast
       ? `반대 손에는 ${head.different && heart.different ? "두뇌선과 감정선 모두" : head.different ? "두뇌선에" : "감정선에"} 다른 곡선 형태가 보입니다. 여기서는 주로 쓰는 ${HANDS[dominant]}의 조합을 중심으로 읽고, 다른 손의 표현 방식도 아래 각 장면에서 함께 살펴봅니다.`
       : head.both && heart.both ? "두 손에서 같은 곡선 조합이 관찰됩니다." : "이 조합은 주로 쓰는 손에서 확인한 범위입니다.";
-    add("overall", editorial.question, `${head.summary} ${heart.summary} ${interaction} ${bilateral}`, null, [...counts, "dominant", ...head.refs, ...heart.refs], [head.note, heart.note].filter(Boolean).join(" ") || null);
+    add("overall", editorial.question, `손금에서는 사용자가 선택한 주손의 두뇌선·감정선 검출 구간을 각각 생각을 정리하는 방식과 마음을 전하는 방식의 보완 관점으로 읽습니다. ${interaction} ${bilateral}`, null, [...counts, "dominant", ...head.refs, ...heart.refs], [head.note, heart.note].filter(Boolean).join(" ") || null);
   }
   if (heart.usable) {
     const expression = heart.different
       ? "주손의 감정선과 반대 손의 곡선 형태가 달라, 말로 반응하는 표현과 꾸준한 행동으로 보여주는 표현을 나란히 놓고 읽습니다. 내가 익숙하게 전한 표현과 상대가 받아들인 표현이 만나는지를 살펴보는 관점입니다."
       : curved(heart.a) ? "감정선의 곡선을 표정과 말에 마음을 실어 보내는 모습에 연결하면, 다정한 반응을 주고받는 일이 그 기준을 확인하는 통로가 될 수 있습니다."
         : "직선에 가까운 감정선을 꾸준한 행동에 마음을 담는 모습에 연결하면, 먼저 챙기고 약속을 지키는 일이 그 기준을 보여주는 통로가 될 수 있습니다.";
-    add("love_relationship", "마음을 표현한 방식과 상대에게 닿은 방식", `${editorial.loveConnection} ${heart.summary} ${expression}`, editorial.loveScene, ["saju.close", "dominant", ...heart.refs], heart.note, heart.summary);
+    add("love_relationship", "마음을 표현한 방식과 상대에게 닿은 방식", `${editorial.loveConnection} ${expression}`, editorial.loveScene, ["saju.close", "dominant", ...heart.refs], heart.note);
   }
   if (head.usable) {
     const workGroups = workplace ? [TEN_GOD_GROUP[workplace.stemTenGod], TEN_GOD_GROUP[workplace.branchTenGod]] : [];
@@ -106,7 +102,7 @@ export function buildIntegratedPalmReading(facts: SajuFacts, left: PalmFacts, ri
       ? "두 손의 두뇌선 방향이 달라, 여러 방법을 펼쳐보는 과정과 일정한 기준으로 정리하는 과정을 나누어 읽을 수 있습니다. 아이디어를 낼 때부터 결론의 기준까지 계속 바꾸기보다, 먼저 비교할 기준을 정하고 방법을 바꿔보는 장면에 두 관점을 함께 쓸 수 있습니다."
       : curved(head.a) ? "두뇌선의 곡선은 한 방법에 바로 고정되기보다 대안을 비교하는 모습으로 읽습니다. 일의 목적은 유지하면서 구현 방법을 바꾸는 여지가 있을 때, 사주에서 읽은 장점을 구체적으로 써볼 수 있습니다."
         : "직선에 가까운 두뇌선은 판단의 이유를 정리하며 한 방향으로 묶는 모습으로 읽습니다. 사주에서 읽은 장점을 쓰려면, 무엇을 완료로 볼지와 중간에 바꿔도 되는 조건을 먼저 맞추는 장면이 어울립니다.";
-    add("work", "일을 받아들이는 기준을 실제 진행 방식으로 잇기", `${place} ${editorial.workConnection} ${head.summary} ${way}`, editorial.workScene, [...counts, "saju.workplace", "saju.strength", "dominant", ...head.refs], head.note, head.summary);
+    add("work", "일을 받아들이는 기준을 실제 진행 방식으로 잇기", `${place} ${editorial.workConnection} ${way}`, editorial.workScene, [...counts, "saju.workplace", "saju.strength", "dominant", ...head.refs], head.note);
   }
   const secondary: Array<{ hand: DominantHand; key: "fate" | "sun" | "wealth"; name: string; ref: string }> = [];
   for (const hand of ["left", "right"] as const) for (const [key, name] of [["fate", "운명선"], ["sun", "태양선"], ["wealth", "재물선"]] as const) {
