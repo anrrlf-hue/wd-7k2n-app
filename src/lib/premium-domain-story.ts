@@ -250,6 +250,33 @@ const OVERALL: Record<EditorialArcId, string> = {
   balanced: "사주에서 여러 근거가 비슷하게 놓였다면 한 가지 성격이나 답으로 묶기 어렵습니다. 같은 사람에게도 친밀함, 돈의 조건, 일의 방식은 서로 다른 판단을 요구할 수 있습니다. 전체 풀이에서는 각 기준이 함께 있다는 사실만 확인하고, 어느 기준을 앞세울지는 분야별로 따로 살핍니다.",
 };
 
+const ARC_EVIDENCE_GROUPS: Record<EditorialArcId, Array<"비겁" | "식상" | "재성" | "관성" | "인성">> = {
+  "agency-duty": ["관성", "인성", "비겁"],
+  "agency-duty-supported": ["관성", "인성", "비겁"],
+  "creation-exchange": ["식상", "재성", "비겁"],
+  "creation-exchange-supported": ["식상", "재성", "인성"],
+  "duty-supported": ["관성", "인성", "비겁"],
+  "duty-translation": ["관성", "인성", "식상"],
+  "duty-boundaries": ["관성", "비겁", "재성"],
+  "agency-value": ["비겁", "재성", "식상"],
+  "understanding-duty": ["인성", "관성", "식상"],
+  "agency-expression": ["비겁", "식상", "재성"],
+  balanced: ["비겁", "식상", "재성", "관성", "인성"],
+};
+const OVERALL_ROLE = {
+  비겁: "자기 판단", 식상: "생각을 보여줄 통로", 재성: "쓰임과 교환 조건",
+  관성: "약속의 기준", 인성: "이해와 도움",
+} as const;
+
+function overallEvidenceBridge(plan: PremiumEditorialPlan): string {
+  const candidates = ARC_EVIDENCE_GROUPS[plan.id].flatMap(group => {
+    const entry = plan.natalEvidence.placements.filter(item => item.group === group)
+      .sort((a, b) => ({ month: 0, day: 1, hour: 2, year: 3 })[a.pillar] - ({ month: 0, day: 1, hour: 2, year: 3 })[b.pillar])[0];
+    return entry ? [`${positionName[entry.pillar]}${entry.part === "stem" ? "간" : "지"} ${entry.symbol}/${entry.tenGod}: ${OVERALL_ROLE[group]}`] : [];
+  }).slice(0, 3);
+  return candidates.length >= 2 ? `이 질문에 쓰인 원국의 서로 다른 자리는 ${candidates.join(" · ")}입니다.` : "";
+}
+
 export function composePremiumOverallStory(plan: PremiumEditorialPlan): string {
   if (plan.id === "duty-translation") {
     const duty = placementPhrase(plan, "관성")!, understanding = placementPhrase(plan, "인성")!;
@@ -257,7 +284,7 @@ export function composePremiumOverallStory(plan: PremiumEditorialPlan): string {
     const agency = placementPhrase(plan, "비겁");
     return `사주에서는 ${duty}으로 거듭 놓인 외부 기준, ${understanding}으로 이해하는 방식, ${expression}으로 생각을 드러내는 통로를 함께 읽습니다.${agency ? ` ${agency}는 그 사이에서 자기 판단을 남기는 근거입니다.` : ""} 요구를 이해하는 일과 그 요구를 자신의 방법으로 표현하는 일은 이어질 수 있지만 같은 일은 아닙니다. 이 연결이 총운의 중심이며 실제 능력·경력이나 특정 결과를 확인했다는 뜻은 아닙니다.`;
   }
-  return OVERALL[plan.id];
+  return [OVERALL[plan.id], overallEvidenceBridge(plan)].filter(Boolean).join(" ");
 }
 
 const positionName = { year: "연", month: "월", day: "일", hour: "시" } as const;

@@ -56,6 +56,8 @@ for (const day of [1, 7]) {
   assert.ok(html.includes('월운'));
   assert.ok(report.annualIntroduction.includes('세운') && report.annualIntroduction.includes('천간'));
   assert.ok(!report.overall.paragraphs.join(' ').includes('작은 결과를 보여준 뒤'), 'the overall reading must not spend the work scene');
+  assert.match(report.overall.paragraphs.join(' '), /원국의 서로 다른 자리.*(?:연|월|일|시)(?:간|지)/,
+    'the premium opening should expose the calculated positions behind its synthesis');
   const love = report.domains.find(d => d.key === 'love_relationship').paragraphs.join(' ');
   const money = report.domains.find(d => d.key === 'money').paragraphs.join(' ');
   const work = report.domains.find(d => d.key === 'work').paragraphs.join(' ');
