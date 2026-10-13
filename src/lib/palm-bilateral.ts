@@ -70,6 +70,6 @@ export function buildPalmBilateralReading(left: PalmFacts, right: PalmFacts, dom
     version: PALM_READING_VERSION,
     summary: plan.passages.find(p => p.id === "head-heart-composition")?.text ?? `주로 쓰는 ${currentLabel}에서 읽힌 선을 중심으로 해석합니다. 확인하지 못한 선은 채우지 않았습니다.`,
     items,
-    note: plan.passages.find(p => p.id === "visibility")?.text ?? "",
+    note: `${plan.limits[0]} ${plan.passages.find(p => p.id === "visibility")?.text ?? ""}`.trim(),
   };
 }

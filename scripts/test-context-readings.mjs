@@ -153,6 +153,7 @@ assert.notEqual(palmCases[0].report.summary, palmCases[1].report.summary);
 assert.ok(!palmCases[0].plan.passages.some(p => p.id.endsWith("bilateral-difference")));
 assert.ok(palmCases[1].plan.passages.some(p => p.id.endsWith("bilateral-difference")));
 assert.match(palmCases[2].report.items[0].text, /보류/);
+assert.match(palmCases[2].report.note, /수명·건강/, "partial readings retain the non-diagnostic limit");
 assert.ok(!palmCases[2].plan.passages.some(p => p.id === "head-heart-composition"));
 assert.match(palmCases[2].report.items[1].text, /확인된 감정선/, "partial medium-length lines may use known curvature without inventing the missing combination");
 assert.equal(palmCases[0].report.summary, palmCases[3].report.summary, "photo contrast is not strength of personality");
