@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { palmFactsSchema } from "@/lib/palm-input-schema";
 import { computeSajuFacts } from "@/lib/saju-facts";
 import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { buildPremiumReport } from "@/lib/premium-report";
@@ -15,8 +16,8 @@ const bodySchema = z.object({
   gender: z.enum(["남", "여"]),
   focus: z.enum(SAJU_FOCUS_VALUES).optional(),
   mbti: z.enum(MBTI_TYPES).nullable().optional(),
-  leftPalmFacts: z.unknown().nullable().optional(),
-  rightPalmFacts: z.unknown().nullable().optional(),
+  leftPalmFacts: palmFactsSchema.nullable().optional(),
+  rightPalmFacts: palmFactsSchema.nullable().optional(),
   dominantHand: z.enum(["left", "right"]).nullable().optional(),
 });
 
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   try {
     const shallow = computeSajuFacts(parsed.data);
     const facts = parsed.data.hour === null ? shallow : enrichSajuFacts(shallow, parsed.data);
-    const report = buildPremiumReport({ facts });
+    const report = buildPremiumReport({ facts, leftPalm: parsed.data.leftPalmFacts, rightPalm: parsed.data.rightPalmFacts, dominantHand: parsed.data.dominantHand });
 
     return NextResponse.json({ report });
   } catch (error) {

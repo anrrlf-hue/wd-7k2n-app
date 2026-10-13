@@ -6,7 +6,13 @@ import { TEN_GOD_GROUP } from "@/lib/saju-facts";
 import type { SajuFocus, SajuDetailFocus } from "@/lib/saju-focus";
 import { buildSajuAnnualOutlook, type SajuAnnualOutlook } from "@/lib/saju-timing";
 
-export const PREMIUM_REPORT_VERSION = "annual-reading-2026-10-v2" as const;
+import { buildContextualMonthReading } from "@/lib/premium-context-reading";
+import { composeNatalReadings } from "@/lib/premium-natal-reading";
+import type { ReadingPlan } from "@/lib/reading-plan";
+import { buildTripleCompare, type CompareItem } from "@/lib/triple-compare";
+import { isPalmFactsUsable } from "@/lib/palm-facts";
+
+export const PREMIUM_REPORT_VERSION = "context-reading-2026-10-v3" as const;
 export interface PremiumReading {
   headline: string;
   paragraphs: string[];
@@ -26,9 +32,10 @@ export interface PremiumPeriod {
   reading: string;
   basis: string;
   domains: Array<{ key: "love_relationship" | "money" | "work"; label: string; text: string }>;
+  interpretation?: ReadingPlan;
 }
 export interface PremiumReport {
-  version: typeof PREMIUM_REPORT_VERSION;
+  version: typeof PREMIUM_REPORT_VERSION | "annual-reading-2026-10-v2";
   title: string;
   summary: string;
   overall: PremiumReading;
@@ -38,6 +45,9 @@ export interface PremiumReport {
   annualBackground: string | null;
   periods: PremiumPeriod[];
   note: string;
+  annualHighlights?: string[];
+  palmConnections?: CompareItem[];
+  profileRule?: string;
 }
 
 const GROUPS = [
@@ -70,7 +80,7 @@ function overallReading(facts: SajuFacts): PremiumReading {
     opportunity: equal ? "서로 다른 장점을 함께 쓸 수 있는 자리가 어울립니다. " + leaders.map(g => g.chance).join(" ") : leaders[0].chance,
     caution: equal ? "중요하게 여기는 기준이 여럿이라 한쪽을 택하면 다른 쪽이 마음에 걸릴 수 있습니다. 특히 내 방식과 주변의 기대가 다른 장면에서는 선택보다 마음을 정리하는 데 시간이 들 수 있습니다." : leaders[0].caution,
     tip: "주변의 기대와 내가 원하는 방향이 다를 때는, 이번 선택에서 놓치고 싶지 않은 것 하나만 먼저 말해보세요.",
-    basis: `태어난 연·월·일${facts.hasTimeInput ? "·시" : ""}를 함께 읽을 때 ${leaders.map(g => `‘${g.label}’`).join(", ")}${equal ? "의 비중이 나란히 두드러집니다." : "의 비중이 두드러집니다."} ${places.length ? `이런 요소가 놓인 자리는 ${places.join(", ")}에 연결해 읽었습니다.` : ""}`,
+    basis: `태어난 연·월·일${facts.hasTimeInput ? "·시" : ""}의 구성에서 ${leaders.map(g => `‘${g.label}’`).join(", ")}${equal ? "의 비중이 나란히 두드러집니다." : "의 비중이 두드러집니다."} ${places.length ? `이런 요소가 놓인 자리는 ${places.join(", ")}에 연결해 읽었습니다.` : ""}`,
   };
 }
 
@@ -163,69 +173,62 @@ function domainReadings(facts: SajuFacts): PremiumDomainSection[] {
   const loveResult = { ...loveCopy[love], paragraphs: [...loveCopy[love].paragraphs] };
   if (closeGroup === "인성") loveResult.paragraphs.push("가까운 관계를 나타내는 자리에는 이해와 보살핌의 의미가 놓여 있습니다. 편하게 기대고 마음을 설명할 수 있다는 느낌이 친밀함을 더해주는 모습입니다.");
   if (closeGroup === "비겁") loveResult.paragraphs.push("가까운 관계를 나타내는 자리에는 자기 뜻과 동등함의 의미가 놓여 있습니다. 서로를 챙기더라도 한 사람이 다른 사람의 방식을 대신 정하지 않는 관계가 편할 수 있습니다.");
+  const workResult = facts.outputStarCount === 0 && facts.officerStarCount === 0 ? {
+    headline: "일의 방식은 실제 경험과 맡은 조건을 함께 보기",
+    paragraphs: ["표현과 창작, 역할과 규칙을 비교하는 요소가 모두 드러난 글자에 없어, 이 기준으로 새로운 일을 잘하는지 정해진 일을 잘하는지 정하지 않았습니다. 두 요소가 없다는 사실은 어느 쪽 능력이 부족하다는 뜻도 아닙니다.", "일에서는 어떤 선택을 직접 할 수 있는지, 어떤 도움을 받을 수 있는지를 실제 경험과 함께 살펴볼 수 있습니다. 다른 원국 요소에서 읽은 장점도 구체적인 역할과 환경에 놓아볼 때 자신에게 맞는 부분을 구분하기 쉽습니다."],
+    opportunity: "실제로 흥미를 느끼고 잘 이어갔던 경험을 바탕으로, 재량과 협업 조건이 맞는 역할을 찾아볼 수 있습니다.",
+    caution: "드러난 요소가 적다는 이유로 자신의 적성이나 가능한 직업을 좁힐 근거는 없습니다.",
+    tip: "", basis: "드러난 글자의 식상과 관성 집계가 모두 0이므로 같은 비중이라는 이유만으로 두 성향이 모두 강하다고 읽지 않았습니다.",
+  } : workCopy[work];
   return [
     { key: "love_relationship", label: "연애·관계", ...loveResult },
     { key: "money", label: "재물", ...moneyCopy[money] },
-    { key: "work", label: "직장·일", ...workCopy[work] },
+    { key: "work", label: "직장·일", ...workResult },
   ];
 }
 
-const MONTH_THEME: Record<TenGodGroup, { label: string; reading: string }> = {
-  비겁: { label: "내 뜻과 사람 사이의 균형", reading: "자기 뜻을 지키는 일과 다른 사람과 보조를 맞추는 일이 함께 주제로 떠오르는 흐름입니다. 혼자 정할 부분과 함께 나눌 부분의 경계가 관계와 일의 분위기를 가르는 시기로 읽습니다." },
-  식상: { label: "생각을 밖으로 드러내는 흐름", reading: "마음속 생각이 말이나 결과물로 드러나는 쪽에 의미가 실립니다. 관계에서는 표현이, 일에서는 보여준 것에 대한 반응이 평소보다 중요한 주제가 되는 달로 읽습니다." },
-  재성: { label: "노력과 보상이 만나는 흐름", reading: "시간과 노력이 어떤 결과로 돌아오는지를 바라보는 쪽에 의미가 실립니다. 마음에 드는 선택과 현실적으로 이어갈 수 있는 선택 사이의 차이를 살펴보는 달로 읽습니다." },
-  관성: { label: "약속과 역할이 또렷해지는 흐름", reading: "서로 기대하는 역할과 약속의 의미가 부각됩니다. 관계를 안정시키는 힘이 될 수 있는 한편, 기대에 맞춰야 한다는 부담도 함께 느끼기 쉬운 시기로 읽습니다." },
-  인성: { label: "이해와 준비가 깊어지는 흐름", reading: "새로운 결과를 서둘러 내기보다 익히고 이해하는 과정에 의미가 실립니다. 그동안의 경험을 정리하거나 믿을 만한 사람의 설명에서 다음 방향을 찾는 달로 읽습니다." },
-};
-const MONTH_DOMAINS: Record<"love_relationship" | "money" | "work", Partial<Record<TenGodGroup, string>>> = {
-  love_relationship: {
-    비겁: "연애에서는 가까이 지내면서도 서로의 선택을 존중하는 문제가 눈에 들어오는 흐름입니다.",
-    식상: "마음이 얼마나 큰지보다 어떤 말과 태도로 전해지는지가 관계의 분위기를 만드는 흐름입니다.",
-    재성: "함께 쓰는 시간과 서로 주고받는 배려에서 관계의 현실적인 균형을 생각하게 하는 흐름입니다.",
-    관성: "관계를 어떻게 이어갈지, 서로 기대하는 약속이 무엇인지에 의미가 실리는 흐름입니다.",
-    인성: "편하게 기대고 이해받는 느낌이 친밀함과 연결되는 흐름입니다.",
-  },
-  money: {
-    재성: "재물에서는 내가 제공한 가치와 돌아오는 보상의 관계를 중심으로 읽습니다. 수익의 크기보다 교환 조건과 만족의 균형이 주제입니다.",
-    식상: "재물에서는 결과물을 보여주는 일과 보상의 연결을 중심으로 읽습니다. 아이디어 자체보다 상대가 그 쓰임을 알아보는 과정에 의미가 있습니다.",
-    관성: "재물에서는 급여나 계약처럼 이미 정해진 조건과 책임의 관계를 중심으로 읽습니다. 맡는 몫과 받는 대가가 맞는지가 주제입니다.",
-  },
-  work: {
-    식상: "일에서는 생각을 제안이나 결과물로 보여주는 장면에 의미가 실립니다. 방법을 고를 여지가 자신의 장점을 드러내는 통로가 될 수 있습니다.",
-    재성: "일에서는 잘 만든 것과 실제로 필요로 하는 것의 연결에 의미가 실립니다. 상대의 필요를 이해하는 일이 성과의 의미를 또렷하게 하는 흐름입니다.",
-    관성: "일에서는 맡은 역할과 주변의 기대가 주제가 됩니다. 신뢰가 쌓이는 면과 책임이 무거워지는 면을 함께 읽습니다.",
-    비겁: "일에서는 자기 방식과 동료의 방식 사이의 조율이 주제가 됩니다. 서로 다른 강점을 어디까지 함께 쓸지가 중요한 흐름입니다.",
-  },
-};
-
-export function buildPremiumPeriods(annual: SajuAnnualOutlook): PremiumPeriod[] {
+/** Equal contextual readings may be grouped, but a year boundary remains visible.
+ * The complete calendar is kept even when the main report selects a few topics. */
+export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts): PremiumPeriod[] {
   const periods: PremiumPeriod[] = [];
-  const signatures: string[] = [];
+  let previousSignature = "";
   for (const month of annual.months) {
+    const interpretation = buildContextualMonthReading(facts, month);
     const signals = month.comparisons[0].signals;
-    const groups = [...new Set(signals?.month ?? [])].sort() as TenGodGroup[];
-    const year = [...new Set(signals?.year ?? [])].sort() as TenGodGroup[];
-    const signature = JSON.stringify([groups, year]);
+    const signature = JSON.stringify([
+      [...new Set(signals?.month ?? [])].sort(), [...new Set(signals?.year ?? [])].sort(),
+      interpretation.passages.map(p => [p.id, p.text]),
+    ]);
     const prior = periods.at(-1);
-    if (prior && signatures.at(-1) === signature) {
+    if (prior && previousSignature === signature) {
       prior.months.push(month.label);
       prior.label = `${prior.months[0]} ~ ${month.label}`;
+      // Keep every month's actual stem/branch evidence, even if the reading is shared.
+      prior.basis += ` / ${month.comparisons[0].basis}`;
       continue;
     }
-    const domains = (["love_relationship", "money", "work"] as const).flatMap(key => {
-      const texts = groups.flatMap(group => MONTH_DOMAINS[key][group] ? [MONTH_DOMAINS[key][group]!] : []);
-      return texts.length ? [{ key, label: ({ love_relationship: "연애·관계", money: "재물", work: "직장·일" })[key], text: texts.join(" ") }] : [];
-    });
+    const narrative = interpretation.passages.filter(p => p.kind === "traditional" && p.id !== "daeun-context");
+    const context = interpretation.evidence.filter(e => ["비겁", "식상", "재성", "관성", "인성", "strength", "position", "daeun"].includes(e.id));
     periods.push({
-      label: month.label, months: [month.label],
-      headline: groups.length ? groups.map(g => MONTH_THEME[g].label).join(" · ") : "뚜렷한 월별 주제를 구분하기 어려운 달",
-      reading: groups.map(g => MONTH_THEME[g].reading).join(" "),
-      basis: groups.length ? `태어난 날의 기운과 이달의 기운을 견주면 ${groups.map(g => `‘${GROUP_LABEL[g]}’`).join(", ")}의 의미가 나타납니다.${year.length ? ` 이 해 전체에는 ${year.map(g => `‘${GROUP_LABEL[g]}’`).join(", ")}의 의미가 배경으로 놓입니다.` : ""}` : "계산된 월의 해석 요소가 없어 이 기간의 분야별 의미를 덧붙이지 않았습니다.",
-      domains,
+      label: month.label, months: [month.label], headline: interpretation.headline,
+      reading: (narrative.length ? narrative : interpretation.passages).map(p => p.text).join(" "),
+      basis: `${month.comparisons[0].basis}. 원국과 연결한 값: ${context.map(e => `${e.id === "strength" ? "강약" : e.id === "position" ? "관련 자리" : e.id === "daeun" ? "현재 대운" : e.id} ${e.value ?? "미사용"}`).join(" / ")}. 숫자는 능력이나 사건 확률이 아닌 계산값입니다.`,
+      domains: [], interpretation,
     });
-    signatures.push(signature);
+    previousSignature = signature;
   }
   return periods;
+}
+
+/** Editorial selection: show the start and the first two different combinations.
+ * No invented auspicious ranking; chronological labels explain what was selected. */
+function annualHighlights(periods: PremiumPeriod[]): string[] {
+  const selected = periods.slice(0, 1);
+  const exchange = periods.find(p => p.interpretation?.passages.some(s => s.id.startsWith("output-")));
+  if (exchange && !selected.includes(exchange)) selected.push(exchange);
+  const later = periods.find(p => periods.indexOf(p) > periods.indexOf(selected.at(-1)!) && !selected.some(s => s.headline === p.headline));
+  if (later) selected.push(later);
+  return selected.map(p => p.months[0]);
 }
 
 export function buildPremiumReport(input: {
@@ -239,20 +242,24 @@ export function buildPremiumReport(input: {
 }): PremiumReport {
   const { facts } = input;
   const annual = buildSajuAnnualOutlook(facts, input.referenceDate);
-  const overall = overallReading(facts);
-  const periods = buildPremiumPeriods(annual);
-  const first = periods[0];
-  const change = periods.find(p => p.headline !== first.headline);
+  const natal = composeNatalReadings(facts, { overall: overallReading(facts), domains: domainReadings(facts) });
+  const { overall, domains } = natal;
+  const periods = buildPremiumPeriods(annual, facts);
+  const highlights = annualHighlights(periods);
+  const selectedPeriods = periods.filter(period => highlights.includes(period.months[0]));
   const background = facts.hasTimeInput && facts.currentDaeun
     ? [...new Set([TEN_GOD_GROUP[facts.currentDaeun.stemTenGod], TEN_GOD_GROUP[facts.currentDaeun.branchTenGod]].filter(Boolean))] : [];
   return {
     version: PREMIUM_REPORT_VERSION,
     title: "프리미엄 통합 연간 리포트",
-    summary: `${overall.headline}으로 읽힙니다. ${annual.startLabel}부터 ${annual.endLabel}까지, 관계와 돈, 일에서 이 성향이 어떻게 드러날지 함께 읽습니다.`,
-    overall, domains: domainReadings(facts), annual, periods,
-    annualIntroduction: change
-      ? `${first.label}에는 ‘${first.headline}’이 첫 주제입니다. 이후 ${change.label}에는 ‘${change.headline}’으로 읽는 초점이 달라집니다. 아래에서는 같은 해석이 이어지는 달을 묶어 한 해의 변화를 살펴봅니다.`
-      : "이 기간에는 월별로 뚜렷하게 나뉘는 주제가 적습니다. 차이가 없는 달을 억지로 다르게 해석하지 않고 같은 흐름으로 묶었습니다.",
+    summary: `${overall.headline}. 관계와 돈, 일에서 달리 나타나는 모습을 읽고, ${annual.startLabel}부터 ${annual.endLabel}까지 그 성향과 시기의 주제가 어떻게 만나는지 살펴봅니다.`,
+    overall, domains, annual, periods,
+    profileRule: natal.rule,
+    annualHighlights: highlights,
+    palmConnections: input.leftPalm && input.rightPalm && input.dominantHand
+      && isPalmFactsUsable(input.leftPalm) && isPalmFactsUsable(input.rightPalm)
+      ? buildTripleCompare(facts, (input.dominantHand === "left" ? input.leftPalm : input.rightPalm).onnxLines, null) : [],
+    annualIntroduction: `${selectedPeriods.map(period => period.label).join(", ")}의 흐름을 먼저 살펴봅니다. 기간의 시작과 다른 조합이 나타나는 구간을 골랐으며, 12개월 전체는 아래에서 펼쳐볼 수 있습니다. 중요한 사건이 생길 달을 고른 것은 아닙니다.`,
     annualBackground: background.length ? `현재의 큰 흐름에는 ${background.map(g => `‘${GROUP_LABEL[g]}’`).join(", ")}의 의미가 놓여 있습니다. 이를 한 해의 배경으로 두고, 달마다 달라지는 주제를 따로 살펴봅니다.` : null,
     note: `전통적 해석을 바탕으로 한 자기이해용 풀이이며 미래·수익·건강을 보장하지 않습니다. 월별 흐름은 매월 중순을 기준으로 읽어 절기 경계나 기간 중 큰 운의 전환을 정밀하게 반영하지 않습니다.${facts.hasTimeInput ? "" : " 출생시간이 없어 그 정보에 따라 달라지는 세부 성향과 큰 운의 배경은 생략했습니다."}`,
   };

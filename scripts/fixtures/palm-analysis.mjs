@@ -4,7 +4,7 @@ export const palmFixture = {
   handSide: "right", imageQuality: "good", handShape: "square",
   majorLines: ["생명선", "감정선", "두뇌선"],
   lineFeatures: ["생명선", "감정선", "두뇌선"].map(name => ({ name, detected: true, length: "보통", direction: "완만한 곡선", confidence: 0.8 })),
-  onnxLines: { modelExecuted: true, heartLine: line, headLine: line, lifeLine: line, fateLine: { presence: "unknown", note: "" }, mounts: "unknown", marks: "unknown" },
+  onnxLines: { modelExecuted: true, heartLine: structuredClone(line), headLine: structuredClone(line), lifeLine: structuredClone(line), fateLine: { presence: "unknown", note: "" }, mounts: "unknown", marks: "unknown" },
   confidence: 0.8, warnings: [],
 };
 export const birthFixture = { year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남" };

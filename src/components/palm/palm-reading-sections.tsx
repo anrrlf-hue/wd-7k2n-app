@@ -62,7 +62,7 @@ export function PalmBilateralSection({ reading }: { reading: PalmBilateralReadin
             <div key={item.title} className="rounded-xl bg-accent p-4">
               <h3 className="text-sm font-semibold text-(--gold)">{item.title}</h3>
               {item.observation && <p className="mt-2 text-sm leading-6 text-(--gold)"><strong>사진에서 보이는 특징: </strong>{item.observation}</p>}
-              <p className="mt-2 text-base leading-7 text-muted-foreground"><strong>전통 해석: </strong>{item.text}</p>
+              {item.text && <p className="mt-2 text-base leading-7 text-muted-foreground"><strong>전통 해석: </strong>{item.text}</p>}
             </div>
           ))}
         </div>
@@ -72,10 +72,10 @@ export function PalmBilateralSection({ reading }: { reading: PalmBilateralReadin
   );
 }
 
-export function TripleCompareSection({ items, withPalm = true }: { items: CompareItem[]; withPalm?: boolean }) {
+export function TripleCompareSection({ items, withPalm = true, withSelf = true }: { items: CompareItem[]; withPalm?: boolean; withSelf?: boolean }) {
   if (items.length === 0) return null;
   return (
-    <ReportSection step={withPalm ? "3" : undefined} title={withPalm ? "사주·손금·내 답을 함께 보면" : "사주와 내 답을 함께 보면"}>
+    <ReportSection step={withPalm ? "3" : undefined} title={withPalm ? withSelf ? "사주·손금·내 답을 함께 보면" : "사주와 손금을 함께 읽으면" : "사주와 내 답을 함께 보면"}>
       <div className="space-y-3">
         {items.map((item) => (
           <div key={item.topic} className="rounded-xl border border-border p-4">

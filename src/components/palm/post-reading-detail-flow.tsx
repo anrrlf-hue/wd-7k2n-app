@@ -13,18 +13,19 @@ import type { RealityDominantHand } from "@/lib/reality-palm-context";
 import type { PremiumReport } from "@/lib/premium-report";
 import { PalmTaskSlot, runWithDeadline } from "@/lib/palm-analysis-task";
 import { track } from "@/lib/analytics";
-import { isRenderablePremiumReport, isStoredPremiumReport, type StoredPremiumReport } from "@/lib/premium-report-validation";
+import { isCurrentPremiumReport, isRenderablePremiumReport, isStoredPremiumReport, type StoredPremiumReport } from "@/lib/premium-report-validation";
 
 type Stage = "ready" | "loading" | "premium";
 const STORAGE_KEY = "saju-app:integrated-premium:v1";
 
-export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFacts, rightPalmFacts, dominantHand }: {
+export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFacts, rightPalmFacts, dominantHand, onPalmConnectionsVisibleChange }: {
   birthInput: BirthInput;
   personalityInput?: PersonalityInputEcho;
   palmFacts?: PalmFacts | null;
   leftPalmFacts?: PalmFacts | null;
   rightPalmFacts?: PalmFacts | null;
   dominantHand?: RealityDominantHand | null;
+  onPalmConnectionsVisibleChange?: (visible: boolean) => void;
 }) {
   const [stage, setStage] = useState<Stage>("ready");
   const [premiumReport, setPremiumReport] = useState<StoredPremiumReport | null>(null);
@@ -37,6 +38,10 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
     leftPalmFacts: leftPalmFacts ?? null, rightPalmFacts: rightPalmFacts ?? null, dominantHand: dominantHand ?? null });
   const currentMonth = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", timeZone: "Asia/Seoul" }).format(new Date());
   const identity = body;
+
+  useEffect(() => {
+    onPalmConnectionsVisibleChange?.(stage === "premium" && isRenderablePremiumReport(premiumReport) && Boolean(premiumReport.palmConnections?.length));
+  }, [stage, premiumReport, onPalmConnectionsVisibleChange]);
 
   useEffect(() => {
     const slot = tasks.current;
@@ -120,9 +125,9 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
     </div>}
     {stage === "premium" && premiumReport && <>
       <div className="rounded-2xl border border-border p-4 text-sm leading-7">
-        <p>{isRenderablePremiumReport(premiumReport) ? "2026.10 개정판 · 저장된 원문" : "이전 풀이판 · 저장된 원문"}</p>
+        <p>{isCurrentPremiumReport(premiumReport) ? "근거 연결 개정판 · 저장된 원문" : "이전 풀이판 · 저장된 원문"}</p>
         <p className="text-muted-foreground">{premiumReport.annual.startLabel} ~ {premiumReport.annual.endLabel}의 보고서입니다. 다시 열어도 문장과 기간은 그대로 유지됩니다.</p>
-        {(!isRenderablePremiumReport(premiumReport) || premiumReport.annual.startLabel !== currentMonth) && <Button variant="outline" onClick={() => void loadPremium(true)} className="mt-3 min-h-11">{isRenderablePremiumReport(premiumReport) ? "이번 달부터 새 리포트 만들기" : "새 풀이판으로 리포트 만들기"}</Button>}
+        {(!isCurrentPremiumReport(premiumReport) || premiumReport.annual.startLabel !== currentMonth) && <Button variant="outline" onClick={() => void loadPremium(true)} className="mt-3 min-h-11">{isCurrentPremiumReport(premiumReport) ? "이번 달부터 새 리포트 만들기" : "새 풀이판으로 리포트 만들기"}</Button>}
         {previousReport && <button type="button" onClick={() => {
           setPremiumReport(previousReport); setPreviousReport(premiumReport); persist(previousReport, premiumReport);
         }} className="mt-3 block min-h-11 underline underline-offset-4">다른 저장본 보기</button>}

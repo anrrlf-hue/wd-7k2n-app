@@ -9,7 +9,9 @@ import { birthFixture } from "./fixtures/palm-analysis.mjs";
 const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
 const { enrichSajuFacts } = await import("../src/lib/oh-my-saju-adapter.ts");
 const { buildFreeSajuReport } = await import("../src/lib/free-report-mock.ts");
-const source = execFileSync("git", ["show", "ae7e854:src/lib/premium-report.ts"], { encoding: "utf8" });
+const previousRevision = process.env.TEST_PREVIOUS_REPORT_REV || "f0757a3";
+assert.ok(["f0757a3", "ae7e854"].includes(previousRevision));
+const source = execFileSync("git", ["show", `${previousRevision}:src/lib/premium-report.ts`], { encoding: "utf8" });
 const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
 const { buildPremiumReport: oldPremium } = await import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
 const facts = enrichSajuFacts(computeSajuFacts(birthFixture), birthFixture);
@@ -60,7 +62,7 @@ try {
   const upgrade = () => page.getByRole("button", { name: "새 풀이판으로 리포트 만들기", exact: true });
   await upgrade().waitFor();
   assert.deepEqual((await saved()).report, legacy);
-  assert.ok((await page.locator("#premium-report").innerText()).includes(legacy.corePatterns[0]));
+  assert.ok((await page.locator("#premium-report").innerText()).includes(legacy.overall?.paragraphs[0] ?? legacy.corePatterns[0]));
   await page.reload(); await upgrade().waitFor();
   assert.deepEqual((await saved()).report, legacy);
   assert.equal(requests.length, 0, "even an older reference month never silently regenerates");
@@ -69,7 +71,7 @@ try {
   assert.deepEqual((await saved()).report, legacy, "failed update cannot replace saved text");
   mode = "normal";
   await page.getByRole("button", { name: "새 리포트 다시 요청", exact: true }).click();
-  await page.getByText("2026.10 개정판 · 저장된 원문", { exact: true }).waitFor();
+  await page.getByText("근거 연결 개정판 · 저장된 원문", { exact: true }).waitFor();
   assert.equal(requests.length, 2, "retry after failed explicit update actually requests the new edition");
   assert.deepEqual((await saved()).report, current.report);
   assert.deepEqual((await saved()).previousReport, legacy);
@@ -87,8 +89,8 @@ try {
   assert.deepEqual((await saved()).report, legacy);
   if (held) await held.fulfill({ json: current }).catch(() => {});
   await page.getByRole("button", { name: "다른 저장본 보기", exact: true }).click();
-  await page.getByText("2026.10 개정판 · 저장된 원문", { exact: true }).waitFor();
-  await page.reload(); await page.getByText("2026.10 개정판 · 저장된 원문", { exact: true }).waitFor();
+  await page.getByText("근거 연결 개정판 · 저장된 원문", { exact: true }).waitFor();
+  await page.reload(); await page.getByText("근거 연결 개정판 · 저장된 원문", { exact: true }).waitFor();
   assert.deepEqual((await saved()).report, current.report);
   assert.equal(requests.length, 3);
   for (const width of [390, 1440]) {
@@ -97,6 +99,7 @@ try {
       await page.locator(selector).evaluate(el => el.scrollIntoView({ block: "start" }));
       await page.screenshot({ path: `${evidence}/narrative-${name}-${width}.png` });
     }
+    await page.getByText("12개월 전체 흐름 펼쳐보기", { exact: true }).evaluate(el => el.parentElement.open = true);
     const first = page.locator('[aria-label="12개월 흐름"] > li').first();
     await first.locator("details").evaluate(el => el.open = true);
     await first.evaluate(el => el.scrollIntoView({ block: "start" }));
@@ -107,6 +110,6 @@ try {
   await page.getByRole("button", { name: "손금 없이 계속 볼게요", exact: true }).waitFor();
   assert.equal(await page.locator("#premium-report").count(), 0);
   assert.deepEqual(errors, []); assert.deepEqual(unexpected, []);
-  fs.writeFileSync(`${evidence}/report-editions-browser.json`, JSON.stringify({ synthetic: true, restoredLegacyWithoutRequest: true, explicitUpgradeFailureRetry: true, canceledUpgradePreservesOriginal: true, bothSnapshotsSurviveReload: true, originalPeriod: legacy.annual.startLabel, currentPeriod: current.report.annual.startLabel, requests: requests.map(r => r.mode), errors, unexpected }, null, 2));
+  fs.writeFileSync(`${evidence}/report-editions-browser-${previousRevision}.json`, JSON.stringify({ synthetic: true, previousRevision, restoredLegacyWithoutRequest: true, explicitUpgradeFailureRetry: true, canceledUpgradePreservesOriginal: true, bothSnapshotsSurviveReload: true, originalPeriod: legacy.annual.startLabel, currentPeriod: current.report.annual.startLabel, requests: requests.map(r => r.mode), errors, unexpected }, null, 2));
   console.log("PASS old-period/old-edition exact restore, explicit upgrade failure/retry/cancel, both snapshots selectable across reload, other birth isolated, mobile/desktop narrative and reasons, no unrelated API calls");
 } finally { await browser.close(); }

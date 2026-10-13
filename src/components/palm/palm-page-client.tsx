@@ -195,6 +195,7 @@ export function PalmPageClient({
   const [previousBilateralReading, setPreviousBilateralReading] = useState<PalmBilateralReading | null>(null);
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
   const [tripleCompare, setTripleCompare] = useState<CompareItem[]>([]);
+  const [annualPalmConnectionsVisible, setAnnualPalmConnectionsVisible] = useState(false);
   const [verdict, setVerdict] = useState<ReportParagraph | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retakeAttempts, setRetakeAttempts] = useState(0);
@@ -974,7 +975,7 @@ export function PalmPageClient({
             ) : (
               <PalmReadingSections facts={palmFacts} />
             )}
-            {personalityInput?.personalityAnswers && <details className="mt-4 rounded-2xl border border-border p-4"><summary className="cursor-pointer">내 응답과 함께 보기</summary><TripleCompareSection items={tripleCompare} /></details>}
+            {(!annualPalmConnectionsVisible || personalityInput?.personalityAnswers) && <TripleCompareSection items={tripleCompare} withSelf={Boolean(personalityInput?.personalityAnswers)} />}
           </div>
 
           {verdict && <VerdictCard verdict={verdict} />}
@@ -1002,6 +1003,7 @@ export function PalmPageClient({
           leftPalmFacts={leftPalmFacts}
           rightPalmFacts={rightPalmFacts}
           dominantHand={dominantHand}
+          onPalmConnectionsVisibleChange={setAnnualPalmConnectionsVisible}
         />
       )}
 

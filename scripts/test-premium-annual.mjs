@@ -49,12 +49,16 @@ for (const [i, birth] of births.entries()) {
   assert.deepEqual(calculation, oldAnnual(facts, referenceDate), "new narrative must not alter annual scores, stages, dates, or precision");
   assert.deepEqual(report.periods.flatMap(p => p.months), report.annual.months.map(m => m.label));
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report }));
-  assert.doesNotMatch(html, /비겁|관성|인성|식상|재성|신강|태약|과제|가설|실험|비교 방향|2주|기록하세요|완료 기준/);
+  const readerBody = [report.summary, ...report.overall.paragraphs, ...report.domains.flatMap(d => d.paragraphs), ...report.periods.map(p => p.reading)].join(" ");
+  assert.doesNotMatch(readerBody, /비겁|관성|인성|식상|재성|신강|태약|과제|가설|실험|비교 방향|2주|기록하세요|완료 기준/);
+  // Exact calculation terms belong in expandable evidence, not in main prose.
+  assert.ok(html.includes("1년의 주요 구간"));
   assert.equal(html.split(report.note).length - 1, 1, "uncertainty notice in one place");
   assert.ok(!html.includes("<table"), "annual content cannot be just a stage table");
   for (const period of report.periods) assert.ok(html.includes(period.basis));
   for (const d of report.domains) {
-    assert.ok(html.indexOf(d.paragraphs[0]) < html.indexOf(d.tip));
+    if (d.tip) assert.ok(html.indexOf(d.paragraphs[0]) < html.indexOf(d.tip));
+    assert.ok(html.includes(d.paragraphs[0]));
     assert.ok(d.paragraphs.length >= 2 && d.opportunity && d.caution);
   }
   const copy = prose({ summary:report.summary, overall:report.overall, domains:report.domains, periods:report.periods }).join("\n");
@@ -69,8 +73,7 @@ for (const [i, birth] of births.entries()) {
   console.log(`PASS sample ${i+1}: narrative before optional tips, plain rationale, ${report.periods.length} explained periods cover 12 months, unchanged calculation, stable edition, no verbatim free overlap`);
 }
 assert.notDeepEqual(reports[0].domains, reports[1].domains);
-// Same monthly structure stays the same; don't fabricate distinctions between
-// two different births whose annual signals coincide.
-assert.deepEqual(reports[0].periods, reports[1].periods);
+// Same monthly signals can have a different natal context; verify the context is used.
+assert.notDeepEqual(reports[0].periods, reports[1].periods, "different natal composition and background must survive the monthly layer");
 assert.notDeepEqual(reports[1].periods, reports[2].periods);
 if (process.env.PREMIUM_SAMPLE_OUTPUT) fs.writeFileSync(process.env.PREMIUM_SAMPLE_OUTPUT, out.join("\n\n") + "\n");
