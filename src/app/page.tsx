@@ -38,12 +38,6 @@ export default function Home() {
           className={`${styles.hotspot} ${styles.management}`}
         />
 
-        <div className={styles.heroPromise}>
-          <span>사주로 타고난 나를 보고,</span>
-          <strong>양손으로 지금의 나를 보고,</strong>
-          <span>나와 이 사람까지 이어봅니다.</span>
-        </div>
-
         <Link
           href="/diagnosis?mode=free&focus=overall&start=free"
           aria-label="내 사주 무료로 보기"
