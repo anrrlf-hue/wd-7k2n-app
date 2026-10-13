@@ -8,6 +8,7 @@ import type { SajuFacts } from "@/lib/saju-facts";
 import { INTERPRETATION_SYSTEM_PROMPT, buildInterpretationUserPrompt } from "@/lib/interpretation-prompt";
 import { validateInterpretation, type Interpretation } from "@/lib/interpretation-schema";
 import { buildMockInterpretation } from "@/lib/interpretation-mock";
+import { isExternalInterpretationEnabled, externalInterpretationSkipReason } from "@/lib/external-interpretation-policy";
 
 export interface InterpretationResult {
   source: "llm" | "mock";
@@ -19,6 +20,7 @@ export interface InterpretationResult {
 const DEFAULT_TIMEOUT_MS = 9000;
 
 async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: number): Promise<unknown> {
+  if (!isExternalInterpretationEnabled()) return null;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
@@ -62,7 +64,7 @@ async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: n
 }
 
 /**
- * 딥 해석을 시도한다. 키 없음 / 네트워크 실패 / 타임아웃 / 스키마 검증 실패 /
+ * 명시적으로 활성화된 경우 딥 해석을 시도한다. 비활성 / 키 없음 / 네트워크 실패 / 타임아웃 / 스키마 검증 실패 /
  * 금지표현 검출 중 무엇이 일어나도 결정론적 mock으로 안전하게 떨어진다.
  */
 export async function getInterpretation(
@@ -77,7 +79,7 @@ export async function getInterpretation(
 
   try {
     raw = await callClaude(INTERPRETATION_SYSTEM_PROMPT, userPrompt, timeoutMs);
-    if (!raw) fallbackReason = "no-api-key";
+    if (!raw) fallbackReason = externalInterpretationSkipReason();
   } catch (err) {
     raw = null;
     fallbackReason = err instanceof Error ? err.message : String(err);

@@ -20,6 +20,7 @@ import { realityDomainForSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 import { buildSajuTimingOutlook } from "@/lib/saju-timing";
 import type { QuestionEnginePlan } from "@/lib/question-engine-v0";
 import { refersToReading, resolveCautionReference, referenceForCaution, REFERENCE_CLARIFICATION, type ReadingReference, type CautionExplanation } from "@/lib/reading-reference";
+import { isExternalInterpretationEnabled, externalInterpretationSkipReason } from "@/lib/external-interpretation-policy";
 
 const RealityAnswerDraftSchema = z.object({
   headline: z.string().min(10),
@@ -72,6 +73,7 @@ export type RealityAnswerEngineResult =
 const DEFAULT_TIMEOUT_MS = 9000;
 
 async function callClaude(systemPrompt: string, userPrompt: string, timeoutMs: number): Promise<unknown> {
+  if (!isExternalInterpretationEnabled()) return null;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
@@ -220,7 +222,7 @@ export async function getRealityAnswer(
       buildRealityAnswerUserPrompt(question, evidence, timingOutlook, options.questionPlan ?? null),
       options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     );
-    if (!raw) fallbackReason = "no-api-key";
+    if (!raw) fallbackReason = externalInterpretationSkipReason();
   } catch (error) {
     fallbackReason = error instanceof Error ? error.message : String(error);
     raw = null;
