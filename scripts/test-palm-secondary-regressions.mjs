@@ -277,8 +277,17 @@ const leftPalm = {
 };
 
 const bilateralReading = bilateral.buildPalmBilateralReading(leftPalm, rightPalm, "right");
-if (bilateralReading.items.some(item => !item.observation || !item.text)) throw new Error("separate observation and interpretation required");
-if (new Set(bilateralReading.items.map(item => item.text)).size !== bilateralReading.items.length) throw new Error("duplicate palm interpretation");
+if (bilateralReading.items.some(item => !item.observation)) throw new Error("every retained line must preserve its observation");
+if (!/두뇌선.*감정선/.test(bilateralReading.summary)) throw new Error("the observed head/heart combination needs one shared interpretation");
+if (!bilateralReading.items.find(item => item.title.startsWith("두뇌선"))?.text) throw new Error("the long head line must retain its additional interpretation");
+// The medium heart line is already read in the shared summary. The life line
+// keeps its observation without inventing health or lifespan claims to fill it.
+for (const name of ["감정선", "생명선"]) {
+  const item = bilateralReading.items.find(item => item.title.startsWith(name));
+  if (!item || item.text !== "") throw new Error(`${name} must remain observation-only for this fixture`);
+}
+const interpretations = bilateralReading.items.map(item => item.text).filter(Boolean);
+if (new Set(interpretations).size !== interpretations.length) throw new Error("duplicate palm interpretation");
 if (/유파마다|과거는 제외/.test(bilateralReading.note)) throw new Error("verbose note returned");
 
 const palmPageSource = fs.readFileSync(path.join(root, "src/components/palm/palm-page-client.tsx"), "utf8");
