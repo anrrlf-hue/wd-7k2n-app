@@ -4,12 +4,12 @@ import { CompanionHeading } from "@/components/brand-companion";
 import { Hand } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
-import { ServiceShareCard } from "@/components/service-share-card";
 import { AnalyticsView } from "@/components/analytics-view";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PalmEntryCard } from "@/components/diagnosis/palm-entry-card";
+import { PostReadingDetailFlow } from "@/components/palm/post-reading-detail-flow";
 import { ReportSection } from "@/components/diagnosis/report-section";
 import { MyeongsikSection } from "@/components/diagnosis/myeongsik-section";
 import { DaeunFlowSection } from "@/components/diagnosis/daeun-flow-section";
@@ -177,6 +177,7 @@ export function ResultStep({
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
+  const [skipPalm, setSkipPalm] = useState(false);
 
   async function handleShare() {
     if (!cardRef.current) return;
@@ -283,9 +284,11 @@ export function ResultStep({
 
       <DaeunFlowSection view={myeongsik} />
       <MyeongsikSection view={myeongsik} />
-      <ServiceShareCard />
 
-      <section className="mt-8 rounded-3xl border border-(--gold-soft) bg-card p-5">
+      {skipPalm ? <>
+        <PostReadingDetailFlow birthInput={diagnosis.birthInput} personalityInput={personalityInput} />
+        <button type="button" onClick={() => setSkipPalm(false)} className="mt-4 min-h-10 w-full text-sm text-muted-foreground underline">손금도 추가하기</button>
+      </> : <section className="mt-8 rounded-3xl border border-(--gold-soft) bg-card p-5">
         <div className="flex items-center gap-2 text-(--gold)">
           <Hand className="size-4" />
           <p className="section-eyebrow">다음은 손금으로 이어봅니다</p>
@@ -294,12 +297,13 @@ export function ResultStep({
           사주 전체를 봤다면<br />양손에서 지금의 모습도 확인해보세요
         </h2>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          손금은 선택사항입니다. 손금까지 본 뒤 연애·관계, 일·직업·사업, 돈·재물, 생활·건강 중 궁금한 분야를 골라 더 자세히 볼 수 있습니다.
+          손금은 선택사항입니다. 양손을 함께 보거나, 사주만으로 통합 연간 리포트와 공유로 이어갈 수 있습니다.
         </p>
         <div className="mt-4">
           <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} focus="overall" />
+          <Button variant="outline" onClick={() => setSkipPalm(true)} className="mt-3 min-h-12 w-full rounded-full">손금 없이 결과 마무리하기</Button>
         </div>
-      </section>
+      </section>}
     </div>
   );
 }

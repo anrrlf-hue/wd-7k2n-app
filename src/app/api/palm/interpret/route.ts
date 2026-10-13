@@ -10,7 +10,7 @@ import { buildFortuneCandidates, selectPrimaryCandidate } from "@/lib/fortune-ca
 import { buildTripleCompare } from "@/lib/triple-compare";
 import { buildLifetimeStory, buildComprehensiveVerdict } from "@/lib/real-world-personalization";
 import { classifyWealthType } from "@/lib/wealth-type";
-import { buildPalmBilateralReading, buildPalmFutureTimeline, type DominantHand } from "@/lib/palm-bilateral";
+import { buildPalmBilateralReading, type DominantHand } from "@/lib/palm-bilateral";
 
 // 손금 이미지 자체는 서버로 오지 않는다 — 클라이언트에서 MediaPipe/ONNX로
 // 이미 분석해 만든 PalmFacts(구조화 JSON)만 받는다. palmFacts가 없으면
@@ -179,10 +179,6 @@ export async function POST(request: Request) {
       bilateralReady && leftPalmFacts && rightPalmFacts
         ? buildPalmBilateralReading(leftPalmFacts, rightPalmFacts, dominantHand)
         : null;
-    const futurePalmTimeline =
-      bilateralReady && leftPalmFacts && rightPalmFacts
-        ? buildPalmFutureTimeline(deepFacts, leftPalmFacts, rightPalmFacts)
-        : null;
 
     return NextResponse.json({
       usable: true,
@@ -192,7 +188,6 @@ export async function POST(request: Request) {
       rightPalmFacts,
       dominantHand,
       bilateralReading,
-      futurePalmTimeline,
       freeReport: { source: "mock", report: freeReport },
       fortuneCandidates,
       tripleCompare,

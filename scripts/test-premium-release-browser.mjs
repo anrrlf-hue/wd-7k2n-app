@@ -1,64 +1,157 @@
-import "./register-test-typescript.mjs";
+// Local browser integration: actual deterministic API responses + controlled
+// slow streams. Recognition is not exercised here. No external/model calls.
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import http from "node:http";
 import { createRequire } from "node:module";
-const require = createRequire(import.meta.url);
-const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright-core");
-const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
-const { buildFreeSajuReport } = await import("../src/lib/free-report-mock.ts");
-const { buildFocusedSajuReport } = await import("../src/lib/free-saju-focus-report.ts");
-const BASE = process.env.TEST_BASE_URL || "http://localhost:3000";
-assert.ok(/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE) || (process.env.ALLOW_PUBLIC_SMOKE === "1" && BASE === "https://saju-app-rouge.vercel.app"));
-const birth = { year: 1988, month: 12, day: 2, hour: 6, minute: 15, gender: "여" };
-const facts = computeSajuFacts(birth);
-const free = buildFreeSajuReport(facts, { mbti: null, check: null });
-const evidence = process.env.TEST_EVIDENCE_DIR || "/tmp/wd-7k2n-evidence";
+import { birthFixture } from "./fixtures/palm-analysis.mjs";
+const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || "playwright-core");
+const BASE = process.env.TEST_BASE_URL || "http://127.0.0.1:3027";
+assert.match(BASE, /^http:\/\/(localhost|127\.0\.0\.1):\d+$/);
+const evidence = process.env.TEST_EVIDENCE_DIR || "/tmp/saju-report-polish";
 fs.mkdirSync(evidence, { recursive: true });
+async function api(path, body) {
+  const response = await fetch(BASE + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  assert.equal(response.status, 200);
+  return response.json();
+}
+const free = await api("/api/palm/interpret", { ...birthFixture, palmFacts: null });
+const premium = await api("/api/premium-report", birthFixture);
+let mode = "normal", number = 0;
+const requests = [], disconnected = [], delayed = [];
+const server = http.createServer(async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "content-type");
+  if (req.method === "OPTIONS") return res.end();
+  const chunks = []; for await (const chunk of req) chunks.push(chunk);
+  const request = { id: ++number, mode, body: JSON.parse(Buffer.concat(chunks).toString()) };
+  requests.push(request);
+  res.on("close", () => { if (!res.writableEnded) disconnected.push(request.id); });
+  const response = { report: { ...premium.report, summary: request.mode === "delayed" ? `${premium.report.summary} 검증 응답 ${request.id}` : premium.report.summary } };
+  if (mode === "hang") return;
+  if (mode === "body-hang") { res.writeHead(200, { "content-type": "application/json" }); res.write('{"report":'); return; }
+  if (mode === "delayed") { delayed.push(() => res.end(JSON.stringify(response))); return; }
+  if (mode === "invalid") return res.end("broken JSON");
+  if (mode === "invalid-shape") return res.end(JSON.stringify({ report: { ...premium.report, annual: null } }));
+  res.setHeader("content-type", "application/json"); res.end(JSON.stringify(response));
+});
+await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+const stubUrl = `http://127.0.0.1:${server.address().port}/premium`;
 const browser = await chromium.launch({ executablePath: "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
-const errors = [];
-const premiumResponses = [];
-try {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+const errors = [], unexpected = [];
+const url = BASE + "/diagnosis/palm?" + new URLSearchParams(birthFixture);
+async function open({ blockedStorage = false, width = 390 } = {}) {
+  const context = await browser.newContext({ viewport: { width, height: 844 } });
   await context.route("**/*", route => {
-    const url = new URL(route.request().url());
-    if (url.origin !== BASE) return route.abort();
-    if (url.pathname === "/api/analytics") return route.fulfill({ status: 204, body: "" });
-    if (url.pathname === "/api/palm/interpret") return route.fulfill({ json: { usable: true, palmSkipped: true, freeReport: { report: free }, tripleCompare: [] } });
-    if (url.pathname === "/api/saju") return route.fulfill({ json: { focusedReport: buildFocusedSajuReport(facts, free, "work") } });
-    if (url.pathname.startsWith("/api/") && url.pathname !== "/api/premium-report") return route.abort();
+    const u = new URL(route.request().url());
+    if (u.origin === new URL(stubUrl).origin) return route.continue();
+    if (u.origin !== BASE) return route.abort();
+    if (u.pathname === "/api/palm/interpret") return route.fulfill({ json: free });
+    if (u.pathname.startsWith("/api/")) { unexpected.push(u.pathname); return route.abort(); }
     return route.continue();
   });
-  const page = await context.newPage();
-  page.setDefaultTimeout(20000);
-  page.on("pageerror", error => errors.push(error.message));
-  page.on("response", response => { if (new URL(response.url()).pathname === "/api/premium-report") premiumResponses.push(response.status()); });
-  await page.goto(BASE + "/diagnosis/palm?" + new URLSearchParams(birth), { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "손금 없이 세부 분야로 넘어갈게요", exact: true }).click();
-  await page.getByRole("button").filter({ hasText: "일·직업·사업" }).click();
-  await page.getByRole("heading", { name: "이 분야만 따로 깊게 보면", exact: true }).waitFor();
-  await page.getByRole("button", { name: "프리미엄 보기", exact: true }).click();
-  await page.getByRole("heading", { name: "프리미엄 1년 리포트", exact: true }).waitFor();
-  const basis = page.getByRole("heading", { name: "일·직업·사업 · 이 행동을 고른 근거", exact: true });
-  await basis.waitFor();
-  assert.match(await basis.locator("..").innerText(), /식상 2개.*관성 0개/);
-  assert.equal(await page.locator("table tbody tr").count(), 12);
-  assert.equal(await page.locator("table tbody tr").first().locator("td").count(), 4);
-  const flow = page.getByRole("heading", { name: "일·직업·사업 · 연간 실행 흐름", exact: true }).locator("..");
-  assert.equal(await flow.locator("h4").count(), 3);
-  assert.equal(await flow.getByText("시안 하나를 이용자 한 명에게 보여주고 수정점 두 가지를 받는 단계를 배치해보세요.", { exact: true }).count(), 1);
-  assert.equal(await page.getByText("무료 성향 요약 다시 보기", { exact: true }).locator("..").getAttribute("open"), null);
-  assert.equal(await page.locator("input").count(), 0, "no payment/auth/follow-up input required");
-  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-  await basis.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: evidence + "/premium-priority-release.png" });
-  await flow.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: evidence + "/premium-annual-release.png" });
-  await flow.getByRole("link", { name: "2주 실험·점검 기준·계획을 바꿀 조건 함께 보기", exact: true }).click();
-  assert.equal(new URL(page.url()).hash, "#premium-domain-work");
-  assert.equal(await page.locator("#premium-domain-work").getAttribute("open"), "");
-  assert.match(await page.locator("#premium-domain-work").innerText(), /역할 합의로 바꾸세요/);
-  assert.deepEqual(premiumResponses, [200]);
-  assert.deepEqual(errors, []);
-  fs.writeFileSync(evidence + "/premium-release-browser.json", JSON.stringify({ base: BASE, premiumResponses, errors, scope: "synthetic birth; palm skip and free detail stubs; real deterministic premium API; camera skipped; analytics blocked" }, null, 2));
-  console.log("PASS real premium API + mobile report: rationale, 12 x 4, 3 grouped actions, recap collapsed, checkpoint link, no payment or follow-up; camera skipped");
-} finally { await browser.close(); }
+  await context.addInitScript(({ stubUrl, blockedStorage }) => {
+    const original = window.fetch;
+    window.fetch = (input, init) => original(input === "/api/premium-report" ? stubUrl : input, init);
+    if (blockedStorage) {
+      for (const key of ["getItem", "setItem"]) Object.defineProperty(Storage.prototype, key, { value: () => { throw new DOMException("blocked", "SecurityError"); } });
+    }
+  }, { stubUrl, blockedStorage });
+  const page = await context.newPage(); page.setDefaultTimeout(15000);
+  page.on("pageerror", e => errors.push(e.message));
+  await page.goto(url);
+  assert.equal(await page.getByRole("region", { name: "무료 사주 링크 공유" }).count(), 0);
+  await page.getByRole("button", { name: "손금 없이 계속 볼게요", exact: true }).click();
+  await page.getByRole("button", { name: "프리미엄 보기", exact: true }).waitFor();
+  return { context, page };
+}
+async function start(s) { await s.page.getByRole("button", { name: "프리미엄 보기", exact: true }).click(); }
+async function result(s) { await s.page.getByRole("heading", { name: "프리미엄 통합 연간 리포트", exact: true }).waitFor(); }
+try {
+  for (const width of [390, 1440]) {
+    mode = "normal"; const s = await open({ width }); await start(s); await result(s);
+    const p = s.page;
+    assert.equal(await p.locator("table tbody tr").count(), 12);
+    assert.equal(await p.locator("#premium-report input").count(), 0);
+    const body = await p.locator("body").innerText();
+    assert.doesNotMatch(body, /2주|분야 선택|유파마다|과거는 제외/);
+    assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    const shareAfter = await p.evaluate(() => !!(document.querySelector('#premium-report').compareDocumentPosition(document.querySelector('[aria-label="무료 사주 링크 공유"]')) & Node.DOCUMENT_POSITION_FOLLOWING));
+    assert.equal(shareAfter, true);
+    await p.locator("#premium-report").scrollIntoViewIfNeeded();
+    await p.screenshot({ path: `${evidence}/premium-integrated-${width}.png`, fullPage: true });
+    for (const [section, name] of [["#premium-report h2", "overview"], ["#premium-domain-money", "money"], ["#premium-annual", "annual"]]) {
+      await p.locator(section).evaluate(el => el.scrollIntoView({ block: "start" }));
+      await p.screenshot({ path: `${evidence}/premium-${name}-${width}.png` });
+    }
+    const count = requests.length;
+    await p.getByRole("button", { name: "프리미엄 접기", exact: true }).click();
+    await p.getByRole("button", { name: "프리미엄 다시 보기", exact: true }).click(); await result(s);
+    await p.reload(); await result(s);
+    assert.equal(requests.length, count, "reopen/reload must not regenerate same input and month");
+    // A different person's input must not restore the previous report.
+    await p.goto(BASE + "/diagnosis/palm?" + new URLSearchParams({ ...birthFixture, day: 16 }));
+    await p.getByRole("button", { name: "손금 없이 계속 볼게요", exact: true }).click();
+    assert.equal(await p.locator("#premium-report").count(), 0);
+    await s.context.close();
+  }
+  console.log("PASS integrated desktop/mobile: all fields + 12 months, share after result, no selection/payment, reopen/reload without requests, other birth isolated");
+
+  mode = "delayed"; let s = await open(); await start(s);
+  await s.page.getByRole("status").filter({ hasText: "응답을 기다리고" }).waitFor();
+  assert.equal(await s.page.getByRole("region", { name: "무료 사주 링크 공유" }).count(), 0);
+  const stale = requests.at(-1).id;
+  await s.page.getByRole("button", { name: "리포트 요청 취소", exact: true }).click();
+  mode = "normal"; await start(s); await result(s);
+  delayed.splice(0).forEach(send => send());
+  assert.ok(!(await s.page.locator("#premium-report").innerText()).includes(`검증 응답 ${stale}`));
+  assert.deepEqual(requests.at(-1).body, requests.at(-2).body);
+  await s.context.close();
+  console.log("PASS premium cancel/retry: identical input, stale response excluded");
+
+  for (mode of ["hang", "body-hang"]) {
+    s = await open(); await s.page.clock.install(); await start(s);
+    await s.page.getByRole("status").filter({ hasText: mode === "hang" ? "응답을 기다리고" : "리포트 본문" }).waitFor();
+    const id = requests.at(-1).id;
+    await s.page.clock.fastForward(31_000);
+    await s.page.getByRole("alert").filter({ hasText: "30초" }).waitFor();
+    await s.page.waitForTimeout(100);
+    assert.ok(disconnected.includes(id));
+    const input = requests.at(-1).body;
+    mode = "normal"; await start(s); await result(s);
+    assert.deepEqual(requests.at(-1).body, input);
+    await s.context.close();
+  }
+  console.log("PASS premium header/body deadlines + stream abort + input preserved (virtual clock)");
+
+  mode = "body-hang"; s = await open(); await start(s);
+  await s.page.getByRole("status").filter({ hasText: "리포트 본문" }).waitFor();
+  const leaving = requests.at(-1).id;
+  await s.page.getByRole("link", { name: "개인정보처리방침", exact: true }).click();
+  await s.page.waitForURL(BASE + "/privacy");
+  await s.page.waitForTimeout(100);
+  assert.ok(disconnected.includes(leaving));
+  assert.equal(await s.page.evaluate(() => sessionStorage.getItem("saju-app:integrated-premium:v1")), null);
+  await s.page.goBack();
+  mode = "normal"; await start(s); await result(s);
+  await s.context.close();
+  console.log("PASS premium navigation abort, no stale cache, back retry");
+
+  mode = "body-hang"; s = await open(); await start(s);
+  await s.page.getByRole("status").filter({ hasText: "리포트 본문" }).waitFor();
+  await s.page.evaluate(() => { dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true })); dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })); });
+  await s.page.getByRole("alert").filter({ hasText: "화면을 떠나" }).waitFor();
+  mode = "normal"; await start(s); await result(s); await s.context.close();
+  console.log("PASS premium pagehide/pageshow recovery (simulated BFCache)");
+
+  mode = "invalid-shape"; s = await open(); await start(s);
+  await s.page.getByRole("alert").filter({ hasText: "리포트 내용을 확인하지 못했어요" }).waitFor();
+  mode = "normal"; await start(s); await result(s); await s.context.close();
+  console.log("PASS incomplete report rejected before render/cache, input retained for retry");
+
+  mode = "invalid"; s = await open({ blockedStorage: true }); await start(s);
+  await s.page.getByRole("alert").filter({ hasText: "리포트 본문을 읽지 못했어요" }).waitFor();
+  mode = "normal"; await start(s); await result(s); await s.context.close();
+  console.log("PASS malformed response retry and unavailable browser storage");
+  assert.deepEqual(errors, []); assert.deepEqual(unexpected, [], "analytics must remain off; no other API calls");
+  fs.writeFileSync(evidence + "/premium-integrated-browser.json", JSON.stringify({ fixture: true, cases: 10, requests: requests.map(({id, mode}) => ({id, mode})), disconnected, errors, unexpected }, null, 2));
+} finally { await browser.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

@@ -108,6 +108,16 @@ try {
   console.log("PASS right -> left -> combined real API response; only facts sent");
   await s.context.close();
 
+  s = await open();
+  await hand(s);
+  await s.page.getByText("이제 왼손을 찍어주세요", { exact: true }).waitFor();
+  await s.page.reload();
+  await s.page.getByText("이제 왼손을 찍어주세요", { exact: true }).waitFor();
+  await hand(s); await result(s);
+  assert.equal(await s.page.evaluate(() => window.__palmTest.analyses), 1, "only left hand needs analysis after refresh");
+  await s.context.close();
+  console.log("PASS first completed hand survives reload; continue with left hand without recapturing right");
+
   // Full production deadline (30s), without a test-only timeout override.
   for (mode of (process.env.TEST_SKIP_DEADLINES ? [] : ["hang", "body-hang"])) {
     s = await open();
@@ -194,8 +204,15 @@ try {
   await s.page.waitForTimeout(100);
   assert.ok(disconnected.includes(leavingId));
   const saved = await s.page.evaluate(() => Object.entries(sessionStorage).filter(([key]) => key.endsWith(":palm")));
-  assert.equal(saved.length, 0);
-  console.log("PASS SPA navigation aborts stream, stale result cannot persist");
+  assert.equal(saved.length, 1);
+  assert.equal(JSON.parse(saved[0][1]).stage, "error");
+  assert.ok(!saved[0][1].includes("data:image"));
+  mode = "normal";
+  await s.page.goBack();
+  await s.page.getByRole("button", { name: "촬영 유지하고 리포트 다시 받기" }).click();
+  await result(s);
+  assert.equal(await s.page.evaluate(() => window.__palmTest.analyses), 2);
+  console.log("PASS SPA navigation aborts stream, only completed facts persist, back + retry without recapture");
   await s.context.close();
 
   mode = "body-hang"; s = await open(); await twoHands(s);

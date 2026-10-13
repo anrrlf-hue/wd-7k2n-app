@@ -277,49 +277,9 @@ const leftPalm = {
 };
 
 const bilateralReading = bilateral.buildPalmBilateralReading(leftPalm, rightPalm, "right");
-if (!/왼손.*타고난|타고난.*왼손/.test(bilateralReading.summary) || !/오른손.*현재|현재.*오른손/.test(bilateralReading.summary)) {
-  throw new Error("bilateral reading must interpret non-dominant hand first and dominant hand as current");
-}
-if (bilateralReading.items.length !== 4) {
-  throw new Error("bilateral palm story should stay concise with four narrative sections");
-}
-if (!bilateralReading.items.some((item) => /타고난 나/.test(item.title))) {
-  throw new Error("innate-hand story missing");
-}
-if (!bilateralReading.items.some((item) => /지금의 나/.test(item.title))) {
-  throw new Error("current-hand story missing");
-}
-const careerItem = bilateralReading.items.find((item) => /직업 예시/.test(item.title));
-if (!careerItem || !/(회계사|세무사|기획|사업개발|영업|프로젝트|마케팅|운영)/.test(careerItem.text)) {
-  throw new Error("career-fit reading lacks concrete but non-deterministic job examples");
-}
-
-const fakeSajuFacts = {
-  currentAge: 44,
-  daeunList: [
-    { ageRange: "41~50", ganzhi: "甲子", stemTenGod: "편재", branchTenGod: "식신", isCurrent: true },
-    { ageRange: "51~60", ganzhi: "乙丑", stemTenGod: "정관", branchTenGod: "정인", isCurrent: false },
-    { ageRange: "61~70", ganzhi: "丙寅", stemTenGod: "상관", branchTenGod: "편재", isCurrent: false },
-  ],
-};
-const timeline = bilateral.buildPalmFutureTimeline(fakeSajuFacts, leftPalm, rightPalm);
-if (timeline.windows.length !== 4) throw new Error("future palm timeline must expose four broad windows");
-if (timeline.windows.some((window) => window.startAge <= fakeSajuFacts.currentAge)) {
-  throw new Error("future palm timeline leaked past/current age");
-}
-if (timeline.windows[0].ageLabel !== "45~49세") {
-  throw new Error(`future palm timeline did not anchor to actual current age: ${timeline.windows[0].ageLabel}`);
-}
-if (!timeline.windows.some((window) => window.sajuReading)) {
-  throw new Error("future palm timeline did not combine Saju daeun context");
-}
-const futureText = timeline.windows.map((window) => window.combined).join(" ");
-if (/반드시|확정|무조건|정확히 \d+세/.test(futureText)) {
-  throw new Error("future palm timeline overclaimed exact future events");
-}
-if (!/과거는 제외/.test(timeline.note)) {
-  throw new Error("future palm timeline must explicitly exclude past readings");
-}
+if (bilateralReading.items.some(item => !item.observation || !item.text)) throw new Error("separate observation and interpretation required");
+if (new Set(bilateralReading.items.map(item => item.text)).size !== bilateralReading.items.length) throw new Error("duplicate palm interpretation");
+if (/유파마다|과거는 제외/.test(bilateralReading.note)) throw new Error("verbose note returned");
 
 const palmPageSource = fs.readFileSync(path.join(root, "src/components/palm/palm-page-client.tsx"), "utf8");
 for (const required of [
@@ -329,9 +289,8 @@ for (const required of [
   'leftPalmFacts',
   'rightPalmFacts',
   'PalmBilateralSection',
-  'PalmFutureTimelineSection',
-  '타고난 성향 참고손',
-  '현재 모습 참고손',
+  '비교하는 손',
+  '주로 쓰는 손',
 ]) {
   if (!palmPageSource.includes(required)) throw new Error(`dual-palm UI missing: ${required}`);
 }
@@ -340,7 +299,7 @@ if ((palmPageSource.match(/<PalmReadingSections/g) ?? []).length > 1) {
 }
 
 const routeSource = fs.readFileSync(path.join(root, "src/app/api/palm/interpret/route.ts"), "utf8");
-for (const required of ["leftPalmFacts", "rightPalmFacts", "dominantHand", "bilateralReading", "futurePalmTimeline"]) {
+for (const required of ["leftPalmFacts", "rightPalmFacts", "dominantHand", "bilateralReading"]) {
   if (!routeSource.includes(required)) throw new Error(`dual-palm API missing: ${required}`);
 }
 const detectionSource = fs.readFileSync(path.join(root, "src/lib/palm-detection.ts"), "utf8");
@@ -348,5 +307,5 @@ if (!detectionSource.includes("handSpanRatio < 0.62") || !detectionSource.includ
   throw new Error("detailed palm framing guard is missing");
 }
 
-console.log("PASS dual-palm capture + bilateral comparison + future-only age timeline + API + detailed framing guard");
+console.log("PASS dual-palm capture + bilateral comparison + observed features without fabricated age windows + API + detailed framing guard");
 hooks.deregister?.();
