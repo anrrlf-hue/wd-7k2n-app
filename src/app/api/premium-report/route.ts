@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { computeSajuFacts } from "@/lib/saju-facts";
 import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
-import { buildFreeSajuReport } from "@/lib/free-report-mock";
 import { buildPremiumReport } from "@/lib/premium-report";
-import type { PalmFacts } from "@/lib/palm-facts";
 import { SAJU_FOCUS_VALUES } from "@/lib/saju-focus";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 
@@ -31,19 +29,7 @@ export async function POST(request: Request) {
   try {
     const shallow = computeSajuFacts(parsed.data);
     const facts = parsed.data.hour === null ? shallow : enrichSajuFacts(shallow, parsed.data);
-    const freeReport = buildFreeSajuReport(facts, {
-      mbti: parsed.data.mbti ?? null,
-      check: null,
-    });
-
-    const report = buildPremiumReport({
-      facts,
-      freeReport,
-      focus: parsed.data.focus,
-      leftPalm: (parsed.data.leftPalmFacts as PalmFacts | null | undefined) ?? null,
-      rightPalm: (parsed.data.rightPalmFacts as PalmFacts | null | undefined) ?? null,
-      dominantHand: parsed.data.dominantHand ?? null,
-    });
+    const report = buildPremiumReport({ facts });
 
     return NextResponse.json({ report });
   } catch (error) {

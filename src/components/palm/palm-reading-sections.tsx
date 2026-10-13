@@ -2,7 +2,7 @@ import { ReportSection } from "@/components/diagnosis/report-section";
 import { buildPalmReadingSections, buildTraditionalReadingText } from "@/lib/palm-observation-text";
 import type { PalmFacts } from "@/lib/palm-facts";
 import type { CompareItem } from "@/lib/triple-compare";
-import type { PalmBilateralReading, PalmFutureTimeline } from "@/lib/palm-bilateral";
+import type { PalmBilateralReading } from "@/lib/palm-bilateral";
 
 export function PalmReadingSections({ facts, title = "손금에서 보이는 나의 모습", step = "2" }: { facts: PalmFacts; title?: string; step?: string }) {
   const sections = buildPalmReadingSections(facts.onnxLines, facts.secondaryLines, {
@@ -54,41 +54,19 @@ export function PalmReadingSections({ facts, title = "손금에서 보이는 나
 export function PalmBilateralSection({ reading }: { reading: PalmBilateralReading | null }) {
   if (!reading) return null;
   return (
-    <ReportSection title="타고난 나에서 지금의 나까지">
+    <ReportSection title="양손에서 보이는 특징과 해석">
       <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
         <p className="text-base leading-7 text-foreground">{reading.summary}</p>
         <div className="mt-4 space-y-3">
           {reading.items.map((item) => (
             <div key={item.title} className="rounded-xl bg-accent p-4">
               <h3 className="text-sm font-semibold text-(--gold)">{item.title}</h3>
-              <p className="mt-1 text-base leading-7 text-muted-foreground">{item.text}</p>
+              {item.observation && <p className="mt-2 text-sm leading-6 text-(--gold)"><strong>사진에서 보이는 특징: </strong>{item.observation}</p>}
+              <p className="mt-2 text-base leading-7 text-muted-foreground"><strong>전통 해석: </strong>{item.text}</p>
             </div>
           ))}
         </div>
         <p className="mt-4 text-xs leading-5 text-muted-foreground">{reading.note}</p>
-      </div>
-    </ReportSection>
-  );
-}
-
-export function PalmFutureTimelineSection({ timeline }: { timeline: PalmFutureTimeline | null }) {
-  if (!timeline) return null;
-  return (
-    <ReportSection title="앞으로 눈여겨볼 흐름">
-      <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
-        <p className="text-sm leading-6 text-muted-foreground">
-          현재 만 {timeline.currentAge}세 이후만 봅니다.
-        </p>
-        <div className="mt-4 space-y-4">
-          {timeline.windows.map((window) => (
-            <div key={window.ageLabel} className="rounded-xl bg-accent p-4">
-              <p className="text-xs font-semibold text-(--gold)">{window.ageLabel}</p>
-              <h3 className="mt-1 text-base font-semibold text-foreground">{window.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{window.combined}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 text-xs leading-5 text-muted-foreground">{timeline.note}</p>
       </div>
     </ReportSection>
   );

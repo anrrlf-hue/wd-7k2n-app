@@ -16,15 +16,14 @@ import {
   preloadHandLandmarker,
 } from "@/lib/palm-detection";
 import { isPalmFactsUsable, describePalmFailureReasons, type PalmFacts } from "@/lib/palm-facts";
-import { PalmReadingSections, PalmBilateralSection, PalmFutureTimelineSection, TripleCompareSection } from "@/components/palm/palm-reading-sections";
+import { PalmReadingSections, PalmBilateralSection, TripleCompareSection } from "@/components/palm/palm-reading-sections";
 import { PostReadingDetailFlow } from "@/components/palm/post-reading-detail-flow";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
-import type { WealthTypeResult } from "@/lib/wealth-type";
 import type { SajuFocus } from "@/lib/saju-focus";
 import { track } from "@/lib/analytics";
-import type { DominantHand, PalmBilateralReading, PalmFutureTimeline } from "@/lib/palm-bilateral";
+import { buildPalmBilateralReading, isStoredPalmReading, PALM_READING_VERSION, type DominantHand, type PalmBilateralReading } from "@/lib/palm-bilateral";
 
 import { PalmTaskSlot, requestPalmReport, runWithDeadline } from "@/lib/palm-analysis-task";
 import { PalmWorkerClient } from "@/lib/palm-worker-client";
@@ -47,11 +46,9 @@ interface PalmReportResponse {
   hand?: "left" | "right" | "primary";
   warnings?: string[];
   bilateralReading?: PalmBilateralReading;
-  futurePalmTimeline?: PalmFutureTimeline;
   freeReport?: { report: FreeSajuReport };
   tripleCompare?: CompareItem[];
   verdict?: ReportParagraph;
-  wealthType?: WealthTypeResult;
 }
 
 type Stage = "upload" | "detecting" | "retake" | "loading" | "result" | "saju_only" | "error";
@@ -81,20 +78,19 @@ function readSessionJson<T>(key: string): T | null {
 }
 
 interface PalmResumeState {
-  stage: "result" | "saju_only";
+  stage: "result" | "saju_only" | "upload" | "error";
+  personalityKey?: string;
+  captureHand?: DominantHand;
+  retryReport?: { primary: PalmFacts | null; left: PalmFacts | null; right: PalmFacts | null } | null;
   palmFacts: PalmFacts | null;
   leftPalmFacts?: PalmFacts | null;
   rightPalmFacts?: PalmFacts | null;
   dominantHand?: DominantHand;
   bilateralReading?: PalmBilateralReading | null;
-  futurePalmTimeline?: PalmFutureTimeline | null;
+  previousBilateralReading?: PalmBilateralReading | null;
   finalReport: FreeSajuReport | null;
   tripleCompare: CompareItem[];
   verdict: ReportParagraph | null;
-  wealthType: WealthTypeResult | null;
-  funnelActive: boolean;
-  readingOpen: boolean;
-  chapter: 2 | 3 | 4 | 5;
 }
 
 const HAND_SHAPE_KO: Record<PalmFacts["handShape"], string> = {
@@ -184,6 +180,8 @@ export function PalmPageClient({
   initialQuestion?: string | null;
 }) {
   const resumeKey = realityJourneyKey(birthInput, focus);
+  const personalityKey = personalityInput?.mbti || personalityInput?.personalityAnswers
+    ? JSON.stringify({ mbti: personalityInput.mbti ?? null, personalityAnswers: personalityInput.personalityAnswers ?? null }) : "null";
   const [stage, setStage] = useState<Stage>("upload");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [rightPreviewUrl, setRightPreviewUrl] = useState<string | null>(null);
@@ -194,16 +192,12 @@ export function PalmPageClient({
   const [leftPalmFacts, setLeftPalmFacts] = useState<PalmFacts | null>(null);
   const [palmFacts, setPalmFacts] = useState<PalmFacts | null>(null);
   const [bilateralReading, setBilateralReading] = useState<PalmBilateralReading | null>(null);
-  const [futurePalmTimeline, setFuturePalmTimeline] = useState<PalmFutureTimeline | null>(null);
+  const [previousBilateralReading, setPreviousBilateralReading] = useState<PalmBilateralReading | null>(null);
   const [finalReport, setFinalReport] = useState<FreeSajuReport | null>(null);
   const [tripleCompare, setTripleCompare] = useState<CompareItem[]>([]);
   const [verdict, setVerdict] = useState<ReportParagraph | null>(null);
-  const [wealthType, setWealthType] = useState<WealthTypeResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retakeAttempts, setRetakeAttempts] = useState(0);
-  const [funnelActive, setFunnelActive] = useState(false);
-  const [readingOpen, setReadingOpen] = useState(true);
-  const [chapter, setChapter] = useState<2 | 3 | 4 | 5>(2);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraMessage, setCameraMessage] = useState("손바닥 전체를 화면 안에 맞춰주세요.");
@@ -217,6 +211,7 @@ export function PalmPageClient({
   const runNumber = useRef(0);
   const capturedCanvas = useRef<{ canvas: HTMLCanvasElement; preview: string } | null>(null);
   const retryReport = useRef<{ primary: PalmFacts | null; left: PalmFacts | null; right: PalmFacts | null } | null>(null);
+  const restoredKey = useRef<string | null>(null);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -231,30 +226,38 @@ export function PalmPageClient({
     if (!resumeKey) return;
 
     const saved = readSessionJson<PalmResumeState>(`${resumeKey}:palm`);
-    if (!saved) return;
-
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
+      restoredKey.current = resumeKey;
+      if (!saved || !["result", "saju_only", "upload", "error"].includes(saved.stage)) return;
       setStage(saved.stage);
+      setCaptureHand(saved.captureHand ?? (saved.rightPalmFacts ? "left" : "right"));
+      retryReport.current = saved.retryReport ?? null;
+      if (saved.stage === "error") {
+        setRetryMode(saved.retryReport ? "report" : null);
+        setErrorMsg("완료된 손 분석을 불러왔어요. 사진 원본은 저장하지 않으며, 리포트 요청을 다시 할 수 있습니다.");
+      }
+      if ((saved.personalityKey ?? "null") !== personalityKey && saved.stage !== "upload") {
+        retryReport.current = { primary: saved.stage === "saju_only" ? null : saved.palmFacts, left: saved.stage === "saju_only" ? null : saved.leftPalmFacts ?? null, right: saved.stage === "saju_only" ? null : saved.rightPalmFacts ?? null };
+        setStage("error");
+        setRetryMode("report");
+        setErrorMsg("입력한 성향 정보가 달라졌어요. 촬영 정보는 유지하고 현재 입력으로 리포트를 다시 받아주세요.");
+      }
       setPalmFacts(saved.palmFacts);
       setLeftPalmFacts(saved.leftPalmFacts ?? null);
       setRightPalmFacts(saved.rightPalmFacts ?? null);
       setDominantHand(saved.dominantHand ?? null);
-      setBilateralReading(saved.bilateralReading ?? null);
-      setFuturePalmTimeline(saved.futurePalmTimeline ?? null);
+      setBilateralReading(isStoredPalmReading(saved.bilateralReading) ? saved.bilateralReading : null);
+      setPreviousBilateralReading(isStoredPalmReading(saved.previousBilateralReading) ? saved.previousBilateralReading : null);
       setFinalReport(saved.finalReport ?? null);
       setTripleCompare(saved.tripleCompare ?? []);
       setVerdict(saved.verdict ?? null);
-      setWealthType(saved.wealthType ?? null);
-      setFunnelActive(Boolean(saved.funnelActive));
-      setReadingOpen(saved.readingOpen ?? true);
-      setChapter(saved.chapter ?? 3);
     });
     return () => {
       cancelled = true;
     };
-  }, [resumeKey]);
+  }, [resumeKey, personalityKey]);
 
   useEffect(() => {
     if (stage !== "detecting" && stage !== "loading") return;
@@ -354,40 +357,39 @@ export function PalmPageClient({
   }, []);
 
   useEffect(() => {
-    if (!resumeKey || (stage !== "result" && stage !== "saju_only")) return;
+    if (!resumeKey || restoredKey.current !== resumeKey) return;
+    if (!rightPalmFacts && !leftPalmFacts && stage !== "saju_only" && !retryReport.current) return;
+    const completed = stage === "result" || stage === "saju_only";
     const saved: PalmResumeState = {
-      stage,
+      stage: completed ? stage : retryReport.current ? "error" : "upload",
+      captureHand,
+      personalityKey,
+      retryReport: completed ? null : retryReport.current,
       palmFacts,
       leftPalmFacts,
       rightPalmFacts,
       dominantHand: dominantHand ?? undefined,
       bilateralReading,
-      futurePalmTimeline,
+      previousBilateralReading,
       finalReport,
       tripleCompare,
       verdict,
-      wealthType,
-      funnelActive,
-      readingOpen,
-      chapter,
     };
-    sessionStorage.setItem(`${resumeKey}:palm`, JSON.stringify(saved));
+    try { sessionStorage.setItem(`${resumeKey}:palm`, JSON.stringify(saved)); } catch { /* Full/disabled storage must not interrupt analysis. */ }
   }, [
     resumeKey,
     stage,
+    captureHand,
+    personalityKey,
     palmFacts,
     leftPalmFacts,
     rightPalmFacts,
     dominantHand,
     bilateralReading,
-    futurePalmTimeline,
+    previousBilateralReading,
     finalReport,
     tripleCompare,
     verdict,
-    wealthType,
-    funnelActive,
-    readingOpen,
-    chapter,
   ]);
 
   function markPhase(task: AbortController, phase: AnalysisPhase) {
@@ -444,11 +446,10 @@ export function PalmPageClient({
     }
     retryReport.current = null;
     setBilateralReading(data.bilateralReading ?? null);
-    setFuturePalmTimeline(data.futurePalmTimeline ?? null);
+    setPreviousBilateralReading(null);
     setFinalReport(data.freeReport?.report ?? null);
     setTripleCompare(data.tripleCompare ?? []);
     setVerdict(data.verdict ?? null);
-    setWealthType(data.wealthType ?? null);
     track("free_report_completed", { palmSkipped: Boolean(data.palmSkipped), bilateral: Boolean(leftFacts && rightFacts) });
     console.info("[palm-analysis]", { run: runNumber.current, phase: "complete", elapsedMs: Math.round(performance.now() - analysisStarted.current) });
     setStage(data.palmSkipped ? "saju_only" : "result");
@@ -621,38 +622,6 @@ export function PalmPageClient({
     setStage("upload");
   }
 
-  function reset() {
-    tasks.current.cancel();
-    analyzer.current.dispose();
-    capturedCanvas.current = null;
-    retryReport.current = null;
-    stopLiveCamera();
-    if (resumeKey) {
-      sessionStorage.removeItem(`${resumeKey}:palm`);
-      sessionStorage.removeItem(`${resumeKey}:funnel`);
-      sessionStorage.removeItem(`${resumeKey}:payment`);
-    }
-    setFunnelActive(false);
-    setReadingOpen(true);
-    setChapter(2);
-    setStage("upload");
-    setCaptureHand("right");
-    setDominantHand(null);
-    setRightPalmFacts(null);
-    setLeftPalmFacts(null);
-    setRightPreviewUrl(null);
-    setLeftPreviewUrl(null);
-    setPalmFacts(null);
-    setBilateralReading(null);
-    setFuturePalmTimeline(null);
-    setFinalReport(null);
-    setTripleCompare([]);
-    setVerdict(null);
-    setWealthType(null);
-    setErrorMsg(null);
-    setRetakeAttempts(0);
-  }
-
   const innatePalmFacts = dominantHand === "right" ? leftPalmFacts : rightPalmFacts;
   const currentPalmFacts = dominantHand === "right" ? rightPalmFacts : leftPalmFacts;
   const innatePreviewUrl = dominantHand === "right" ? leftPreviewUrl : rightPreviewUrl;
@@ -678,12 +647,12 @@ export function PalmPageClient({
       className={`journey-surface ${stage === "result" || stage === "saju_only" ? "result-bright" : ""}`}
     >
       <div className="journey-shell">
-      <JourneyHeader chapter={chapter} />
-      <div hidden={funnelActive}>
+      <JourneyHeader chapter={stage === "result" || stage === "saju_only" ? 3 : 2} />
+      <div>
       <CompanionHeading showCompanion={stage !== "upload"} state={stage === "upload" ? "palm-guide" : "palm-observing"} presence={stage === "upload" ? "transition" : "quiet"}>
       <p className="section-eyebrow">두 번째 분석 · 손금</p>
       <h1 className="mt-2 text-xl leading-snug font-semibold tracking-tight">
-        {stage === "result" ? "타고난 나에서 지금의 나까지" : stage === "saju_only" ? "사주에서 선택으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
+        {stage === "result" ? "양손에서 읽는 나의 모습" : stage === "saju_only" ? "사주 풀이를 연간 흐름으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
       </h1>
       </CompanionHeading>
       </div>
@@ -862,7 +831,7 @@ export function PalmPageClient({
             onClick={handleSkipPalm}
             className="mt-auto pt-8 text-center text-sm text-muted-foreground"
           >
-            손금 없이 세부 분야로 넘어갈게요
+            손금 없이 계속 볼게요
           </button>
         </div>
       )}
@@ -908,7 +877,7 @@ export function PalmPageClient({
             </Button>
             {retakeAttempts >= 2 && (
               <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">
-                손금 없이 세부 분야로 넘어가기
+                손금 없이 계속 보기
               </button>
             )}
           </div>
@@ -934,7 +903,7 @@ export function PalmPageClient({
             <Button size="lg" variant="outline" onClick={retryCurrentHand} className="h-13 w-full rounded-full text-base">
               {captureHand === "right" ? "오른손 사진 다시 선택·촬영" : "왼손 사진 다시 선택·촬영"}
             </Button>
-            <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">손금 없이 세부 분야로 넘어가기</button>
+            <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">손금 없이 계속 보기</button>
           </div>
         </div>
       )}
@@ -953,7 +922,7 @@ export function PalmPageClient({
               <>
                 <p className="section-eyebrow">양손 분석 완료</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  주로 쓰는 손을 기준으로 타고난 경향을 참고하는 손부터, 지금까지 살아오며 만들어진 현재 손 순서로 봅니다.
+                  두 손의 같은 선을 나란히 보고, 읽힌 특징만 해석에 사용합니다.
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-accent p-3">
@@ -963,7 +932,7 @@ export function PalmPageClient({
                         <img src={innatePreviewUrl} alt={innateHandLabel} className="size-full bg-black object-contain object-center" />
                       </div>
                     )}
-                    <p className="mt-2 text-sm font-semibold">{innateHandLabel} · 타고난 성향 참고손</p>
+                    <p className="mt-2 text-sm font-semibold">{innateHandLabel} · 비교하는 손</p>
                     <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[innatePalmFacts.handShape]}</p>
                   </div>
                   <div className="rounded-xl bg-accent p-3">
@@ -973,7 +942,7 @@ export function PalmPageClient({
                         <img src={currentPreviewUrl} alt={currentHandLabel} className="size-full bg-black object-contain object-center" />
                       </div>
                     )}
-                    <p className="mt-2 text-sm font-semibold">{currentHandLabel} · 현재 모습 참고손</p>
+                    <p className="mt-2 text-sm font-semibold">{currentHandLabel} · 주로 쓰는 손</p>
                     <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[currentPalmFacts.handShape]}</p>
                   </div>
                 </div>
@@ -989,16 +958,25 @@ export function PalmPageClient({
           <div className="mt-5">
             {rightPalmFacts && leftPalmFacts ? (
               <>
-                <PalmBilateralSection reading={bilateralReading} />
-                <PalmFutureTimelineSection timeline={futurePalmTimeline} />
+                {bilateralReading?.version === PALM_READING_VERSION ? <PalmBilateralSection reading={bilateralReading} /> : <div className="rounded-2xl border border-border p-4">
+                  <p className="text-sm leading-7">이전 형식으로 저장된 손금 풀이입니다. 저장된 문장은 그대로 두고, 원할 때 현재 형식으로 다시 정리할 수 있어요.</p>
+                  {bilateralReading && <details className="mt-3"><summary className="cursor-pointer text-sm">저장 당시 손금 문장 보기</summary><PalmBilateralSection reading={bilateralReading} /></details>}
+                  <Button variant="outline" className="mt-3 min-h-11" onClick={() => {
+                    if (!dominantHand) return;
+                    setPreviousBilateralReading(bilateralReading);
+                    setBilateralReading(buildPalmBilateralReading(leftPalmFacts, rightPalmFacts, dominantHand));
+                  }}>현재 형식으로 손금 정리</Button>
+                </div>}
+                {previousBilateralReading && <button type="button" className="mt-3 min-h-11 text-sm underline" onClick={() => {
+                  setBilateralReading(previousBilateralReading); setPreviousBilateralReading(bilateralReading);
+                }}>다른 손금 저장본 보기</button>}
               </>
             ) : (
               <PalmReadingSections facts={palmFacts} />
             )}
-            <TripleCompareSection items={tripleCompare} />
+            {personalityInput?.personalityAnswers && <details className="mt-4 rounded-2xl border border-border p-4"><summary className="cursor-pointer">내 응답과 함께 보기</summary><TripleCompareSection items={tripleCompare} /></details>}
           </div>
 
-          {finalReport && <FinalReportSections report={finalReport} />}
           {verdict && <VerdictCard verdict={verdict} />}
         </div>
       )}

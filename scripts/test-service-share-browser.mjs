@@ -70,6 +70,9 @@ async function open({ native = "resolve", copy = "resolve", seed = true, mobile 
 async function result(session) {
   await session.page.goto(BASE + "/diagnosis?mode=free", { waitUntil: "domcontentloaded", timeout: 30000 });
   const card = session.page.getByRole("region", { name: "무료 사주 링크 공유" });
+  await session.page.getByRole("button", { name: "손금 없이 결과 마무리하기", exact: true }).waitFor();
+  assert.equal(await card.count(), 0, "sharing must not precede the palm decision");
+  await session.page.getByRole("button", { name: "손금 없이 결과 마무리하기", exact: true }).click();
   await card.waitFor();
   assert.equal(await card.getByLabel("공유할 주소").inputValue(), shared.url);
   assert.ok(await session.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no horizontal overflow");

@@ -282,13 +282,16 @@ assert(
 );
 console.log("PASS T07 timing ranking copy does not imply false chronology");
 
-// Customer UI regression: Saju -> optional palm -> four detailed topics -> premium report, without repetitive question flow.
+// Customer UI regression: Saju -> optional palm -> integrated annual report, without a topic picker or repetitive questions.
 const postReadingSource = fs.readFileSync(path.join(root, "src/components/palm/post-reading-detail-flow.tsx"), "utf8");
 const reportSectionSource = fs.readFileSync(path.join(root, "src/components/diagnosis/report-section.tsx"), "utf8");
 const myeongsikSource = fs.readFileSync(path.join(root, "src/components/diagnosis/myeongsik-section.tsx"), "utf8");
 const palmPageSource = fs.readFileSync(path.join(root, "src/components/palm/palm-page-client.tsx"), "utf8");
 const palmDetectionSource = fs.readFileSync(path.join(root, "src/lib/palm-detection.ts"), "utf8");
-assert(postReadingSource.includes("SAJU_DETAIL_FOCUS_VALUES.map"), "UI01: post-palm flow must expose only four detailed topics");
+assert(
+  !postReadingSource.includes("SAJU_DETAIL_FOCUS_VALUES.map") && postReadingSource.includes("<PremiumReportView"),
+  "UI01: post-palm flow must open the integrated report without a topic picker",
+);
 assert(!postReadingSource.includes("REALITY_ANSWER_DOMAINS.map"), "UI02: old seven-choice UI remains");
 assert(!postReadingSource.includes("왜 이렇게 봤나요"), "UI03: why-explanation UI remains in detailed question answer");
 assert(!postReadingSource.includes("answer.actions"), "UI04: action checklist remains in detailed question answer");
@@ -308,8 +311,8 @@ assert(
 assert(
   palmPageSource.includes("사진 다시 선택·촬영") &&
     palmPageSource.includes("촬영 유지하고 리포트 다시 받기") &&
-    palmPageSource.includes("손금 없이 세부 분야로 넘어가기"),
-  "UI10: palm error state must offer recovery paths into the detailed-topic flow",
+    palmPageSource.includes("손금 없이 계속 보기"),
+  "UI10: palm error state must offer recapture, preserved-hands retry and an explicit skip",
 );
 assert(
   palmDetectionSource.includes("handLandmarkerPromise = null") &&
@@ -329,7 +332,7 @@ console.log("REALITY ANSWER REGRESSION RESULTS");
 for (const item of outputs) {
   console.log(`PASS ${item.id} [${item.domain}] :: ${item.headline} / ${item.timing}`);
 }
-console.log("\nPASS 10/10 answer+timing + post-palm 4-topic detail flow + premium annual report + no repetitive question UI");
+console.log("\nPASS 10/10 answer+timing + integrated premium annual report + no topic picker or repetitive question UI");
 
 // My Management: save answer, note, duplicate update. No action/status tracking.
 const memory = new Map();

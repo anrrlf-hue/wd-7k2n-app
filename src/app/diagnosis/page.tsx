@@ -104,115 +104,120 @@ export default function DiagnosisPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const nextMode: JourneyMode = params.get("mode") === "question" ? "question" : "free";
-      const focusParam = params.get("focus");
-      const urlFocus = focusParam ? parseSajuFocus(focusParam) : null;
-      setMode(nextMode);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const nextMode: JourneyMode = params.get("mode") === "question" ? "question" : "free";
+        const focusParam = params.get("focus");
+        const urlFocus = focusParam ? parseSajuFocus(focusParam) : null;
+        setMode(nextMode);
 
-      // A service invitation starts the recipient's own free reading. Preserve
-      // saved readings, but do not unexpectedly restore one into this entry.
-      if (nextMode === "free" && params.get("from") === "share") {
-        setFocus("overall");
-        setStep("date");
-        return;
-      }
-
-      if (nextMode === "question") {
-        // 무료 결과에서 넘어온 경우에는 오래된 질문 세션보다 방금 본 무료 사주를 우선한다.
-        // 그래야 CTA를 누른 즉시 같은 출생정보로 새 질문을 시작할 수 있다.
-        if (params.get("from") !== "free") {
-          const raw = sessionStorage.getItem(QUESTION_STORAGE_KEY);
-          if (raw) {
-            const saved = JSON.parse(raw) as StoredQuestionSession;
-            if (saved?.answer && saved?.focus) {
-              setFocus(parseSajuFocus(saved.focus));
-              setQuestion(saved.question);
-              setBirthDate(saved.birthDate);
-              setGender(saved.gender);
-              setKnowsTime(saved.knowsTime);
-              setBirthTime(saved.birthTime);
-              setMbti(saved.mbti);
-              setPrivacyAccepted(true);
-              setQuestionAnswer(saved.answer);
-              setQuestionPlan(saved.questionPlan ?? null);
-              setStep("answer");
-              return;
-            }
-          }
-        }
-
-        if (params.get("from") === "free") {
-          const freeRaw = sessionStorage.getItem(FREE_STORAGE_KEY);
-          if (freeRaw) {
-            const saved = JSON.parse(freeRaw) as StoredFreeSession;
-            if (saved?.diagnosis) {
-              const nextFocus = urlFocus ?? parseSajuFocus(String(saved.focus ?? saved.diagnosis.focus ?? "overall"));
-              setFocus(nextFocus);
-              setBirthDate(saved.birthDate);
-              setGender(saved.gender);
-              setKnowsTime(saved.knowsTime);
-              setBirthTime(saved.birthTime);
-              setMbti(saved.mbti);
-              setPrivacyAccepted(true);
-              setStep("question");
-              return;
-            }
-          }
-        }
-
-        setFocus(urlFocus);
-        setStep("focus");
-        return;
-      }
-
-      const raw = sessionStorage.getItem(FREE_STORAGE_KEY);
-      if (!raw) {
-        const savedSelf = findSavedSelf();
-        if (savedSelf) {
-          const birth = savedSelf.birthInput;
+        // A service invitation starts the recipient's own free reading. Preserve
+        // saved readings, but do not unexpectedly restore one into this entry.
+        if (nextMode === "free" && params.get("from") === "share") {
           setFocus("overall");
-          setBirthDate([
-            String(birth.year).padStart(4, "0"),
-            String(birth.month).padStart(2, "0"),
-            String(birth.day).padStart(2, "0"),
-          ].join("-"));
-          setGender(birth.gender);
-          setKnowsTime(birth.hour !== null);
-          setBirthTime(
-            birth.hour === null
-              ? ""
-              : `${String(birth.hour).padStart(2, "0")}:${String(birth.minute ?? 0).padStart(2, "0")}`,
-          );
-          setPrivacyAccepted(true);
-          setStep("personality");
+          setStep("date");
           return;
         }
-        setFocus("overall");
-        setStep("date");
-        return;
-      }
 
-      const saved = JSON.parse(raw) as StoredFreeSession;
-      if (!saved?.diagnosis) {
-        setFocus(urlFocus);
-        setStep("focus");
-        return;
-      }
+        if (nextMode === "question") {
+          // 무료 결과에서 넘어온 경우에는 오래된 질문 세션보다 방금 본 무료 사주를 우선한다.
+          // 그래야 CTA를 누른 즉시 같은 출생정보로 새 질문을 시작할 수 있다.
+          if (params.get("from") !== "free") {
+            const raw = sessionStorage.getItem(QUESTION_STORAGE_KEY);
+            if (raw) {
+              const saved = JSON.parse(raw) as StoredQuestionSession;
+              if (saved?.answer && saved?.focus) {
+                setFocus(parseSajuFocus(saved.focus));
+                setQuestion(saved.question);
+                setBirthDate(saved.birthDate);
+                setGender(saved.gender);
+                setKnowsTime(saved.knowsTime);
+                setBirthTime(saved.birthTime);
+                setMbti(saved.mbti);
+                setPrivacyAccepted(true);
+                setQuestionAnswer(saved.answer);
+                setQuestionPlan(saved.questionPlan ?? null);
+                setStep("answer");
+                return;
+              }
+            }
+          }
 
-      setFocus(parseSajuFocus(String(saved.focus ?? saved.diagnosis.focus ?? urlFocus ?? "overall")));
-      setBirthDate(saved.birthDate);
-      setGender(saved.gender);
-      setKnowsTime(saved.knowsTime);
-      setBirthTime(saved.birthTime);
-      setMbti(saved.mbti);
-      setPrivacyAccepted(true);
-      setDiagnosis(saved.diagnosis);
-      setStep("result");
-    } catch {
-      // 세션을 읽지 못해도 새 흐름으로 진행한다.
-    }
+          if (params.get("from") === "free") {
+            const freeRaw = sessionStorage.getItem(FREE_STORAGE_KEY);
+            if (freeRaw) {
+              const saved = JSON.parse(freeRaw) as StoredFreeSession;
+              if (saved?.diagnosis) {
+                const nextFocus = urlFocus ?? parseSajuFocus(String(saved.focus ?? saved.diagnosis.focus ?? "overall"));
+                setFocus(nextFocus);
+                setBirthDate(saved.birthDate);
+                setGender(saved.gender);
+                setKnowsTime(saved.knowsTime);
+                setBirthTime(saved.birthTime);
+                setMbti(saved.mbti);
+                setPrivacyAccepted(true);
+                setStep("question");
+                return;
+              }
+            }
+          }
+
+          setFocus(urlFocus);
+          setStep("focus");
+          return;
+        }
+
+        const raw = sessionStorage.getItem(FREE_STORAGE_KEY);
+        if (!raw) {
+          const savedSelf = findSavedSelf();
+          if (savedSelf) {
+            const birth = savedSelf.birthInput;
+            setFocus("overall");
+            setBirthDate([
+              String(birth.year).padStart(4, "0"),
+              String(birth.month).padStart(2, "0"),
+              String(birth.day).padStart(2, "0"),
+            ].join("-"));
+            setGender(birth.gender);
+            setKnowsTime(birth.hour !== null);
+            setBirthTime(
+              birth.hour === null
+                ? ""
+                : `${String(birth.hour).padStart(2, "0")}:${String(birth.minute ?? 0).padStart(2, "0")}`,
+            );
+            setPrivacyAccepted(true);
+            setStep("personality");
+            return;
+          }
+          setFocus("overall");
+          setStep("date");
+          return;
+        }
+
+        const saved = JSON.parse(raw) as StoredFreeSession;
+        if (!saved?.diagnosis) {
+          setFocus(urlFocus);
+          setStep("focus");
+          return;
+        }
+
+        setFocus(parseSajuFocus(String(saved.focus ?? saved.diagnosis.focus ?? urlFocus ?? "overall")));
+        setBirthDate(saved.birthDate);
+        setGender(saved.gender);
+        setKnowsTime(saved.knowsTime);
+        setBirthTime(saved.birthTime);
+        setMbti(saved.mbti);
+        setPrivacyAccepted(true);
+        setDiagnosis(saved.diagnosis);
+        setStep("result");
+      } catch {
+        // 세션을 읽지 못해도 새 흐름으로 진행한다.
+      }
+    });
+    return () => { cancelled = true; };
   }, []);
 
   function clearCurrentSession() {
