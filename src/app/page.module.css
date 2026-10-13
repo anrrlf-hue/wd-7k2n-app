@@ -50,51 +50,6 @@
   outline-offset: 2px;
 }
 
-.heroPromise {
-  position: absolute;
-  z-index: 15;
-  top: 24.45%;
-  left: 6.4%;
-  width: 54.5%;
-  min-height: 7.55%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 8px 12px 9px;
-  border: 1px solid rgba(241, 208, 131, .22);
-  border-radius: 14px;
-  background: linear-gradient(
-    90deg,
-    #0a223c 0%,
-    #0c2947 82%,
-    #0d2d4e 100%
-  );
-  box-shadow: 0 8px 22px rgba(0, 0, 0, .12);
-  color: rgba(255,255,255,.9);
-  text-shadow: 0 1px 2px rgba(0,0,0,.28);
-}
-
-.heroPromise span,
-.heroPromise strong {
-  display: block;
-}
-
-.heroPromise span {
-  font-size: clamp(10px, 2.65vw, 12.5px);
-  line-height: 1.45;
-  font-weight: 500;
-  letter-spacing: -.01em;
-}
-
-.heroPromise strong {
-  margin: 1px 0;
-  color: #f4d98f;
-  font-size: clamp(11px, 2.95vw, 14px);
-  line-height: 1.4;
-  font-weight: 800;
-  letter-spacing: -.025em;
-}
-
 .primarySajuCta {
   position: absolute;
   z-index: 16;
@@ -258,20 +213,6 @@
 }
 
 @media (max-width: 360px) {
-  .heroPromise {
-    left: 5.8%;
-    width: 56.5%;
-    padding: 6px 9px 7px;
-  }
-
-  .heroPromise span {
-    font-size: 9px;
-  }
-
-  .heroPromise strong {
-    font-size: 10.2px;
-  }
-
   .benefitPanel {
     top: 51.45%;
     height: 29.25%;
