@@ -66,6 +66,8 @@ export interface OnnxLineObservation {
   normalizedLineLength: number;
   /** pixelCount / skeleton length in model-mask pixels; legacy depth proxy units. */
   avgThickness: number;
+  /** Actual foreground skeleton path in source-crop normalized coordinates. */
+  pathPoints?: Array<{ x: number; y: number }>;
 }
 
 export interface OnnxPalmLineResult {
@@ -261,6 +263,7 @@ export function computeObservation(
     boundingBox: { x0, y0, x1, y1 },
     start: pointNormalized(points[0]), end: pointNormalized(points[points.length - 1]), curveScore,
     lineLength, normalizedLineLength: lineLength / Math.max(1, context.referenceSpan), avgThickness: pixelCount / Math.max(1, maskPathLength),
+    pathPoints: points.map(pointNormalized),
   };
 }
 

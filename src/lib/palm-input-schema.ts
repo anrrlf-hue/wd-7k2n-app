@@ -23,6 +23,7 @@ const onnxLineDetailSchema = z.object({
   }).optional(),
   anatomicalStatus: z.enum(["supported", "rejected", "unconfirmed"]).optional(),
   anatomicalReason: z.enum(["thumb_side_segment", "central_vertical_segment", "short_or_missing_geometry", "ambiguous_geometry"]).optional(),
+  pathPoints: z.array(z.object({ x: z.number(), y: z.number() })).optional(),
 });
 
 const onnxPalmLinesSchema = z.object({

@@ -77,6 +77,8 @@ export interface OnnxLineDetail {
   /** Conservative landmark cross-check; model class alone never supplies this. */
   anatomicalStatus?: "supported" | "rejected" | "unconfirmed";
   anatomicalReason?: "thumb_side_segment" | "central_vertical_segment" | "short_or_missing_geometry" | "ambiguous_geometry";
+  /** Foreground skeleton path, when the current model actually exposes it. */
+  pathPoints?: Array<{ x: number; y: number }>;
 }
 
 export interface OnnxPalmLines {

@@ -4,7 +4,7 @@ import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
 import { palmCustomerLimits, palmPersonalLineReading, palmLineObservation } from "@/lib/palm-customer-reading";
 
 export type DominantHand = "left" | "right";
-export const PALM_READING_VERSION = "bilateral-reading-v7";
+export const PALM_READING_VERSION = "bilateral-reading-v8-life-geometry-guard";
 export interface PalmBilateralItem {
   title: string;
   observation?: string;
@@ -29,6 +29,11 @@ function observed(line: OnnxLineDetail | null | undefined): string {
   return palmLineObservation(line ?? undefined);
 }
 
+function observedFor(key: "headLine" | "heartLine" | "lifeLine", line: OnnxLineDetail | null | undefined): string {
+  if (key === "lifeLine" && line?.anatomicalStatus !== "supported") return "생명선은 엄지 쪽 실제 경로가 충분히 확인되지 않아 개인 관찰에서 보류했습니다.";
+  return observed(line);
+}
+
 /** Compare each observed feature once. Absence is never a low personality score.
  * The dominant-hand convention is a traditional lens, not evidence of change
  * over time: both photos were taken now, under potentially different lighting. */
@@ -44,7 +49,7 @@ export function buildPalmBilateralReading(left: PalmFacts, right: PalmFacts, dom
     ["heartLine", "감정선 · 마음을 주고받는 방식"],
     ["lifeLine", "생명선 · 생활과 활동 리듬"],
   ] as const) {
-    const l = observed(left.onnxLines?.[key]), r = observed(right.onnxLines?.[key]);
+    const l = observedFor(key, left.onnxLines?.[key]), r = observedFor(key, right.onnxLines?.[key]);
     const primaryText = palmPersonalLineReading(key, current.onnxLines?.[key]);
     const other = dominantHand === "right" ? left : right;
     const otherLabel = dominantHand === "right" ? "왼손" : "오른손";

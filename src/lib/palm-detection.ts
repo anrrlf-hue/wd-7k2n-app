@@ -580,6 +580,7 @@ function mapOnnxObservation(
     depthStrength,
     start: norm(obs.start),
     end: norm(obs.end),
+    pathPoints: obs.pathPoints?.map(point => ({ x: point.x, y: point.y })),
     branchDetected: null,
     ...provenance,
     endpointEvidence: "segment_extrema",
