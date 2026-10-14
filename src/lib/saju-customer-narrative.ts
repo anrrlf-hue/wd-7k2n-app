@@ -55,7 +55,7 @@ export type NatalNarrativeFrame = ReturnType<typeof buildNatalNarrativeFrame>;
 
 function center(frame: NatalNarrativeFrame): string {
   const { facts: f, stem: s, fireMeeting, leaders } = frame;
-  if (fireMeeting && f.dayElement === "금") return `당신의 명식에는 ${s.name}의 ${s.center}과, 그 단단함을 현실에 맞게 다듬는 불의 힘이 함께 있습니다. 사·오·미로 이어지는 불의 자리가 금을 둘러싸므로, 자기 뜻을 지키는 것과 세상에 쓸 만한 모습으로 다듬는 것이 함께 중요한 풀이입니다.`;
+  if (fireMeeting && f.dayElement === "금") return `${s.name}에서 읽는 단단함은 스스로 납득한 기준을 쉽게 버리지 않는 모습으로 나타납니다. 사·오·미로 이어지는 불의 자리가 금을 둘러싸므로, 자기 뜻을 지키는 것과 세상에 쓸 만한 모습으로 다듬는 것이 함께 중요한 풀이입니다.`;
   const surrounding = f.fiveElements.수 > 0 && f.fiveElements.화 === 0 && f.dayElement === "금"
     ? f.fiveElements.목 > 0
       ? "금의 섬세함 곁에 물의 표현과 나무의 쓰임이 놓여, 잘 다듬은 것을 혼자 간직하는 마음과 밖에 내보여 살아 움직이게 하는 마음이 만납니다."
@@ -241,8 +241,8 @@ export function buildCustomerPremiumNarrative(facts: SajuFacts) {
     : TEN_GOD_GROUP[f.workGod ?? ""] === "식상"
       ? [
         work.deep,
-        "잘 맞는 환경은 아이디어를 내는 순간과 실제 결과를 고치는 순간 사이에 피드백이 오가는 곳입니다. 반응은 많지만 무엇이 유용했는지 알 수 없는 자리에서는 표현의 방향보다 인정받은 정도를 따라가게 될 수 있습니다.",
-        "협업에서는 설명을 잘하는 능력만큼 상대가 실제로 사용한 부분을 듣는 일이 중요합니다. 자기 색을 지킨 부분과 다음에 달리 시도할 부분을 나누면 수정이 거절처럼 남지 않고 작업의 선택지가 됩니다.",
+        "잘 맞는 환경은 역할의 기준과 책임 범위가 분명하면서도 새 아이디어를 시험할 여지를 주는 곳입니다. 반응이 좋다는 이유만으로 방향을 계속 바꾸거나, 결과에 대한 책임은 묻지 않은 채 자유만 요구하는 자리에서는 표현력보다 피로가 먼저 남을 수 있습니다.",
+        "협업에서는 사람마다 다른 작업 속도와 완성 기준을 먼저 맞추는 일이 중요합니다. 설명을 잘하는 것만으로 역할이 정리되지는 않으므로, 누가 결정하고 언제 확인할지 합의할 때 자기 색과 팀의 실행력이 함께 살아납니다.",
       ]
       : [
         work.deep,
