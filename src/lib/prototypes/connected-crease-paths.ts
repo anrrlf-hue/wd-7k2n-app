@@ -97,7 +97,7 @@ function thumbPrior(points: ConnectedPathPoint[], frame: PalmPathFrame): number 
 function selectStarts(segments: ConnectedPathSegment[], adjacency: Map<string, number[]>): Array<{ segmentIndex: number; direction: 1 | -1 }> {
   const refs: Array<{ segmentIndex: number; direction: 1 | -1; point: ConnectedPathPoint }> = [];
   segments.forEach((segment, segmentIndex) => {
-    if (segment.points.length < 2) return;
+    if (segment.points.length < 2 || samePoint(segment.points[0], segment.points[segment.points.length - 1])) return;
     for (const direction of [1, -1] as const) {
       const point = direction === 1 ? segment.points[0] : segment.points[segment.points.length - 1];
       const degree = adjacency.get(key(segment.componentId, point))?.length ?? 0;
@@ -105,7 +105,7 @@ function selectStarts(segments: ConnectedPathSegment[], adjacency: Map<string, n
     }
   });
   if (!refs.length) segments.forEach((segment, segmentIndex) => {
-    if (segment.points.length >= 2) refs.push({ segmentIndex, direction: 1, point: segment.points[0] });
+    if (segment.points.length >= 2 && !samePoint(segment.points[0], segment.points[segment.points.length - 1])) refs.push({ segmentIndex, direction: 1, point: segment.points[0] });
   });
   refs.sort((a, b) => segments[b.segmentIndex].responseMean - segments[a.segmentIndex].responseMean || segments[b.segmentIndex].pathLengthPx - segments[a.segmentIndex].pathLengthPx);
   const selected: typeof refs = [];
@@ -132,6 +132,23 @@ interface State {
   loopDetected: boolean;
 }
 
+function stateScore(state: State) {
+  return state.length / (state.length + 96) * .35 + state.junction * .2 + state.probe * .15 + Math.min(state.support / 32, 1) * .25 + state.prior * .05;
+}
+
+type OrientedRef = { segmentIndex: number; direction: "forward" | "reverse" };
+interface RankedPath extends Omit<ConnectedPathCandidate, "orderedPoints" | "orientedSegmentRefs"> { refs: OrientedRef[] }
+
+function canonicalRefs(candidate: Pick<RankedPath, "refs">): string[] {
+  const forward = candidate.refs.map(ref => `${ref.segmentIndex}:${ref.direction}`);
+  const reverse = [...candidate.refs].reverse().map(ref => `${ref.segmentIndex}:${ref.direction === "forward" ? "reverse" : "forward"}`);
+  return forward.join("|") <= reverse.join("|") ? forward : reverse;
+}
+
+function isStrictPrefix(prefix: string[], full: string[]) {
+  return prefix.length < full.length && prefix.every((value, index) => value === full[index]);
+}
+
 /** Connect only exact shared endpoint pixels within one component. */
 export function rankConnectedCreasePaths(
   segments: ConnectedPathSegment[],
@@ -151,10 +168,15 @@ export function rankConnectedCreasePaths(
     }
   });
   const starts = selectStarts(segments, adjacency);
-  const perStart = Math.max(1, Math.floor(Math.min(MAX_EXTENSIONS, budget.limit) / Math.max(1, starts.length)));
-  const finished: ConnectedPathCandidate[] = [];
+  const remaining = Math.max(0, Math.min(MAX_EXTENSIONS, budget.limit) - budget.used);
+  const basePerStart = Math.floor(remaining / Math.max(1, starts.length));
+  const extraStarts = remaining % Math.max(1, starts.length);
+  const finished: RankedPath[] = [];
   let searchTruncated = false;
-  for (const start of starts) {
+  for (const [startIndex, start] of starts.entries()) {
+    if (budget.used >= Math.min(MAX_EXTENSIONS, budget.limit)) { searchTruncated = true; break; }
+    const perStart = basePerStart + (startIndex < extraStarts ? 1 : 0);
+    if (!perStart) { searchTruncated = true; break; }
     const segment = segments[start.segmentIndex];
     const oriented = start.direction === 1 ? segment.points : [...segment.points].reverse();
     const startNode = key(segment.componentId, oriented[0]);
@@ -170,10 +192,14 @@ export function rankConnectedCreasePaths(
         const current = lastPoints[lastPoints.length - 1];
         const currentKey = key(lastSegment.componentId, current);
         const nextRefs = (adjacency.get(currentKey) ?? []).flatMap(index => index === last.segmentIndex || state.edges.has(`${index}:1`) || state.edges.has(`${index}:-1`) ? [] : [index]);
+        // Ending here is always an option; extension must earn its way past it.
         if (!nextRefs.length) { state.terminationReason = state.loopDetected ? "loop" : "terminal"; nextBeam.push(state); continue; }
+        nextBeam.push({ ...state, terminationReason: state.loopDetected ? "loop" : "terminal" });
         state.branches = Math.max(state.branches, nextRefs.length);
         for (const nextIndex of nextRefs) {
-          if (++localExpansions > perStart) { searchTruncated = true; break; }
+          if (localExpansions >= perStart || budget.used >= Math.min(MAX_EXTENSIONS, budget.limit)) { searchTruncated = true; break; }
+          localExpansions++;
+          budget.used++;
           const nextSegment = segments[nextIndex];
           const direction: 1 | -1 = samePoint(nextSegment.points[0], current) ? 1 : -1;
           const nextPoints = direction === 1 ? nextSegment.points : [...nextSegment.points].reverse();
@@ -193,28 +219,31 @@ export function rankConnectedCreasePaths(
           });
         }
       }
-      beam = nextBeam.sort((a, b) => {
-        const score = (state: State) => state.length / (state.length + 96) * .35 + state.junction * .2 + state.probe * .15 + Math.min(state.support / 32, 1) * .25 + state.prior * .05;
-        return score(b) - score(a);
-      }).slice(0, BEAM_WIDTH);
+      beam = nextBeam.sort((a, b) => stateScore(b) - stateScore(a)).slice(0, BEAM_WIDTH);
       if (!beam.some(state => state.terminationReason === "no_extension")) break;
     }
     if (localExpansions >= perStart && beam.some(state => state.terminationReason === "no_extension")) searchTruncated = true;
     for (const state of beam) {
       const scoreItems = { length: state.length / (state.length + 96), junctionContinuity: state.junction, probeAgreement: state.probe, ridgeSupport: Math.min(state.support / 32, 1), thumbPrior: state.prior };
       const score = scoreItems.length * .35 + scoreItems.junctionContinuity * .2 + scoreItems.probeAgreement * .15 + scoreItems.ridgeSupport * .25 + scoreItems.thumbPrior * .05;
-      const orderedPoints: ConnectedPathPoint[] = [];
-      state.refs.forEach(ref => {
-        const points = ref.direction === 1 ? segments[ref.segmentIndex].points : [...segments[ref.segmentIndex].points].reverse();
-        points.forEach(point => { if (!orderedPoints.length || !samePoint(orderedPoints[orderedPoints.length - 1], point)) orderedPoints.push(point); });
-      });
-      finished.push({ orderedPoints, orientedSegmentRefs: state.refs.map(ref => ({ segmentIndex: ref.segmentIndex, direction: ref.direction === 1 ? "forward" : "reverse" })), actualSupportLengthPx: lengthOf(orderedPoints), score, scoreItems, terminationReason: searchTruncated && state.terminationReason === "no_extension" ? "searchTruncated" : state.terminationReason, competingBranches: state.branches, ambiguous: false, searchTruncated });
+      finished.push({ refs: state.refs.map(ref => ({ segmentIndex: ref.segmentIndex, direction: ref.direction === 1 ? "forward" : "reverse" })), actualSupportLengthPx: state.length, score, scoreItems, terminationReason: searchTruncated && state.terminationReason === "no_extension" ? "searchTruncated" : state.terminationReason, competingBranches: state.branches, ambiguous: false, searchTruncated });
     }
   }
   finished.sort((a, b) => b.score - a.score);
-  const unique = finished.filter((candidate, index, list) => !list.slice(0, index).some(previous => candidate.orderedPoints.length === previous.orderedPoints.length && candidate.orderedPoints.every((point, i) => samePoint(point, previous.orderedPoints[i])))).slice(0, MAX_FINAL);
-  const ambiguous = unique.length > 1 && Math.abs(unique[0].score - unique[1].score) < .06;
-  unique.forEach(candidate => { candidate.ambiguous = ambiguous; });
-  budget.used += Math.min(MAX_EXTENSIONS, starts.length * perStart);
-  return { pathCandidates: unique, searchTruncated, budget };
+  const unique = finished.filter((candidate, index, list) => {
+    const refs = canonicalRefs(candidate);
+    if (list.slice(0, index).some(previous => canonicalRefs(previous).join("|") === refs.join("|"))) return false;
+    return !list.some(other => other !== candidate && isStrictPrefix(refs, canonicalRefs(other)));
+  }).slice(0, MAX_FINAL);
+  const selected = unique.slice(0, MAX_FINAL);
+  const ambiguous = selected.length > 1 && Math.abs(selected[0].score - selected[1].score) < .06;
+  const pathCandidates = selected.map(candidate => {
+    const orderedPoints: ConnectedPathPoint[] = [];
+    candidate.refs.forEach(ref => {
+      const points = ref.direction === "forward" ? segments[ref.segmentIndex].points : [...segments[ref.segmentIndex].points].reverse();
+      points.forEach(point => { if (!orderedPoints.length || !samePoint(orderedPoints[orderedPoints.length - 1], point)) orderedPoints.push(point); });
+    });
+    return { orderedPoints, orientedSegmentRefs: candidate.refs, actualSupportLengthPx: lengthOf(orderedPoints), score: candidate.score, scoreItems: candidate.scoreItems, terminationReason: candidate.terminationReason, competingBranches: candidate.competingBranches, ambiguous, searchTruncated: candidate.searchTruncated };
+  });
+  return { pathCandidates, searchTruncated, budget };
 }

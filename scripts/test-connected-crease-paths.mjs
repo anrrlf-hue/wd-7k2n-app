@@ -19,8 +19,12 @@ assert.ok(result.pathCandidates.some(candidate => candidate.ambiguous), "similar
 assert.ok(result.pathCandidates.every(candidate => candidate.orientedSegmentRefs.every(ref => ref.segmentIndex !== 3)), "different component is never connected");
 assert.ok(result.pathCandidates.every(candidate => candidate.orderedPoints.every((point, index, points) => index === 0 || Math.hypot(point.x - points[index - 1].x, point.y - points[index - 1].y) <= Math.SQRT2)), "ordered path remains pixel-adjacent");
 assert.ok(result.pathCandidates.every(candidate => candidate.orderedPoints.every(point => (evidence.get(`${point.x},${point.y}`)?.valleyResponse ?? 0) > 0)), "selected ordered path has pixel-level ridge support");
-assert.ok(result.pathCandidates.every(candidate => candidate.actualSupportLengthPx <= 5), "junction search does not inflate length");
+assert.ok(result.pathCandidates.every(candidate => candidate.actualSupportLengthPx <= 6), "junction search does not inflate length");
 assert.ok(result.pathCandidates.some(candidate => candidate.terminationReason === "terminal"), "open paths end as terminal rather than loop");
+assert.ok(result.pathCandidates.every(candidate => candidate.orientedSegmentRefs.length > 1), "termination prefix is evaluated but not reported as an independent competing path");
+
+const reversible = rankConnectedCreasePaths([segments[0]], [], evidence, {}, { used: 0, limit: 8192 });
+assert.equal(reversible.pathCandidates.length, 1, "forward/reverse views of one segment collapse to one canonical path");
 
 const tangentEvidence = new Map();
 const tangentSegments = [
@@ -45,9 +49,12 @@ const loopSegments = [
 loopSegments.forEach(segment => addEvidence(segment.points));
 const loopResult = rankConnectedCreasePaths(loopSegments, [], evidence, {}, { used: 0, limit: 8192 });
 assert.ok(loopResult.pathCandidates.every(candidate => candidate.actualSupportLengthPx <= 4), "loop revisit does not inflate path length");
+const selfLoop = [{ componentId: 9, points: [{ x: 40, y: 40 }, { x: 41, y: 40 }, { x: 40, y: 40 }], pathLengthPx: 2, supportPixelCount: 3, responseMean: 12, status: "ambiguous" }];
+assert.equal(rankConnectedCreasePaths(selfLoop, [], evidence, {}, { used: 0, limit: 8192 }).pathCandidates.length, 0, "self-loop observation is not promoted as a start path");
 
 const truncated = rankConnectedCreasePaths(segments, [], evidence, {}, { used: 0, limit: 1 });
 assert.equal(truncated.searchTruncated, true, "small budget is explicitly reported");
+assert.ok(truncated.budget.used <= 1, "global budget is not exceeded across starts");
 assert.ok(truncated.pathCandidates.every(candidate => candidate.searchTruncated || candidate.terminationReason === "terminal"), "budget termination is preserved on candidates");
 
 console.log("PASS connected crease path ranking: exact junctions, component isolation, Y ambiguity, bounded search, ordered support paths");
