@@ -39,6 +39,7 @@ export interface MajorCreaseCandidate {
   direction: { axisAngleDeg: number; thumbSide: "left" | "right" };
   probe: { normalAngleDeg: number; offsetPx: number; directionCount: number; offsetCount: number } | null;
   truncated: boolean;
+  truncatedReason?: "work_limit" | "component_limit" | "thinning_limit" | "seed_limit";
 }
 
 export interface MajorCreaseTrackResult {
@@ -223,9 +224,9 @@ export function traceForegroundSegments(foreground: Uint8Array, width: number, h
   return traceForegroundSegmentsWithBudget(foreground, width, height).segments;
 }
 
-export function traceForegroundSegmentsWithBudget(foreground: Uint8Array, width: number, height: number): { segments: MajorCreaseSegment[]; truncatedReason?: "work_limit" | "component_limit" | "thinning_limit" | "seed_limit" } {
+export function traceForegroundSegmentsWithBudget(foreground: Uint8Array, width: number, height: number, maxWorkUnits = MAX_WORK_UNITS): { segments: MajorCreaseSegment[]; truncatedReason?: "work_limit" | "component_limit" | "thinning_limit" | "seed_limit" } {
   if (foreground.length !== width * height) return { segments: [] };
-  const budget: WorkBudget = { used: 0, max: MAX_WORK_UNITS };
+  const budget: WorkBudget = { used: 0, max: maxWorkUnits };
   const segments = components(new Float32Array(foreground), foreground, width, height, budget).flatMap((component, componentId) => traceSkeleton(component, new Float32Array(foreground), width, height, budget, componentId));
   return { segments, truncatedReason: budget.truncatedReason };
 }
@@ -260,7 +261,7 @@ export function trackMajorCreaseCandidates(
     bestProbeDirection.fill(-1); bestProbeOffset.fill(-1);
     const probeDirections = 12, probeOffsets = [Math.max(2, Math.min(palmWidth * .025, 12)), Math.max(3, Math.min(palmWidth * .05, 20)), Math.max(4, Math.min(palmWidth * .08, 28))];
     const probeBudget: WorkBudget = { used: width * height * 2, max: MAX_WORK_UNITS };
-    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    pixelLoop: for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
       const rx = x - p[0].x, ry = y - p[0].y;
       const along = rx * ux + ry * uy, across = side * (rx * nx + ry * ny);
       const inCorridor = along >= axisLength * .04 && along <= axisLength * 1.05 && across >= -palmWidth * .12 && across <= palmWidth * .95;
@@ -273,7 +274,7 @@ export function trackMajorCreaseCandidates(
         const radians = Math.atan2(ny, nx) + directionIndex * Math.PI / probeDirections;
         const normalX = Math.cos(radians), normalY = Math.sin(radians);
         for (let offsetIndex = 0; offsetIndex < probeOffsets.length; offsetIndex++) {
-          if (!consume(probeBudget)) break;
+          if (!consume(probeBudget)) break pixelLoop;
           const offset = probeOffsets[offsetIndex];
           const px = Math.max(0, Math.min(width - 1, Math.round(x + normalX * offset))), py = Math.max(0, Math.min(height - 1, Math.round(y + normalY * offset)));
           const qx = Math.max(0, Math.min(width - 1, Math.round(x - normalX * offset))), qy = Math.max(0, Math.min(height - 1, Math.round(y - normalY * offset)));
@@ -285,7 +286,12 @@ export function trackMajorCreaseCandidates(
       const v = Math.max(localContrast, directional);
       response[index] = v; valleyResponse[index] = directional; bestProbeDirection[index] = chosenDirection; bestProbeOffset[index] = chosenOffset; if (v > 0) values.push(v);
     }
-    if (!values.length) return finish({ status: "ok", width, height, elapsedMs: 0, candidate: emptyCandidate(width, height, angle, thumbSide) });
+    if (!values.length) {
+      const truncatedReason = probeBudget.truncatedReason;
+      const candidate = emptyCandidate(width, height, angle, thumbSide);
+      candidate.truncated = Boolean(truncatedReason); candidate.truncatedReason = truncatedReason;
+      return finish({ status: truncatedReason ? "truncated" : "ok", width, height, elapsedMs: 0, candidate });
+    }
     values.sort((a, b) => a - b);
     const threshold = Math.max(3, values[Math.floor(values.length * .82)] * .55);
     const foreground = new Uint8Array(response.length);
@@ -326,7 +332,7 @@ export function trackMajorCreaseCandidates(
     const truncated = Boolean(truncatedReason);
     const ambiguousSegments = ambiguousComponents.map(item => ({ componentId: item.componentId, points: item.points, supportPoints: item.supportPoints, pathLengthPx: pathLength(item.points), supportPixelCount: item.supportPixelCount, responseMean: item.responseMean, status: "ambiguous" as const }));
     const allSegments = [...segments, ...ambiguousSegments];
-    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, probe, truncated } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, probe, truncated };
+    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, probe, truncated, truncatedReason } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, probe, truncated, truncatedReason };
     return finish({ status: truncated ? "truncated" : "ok", width, height, elapsedMs: 0, candidate });
   } catch {
     return finish({ status: "runtime", errorCode: "runtime", width, height, elapsedMs: 0, candidate: null });

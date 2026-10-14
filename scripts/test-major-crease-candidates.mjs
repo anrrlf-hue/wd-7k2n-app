@@ -86,6 +86,7 @@ assert.ok(filledSegments.length && filledSegments.some(segment => segment.suppor
 const manyComponents = new Uint8Array(512 * 512);
 for (let y = 10; y < 500; y += 20) for (let x = 10; x < 500; x += 20) for (let yy = 0; yy < 5; yy++) for (let xx = 0; xx < 5; xx++) manyComponents[(y + yy) * 512 + x + xx] = 1;
 assert.equal(traceForegroundSegmentsWithBudget(manyComponents, 512, 512).truncatedReason, "component_limit", "18px+ component limit is explicit");
+assert.equal(traceForegroundSegmentsWithBudget(new Uint8Array(64 * 64), 64, 64, 10).truncatedReason, "work_limit", "small work budget reports truncation on negative input");
 const edge = image(); stroke(edge, [[0, 58], [0, 92], [10, 120], [28, 144]], 45, 3);
 const edgeMask = new Uint8Array(width * height);
 for (let i = 0; i < width * height; i++) if (edge.data[i * 4] < 180) edgeMask[i] = 1;
