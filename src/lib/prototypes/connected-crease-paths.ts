@@ -28,6 +28,7 @@ export interface ConnectedPathCandidate {
   terminationReason: "terminal" | "loop" | "no_extension" | "searchTruncated";
   competingBranches: number;
   ambiguous: boolean;
+  junctionCompetition: Array<{ x: number; y: number; alternatives: number; scoreGap: number; ambiguous: boolean }>;
   searchTruncated: boolean;
 }
 
@@ -35,6 +36,7 @@ export interface RankConnectedPathResult {
   pathCandidates: ConnectedPathCandidate[];
   searchTruncated: boolean;
   budget: PathSearchBudget;
+  truncatedReason?: "budget";
 }
 
 const MAX_STARTS = 16;
@@ -130,6 +132,7 @@ interface State {
   terminationReason: ConnectedPathCandidate["terminationReason"];
   branches: number;
   loopDetected: boolean;
+  junctionCompetition: Array<{ x: number; y: number; alternatives: number; scoreGap: number; ambiguous: boolean }>;
 }
 
 function stateScore(state: State) {
@@ -181,7 +184,7 @@ export function rankConnectedCreasePaths(
     const oriented = start.direction === 1 ? segment.points : [...segment.points].reverse();
     const startNode = key(segment.componentId, oriented[0]);
     const endNode = key(segment.componentId, oriented[oriented.length - 1]);
-    let beam: State[] = [{ refs: [start], nodes: new Set([startNode, endNode]), edges: new Set([`${start.segmentIndex}:${start.direction}`]), score: 0, length: segment.pathLengthPx, junction: 0, probe: 0, support: supportScore(oriented, ridgeEvidence), prior: thumbPrior(oriented, palmFrame), terminationReason: "no_extension", branches: 0, loopDetected: false }];
+    let beam: State[] = [{ refs: [start], nodes: new Set([startNode, endNode]), edges: new Set([`${start.segmentIndex}:${start.direction}`]), score: 0, length: segment.pathLengthPx, junction: 0, probe: 0, support: supportScore(oriented, ridgeEvidence), prior: thumbPrior(oriented, palmFrame), terminationReason: "no_extension", branches: 0, loopDetected: false, junctionCompetition: [] }];
     let localExpansions = 0;
     while (beam.length && localExpansions < perStart) {
       const nextBeam: State[] = [];
@@ -196,6 +199,12 @@ export function rankConnectedCreasePaths(
         if (!nextRefs.length) { state.terminationReason = state.loopDetected ? "loop" : "terminal"; nextBeam.push(state); continue; }
         nextBeam.push({ ...state, terminationReason: state.loopDetected ? "loop" : "terminal" });
         state.branches = Math.max(state.branches, nextRefs.length);
+        const branchScores = nextRefs.map(nextIndex => {
+          const nextSegment = segments[nextIndex];
+          const nextDirection: 1 | -1 = samePoint(nextSegment.points[0], current) ? 1 : -1;
+          const junction = junctionScores(lastSegment, last.direction, nextSegment, nextDirection, ridgeEvidence);
+          return { nextIndex, value: junction.continuity * .6 + junction.probeAgreement * .4, junction };
+        }).sort((a, b) => b.value - a.value);
         for (const nextIndex of nextRefs) {
           if (localExpansions >= perStart || budget.used >= Math.min(MAX_EXTENSIONS, budget.limit)) { searchTruncated = true; break; }
           localExpansions++;
@@ -209,13 +218,15 @@ export function rankConnectedCreasePaths(
             continue;
           }
           const junction = junctionScores(lastSegment, last.direction, nextSegment, direction, ridgeEvidence);
+          const branchGap = branchScores.length > 1 ? Math.abs(branchScores[0].value - branchScores[1].value) : 1;
+          const competition = branchScores.length > 1 ? [{ x: current.x, y: current.y, alternatives: branchScores.length, scoreGap: branchGap, ambiguous: branchGap < .12 }] : [];
           const nextLength = state.length + nextSegment.pathLengthPx;
           const nextSupport = (state.support * state.length + supportScore(nextPoints, ridgeEvidence) * nextSegment.pathLengthPx) / Math.max(1, nextLength);
           nextBeam.push({
             refs: [...state.refs, { segmentIndex: nextIndex, direction }], nodes: new Set([...state.nodes, currentKey, nextEnd]), edges: new Set([...state.edges, `${nextIndex}:${direction}`]),
             score: 0, length: nextLength, junction: (state.junction * Math.max(0, state.refs.length - 1) + junction.continuity) / state.refs.length,
             probe: (state.probe * Math.max(0, state.refs.length - 1) + junction.probeAgreement) / state.refs.length,
-            support: nextSupport, prior: Math.max(state.prior, thumbPrior(nextPoints, palmFrame)), terminationReason: "no_extension", branches: state.branches, loopDetected: false,
+            support: nextSupport, prior: Math.max(state.prior, thumbPrior(nextPoints, palmFrame)), terminationReason: "no_extension", branches: state.branches, loopDetected: false, junctionCompetition: [...state.junctionCompetition, ...competition],
           });
         }
       }
@@ -226,7 +237,7 @@ export function rankConnectedCreasePaths(
     for (const state of beam) {
       const scoreItems = { length: state.length / (state.length + 96), junctionContinuity: state.junction, probeAgreement: state.probe, ridgeSupport: Math.min(state.support / 32, 1), thumbPrior: state.prior };
       const score = scoreItems.length * .35 + scoreItems.junctionContinuity * .2 + scoreItems.probeAgreement * .15 + scoreItems.ridgeSupport * .25 + scoreItems.thumbPrior * .05;
-      finished.push({ refs: state.refs.map(ref => ({ segmentIndex: ref.segmentIndex, direction: ref.direction === 1 ? "forward" : "reverse" })), actualSupportLengthPx: state.length, score, scoreItems, terminationReason: searchTruncated && state.terminationReason === "no_extension" ? "searchTruncated" : state.terminationReason, competingBranches: state.branches, ambiguous: false, searchTruncated });
+      finished.push({ refs: state.refs.map(ref => ({ segmentIndex: ref.segmentIndex, direction: ref.direction === 1 ? "forward" : "reverse" })), actualSupportLengthPx: state.length, score, scoreItems, terminationReason: searchTruncated && state.terminationReason === "no_extension" ? "searchTruncated" : state.terminationReason, competingBranches: state.branches, ambiguous: state.refs.some(ref => segments[ref.segmentIndex].status === "ambiguous"), junctionCompetition: state.junctionCompetition, searchTruncated });
     }
   }
   finished.sort((a, b) => b.score - a.score);
@@ -243,7 +254,7 @@ export function rankConnectedCreasePaths(
       const points = ref.direction === "forward" ? segments[ref.segmentIndex].points : [...segments[ref.segmentIndex].points].reverse();
       points.forEach(point => { if (!orderedPoints.length || !samePoint(orderedPoints[orderedPoints.length - 1], point)) orderedPoints.push(point); });
     });
-    return { orderedPoints, orientedSegmentRefs: candidate.refs, actualSupportLengthPx: lengthOf(orderedPoints), score: candidate.score, scoreItems: candidate.scoreItems, terminationReason: candidate.terminationReason, competingBranches: candidate.competingBranches, ambiguous, searchTruncated: candidate.searchTruncated };
+    return { orderedPoints, orientedSegmentRefs: candidate.refs, actualSupportLengthPx: lengthOf(orderedPoints), score: candidate.score, scoreItems: candidate.scoreItems, terminationReason: candidate.terminationReason, competingBranches: candidate.competingBranches, ambiguous: candidate.ambiguous || ambiguous || candidate.junctionCompetition.some(item => item.ambiguous), junctionCompetition: candidate.junctionCompetition, searchTruncated: candidate.searchTruncated };
   });
-  return { pathCandidates, searchTruncated, budget };
+  return { pathCandidates, searchTruncated, budget, truncatedReason: searchTruncated ? "budget" : undefined };
 }

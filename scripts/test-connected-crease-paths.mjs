@@ -16,6 +16,7 @@ segments.forEach(segment => addEvidence(segment.points));
 const result = rankConnectedCreasePaths(segments, [], evidence, { thumbRegion: { xMin: 0, xMax: 1, yMin: -1, yMax: 1 } }, { used: 0, limit: 8192 });
 assert.ok(result.pathCandidates.length >= 2, "Y junction keeps competing connected paths");
 assert.ok(result.pathCandidates.some(candidate => candidate.ambiguous), "similar Y branches remain ambiguous");
+assert.ok(result.pathCandidates.some(candidate => candidate.junctionCompetition.some(junction => junction.alternatives >= 2)), "local junction competition is preserved separately from global score");
 assert.ok(result.pathCandidates.every(candidate => candidate.orientedSegmentRefs.every(ref => ref.segmentIndex !== 3)), "different component is never connected");
 assert.ok(result.pathCandidates.every(candidate => candidate.orderedPoints.every((point, index, points) => index === 0 || Math.hypot(point.x - points[index - 1].x, point.y - points[index - 1].y) <= Math.SQRT2)), "ordered path remains pixel-adjacent");
 assert.ok(result.pathCandidates.every(candidate => candidate.orderedPoints.every(point => (evidence.get(`${point.x},${point.y}`)?.valleyResponse ?? 0) > 0)), "selected ordered path has pixel-level ridge support");
@@ -25,6 +26,9 @@ assert.ok(result.pathCandidates.every(candidate => candidate.orientedSegmentRefs
 
 const reversible = rankConnectedCreasePaths([segments[0]], [], evidence, {}, { used: 0, limit: 8192 });
 assert.equal(reversible.pathCandidates.length, 1, "forward/reverse views of one segment collapse to one canonical path");
+const ambiguousInput = segments.map((segment, index) => index === 1 ? { ...segment, status: "ambiguous" } : segment);
+const ambiguousResult = rankConnectedCreasePaths(ambiguousInput, [], evidence, {}, { used: 0, limit: 8192 });
+assert.ok(ambiguousResult.pathCandidates.some(candidate => candidate.ambiguous && candidate.orientedSegmentRefs.some(ref => ref.segmentIndex === 1)), "ambiguous segment status reaches its path candidate");
 
 const tangentEvidence = new Map();
 const tangentSegments = [
@@ -56,5 +60,10 @@ const truncated = rankConnectedCreasePaths(segments, [], evidence, {}, { used: 0
 assert.equal(truncated.searchTruncated, true, "small budget is explicitly reported");
 assert.ok(truncated.budget.used <= 1, "global budget is not exceeded across starts");
 assert.ok(truncated.pathCandidates.every(candidate => candidate.searchTruncated || candidate.terminationReason === "terminal"), "budget termination is preserved on candidates");
+const zeroBudget = rankConnectedCreasePaths(segments, [], evidence, {}, { used: 0, limit: 0 });
+assert.equal(zeroBudget.budget.used, 0, "zero budget performs no work");
+assert.equal(zeroBudget.searchTruncated, true, "zero budget reports incomplete search");
+const usedBudget = rankConnectedCreasePaths(segments, [], evidence, {}, { used: 3, limit: 4 });
+assert.ok(usedBudget.budget.used <= 4, "already-consumed budget leaves only the global remainder");
 
 console.log("PASS connected crease path ranking: exact junctions, component isolation, Y ambiguity, bounded search, ordered support paths");

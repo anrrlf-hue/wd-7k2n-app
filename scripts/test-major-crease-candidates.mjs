@@ -94,6 +94,7 @@ for (let i = 0; i < width * height; i++) if (edge.data[i * 4] < 180) edgeMask[i]
 assert.ok(traceForegroundSegments(edgeMask, width, height).length, "bbox-padded thinning retains a boundary curve");
 const thickCurvedResult = track(thickCurved);
 assert.ok(thickCurvedResult.candidate && thickCurvedResult.candidate.segments.length > 0, "end-to-end thick curve returns observed segments");
+assert.ok(thickCurvedResult.candidate.pathSearch && thickCurvedResult.candidate.pathSearch.budget.used <= thickCurvedResult.candidate.pathSearch.budget.limit, "integrated path search preserves global budget status");
 const thickObserved = thickCurvedResult.candidate.components.flatMap(component => component.supportPoints);
 const thickExpected = [];
 for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) if (thickCurved.data[(y * width + x) * 4] < 180) thickExpected.push({ x, y });
