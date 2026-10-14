@@ -33,10 +33,10 @@ for (const label of ['2026년 10월', '2027년 2월', '2027년 3월']) {
   assert.deepEqual(base.symbols.month, other.symbols.month, 'hold the complete exact monthly pillar constant');
   assert.notDeepEqual(base.symbols.year, other.symbols.year);
   assert.equal(passage(base, 'month-relation').text, passage(other, 'month-relation').text);
-  assert.notEqual(passage(base, 'month-lived-scene').text, passage(other, 'month-lived-scene').text, 'annual stem changes the reason for discomfort within the same scene');
+  assert.equal(passage(base, 'month-lived-scene').text, passage(other, 'month-lived-scene').text, 'annual stem is not copied into the monthly scene');
   assert.notEqual(final(base), final(other), 'annual branch changes the choice/consequence, not just the label or evidence');
   assert.notEqual(final(base).split(/(?<=\.)\s+/).at(-1), final(other).split(/(?<=\.)\s+/).at(-1));
-  assert.deepEqual(passage(base, 'month-lived-scene').evidenceIds.filter(id => id.startsWith('year-')), ['year-stem']);
+  assert.deepEqual(passage(base, 'month-lived-scene').evidenceIds.filter(id => id.startsWith('year-')), []);
   assert.deepEqual(passage(base, 'month-lived-resolution').evidenceIds.filter(id => id.startsWith('year-')), ['year-branch']);
   for (const result of [base, other]) {
     const used = new Set(result.plan.passages.flatMap(p => p.evidenceIds));
@@ -60,21 +60,25 @@ const current = composeMonthStory('상관', '정재', 'hour', '상관', fixed);
 // These two mocks isolate computed ten-god components; they are not calendar charts.
 const stemOnly = composeMonthStory('상관', '정재', 'hour', '상관', { ...fixed, year: buildPremiumYearNarrative({ ...march.symbols.year, stemTenGod: '편관' }) });
 const branchOnly = composeMonthStory('상관', '정재', 'hour', '상관', { ...fixed, year: buildPremiumYearNarrative({ ...march.symbols.year, branchTenGod: '편인' }) });
-assert.notEqual(current.scene, stemOnly.scene); assert.equal(current.meaning, stemOnly.meaning);
+assert.equal(current.scene, stemOnly.scene); assert.equal(current.meaning, stemOnly.meaning);
 assert.equal(current.scene, branchOnly.scene); assert.notEqual(current.meaning, branchOnly.meaning);
 const unknown = buildPremiumYearNarrative({ ...march.symbols.year, branchTenGod: null });
 assert.equal(unknown, null);
 assert.deepEqual(composeMonthStory('상관', '정재', 'hour', '상관', { year: unknown }), composeMonthStory('상관', '정재', 'hour', '상관'));
 for (const p of report.periods) {
-  assert.ok(p.interpretation.passages.some(x => x.evidenceIds.includes('year-stem')));
-  assert.ok(p.interpretation.passages.some(x => x.evidenceIds.includes('year-branch')));
+  assert.ok(!p.interpretation.passages.some(x => x.evidenceIds.includes('year-stem')));
+  assert.ok(p.interpretation.passages.find(x => x.id === 'month-lived-resolution')?.evidenceIds.includes('year-branch'));
   const used = new Set(p.interpretation.passages.flatMap(x => x.evidenceIds));
   assert.ok(p.interpretation.evidence.every(e => used.has(e.id)));
-  assert.match(p.basis, /해의 천간:.*해의 지지:/);
+  assert.match(p.basis, /해의 지지:/);
+  assert.doesNotMatch(p.basis, /해의 천간:/, 'annual stem is not presented as monthly evidence');
 }
 const summaries = [...new Map(report.periods.map(p => [p.symbols.year.ganzhi, p.symbols.year])).values()].map(buildPremiumYearNarrative);
 assert.ok(summaries.every(y => report.annualIntroduction.includes(y.summary)), 'the same actual annual frame used in months appears once in the annual introduction');
 assert.equal(new Set(summaries.map(y => y.summary)).size, 2);
+const stemAlternative = buildPremiumYearNarrative({ ...summaries[0].symbols, stemTenGod: summaries[0].stemGod === '편관' ? '정인' : '편관' });
+assert.ok(stemAlternative && stemAlternative.summary !== summaries[0].summary, 'annual stem changes the annual introduction meaning');
+assert.ok(!report.annualIntroduction.includes(stemAlternative.summary), 'an unused annual stem is not presented in the report');
 assert.equal(report.version, 'natal-customer-reading-2026-10-v14');
 assert.ok(isCurrentPremiumReport(report));
 if (process.env.YEAR_READING_BEFORE) {
@@ -86,4 +90,4 @@ if (process.env.YEAR_READING_BEFORE) {
   assert.deepEqual(report.periods.map(p => p.symbols), before.periods.map(p => p.symbols), 'do not change actual calculation');
 }
 if (process.env.YEAR_READING_OUTPUT) fs.writeFileSync(process.env.YEAR_READING_OUTPUT, JSON.stringify({ synthetic: true, fixedChart: facts, report, contrast, componentContrast: { syntheticComputedSymbols: true, current, stemOnly, branchOnly } }, null, 2));
-console.log('PASS 3 year-only contrasts with identical exact month/chart/palms; actual annual frame; distinct stem/branch influence; March new conflict/choice/consequence; no unused claimed evidence; v12 preserved');
+console.log('PASS annual stem is confined to annual introduction; annual branch changes monthly consequence; unused monthly evidence is absent; v12 preserved');
