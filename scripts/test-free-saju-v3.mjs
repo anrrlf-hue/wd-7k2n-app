@@ -196,8 +196,12 @@ assert(!postReadingSource.includes("submitQuestion"), "post-palm repetitive ques
 assert(postReadingSource.includes("12개월"), "premium CTA must promise the one-year monthly report");
 
 const consultationSource = fs.readFileSync(path.join(root, "src/lib/free-consultation-style-v1.ts"), "utf8");
-assert(!consultationSource.match(/key: "money"[\s\S]{0,500}bigMoneyAffinity/), "broad Saju still overweights big-money content");
-assert(!consultationSource.match(/key: "money"[\s\S]{0,500}peopleAndMoney/), "broad Saju still overweights finance relationship content");
+const consultationSections = consultationStyleMod.buildFreeConsultationSections(report);
+const sectionByKey = new Map(consultationSections.map((section) => [section.key, section]));
+assert(JSON.stringify(consultationSections.map((section) => section.key)) === JSON.stringify(["self", "relationship", "work", "money", "life", "strengths", "cautions", "now", "future"]), "broad Saju displayed section contract drifted");
+assert(sectionByKey.get("relationship").paragraphs.includes(report.relationshipStyle.text) && sectionByKey.get("relationship").paragraphs.includes(report.loveStyle.text), "relationship fields are not kept in the relationship section");
+assert(sectionByKey.get("money").paragraphs.includes(report.peopleAndMoney.text), "people-and-money detail is missing from the money section");
+for (const key of ["self", "relationship", "work", "life", "strengths", "cautions", "now", "future"]) assert(!sectionByKey.get(key).paragraphs.includes(report.peopleAndMoney.text), "money relationship detail leaked into another displayed section: " + key);
 assert(!resultSource.includes("WealthTypeSection"), "broad Saju still injects a separate wealth-type card");
 
 const palmPageSource = fs.readFileSync(path.join(root, "src/components/palm/palm-page-client.tsx"), "utf8");
