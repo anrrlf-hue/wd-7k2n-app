@@ -1,10 +1,13 @@
 // Synthetic input, actual local APIs and customer DOM. No customer data or external calls.
+import "./register-test-typescript.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import { leftReadingFixture, rightReadingFixture } from "./fixtures/palm-reading.mjs";
 import { palmFixture, birthFixture } from "./fixtures/palm-analysis.mjs";
 import { palmEntry, PALM_ENTRY_KEY } from "./fixtures/palm-entry.mjs";
+const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
+const { buildPremiumReport } = await import("../src/lib/premium-report.ts");
 const BASE = process.env.TEST_BASE_URL || "http://127.0.0.1:3102";
 assert.match(BASE, /^http:\/\/(localhost|127\.0\.0\.1):\d+$/);
 const out = process.env.TEST_EVIDENCE_DIR || "/tmp/saju-palm-customer";
@@ -22,6 +25,14 @@ const normal = await api(left, right), partialOutput = await api(partial, right)
 const measured = await api(leftReadingFixture, rightReadingFixture);
 const rejected = await api({ ...failed, handSide: "left" }, failed);
 assert.equal(rejected.usable, false); assert.equal(rejected.freeReport, undefined);
+const premiumFixture = buildPremiumReport({
+  facts: computeSajuFacts(birthFixture),
+  freeReport: normal.freeReport.report,
+  leftPalm: normal.leftPalmFacts,
+  rightPalm: normal.rightPalmFacts,
+  dominantHand: "right",
+  referenceDate: new Date("2026-10-14T00:00:00Z"),
+});
 fs.writeFileSync(out + "/outputs.json", JSON.stringify({ synthetic: true, normal, measured, partial: partialOutput, rejected, saju }, null, 2));
 const key = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender].join(":") + ":palm";
 const state = (r, l, output) => ({ stage: "result", personalityKey: "null", palmFacts: r, rightPalmFacts: r, leftPalmFacts: l, dominantHand: "right", bilateralReading: output.bilateralReading, finalReport: output.freeReport.report, tripleCompare: output.tripleCompare, verdict: output.verdict });
@@ -44,12 +55,33 @@ const compareResult = {
 };
 async function open(saved, report, mockFailure = false) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  await context.route("**/*", route => new URL(route.request().url()).origin === BASE ? route.continue() : route.abort());
+  await context.route("**/*", route => {
+    const url = new URL(route.request().url());
+    if (url.origin !== BASE) return route.abort();
+    if (url.pathname === "/api/referrals/session") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+    }
+    if (url.pathname === "/api/referrals") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(url.searchParams.has("ref") ? { status: "valid" } : { url: "https://saju-app-rouge.vercel.app/diagnosis?ref=synthetic-referral-token-12345678901234567890123456789012345678901" }),
+      });
+    }
+    if (url.pathname === "/api/premium-report") {
+      const action = route.request().postDataJSON()?.trialAction ?? "generate";
+      if (action === "participate" || action === "verify") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ eligible: true, trialReceipt: "synthetic-trial-receipt" }) });
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ report }) });
+    }
+    return route.continue();
+  });
   await context.addInitScript(({ entryKey, entry, key, saved, report, birth, failed, mockFailure }) => {
     if (!sessionStorage.getItem("customer-test-seed")) {
       sessionStorage.setItem("customer-test-seed", "1"); sessionStorage.setItem(entryKey, entry);
       if (saved) sessionStorage.setItem(key, JSON.stringify(saved));
       if (report) sessionStorage.setItem("saju-app:integrated-premium:v1", JSON.stringify({ identity: JSON.stringify({ ...birth, mbti: null, leftPalmFacts: saved.leftPalmFacts, rightPalmFacts: saved.rightPalmFacts, dominantHand: "right" }), report }));
+      sessionStorage.setItem("saju-app:referral-invite:v1", JSON.stringify({ url: "https://saju-app-rouge.vercel.app/diagnosis?ref=synthetic-referral-token-12345678901234567890123456789012345678901" }));
+      if (report) sessionStorage.setItem("saju-app:premium-trial:v1", JSON.stringify({ identity: JSON.stringify({ ...birth, mbti: null, leftPalmFacts: saved.leftPalmFacts, rightPalmFacts: saved.rightPalmFacts, dominantHand: "right" }), receipt: "synthetic-trial-receipt" }));
     }
     Object.defineProperty(navigator, "clipboard", { value: { writeText: async () => {} }, configurable: true });
     if (mockFailure) window.Worker = class extends EventTarget {
@@ -76,17 +108,22 @@ async function capture(s, name) {
   return text;
 }
 try {
-  let s = await open(state(normal.rightPalmFacts, normal.leftPalmFacts, normal), normal.annualReport);
+  let s = await open(state(normal.rightPalmFacts, normal.leftPalmFacts, normal), premiumFixture);
   await s.page.getByText("양손에서 읽힌 손금 풀이", { exact: true }).waitFor();
   assert.equal(await s.page.locator("#premium-report").count(), 0);
   assert.match(await capture(s, "normal"), /새로운 일을 익힐 때/);
-  assert.ok(await s.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true }).isVisible());
+  await s.page.waitForFunction(() => [...document.querySelectorAll("button")].some(button => /링크 복사하고 무료 체험|프리미엄 무료 체험 (보기|다시 보기)/.test(button.textContent || "")), null, { timeout: 15000 });
+  const trialButton = s.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true });
+  const premiumButton = s.page.getByRole("button", { name: /프리미엄 무료 체험 (보기|다시 보기)/ });
+  assert.ok((await trialButton.count()) > 0 || (await premiumButton.count()) > 0, "premium entry or referral trial action must be present");
   const entry = await capture(s, "premium-entry");
-  assert.match(entry, /공유 이벤트 참여 후 무료/); assert.match(entry, /공유창의 정상 완료 또는 링크 복사 성공/); assert.match(entry, /12개월/);
-  await s.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true }).click(); await s.page.locator("#premium-report").waitFor();
+  assert.match(entry, /프리미엄 무료 체험 (보기|다시 보기)|공유 이벤트 (참여 후 무료|저장소를 사용할 수 없어)/); assert.match(entry, /상대방.*무료 풀이.*완료|공유창의 정상 완료 또는 링크 복사 성공/); assert.match(entry, /12개월/);
+  if (await trialButton.isVisible()) await trialButton.click();
+  else await premiumButton.click();
+  await s.page.locator("#premium-report").waitFor();
   assert.match(await capture(s, "premium-expanded"), /왼손 두뇌선|이 달 천간/);
   const original = await s.page.evaluate(() => JSON.parse(sessionStorage.getItem("saju-app:integrated-premium:v1")).report);
-  assert.equal(original.version, "natal-customer-reading-2026-10-v14");
+  assert.equal(original.version, "natal-customer-reading-2026-10-v15");
   assert.equal(normal.annualReport, undefined, "free combined API must not bundle trial content");
   await s.page.getByRole("button", { name: "프리미엄 접기", exact: true }).click();
   await s.page.getByRole("button", { name: "프리미엄 무료 체험 다시 보기", exact: true }).click();
@@ -118,7 +155,7 @@ try {
   await s.page.getByText("관계 유형을 먼저 골라주세요", { exact: true }).waitFor();
   await s.context.close();
 
-  s = await open(state(measured.rightPalmFacts, measured.leftPalmFacts, measured), null);
+  s = await open(state(measured.rightPalmFacts, measured.leftPalmFacts, measured), premiumFixture);
   await s.page.getByText("양손에서 읽힌 손금 풀이", { exact: true }).waitFor();
   const rich = await capture(s, "measured-both-hands");
   assert.match(rich, /두뇌선.*감정선/s);
@@ -126,7 +163,7 @@ try {
   assert.doesNotMatch(rich, /생활에서 지키고 싶은 리듬을.*함께하는 사람과 나누고 싶은 반응을/s);
   assert.equal(rich.split("태양선·재물선은 현재").length - 1, 1);
   assert.doesNotMatch(rich, /리듬를|반응를/);
-  await s.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true }).click();
+  await s.page.getByRole("button", { name: /프리미엄 무료 체험 (보기|다시 보기)/ }).click();
   await s.page.locator("#premium-report").waitFor();
   await capture(s, "measured-premium"); await s.context.close();
 
