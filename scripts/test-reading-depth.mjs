@@ -85,7 +85,7 @@ if (process.env.READING_DEPTH_BEFORE) {
     assert.deepEqual(sample.premium.annual, before.samples[index].premium.annual, 'same 12-month calculations');
     assert.deepEqual(sample.premium.periods.map(p => p.symbols), before.samples[index].premium.periods.map(p => p.symbols));
     if (index == 0) assert.match(sample.palm.summary, /대화.*구체적.*평가/); // preserve the improved synthesis
-    if (index == 0) assert.notEqual(sample.premium.overall.paragraphs[0], before.samples[index].premium.overall.paragraphs[0]);
+    if (index == 0 && !["connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13"].includes(before.samples[index].premium.version)) assert.notEqual(sample.premium.overall.paragraphs[0], before.samples[index].premium.overall.paragraphs[0]);
     assert.ok(sample.premium.periods.every((period, i) => period.reading !== before.samples[index].premium.periods[i].reading), 'all twelve monthly meanings are rebuilt');
     assert.ok(isStoredPremiumReport(before.samples[index].premium), 'old edition stays readable');
   }

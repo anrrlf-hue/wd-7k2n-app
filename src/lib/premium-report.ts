@@ -6,6 +6,7 @@ import { TEN_GOD_GROUP } from "@/lib/saju-facts";
 import type { SajuFocus, SajuDetailFocus } from "@/lib/saju-focus";
 import { buildSajuAnnualOutlook, type AnnualMonthSymbols, type SajuAnnualOutlook } from "@/lib/saju-timing";
 
+import { buildPremiumYearNarrative } from "@/lib/premium-year-narrative";
 import { buildPremiumMonthNarrative, traditionalSymbolSubject, type MonthReadingContext } from "@/lib/premium-month-narrative";
 import { buildPersonalReading, PERSONAL_GROUP_LABEL } from "@/lib/personal-reading";
 import type { ReadingPlan } from "@/lib/reading-plan";
@@ -18,7 +19,7 @@ import { composePremiumDomainStory, composePremiumOverallStory, premiumOverallEv
 import { validateReadingPlan } from "@/lib/reading-plan";
 import { describeReadingEvidence } from "@/lib/reading-evidence-display";
 
-export const PREMIUM_REPORT_VERSION = "connected-reading-2026-10-v12" as const;
+export const PREMIUM_REPORT_VERSION = "year-connected-reading-2026-10-v13" as const;
 export interface PremiumReading {
   headline: string;
   paragraphs: string[];
@@ -43,7 +44,7 @@ export interface PremiumPeriod {
   symbols?: AnnualMonthSymbols;
 }
 export interface PremiumReport {
-  version: typeof PREMIUM_REPORT_VERSION | "lived-reading-2026-10-v11" | "decision-reading-2026-10-v10" | "distinct-reading-2026-10-v9" | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
+  version: typeof PREMIUM_REPORT_VERSION | "connected-reading-2026-10-v12" | "lived-reading-2026-10-v11" | "decision-reading-2026-10-v10" | "distinct-reading-2026-10-v9" | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
   title: string;
   summary: string;
   overall: PremiumReading;
@@ -87,7 +88,7 @@ export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts,
     periods.push({
       label: month.label, months: [month.label], headline: interpretation.headline,
       reading: (narrative.length ? narrative : interpretation.passages).map(p => p.text).join(" "),
-      basis: `세운 ${symbols.year.ganzhi} · 월운 ${symbols.month.ganzhi}. ${describeReadingEvidence(interpreted)}. 이 상징의 전통적 의미를 이 달의 이야기로 읽었습니다.`,
+      basis: `계산된 세운 ${symbols.year.ganzhi} · 월운 ${symbols.month.ganzhi}. 함께 읽은 근거: ${describeReadingEvidence(interpreted)}. 이 상징의 전통적 의미를 이 달의 이야기로 읽었습니다.`,
       domains: [], interpretation, symbols,
     });
     previousSignature = signature;
@@ -184,7 +185,7 @@ export function buildPremiumReport(input: {
     closing: natal.closing ? premiumClosing(editorial, natal.closing) : undefined,
     annualHighlights: highlights,
     palmConnections,
-    annualIntroduction: premiumAnnualThread(editorial),
+    annualIntroduction: premiumAnnualThread(editorial, yearlySymbols.map(buildPremiumYearNarrative).filter(year => year !== null)),
     annualBackground: background.length ? `현재의 큰 흐름에는 ${background.map(g => `‘${PERSONAL_GROUP_LABEL[g]}’`).join(", ")}의 의미가 놓여 있습니다. 이를 한 해의 배경으로 두고, 달마다 달라지는 주제를 따로 살펴봅니다.` : null,
     annualMethod: `${yearContext} 월별 흐름은 매월 중순의 세운·월운을 기준으로 묶었습니다. 절기 경계와 기간 중 큰 운의 전환일은 세밀하게 나누지 않았습니다.${facts.hasTimeInput ? "" : " 출생시간을 몰라 큰 운의 배경과 강약에 따른 보완은 생략했습니다."}`,
     note: `${READING_GUIDE} 풀이 속 장면은 실제 개인 경험을 확인한 진술이 아니며, 월별 상징은 사건·수입·건강·수명의 예고로 보지 않습니다.`,

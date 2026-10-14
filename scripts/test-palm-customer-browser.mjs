@@ -67,7 +67,7 @@ try {
   await s.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true }).click(); await s.page.locator("#premium-report").waitFor();
   assert.match(await capture(s, "premium-expanded"), /왼손 두뇌선|이 달 천간/);
   const original = await s.page.evaluate(() => JSON.parse(sessionStorage.getItem("saju-app:integrated-premium:v1")).report);
-  assert.equal(original.version, "connected-reading-2026-10-v12");
+  assert.equal(original.version, "year-connected-reading-2026-10-v13");
   assert.equal(normal.annualReport, undefined, "free combined API must not bundle trial content");
   await s.page.getByRole("button", { name: "프리미엄 접기", exact: true }).click();
   await s.page.getByRole("button", { name: "프리미엄 무료 체험 다시 보기", exact: true }).click();

@@ -1,3 +1,4 @@
+import { connectYearToMonth, type PremiumYearNarrative, type MonthObservationMode } from "@/lib/premium-year-narrative";
 import { eulReul, gwaWa } from "@/lib/korean-particle";
 import { TEN_GOD_GROUP, type PillarFact, type TenGodGroup } from "@/lib/saju-facts";
 
@@ -66,7 +67,7 @@ const EXACT: Record<string, Relation> = {
   "편관|정인": { headline: "잘해야 할 마음을 누군가에게 기대기", text: "새 기대를 채우고 싶은 긴장과 설명을 듣고 마음 놓는 과정이 함께 놓입니다. 처음부터 잘해야 한다고 느낄 때 작은 도움을 받으면, 모르는 한 부분이 자신의 전부를 말하는 것은 아니었다고 느낄 여지가 있습니다.", outcome: "알고 있는 부분을 쓰고 낯선 한 부분은 물어보는 경험이 처음의 긴장을 더 작고 구체적으로 바꿀 수 있습니다." },
   "정관|정재": { headline: "지켜 온 정성이 조용한 쓰임으로 남을 때", text: "믿음직하게 이어 온 마음이 자주 편하게 쓰이는 만족과 만납니다. 잘 끝났다는 말을 듣는 순간보다 이후에도 자연스럽게 다시 쓰이는 모습을 볼 때 그 정성이 어디에 닿았는지 느낄 수 있습니다.", outcome: "눈에 띄는 반응이 적어도 반복해서 편해진 한 부분이 해 온 시간의 보람으로 남을 여지가 있습니다." },
   "식신|편재": { headline: "익숙한 즐거움이 누군가에게 닿을 때", text: "꾸준히 즐겨 온 것이 다른 사람에게도 쓰이는 장면을 읽습니다. 혼자 하는 동안 좋았던 부분이 밖에서는 다른 이유로 사랑받는다면, 알아봐 줘서 기쁜 마음과 내 즐거움을 그대로 남기고 싶은 마음이 함께 움직일 수 있습니다.", outcome: "더 많은 반응을 얻는 일보다 그 반응 뒤에도 내가 좋아했던 시간이 남는지가 중요한 만족이 될 수 있습니다." },
-  "상관|정재": { headline: "작은 수정이 내 하루에 자리 잡는 과정", text: "익숙한 것을 내 뜻에 맞게 손보고 일상에 남기는 흐름입니다. 한 번 새롭게 보이는 기쁨보다 자주 쓰며 편해졌다는 느낌에 마음이 실릴 수 있습니다. 바꾸고 싶은 부분이 줄어들면서 처음의 들뜸이 조용한 애착으로 달라지는 장면입니다.", outcome: "새로운 모습으로 보였는지보다 다시 손이 가는지에서 그 변화의 의미를 느낄 수 있습니다." },
+  "상관|정재": { headline: "작은 수정이 내 하루에 자리 잡는 과정", text: "바꾸고 싶은 뜻과 이미 생활에 자리 잡은 것을 지키고 싶은 마음이 만납니다. 전부 새롭게 만들고 싶어도 익숙하게 써 온 모습 안에 아끼는 부분이 있었다면, 원하는 표현과 잃고 싶지 않은 편안함이 다른 쪽에 놓일 수 있습니다.", outcome: "고치지 않아도 편했던 부분을 남긴 채 실제 불편했던 한 곳만 다시 손보는 선택을 떠올릴 수 있습니다. 전부 새롭게 만들지 않은 결과에도 바꾸고 싶었던 뜻이 더 또렷하게 남을 여지가 있습니다." },
   "편인|편인": { headline: "말에 없던 뜻까지 혼자 찾고 있을 때", text: "당연하게 이해했던 것을 다른 각도로 다시 생각하는 흐름입니다. 말의 이유를 알아내면 마음이 놓일 것 같지만, 여러 해석을 떠올리는 동안 정작 그 말을 들었을 때의 내 느낌이 뒤로 밀릴 수 있습니다.", outcome: "설명할 수 있는 이유가 늘어나는 것과 마음이 편해지는 것은 같은 속도로 이어지지 않을 수 있습니다." },
   "정인|식신": { headline: "배운 것을 편안하게 내 것으로 만들기", text: "누군가에게 익힌 내용을 반복해서 직접 해 보며 편안해지는 흐름입니다. 처음에는 도움받은 흔적이 크게 보이더라도 손에 익는 동안 나만의 작은 요령이 생기면, 배운 것에 내 경험이 더해졌다는 만족을 느낄 수 있습니다.", outcome: "처음부터 혼자 알아낸 것만 내 것이 되는 것은 아닙니다. 다시 해 보며 익힌 부분도 자신의 경험으로 남을 수 있습니다." },
   "비견|상관": { headline: "내 뜻을 다르게 말해 보고 싶은 마음", text: "스스로 좋아하는 것을 남도 알아볼 수 있게 표현하는 흐름입니다. 내게는 분명했던 이유가 상대에게는 낯설다면, 선택을 바꾸기 전에 어떤 모습으로 전해야 그 뜻이 닿을지 생각하게 될 수 있습니다.", outcome: "내 생각을 지키는 일과 처음 표현한 모양을 그대로 지키는 일은 다를 수 있습니다." },
@@ -135,13 +136,14 @@ function livedScene(stem: string, branch: string, area: MonthArea, natalGod: str
   return scenes[a][b];
 }
 
-export function composeMonthStory(stem: string, branch: string, area: MonthArea, natalGod: string | null): MonthStory {
+export function composeMonthStory(stem: string, branch: string, area: MonthArea, natalGod: string | null, context?: { year: PremiumYearNarrative | null; observedStory?: MonthStory; mode?: MonthObservationMode }): MonthStory {
   const a = TEN_GOD_GROUP[stem], b = TEN_GOD_GROUP[branch];
   const exact = EXACT[`${stem}|${branch}`];
   const relation = exact ?? RELATION[a][b];
   const opening = relation.text;
-  return { id: `${stem}:${branch}:${area}:${natalGod ?? "none"}`, headline: exact?.headline ?? (stem === branch ? relation.headline : `${monthSymbolSubject(stem)} · ${monthSymbolSubject(branch)}`),
+  const story: MonthStory = context?.observedStory ?? { id: `${stem}:${branch}:${area}:${natalGod ?? "none"}`, headline: exact?.headline ?? (stem === branch ? relation.headline : `${monthSymbolSubject(stem)} · ${monthSymbolSubject(branch)}`),
     opening, meaning: relation.outcome, scene: livedScene(stem, branch, area, natalGod), thread: "" };
+  return connectYearToMonth(story, stem, branch, area, context?.year ?? null, context?.mode);
 }
 
 /** A preceding month's actual symbolic emphasis can qualify this month's

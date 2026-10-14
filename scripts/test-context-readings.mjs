@@ -114,7 +114,7 @@ for (const sample of samples.slice(0, 2)) {
     assert.notEqual(first.symbols.month.stemTenGod, second.symbols.month.stemTenGod);
     assert.notEqual(first.symbols.month.branchTenGod, second.symbols.month.branchTenGod);
     assert.notEqual(first.reading, second.reading);
-    assert.ok(second.interpretation.passages.some(p => p.evidenceIds.includes("previous-month-symbols")));
+    assert.ok(second.interpretation.passages.some(p => p.evidenceIds.includes("year-branch")), "use the actual annual context in the new monthly conclusion");
   }
 }
 for (const sample of [samples[3], samples[4]]) {

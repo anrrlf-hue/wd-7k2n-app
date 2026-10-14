@@ -31,7 +31,10 @@ for (const day of [1, 7]) {
   const { facts, report } = create(day);
   assert.ok(isRenderablePremiumReport(report));
   assert.ok(isStoredPremiumReport(report));
-  assert.equal(report.version, 'connected-reading-2026-10-v12');
+  assert.equal(report.version, 'year-connected-reading-2026-10-v13');
+  const savedV12Shape = structuredClone(report);
+  savedV12Shape.version = 'connected-reading-2026-10-v12';
+  assert.ok(isStoredPremiumReport(savedV12Shape), 'saved v12 structure stays readable');
   const savedV11Shape = structuredClone(report);
   savedV11Shape.version = 'lived-reading-2026-10-v11';
   assert.ok(isStoredPremiumReport(savedV11Shape), 'saved v11 structure stays readable');
@@ -82,7 +85,7 @@ for (const day of [1, 7]) {
     assert.notEqual(left.symbols.month.branchTenGod, right.symbols.month.branchTenGod);
     assert.notEqual(displayed[a], displayed[b]);
     assert.notEqual(left.headline, right.headline, 'a changed pair must change the decision, not only the god names');
-    assert.ok(right.interpretation.passages.some(p => p.evidenceIds.includes('previous-month-symbols')));
+    assert.ok(right.interpretation.passages.some(p => p.evidenceIds.includes('year-branch')), 'the actual annual branch changes the monthly choice');
     assert.notEqual(left.interpretation.passages.find(p => p.id === 'month-lived-scene').text,
       right.interpretation.passages.find(p => p.id === 'month-lived-scene').text);
   }

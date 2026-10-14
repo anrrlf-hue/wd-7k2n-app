@@ -22,7 +22,7 @@ const last = text => text.split(/(?<=\.)\s+/).at(-1);
 const changeCurve = (f, key) => { const out = structuredClone(f); out.onnxLines[key].curve = '직선에 가까움'; return out; };
 const reports = births.map(b => create(factsFor(b)));
 for (const report of reports) {
-  assert.equal(report.version, 'connected-reading-2026-10-v12');
+  assert.equal(report.version, 'year-connected-reading-2026-10-v13');
   assert.ok(isStoredPremiumReport(report));
   assert.equal(report.periods.length, 12);
   const presentation = buildPremiumPeriodPresentation(report);
@@ -68,7 +68,7 @@ assert.notEqual(last(october(baseline).reading), last(october(noHeadReport).read
 const feb = baseline.periods.find(p => p.months[0] === '2027년 2월');
 const march = baseline.periods.find(p => p.months[0] === '2027년 3월');
 assert.notEqual(feb.interpretation.passages[0].text, march.interpretation.passages[0].text);
-assert.match(feb.reading, /스스로 하고 싶다는 마음/); assert.match(march.reading, /매일 쓰|다시 손이 가/);
+assert.match(feb.reading, /다음에도 스스로 하고 싶은 부분/); assert.match(march.reading, /매일 쓰|다시 손이 가/);
 const day = composeMonthStory('편재', '편인', 'day', '편인');
 const month = composeMonthStory('편재', '편인', 'month', '편인');
 const otherNeed = composeMonthStory('편재', '편인', 'day', '편재');

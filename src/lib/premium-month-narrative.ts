@@ -1,6 +1,7 @@
 import { TEN_GOD_GROUP, type PillarFact, type SajuFacts } from "@/lib/saju-facts";
 import { describeAnnualMonthSymbols, type AnnualMonthSymbols, type SajuAnnualMonthOutlook } from "@/lib/saju-timing";
 import { validateReadingPlan, type ReadingEvidence, type ReadingPlan } from "@/lib/reading-plan";
+import { buildPremiumYearNarrative, type MonthObservationMode } from "@/lib/premium-year-narrative";
 import { composeMonthStory, monthSymbolSubject, type MonthStory, monthMeaningContinuity } from "@/lib/premium-month-story";
 import { normalizePalmFactsObservation, type PalmFacts } from "@/lib/palm-facts";
 import type { DominantHand } from "@/lib/palm-bilateral";
@@ -27,7 +28,7 @@ function natalAnchor(facts: SajuFacts, stem: string, branch: string) {
 // Observations change the selected scene and its resolution. They are not a
 // generic palm sentence pasted between an unchanged natal scene and advice.
 function withObservedScene(story: MonthStory, stem: string, branch: string, area: PillarFact["pillar"], context: MonthReadingContext,
-  evidence: ReadingEvidence[]): { story: MonthStory; refs: string[] } {
+  evidence: ReadingEvidence[]): { story: MonthStory; refs: string[]; mode?: MonthObservationMode } {
   const hands = { left: context.leftPalm ? normalizePalmFactsObservation(context.leftPalm) : null,
     right: context.rightPalm ? normalizePalmFactsObservation(context.rightPalm) : null };
   const order: DominantHand[] = context.dominantHand === "left" ? ["left", "right"] : ["right", "left"];
@@ -43,11 +44,11 @@ function withObservedScene(story: MonthStory, stem: string, branch: string, area
     for (const f of [life, response]) add(`${f.hand}.secondary.fate`, JSON.stringify({ candidateObservation: f.observation }));
     const workName = area === "month" ? "해 온 일" : "즐겨 만든 것";
     const handNames = `${life.hand === "left" ? "왼손" : "오른손"}의 생활 쪽 후보와 ${response.hand === "left" ? "왼손" : "오른손"}의 반응 쪽 후보`;
-    return { refs, story: { ...story, scene: stem === "상관"
-      ? `자주 쓰던 것을 내 방식으로 손봐 누군가에게 보여 주는 장면이라면, 특별해 보인다는 칭찬과 매일 쓰기 편해진 만족이 다른 곳에 남을 수 있습니다. ${handNames}를 함께 놓으면, 남이 알아본 멋을 더 보태고 싶은 마음과 내 하루에 편하게 놓고 싶은 마음이 만납니다.`
+    return { refs, mode: "fate-pair", story: { ...story, scene: stem === "상관"
+      ? `매일 쓰던 것의 작은 불편을 손봤는데 다른 사람은 더 눈에 띄게 바꾸면 좋겠다고 말했다면, 내게는 해결된 부분이 남에게는 아직 덜 바꾼 모습으로 보일 수 있습니다. ${handNames}를 함께 놓으면, 좋은 반응을 더 얻고 싶은 마음 때문에 원래 편했던 부분까지 고치고 싶어지는 장면으로 이어집니다.`
       : `${workName}에 좋은 반응을 얻어 다시 나누고 싶은 장면이라면, 상대가 기뻐한 모습 때문에 원래 즐겼던 시간을 더 크게 바꾸고 싶어질 수 있습니다. ${handNames}를 함께 읽으면, 알아봐 주는 사람과 더 하고 싶은 마음 속에서도 익숙한 하루를 남기고 싶은 바람이 같이 보입니다.`,
       meaning: stem === "상관"
-        ? "눈에 띄게 달라진 것을 다시 보여 주는 선택과 조용히 매일 쓰는 선택은 다른 기쁨을 남깁니다. 칭찬이 적어져도 계속 손이 가는 모습에 애착이 생긴다면, 그 변화는 이미 내 생활에 닿아 있을 수 있습니다."
+        ? "남에게 새롭게 보이는 정도를 늘리는 선택과 원래 불편했던 부분만 고친 채 쓰는 선택은 다른 결과를 남깁니다. 지금 편해진 부분을 먼저 말하면 좋은 제안을 받으면서도 이미 아끼는 부분까지 전부 바꾸지 않을 여지가 있습니다."
         : "모든 호응을 계속 제공할 약속으로 넓히기보다 좋아했던 시간의 크기로 한 번 더 나누는 선택을 떠올릴 수 있습니다. 관심을 받은 기쁨을 누리면서도 다음에 스스로 하고 싶다는 마음이 남는지가 이 장면의 만족을 가릅니다." } };
   }
   // Read a hand feature only for the relation it materially changes. Other
@@ -102,7 +103,7 @@ function withObservedScene(story: MonthStory, stem: string, branch: string, area
     meaning += key === "headLine" ? " 두 사진의 두뇌선 모양이 달라, 예를 넓혀 이해할 때와 한 뜻으로 정리해 전할 때의 만족도 함께 살펴볼 수 있습니다."
       : " 두 사진의 감정선 모양이 달라 함께 읽으면, 말로 나누고 싶었던 마음과 작은 행동에 남겨 둔 마음을 같은 크기로 표현할 필요는 없을 수 있습니다.";
   }
-  return { story: { ...story, scene, meaning }, refs };
+  return { story: { ...story, scene, meaning }, refs, mode: key === "headLine" ? curved ? "head-curved" : "head-straight" : curved ? "heart-curved" : "heart-straight" };
 }
 
 export function buildPremiumMonthNarrative(facts: SajuFacts, month: SajuAnnualMonthOutlook, previous: SajuAnnualMonthOutlook | null,
@@ -112,7 +113,6 @@ export function buildPremiumMonthNarrative(facts: SajuFacts, month: SajuAnnualMo
   const evidence: ReadingEvidence[] = [
     { id: "month-stem", kind: "calculated", source: "monthly pillar stem compared with facts.dayStem", value: `${symbols.month.stem}:${stem ?? "미확인"}` },
     { id: "month-branch", kind: "calculated", source: "monthly branch main hidden stem compared with facts.dayStem", value: `${symbols.month.branch}:${branch ?? "미확인"}` },
-    { id: "year-symbols", kind: "calculated", source: "annual pillar compared with facts.dayStem", value: `${symbols.year.ganzhi}:${symbols.year.stemTenGod ?? "미확인"}/${symbols.year.branchTenGod ?? "미확인"}` },
   ];
   if (!stem || !branch || !TEN_GOD_GROUP[stem] || !TEN_GOD_GROUP[branch]) {
     return { symbols, plan: { headline: "이 달의 관점은 아직 정하지 않습니다", evidence,
@@ -128,25 +128,32 @@ export function buildPremiumMonthNarrative(facts: SajuFacts, month: SajuAnnualMo
   }
   const base = composeMonthStory(stem, branch, area, anchor?.god ?? null);
   const observed = withObservedScene(base, stem, branch, area, context, evidence);
-  const story = observed.story;
+  const year = buildPremiumYearNarrative(symbols.year);
+  const story = composeMonthStory(stem, branch, area, anchor?.god ?? null, { year, observedStory: observed.story, mode: observed.mode });
+  if (year) {
+    evidence.push({ id: "year-stem", kind: "calculated", source: "annual pillar stem compared with facts.dayStem", value: `${symbols.year.stem}:${year.stemGod}` },
+      { id: "year-branch", kind: "calculated", source: "annual branch main hidden stem compared with facts.dayStem", value: `${symbols.year.branch}:${year.branchGod}` });
+  }
   const scene = story.scene;
   const passages: ReadingPlan["passages"] = [
     { id: "month-relation", kind: "traditional", text: story.opening, evidenceIds: ["month-stem", "month-branch"] },
-    { id: "month-lived-scene", kind: "reflection", text: scene, evidenceIds: [...refs, ...observed.refs] },
-    { id: "month-lived-resolution", kind: "reflection", text: story.meaning, evidenceIds: [...refs, ...observed.refs] },
+    { id: "month-lived-scene", kind: "reflection", text: scene, evidenceIds: [...refs, ...observed.refs, ...(year ? ["year-stem"] : [])] },
+    { id: "month-lived-resolution", kind: "reflection", text: story.meaning, evidenceIds: [...refs, ...observed.refs, ...(year ? ["year-branch"] : [])] },
   ];
   if (previous) {
     const prior = describeAnnualMonthSymbols(facts, previous);
     if (prior.month.stemTenGod && prior.month.branchTenGod) {
       const priorStory = composeMonthStory(prior.month.stemTenGod, prior.month.branchTenGod, area, null);
       if (priorStory.headline !== story.headline) {
-        evidence.push({ id: "previous-month-symbols", kind: "calculated", source: "previous annual month pillar compared with facts.dayStem", value: `${prior.month.ganzhi}:${prior.month.stemTenGod}/${prior.month.branchTenGod}` });
-        // Compare lived meanings inside the resolution; no extra author-facing
+        // Compare lived meanings with the relation; no extra author-facing
         // paragraph that merely repeats both headings.
         const priorGod = prior.month.branchTenGod;
         const continuity = monthMeaningContinuity(priorGod, stem, branch);
-        if (continuity) passages[2].text += ` ${continuity}`;
-        passages[2].evidenceIds.push("previous-month-symbols");
+        if (continuity && !(stem === "상관" && branch === "정재")) {
+          evidence.push({ id: "previous-month-symbols", kind: "calculated", source: "previous annual month pillar compared with facts.dayStem", value: `${prior.month.ganzhi}:${prior.month.stemTenGod}/${prior.month.branchTenGod}` });
+          passages[0].text += ` ${continuity}`;
+          passages[0].evidenceIds.push("previous-month-symbols");
+        }
       }
     }
   }

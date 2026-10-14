@@ -1,3 +1,4 @@
+import type { PremiumYearNarrative } from "@/lib/premium-year-narrative";
 import type { PremiumEditorialPlan, EditorialArcId } from "@/lib/premium-editorial-plan";
 import { integrateLoveStory, integrateMoneyStory, integrateWorkStory, type ObservedHands } from "@/lib/premium-domain-integration";
 import { buildSajuMoneyMeaning } from "@/lib/saju-money-meaning";
@@ -306,7 +307,11 @@ const ANNUAL: Record<EditorialArcId, string> = {
   "agency-expression": "먼저 보여 준 것에 질문이 돌아오면 처음의 자신감과 다른 마음이 생길 수 있습니다. 예상하지 못한 쓰임을 알아본 기쁨과 내 뜻을 더 잘 전하고 싶은 바람을 함께 남기면, 반응을 듣는 시간이 시작한 용기를 지우지 않을 여지가 있습니다.",
   balanced: "함께 즐거웠던 시간 뒤에 혼자 편안히 있고 싶은 마음이 남아도 같은 사람 안의 경험일 수 있습니다. 새로운 것을 처음 누릴 때와 익숙하게 이어 갈 때 좋은 이유가 달라지듯, 관계와 돈과 일에서 만족을 느끼는 순간도 한 모습으로 고정되지 않을 여지가 있습니다.",
 };
-export function premiumAnnualThread(plan: PremiumEditorialPlan): string { return ANNUAL[plan.id]; }
+export function premiumAnnualThread(plan: PremiumEditorialPlan, years: PremiumYearNarrative[] = []): string {
+  if (!years.length) return ANNUAL[plan.id];
+  const natal = ANNUAL[plan.id].split(/(?<=\.)\s+/)[0];
+  return [natal, ...years.map((year, index) => `${index === 0 ? "처음 읽는 세운에는" : "이어지는 세운에는"} ${year.summary}`)].join(" ");
+}
 const CLOSING: Partial<Record<EditorialArcId, [string, string]>> = {
   "agency-duty": ["서로 이해한 선택 안에서도 개인적으로 좋아하는 시간을 남길 수 있습니다.", "누군가에게 잘 설명하지 않아도 다시 하고 싶은 한 순간은 무엇이었나요?"],
   "creation-exchange-supported": ["잘 아는 예와 조금 다르게 해 본 흔적이 함께 남아도 자신의 경험이 될 수 있습니다.", "배운 뒤 직접 해 보면서 처음 알게 된 즐거움은 어느 부분에 있었나요?"],

@@ -1,7 +1,7 @@
 import type { ReadingEvidence } from "@/lib/reading-plan";
 
 const COUNTS: Record<string, string> = { peerStarCount: "비겁", outputStarCount: "식상", wealthStarCount: "재성", officerStarCount: "관성", resourceStarCount: "인성" };
-const MONTHS: Record<string, string> = { "month-stem": "이 달 천간", "month-branch": "이 달 지지", "year-symbols": "해의 배경", "natal-anchor": "태어난 사주에서 함께 본 자리", "previous-month-symbols": "앞선 달의 배경", "previous-year-symbols": "앞선 해의 배경" };
+const MONTHS: Record<string, string> = { "month-stem": "이 달 천간", "month-branch": "이 달 지지", "year-symbols": "해의 배경", "year-stem": "해의 천간", "year-branch": "해의 지지", "natal-anchor": "태어난 사주에서 함께 본 자리", "previous-month-symbols": "앞선 달의 배경", "previous-year-symbols": "앞선 해의 배경" };
 
 /** Keep diagnostic IDs in evidence records, never in the customer explanation. */
 export function describeReadingEvidence(evidence: ReadingEvidence[]): string {
