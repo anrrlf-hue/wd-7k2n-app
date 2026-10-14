@@ -39,7 +39,7 @@ for (const result of results) {
   assert.ok(new Set(result.premium.periods.map(period => period.reading)).size >= 10, `${result.id}: month bodies remain materially distinct`);
   assert.ok(result.premium.overall.basis.includes(result.facts.currentDaeun.ganzhi), `${result.id}: overall basis names calculated current daeun`);
   assert.ok(result.premium.domains.every(domain => domain.basis.includes(result.facts.currentDaeun.ganzhi)), `${result.id}: domain basis names calculated current daeun`);
-  assert.ok(result.premium.overall.paragraphs.some(text => text.includes("세운")), `${result.id}: annual calculation changes overall meaning`);
+  assert.ok(result.premium.annualMethod?.includes("세운"), `${result.id}: annual calculation remains documented outside core narrative`);
   assert.ok(result.premium.domains.every(domain => domain.paragraphs.some(text => text.includes("대운"))), `${result.id}: daeun changes domain meaning`);
 }
 
@@ -71,6 +71,14 @@ assert.equal(zeroOutput.facts.outputStarCount, 0, "1964 case confirms 식상 0 f
 assert.doesNotMatch(domainText(zeroOutput).money, /좋아서 만든|창작|표현한 결과/);
 assert.doesNotMatch(domainText(zeroOutput).money, /할인가|빌리|작은 범위로 써/);
 assert.match(domainText(zeroOutput).money, /판단|신뢰|도움|준비/);
+assert.match(male.premium.overall.paragraphs.join(" "), /월주의 식상.*연지의 식상.*재성/);
+assert.match(domainText(male).money, /공동 비용.*선택권.*재투입/);
+assert.match(domainText(male).work, /숙련.*개선.*전문성/);
+assert.match(domainText(zeroOutput).money, /자기 몫과 관계 비용/);
+for (const result of results.filter(result => result.id !== "E-남" && result.id !== "E-여")) {
+  assert.doesNotMatch(result.premium.overall.paragraphs.join(" "), /월주의 식상.*연지의 식상/);
+  assert.doesNotMatch(domainText(result).work, /이름 있는 전문성으로 남을 때/);
+}
 const officer = results.find(result => result.id === "관성우세-관계");
 assert.ok(officer.facts.officerStarCount > officer.facts.peerStarCount && officer.facts.officerStarCount > officer.facts.outputStarCount && officer.facts.officerStarCount > officer.facts.wealthStarCount);
 assert.match(domainText(officer).love_relationship, /약속|책임|신뢰/);
