@@ -160,7 +160,7 @@ assert(resultSource.includes("관계에서는 이렇게 나타나요") || result
 assert(resultSource.includes("에너지를 쓰고 회복하는 방식도 보입니다") || resultSource.includes("buildFreeConsultationSections"), "life rhythm consultation section missing from free result");
 assert(!resultSource.includes("나의 재물사주"), "money-only free-result heading remains");
 assert(resultSource.includes("다음은 손금으로 이어봅니다"), "free Saju must offer palm before the integrated report");
-assert(resultSource.includes("통합 연간 리포트와 공유") && resultSource.includes("손금 없이 결과 마무리하기"), "post-Saju sequence must explain the integrated report and explicit palm skip");
+assert(resultSource.includes("양손의 선과 모양을 함께 살펴 사주 풀이에 더해 보세요") && resultSource.includes("손금은 나중에 추가하기"), "post-Saju sequence must value palm reading and preserve explicit palm skip");
 assert(!resultSource.includes("내 질문 답과 시기 보기"), "question CTA must not interrupt Saju -> palm sequence");
 
 const homeSource = fs.readFileSync(path.join(root, "src/app/page.tsx"), "utf8");
