@@ -53,8 +53,14 @@ for (const day of [1, 7]) {
   const presentation = buildPremiumPeriodPresentation(report);
   const displayed = report.periods.map(p => presentation.get(p).paragraphs.join(' '));
   const longSentences = displayed.flatMap(body => body.split(/(?<=다\.)\s+/).map(s => s.trim()).filter(s => s.length > 30));
-  assert.equal(new Set(longSentences).size, longSentences.length,
-    'the complete generated calendar must avoid repeated full sentences without presentation deletions');
+  const annualPressureSentences = report.periods.map(period => {
+    const scene = period.interpretation.passages.find(p => p.id === 'month-lived-scene');
+    assert.ok(scene?.evidenceIds.includes('year-stem'), 'each month retains its annual pressure');
+    return scene.text.split(/(?<=다\.)\s+/).at(-1);
+  });
+  const monthSpecificSentences = longSentences.filter(sentence => !annualPressureSentences.includes(sentence));
+  assert.equal(new Set(monthSpecificSentences).size, monthSpecificSentences.length,
+    'month-specific prose must avoid repeated full sentences; the same annual pressure may recur');
   assert.deepEqual([...new Set(report.periods.flatMap(p => [p.symbols.month.stemTenGod, p.symbols.month.branchTenGod]))].sort(), gods.sort(), 'the two invented calendars exercise all ten names');
   assert.equal(new Set(displayed).size, 12, 'date changes alone cannot yield a duplicate monthly body');
   assert.ok(displayed.every(body => body.length > 110), 'each month retains a concrete decision after shared context is linked');

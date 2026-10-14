@@ -254,7 +254,7 @@ export function connectYearToMonth(story: MonthStory, stem: string, branch: stri
   // Keep the observed/natal scene; change its felt conflict and actual choice.
   // Only this annual branch, not the annual stem, owns the new resolution.
   return { ...story,
-    scene: `${story.scene} ${pressure}, ${feeling}도 그 기대나 설명만으로 정해지지는 않을 수 있습니다.`,
+    scene: `${story.scene} ${pressure.replace(/다면$/, "을 수 있습니다.")}`,
     meaning,
   };
 }

@@ -15,6 +15,12 @@ const facts = enrichSajuFacts(computeSajuFacts(birthFixture), birthFixture);
 const hands = { leftPalm: left, rightPalm: right, dominantHand: 'right' };
 const input = { facts, ...hands, referenceDate: new Date('2026-10-13T00:00:00Z') };
 const report = buildPremiumReport(input);
+assert.equal(report.periods.length, 12, 'inspect the complete synthetic monthly reading');
+for (const period of report.periods) {
+  const scene = period.interpretation.passages.find(p => p.id === 'month-lived-scene')?.text;
+  assert.ok(scene, `${period.label}: annual pressure still shapes the monthly scene`);
+  assert.doesNotMatch(scene, /그 기대나 설명만으로 정해지지는 않을 수 있습니다/, `${period.label}: no shared generic conclusion`);
+}
 const passage = (r, id) => r.plan.passages.find(p => p.id === id);
 const final = r => passage(r, 'month-lived-resolution').text;
 const contrast = [];
