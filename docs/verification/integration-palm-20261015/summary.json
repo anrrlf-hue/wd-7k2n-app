@@ -1,0 +1,90 @@
+{
+  "synthetic": true,
+  "captures": [
+    {
+      "name": "normal",
+      "characters": 3397,
+      "personalPalm": true,
+      "premium": false
+    },
+    {
+      "name": "premium-entry",
+      "characters": 3397,
+      "personalPalm": true,
+      "premium": false
+    },
+    {
+      "name": "premium-expanded",
+      "characters": 13009,
+      "personalPalm": true,
+      "premium": true
+    },
+    {
+      "name": "measured-both-hands",
+      "characters": 3637,
+      "personalPalm": true,
+      "premium": false
+    },
+    {
+      "name": "measured-premium",
+      "characters": 13104,
+      "personalPalm": true,
+      "premium": true
+    },
+    {
+      "name": "partial",
+      "characters": 3543,
+      "personalPalm": true,
+      "premium": false
+    },
+    {
+      "name": "all-failure-restored",
+      "characters": 209,
+      "personalPalm": false,
+      "premium": false
+    },
+    {
+      "name": "partial-photo-failure",
+      "characters": 201,
+      "personalPalm": false,
+      "premium": false
+    },
+    {
+      "name": "one-confirmed-hand",
+      "characters": 2034,
+      "personalPalm": true,
+      "premium": false
+    },
+    {
+      "name": "one-hand-saju-first",
+      "characters": 2142,
+      "personalPalm": false,
+      "premium": false
+    },
+    {
+      "name": "skip-waiting",
+      "characters": 194,
+      "personalPalm": false,
+      "premium": false
+    },
+    {
+      "name": "skip",
+      "characters": 2290,
+      "personalPalm": false,
+      "premium": false
+    },
+    {
+      "name": "runtime-error",
+      "characters": 218,
+      "personalPalm": false,
+      "premium": false
+    }
+  ],
+  "errors": [],
+  "relationshipEntry": "visible-after-personal-and-bilateral-results",
+  "relationshipPurposeRequired": true,
+  "relationshipResult": true,
+  "relationshipErrorRetry": true,
+  "relationshipCloseReentry": true,
+  "originalPhotoRecognition": "not covered"
+}
