@@ -14,10 +14,10 @@ Known product limitation: an anonymous cookie is a session handle, not proof of 
 
 ## Verification boundary
 
-- `node scripts/test-referral-evidence.mjs` is a source contract test only; it is not a database proof. The updated API contract test is `node scripts/test-premium-trial-browser.mjs` when a local server is running; it expects `participate=400`, missing-store `verify=403`, no receipt, and malformed-cookie replacement.
+- `node scripts/test-referral-evidence.mjs` is a source contract test only; it is not a database proof. The updated API contract test is `node scripts/test-premium-trial-browser.mjs` when a local server is running; it expects `participate=400`, missing-store `verify=503`, no receipt, and malformed-cookie replacement.
 - TypeScript: `./node_modules/.bin/tsc --noEmit`.
 - Focused ESLint: passed with the repository's existing unused `journeyModeFromLocation` warning.
-- Supabase production migration/RPC, real multi-session browser completion, cookie deletion behavior, and production rollout: not verified because the migration and server-only store credential were intentionally not provisioned.
+- Supabase production migration/RPC, real multi-session browser completion, cookie deletion behavior, and production rollout: not verified because the migration and server-only store credential were intentionally not provisioned. `node scripts/test-referral-two-browser.mjs` does verify the browser ordering and reward protocol against an isolated in-process adapter; it is not evidence of a real Supabase store.
 
 ## Additional local database verification
 
@@ -25,7 +25,7 @@ No Supabase CLI, `psql`, local Supabase config, running database, or Supabase en
 
 The migration applied successfully after those test-only roles existed. The RPC was exercised for: first claim, `test` versus `live` realm isolation, duplicate recipient, one reward per inviter, same-session self-referral, expired invite, and a forced two-session lock race. The race produced one `claimed` and one `duplicate_recipient`. Direct table access and RPC execution as `anon` were denied. This validates the SQL behavior in local PostgreSQL, not Supabase production behavior or the Next.js-to-Supabase network path.
 
-With a local Next server and no referral store configuration, the updated API contract test passed: direct premium `403`, legacy `participate` `400`, verify `403`, no receipt, and malformed session-cookie replacement. A real two-browser reward flow remains unverified because this environment has no configured persistent store credential/project.
+With a local Next server and no referral store configuration, the updated API contract test passed: unavailable premium `503`, legacy `participate` `400`, unavailable verify `503`, no receipt, and malformed session-cookie replacement. A real two-browser reward flow remains unverified because this environment has no configured persistent store credential/project.
 
 ## Parallel branch integration points
 

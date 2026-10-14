@@ -10,7 +10,7 @@ import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { issuePremiumTrial, verifyPremiumTrial } from "@/lib/premium-trial";
 import { cookies } from "next/headers";
 import { createAnonymousSessionId, REFERRAL_MAX_AGE_SECONDS, REFERRAL_SESSION_COOKIE, isReferralSession } from "@/lib/referral";
-import { hasReferralReward, isReferralStoreConfigured } from "@/lib/referral-store";
+import { getReferralRewardStatus, isReferralStoreConfigured } from "@/lib/referral-store";
 
 const bodySchema = z.object({
   year: z.number().int().min(1900).max(2035),
@@ -52,15 +52,23 @@ export async function POST(request: Request) {
       return finish(NextResponse.json({ error: "공유창 완료나 복사만으로는 무료 체험을 열 수 없어요. 상대방의 무료 풀이 완료가 필요합니다." }, { status: 400, headers: responseHeaders }));
     }
     if (raw.trialAction === "verify") {
-      if (!isReferralStoreConfigured() || !(await hasReferralReward(sessionId))) {
-        return finish(NextResponse.json({ eligible: false, error: "공유 링크를 연 사람이 무료 풀이를 완료한 뒤 무료 체험을 열 수 있어요." }, { status: 403, headers: responseHeaders }));
+      const reward = isReferralStoreConfigured() ? await getReferralRewardStatus(sessionId) : { kind: "unavailable" as const };
+      if (reward.kind === "unavailable") {
+        return finish(NextResponse.json({ eligible: false, status: "unavailable", error: "공유 이벤트 저장소를 사용할 수 없어 확인하지 못했어요." }, { status: 503, headers: responseHeaders }));
+      }
+      if (reward.kind === "pending") {
+        return finish(NextResponse.json({ eligible: false, status: "pending", error: "공유 링크를 연 사람이 무료 풀이를 완료한 뒤 무료 체험을 열 수 있어요." }, { status: 403, headers: responseHeaders }));
       }
       return finish(NextResponse.json({ eligible: true, trialReceipt: issuePremiumTrial(input) }, { headers: responseHeaders }));
     }
     // A receipt alone is never sufficient: every premium generation rechecks
     // the persisted inviter reward, so old/browser-forged receipts cannot bypass it.
-    if (!isReferralStoreConfigured() || !(await hasReferralReward(sessionId))) {
-      return finish(NextResponse.json({ eligible: false, error: "공유 링크를 연 사람이 무료 풀이를 완료한 뒤 무료 체험을 열 수 있어요." }, { status: 403, headers: responseHeaders }));
+    const reward = isReferralStoreConfigured() ? await getReferralRewardStatus(sessionId) : { kind: "unavailable" as const };
+    if (reward.kind === "unavailable") {
+      return finish(NextResponse.json({ eligible: false, status: "unavailable", error: "공유 이벤트 저장소를 사용할 수 없어 확인하지 못했어요." }, { status: 503, headers: responseHeaders }));
+    }
+    if (reward.kind === "pending") {
+      return finish(NextResponse.json({ eligible: false, status: "pending", error: "공유 링크를 연 사람이 무료 풀이를 완료한 뒤 무료 체험을 열 수 있어요." }, { status: 403, headers: responseHeaders }));
     }
     const receipt = verifyPremiumTrial(input, raw.trialReceipt);
     if (!receipt) return finish(NextResponse.json({ eligible: false, error: "공유 링크를 연 사람이 무료 풀이를 완료한 뒤 무료 체험을 열 수 있어요." }, { status: 403, headers: responseHeaders }));

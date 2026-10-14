@@ -31,11 +31,14 @@ assert.match(service, /SUPABASE_SERVICE_ROLE_KEY/);
 assert.match(service, /return \{ kind: "unavailable" \}/);
 assert.match(service, /claim_referral_reward/);
 assert.match(service, /p_realm/);
+assert.match(service, /STORE_TIMEOUT_MS/);
+assert.match(service, /getReferralRewardStatus/);
 
 const premiumRoute = fs.readFileSync(new URL("../src/app/api/premium-report/route.ts", import.meta.url), "utf8");
 assert.doesNotMatch(premiumRoute, /raw\.participation/);
-assert.match(premiumRoute, /hasReferralReward/);
 assert.match(premiumRoute, /isReferralStoreConfigured/);
+assert.match(premiumRoute, /status: "unavailable"/);
+assert.match(premiumRoute, /status: "pending"/);
 const sajuRoute = fs.readFileSync(new URL("../src/app/api/saju/route.ts", import.meta.url), "utf8");
 assert.match(sajuRoute, /claimReferralReward/);
 assert.match(sajuRoute, /qualifiesForReferral/);

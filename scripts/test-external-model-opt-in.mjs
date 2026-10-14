@@ -129,7 +129,7 @@ try {
   const verification = await premium(new Request("http://localhost/test", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...birthFixture, trialAction: "verify" }),
   }));
-  assert.equal(verification.status, 403, "missing referral store fails closed");
+  assert.equal(verification.status, 503, "missing referral store fails closed");
   assert.equal(captured.length, callCount, "palm and integrated annual paths stay internal even while opt-in is ON");
   console.log("PASS ON via fetch mock: initial/standalone/question handlers use existing model route; palm and annual routes stay internal");
 

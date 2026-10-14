@@ -5,6 +5,7 @@ import { Copy, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildServiceShare } from "@/lib/relationship-share";
 import { track } from "@/lib/analytics";
+import { ensureReferralSession } from "@/lib/referral-client";
 
 const defaultShareData = buildServiceShare();
 const INVITE_STORAGE_KEY = "saju-app:referral-invite:v1";
@@ -44,17 +45,6 @@ export function ServiceShareCard({ trial = false, onCompleted }: { trial?: boole
   const preparation = useRef<Promise<typeof defaultShareData> | null>(null);
   const linkInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!trial || shareDataReady) return;
-    void prepareShareData().catch(() => {
-      preparation.current = null;
-      setNotice({ text: "공유 이벤트 저장소를 사용할 수 없어 무료 체험 공유를 준비하지 못했어요. 잠시 후 다시 시도해주세요.", error: true });
-    });
-    // prepareShareData is intentionally stable through the promise ref; adding
-    // it here would restart preparation on each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trial, shareDataReady]);
-
   function selectLink() {
     linkInput.current?.focus();
     linkInput.current?.select();
@@ -63,6 +53,7 @@ export function ServiceShareCard({ trial = false, onCompleted }: { trial?: boole
 
   async function prepareShareData() {
     if (!trial) return shareData;
+    await ensureReferralSession();
     if (shareDataReady) return shareData;
     if (!preparation.current) {
       setPreparing(true);
@@ -80,11 +71,50 @@ export function ServiceShareCard({ trial = false, onCompleted }: { trial?: boole
     return preparation.current;
   }
 
+  async function prepareCachedOrPrepare() {
+    const cachedUrl = readStoredInviteUrl();
+    if (cachedUrl) {
+      let token: string | null = null;
+      try { token = new URL(cachedUrl).searchParams.get("ref"); } catch { /* Treat malformed cached state as stale. */ }
+      if (token) {
+        await ensureReferralSession();
+        const response = await fetch(`/api/referrals?ref=${encodeURIComponent(token)}`, { headers: { "Cache-Control": "no-store" } });
+        const data = await response.json().catch(() => null) as { status?: string } | null;
+        if (response.status === 503 || data?.status === "unavailable") throw new ReferralUnavailableError("Referral store unavailable");
+        if (response.ok && data?.status === "valid") {
+          const cachedShareData = { ...defaultShareData, url: cachedUrl };
+          setShareData(cachedShareData);
+          setShareDataReady(true);
+          return cachedShareData;
+        }
+      }
+      try { sessionStorage.removeItem(INVITE_STORAGE_KEY); } catch { /* Optional presentation state. */ }
+    }
+    return prepareShareData();
+  }
+
+  useEffect(() => {
+    if (!trial || shareDataReady) return;
+    // The async preparation synchronizes external session/storage state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void prepareCachedOrPrepare().catch(() => {
+      preparation.current = null;
+      setNotice({ text: "공유 이벤트 저장소를 사용할 수 없어 무료 체험 공유를 준비하지 못했어요. 잠시 후 다시 시도해주세요.", error: true });
+    });
+    // prepareShareData is intentionally stable through the promise ref; adding
+    // it here would restart preparation on each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trial, shareDataReady]);
+
   async function completeParticipation() {
     if (!onCompleted) return;
     try { await onCompleted(); }
-    catch {
-      setNotice({ text: "공유는 끝났지만 아직 상대방의 무료 풀이 완료를 확인하지 못했어요. 완료 후 다시 확인해주세요.", error: true });
+    catch (error) {
+      if (typeof error === "object" && error && "status" in error && (error as { status?: string }).status === "unavailable") {
+        setNotice({ text: "공유 이벤트 저장소를 사용할 수 없어 확인하지 못했어요. 잠시 후 다시 시도해주세요.", error: true });
+      } else {
+        setNotice({ text: "공유는 끝났지만 아직 상대방의 무료 풀이 완료를 확인하지 못했어요. 완료 후 다시 확인해주세요.", error: true });
+      }
     }
   }
 
@@ -103,6 +133,10 @@ export function ServiceShareCard({ trial = false, onCompleted }: { trial?: boole
     } catch (error) {
       if (error instanceof ReferralUnavailableError) {
         setNotice({ text: "공유 이벤트 저장소를 사용할 수 없어 무료 체험 공유를 준비하지 못했어요. 잠시 후 다시 시도해주세요.", error: true });
+        return;
+      }
+      if (typeof error === "object" && error && "status" in error && (error as { status?: string }).status === "unavailable") {
+        setNotice({ text: "공유 이벤트 저장소를 사용할 수 없어 확인하지 못했어요. 잠시 후 다시 시도해주세요.", error: true });
         return;
       }
       track(error instanceof Error && error.name === "AbortError" ? "share_cancelled" : "share_failed");
@@ -133,6 +167,14 @@ export function ServiceShareCard({ trial = false, onCompleted }: { trial?: boole
     } catch (error) {
       if (error instanceof ReferralUnavailableError) {
         setNotice({ text: "공유 이벤트 저장소를 사용할 수 없어 무료 체험 공유를 준비하지 못했어요. 잠시 후 다시 시도해주세요.", error: true });
+        return;
+      }
+      if (typeof error === "object" && error && "status" in error && (error as { status?: string }).status === "unavailable") {
+        setNotice({ text: "공유 이벤트 저장소를 사용할 수 없어 확인하지 못했어요. 잠시 후 다시 시도해주세요.", error: true });
+        return;
+      }
+      if (typeof error === "object" && error && "status" in error && (error as { status?: string }).status === "pending") {
+        setNotice({ text: "아직 상대방의 무료 풀이 완료가 확인되지 않았어요. 완료 후 다시 확인해주세요.", error: true });
         return;
       }
       track("copy_failed");

@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { FREE_SHARE_ENTRY_PATH } from "@/lib/relationship-share";
 import { createAnonymousSessionId, createOpaqueReferralToken, getReferralPublicOrigin, getReferralRealm, REFERRAL_MAX_AGE_SECONDS, REFERRAL_QUERY_PARAM, REFERRAL_SESSION_COOKIE, referralExpiry, isReferralSession } from "@/lib/referral";
-import { createReferralInvite, isReferralStoreConfigured } from "@/lib/referral-store";
+import { createReferralInvite, isReferralStoreConfigured, validateReferralInvite } from "@/lib/referral-store";
+import { getReferralSession, setReferralSessionCookie } from "@/lib/referral-session";
+import { isReferralToken } from "@/lib/referral";
 
 export async function POST() {
   const realm = getReferralRealm();
@@ -21,5 +23,22 @@ export async function POST() {
   if (!validExisting) response.cookies.set(REFERRAL_SESSION_COOKIE, sessionId, {
     httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: REFERRAL_MAX_AGE_SECONDS,
   });
+  return response;
+}
+
+export async function GET(request: Request) {
+  const token = new URL(request.url).searchParams.get(REFERRAL_QUERY_PARAM);
+  const session = await getReferralSession();
+  const responseHeaders = { "Cache-Control": "no-store" };
+  if (!isReferralToken(token)) {
+    const response = NextResponse.json({ status: "invalid" }, { status: 400, headers: responseHeaders });
+    setReferralSessionCookie(response, session.sessionId, session.valid);
+    return response;
+  }
+  const result = await validateReferralInvite({ token, inviterSessionId: session.sessionId });
+  const response = result === "unavailable"
+    ? NextResponse.json({ status: "unavailable" }, { status: 503, headers: responseHeaders })
+    : NextResponse.json({ status: result }, { status: result === "valid" ? 200 : 410, headers: responseHeaders });
+  setReferralSessionCookie(response, session.sessionId, session.valid);
   return response;
 }

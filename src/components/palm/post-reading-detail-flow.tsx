@@ -14,17 +14,19 @@ import type { PremiumReport } from "@/lib/premium-report";
 import { PalmTaskSlot, runWithDeadline } from "@/lib/palm-analysis-task";
 import { track } from "@/lib/analytics";
 import { isCurrentPremiumReport, isRenderablePremiumReport, isStoredPremiumReport, type StoredPremiumReport } from "@/lib/premium-report-validation";
+import { ensureReferralSession } from "@/lib/referral-client";
 
 type Stage = "ready" | "loading" | "premium";
 const STORAGE_KEY = "saju-app:integrated-premium:v1";
 const TRIAL_STORAGE_KEY = "saju-app:premium-trial:v1";
+class ReferralCheckError extends Error { constructor(public readonly status: "pending" | "unavailable") { super(status); } }
 
 async function requestTrial(body: string, task: AbortController, action: "verify" | "participate", extra: { trialReceipt?: string }) {
   return runWithDeadline(task.signal, 30_000, "참여 확인이 오래 걸려 중단했어요. 다시 시도해주세요.", async signal => {
     const response = await fetch("/api/premium-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...JSON.parse(body), trialAction: action, ...extra }), signal });
-    const data = await response.json() as { eligible?: boolean; trialReceipt?: string };
+    const data = await response.json() as { eligible?: boolean; trialReceipt?: string; status?: "pending" | "unavailable" };
     signal.throwIfAborted();
-    if (!response.ok || data.eligible !== true) throw new Error("Trial verification failed");
+    if (!response.ok || data.eligible !== true) throw new ReferralCheckError(data.status === "unavailable" ? "unavailable" : "pending");
     return data;
   });
 }
@@ -89,15 +91,15 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
       let savedTrial: { identity?: string; receipt?: string } | null = null;
       try { savedTrial = JSON.parse(sessionStorage.getItem(TRIAL_STORAGE_KEY) || "null"); } catch { /* Optional storage. */ }
       const savedReceipt = savedTrial?.identity === identity && typeof savedTrial.receipt === "string" ? savedTrial.receipt : undefined;
-      const task = slot.begin();
-      void requestTrial(body, task, "verify", savedReceipt ? { trialReceipt: savedReceipt } : {}).then(data => {
+    const task = slot.begin();
+    void ensureReferralSession().then(() => requestTrial(body, task, "verify", savedReceipt ? { trialReceipt: savedReceipt } : {})).then(data => {
         if (!mounted || !slot.isCurrent(task)) return;
         if (typeof data.trialReceipt !== "string") throw new Error("Trial receipt missing");
         setTrialReceipt(data.trialReceipt); setTrialIdentity(identity); setTrialState("eligible");
         try { sessionStorage.setItem(TRIAL_STORAGE_KEY, JSON.stringify({ identity, receipt: data.trialReceipt })); } catch { /* Optional presentation state. */ }
-      }).catch(() => {
+      }).catch((error: unknown) => {
         if (!mounted || !slot.isCurrent(task)) return;
-        setTrialState("locked"); setError("상대방이 무료 풀이를 완료한 뒤 무료 체험을 확인할 수 있어요. 완료 후 다시 확인해주세요.");
+        setTrialState("locked"); setError(error instanceof ReferralCheckError && error.status === "unavailable" ? "공유 이벤트 저장소를 사용할 수 없어 확인하지 못했어요. 잠시 후 다시 시도해주세요." : "상대방이 무료 풀이를 완료한 뒤 무료 체험을 확인할 수 있어요. 완료 후 다시 확인해주세요.");
       }).finally(() => slot.finish(task));
     });
     let interrupted = false;
@@ -122,6 +124,7 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
     setError(null); setTrialState("checking");
     let receipt: string | null = null;
     try {
+      await ensureReferralSession();
       const data = await requestTrial(body, task, "verify", {});
       if (!tasks.current.isCurrent(task) || activeIdentity.current !== identity) return;
       if (typeof data.trialReceipt !== "string") throw new Error("Trial receipt missing");

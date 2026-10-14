@@ -18,16 +18,16 @@ async function api(body, headers = {}) {
 }
 
 const direct = await api(input);
-assert.equal(direct.status, 403, "direct premium generation remains denied");
+assert.equal(direct.status, 503, "unavailable referral store fails closed distinctly");
 const participation = await api({ ...input, trialAction: "participate", participation: "clipboard" });
 assert.equal(participation.status, 400, "client participation strings cannot issue receipts");
 assert.equal(participation.data.trialReceipt, undefined);
 const unavailable = await api({ ...input, trialAction: "verify" });
-assert.equal(unavailable.status, 403, "missing persistent store fails closed");
+assert.equal(unavailable.status, 503, "missing persistent store is reported as unavailable");
 assert.equal(unavailable.data.trialReceipt, undefined);
 
 const malformedCookie = await api(input, { cookie: "saju_referral_session=malformed" });
-assert.equal(malformedCookie.status, 403);
+assert.equal(malformedCookie.status, 503);
 assert.match(malformedCookie.response.headers.get("set-cookie") ?? "", /saju_referral_session=/, "malformed cookie is replaced");
 
-console.log("PASS premium referral contract: participation=400, missing store=403, receipt absent, malformed cookie replaced");
+console.log("PASS premium referral contract: participation=400, missing store=503, receipt absent, malformed cookie replaced");
