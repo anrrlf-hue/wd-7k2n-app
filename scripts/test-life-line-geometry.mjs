@@ -8,7 +8,7 @@ landmarks[0] = { x: 50, y: 100 }; landmarks[2] = { x: 20, y: 60 }; landmarks[5] 
 const line = (start, end, pathPoints, length = "김") => ({ detected: true, geometryStatus: "measurable", start, end, pathPoints, length });
 const curvedPath = [{ x: .2, y: .62 }, { x: .1, y: .56 }, { x: .14, y: .48 }, { x: .3, y: .42 }, { x: .48, y: .38 }];
 const straightPath = [{ x: .2, y: .62 }, { x: .27, y: .56 }, { x: .34, y: .5 }, { x: .41, y: .44 }, { x: .48, y: .38 }];
-const oppositeCurvePath = [{ x: .2, y: .62 }, { x: .7, y: .56 }, { x: .75, y: .48 }, { x: .6, y: .42 }, { x: .48, y: .38 }];
+const oppositeSideCurvePath = [{ x: .2, y: .62 }, { x: .7, y: .56 }, { x: .75, y: .48 }, { x: .6, y: .42 }, { x: .48, y: .38 }];
 assert.equal(classifyLifeLineGeometry(line(curvedPath[0], curvedPath.at(-1), curvedPath), landmarks, 100, 100).status, "supported", "foreground thumb-side curve survives the guard");
 assert.equal(classifyLifeLineGeometry(line(straightPath[0], straightPath.at(-1), straightPath), landmarks, 100, 100).status, "unconfirmed", "straight segment with same endpoints is not promoted");
 const legacyStraight = { detected: true, geometryStatus: "measurable", start: { x: .2, y: .7 }, end: { x: .45, y: .25 }, pathPoints: [{ x: .2, y: .7 }, { x: .2625, y: .5875 }, { x: .325, y: .475 }, { x: .3875, y: .3625 }, { x: .45, y: .25 }], length: "보통" };
@@ -24,7 +24,7 @@ const rasterObservation = computeObservation(rasterMask, 512, 512, "life_line", 
 assert.equal(rasterObservation.geometryStatus, "measurable", "raster mask produces measurable skeleton geometry");
 assert.ok((rasterObservation.pathPoints?.length ?? 0) >= 5, "raster mask exports the actual path");
 assert.equal(classifyLifeLineGeometry({ ...rasterObservation, length: "보통", pathPoints: rasterObservation.pathPoints }, landmarks, 100, 100).status, "unconfirmed", "512px 8-connected raster straight line is not promoted");
-assert.equal(classifyLifeLineGeometry(line(oppositeCurvePath[0], oppositeCurvePath.at(-1), oppositeCurvePath), landmarks, 100, 100).status, "unconfirmed", "opposite-side curve is not promoted");
+assert.equal(classifyLifeLineGeometry(line(oppositeSideCurvePath[0], oppositeSideCurvePath.at(-1), oppositeSideCurvePath), landmarks, 100, 100).status, "unconfirmed", "opposite-side curve is not promoted");
 const centralPath = [{ x: .5, y: .82 }, { x: .5, y: .7 }, { x: .5, y: .58 }, { x: .5, y: .46 }, { x: .5, y: .38 }];
 assert.equal(classifyLifeLineGeometry(line(centralPath[0], centralPath.at(-1), centralPath), landmarks, 100, 100).status, "rejected", "central vertical segment is rejected");
 assert.equal(classifyLifeLineGeometry(line({ x: .46, y: .6 }, { x: .5, y: .48 }, [{ x: .46, y: .6 }, { x: .48, y: .54 }, { x: .5, y: .48 }], "짧음")).status, "unconfirmed", "short segment stays unconfirmed");
@@ -37,4 +37,4 @@ const customerLine = { detected: true, curve: "완만한 곡선", attributeSuppo
 assert.equal(palmPersonalLineReading("lifeLine", { ...customerLine, anatomicalStatus: "rejected" }), null, "rejected central segment cannot become life-line prose");
 assert.equal(palmPersonalLineReading("lifeLine", { ...customerLine, anatomicalStatus: "unconfirmed" }), null, "unconfirmed short/unknown segment cannot become life-line prose");
 assert.ok(palmPersonalLineReading("lifeLine", { ...customerLine, anatomicalStatus: "supported", pathPoints: curvedPath }), "supported geometry retains existing life-line prose");
-console.log("PASS life-line geometry guard: foreground curve, same-endpoint straight/opposite curves, central vertical, short, and mirrored cases");
+console.log("PASS life-line geometry guard: foreground curve, same-endpoint straight/opposite-side curves, central vertical, short, and mirrored cases");

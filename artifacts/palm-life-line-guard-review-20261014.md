@@ -1,6 +1,6 @@
 # 생명선 오해석 방지 guard 검수
 
-검수 branch HEAD: `fb48e8c5a2d841c98904e17b81c7921816e68278` 이전 작업 기준  
+검수 branch의 생명선 guard 검수 기록.
 목적: 자동 인식 개선이나 출시 완료가 아니라, 기존 모델의 `life_line` class가 중앙 짧은 세로 segment를 생명선 풀이로 승격시키는 오해석 방지.
 
 ## 구현
@@ -20,7 +20,7 @@
 
 - 실제 foreground path가 있는 엄지 쪽 곡선: `supported`
 - 같은 끝점을 가진 직선: `unconfirmed`
-- 반대 방향 곡선: `unconfirmed`
+- 같은 끝점이지만 손바닥 반대쪽으로 벗어난 곡선: `unconfirmed` (방향 반전 검증이 아님)
 - `512×512` 실제 mask의 `(100,350)→(225,125)` 8-connected raster 직선: `unconfirmed`
 - 중앙 세로 segment: `rejected`
 - 짧은 segment: `unconfirmed`
@@ -30,7 +30,7 @@
 
 합성 테스트는 지오메트리 guard와 보류 불변식을 검증할 뿐 실제 사진 인식 성공률의 증거가 아니다. 기존 `length='김'`과 endpoint만 있는 시험은 정상 곡선 증거가 아니며 `unconfirmed` 계약으로 처리한다.
 
-곡률은 arc/chord 비율 하나로 결정하지 않는다. ONNX가 제공한 실제 skeleton path를 landmark frame에 맞추고, 회전 후 isotropic image unit에서 endpoint chord 대비 굽음과 thumb-side 위치를 함께 검사한다. 따라서 pixel staircase의 길이 증가나 손바닥 폭/축 길이의 anisotropic scaling을 곡선으로 세지 않는다.
+곡률은 arc/chord 비율 하나로 결정하지 않는다. ONNX가 제공한 실제 skeleton path를 landmark frame에 맞추고, 회전 후 isotropic image unit에서 endpoint chord 대비 굽음의 크기와 thumb-side 위치를 함께 검사한다. 따라서 pixel staircase의 길이 증가나 손바닥 폭/축 길이의 anisotropic scaling을 곡선으로 세지 않는다. 현재 지표는 chord 양쪽의 굽음 방향(같은 끝점·같은 thumb-side 영역에서 서로 반대인 곡선)을 구별하지 않으며, 이를 생명선 확인 범위로 주장하지 않는다.
 
 저장 복원은 `PALM_READING_VERSION`을 `bilateral-reading-v8-life-geometry-guard`로 갱신했다. 과거 v7 bilateral prose는 삭제하지 않고 보존하되 현재 형식으로 자동 표시하지 않으며, 현재 facts로 재생성할 때만 새 guard를 통과한다.
 
