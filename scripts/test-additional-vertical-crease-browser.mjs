@@ -75,7 +75,7 @@ async function runRotatedPositive(degrees) {
     const x = 348; d.beginPath(); for (let y = 330; y < 580; y++) { const xx = x + .00005 * (y - 319) ** 2; if (y === 330) d.moveTo(xx, y); else d.lineTo(xx, y); } d.stroke();
     const rotated = document.createElement("canvas"); rotated.width = width; rotated.height = height;
     const r = rotated.getContext("2d"); r.translate(width / 2, height / 2); r.rotate(angle); r.translate(-width / 2, -height / 2); r.drawImage(base, 0, 0);
-    const rotatedPoints = points.map(p => { const dx = p.x - .5, dy = p.y - .5; return { x: .5 + dx * Math.cos(angle) - dy * Math.sin(angle), y: .5 + dx * Math.sin(angle) + dy * Math.cos(angle), z: p.z }; });
+    const rotatedPoints = points.map(p => { const px = p.x * width - width / 2, py = p.y * height - height / 2; return { x: (width / 2 + px * Math.cos(angle) - py * Math.sin(angle)) / width, y: (height / 2 + px * Math.sin(angle) + py * Math.cos(angle)) / height, z: p.z }; });
     const result = window.tracker(r.getImageData(0, 0, width, height), rotatedPoints);
     if (result.status !== "ok") return { result, meanPathErrorPx: Infinity, maxPathErrorPx: Infinity, pointCount: 0 };
     const expected = []; for (let y = 330; y < 580; y++) { const xx = x + .00005 * (y - 319) ** 2, dx = xx - width / 2, dy = y - height / 2; expected.push({ x: width / 2 + dx * Math.cos(angle) - dy * Math.sin(angle), y: height / 2 + dx * Math.sin(angle) + dy * Math.cos(angle) }); }
