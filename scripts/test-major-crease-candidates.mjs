@@ -88,7 +88,13 @@ const edgeMask = new Uint8Array(width * height);
 for (let i = 0; i < width * height; i++) if (edge.data[i * 4] < 180) edgeMask[i] = 1;
 assert.ok(traceForegroundSegments(edgeMask, width, height).length, "bbox-padded thinning retains a boundary curve");
 const thickCurvedResult = track(thickCurved);
-assert.ok(thickCurvedResult.candidate?.segments.every(segment => segment.supportPoints.every(point => Number.isFinite(point.x) && Number.isFinite(point.y))), "end-to-end thick curve keeps finite support coordinates");
+assert.ok(thickCurvedResult.candidate && thickCurvedResult.candidate.segments.length > 0, "end-to-end thick curve returns observed segments");
+const thickObserved = thickCurvedResult.candidate.segments.flatMap(segment => segment.supportPoints);
+const thickExpected = [];
+for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) if (thickCurved.data[(y * width + x) * 4] < 180) thickExpected.push({ x, y });
+assert.ok(thickObserved.every(point => Number.isFinite(point.x) && Number.isFinite(point.y) && thickCurved.data[(point.y * width + point.x) * 4] < 180), "end-to-end thick support stays on foreground");
+assert.ok(thickExpected.filter(pixel => thickObserved.some(point => Math.hypot(point.x - pixel.x, point.y - pixel.y) <= 2)).length / thickExpected.length >= .5, "end-to-end thick curve retains foreground coverage");
+for (const segment of thickCurvedResult.candidate.segments.filter(segment => segment.status === "measurable")) for (let i = 1; i < segment.points.length; i++) assert.ok(Math.max(Math.abs(segment.points[i].x - segment.points[i - 1].x), Math.abs(segment.points[i].y - segment.points[i - 1].y)) <= 1, "end-to-end ordered path remains adjacent");
 
 const bridge = image();
 stroke(bridge, [[30, 92], [55, 92]], 45, 4);

@@ -189,7 +189,8 @@ function traceSkeleton(component: number[], response: Float32Array, width: numbe
   if (!segments.length && component.length >= MIN_COMPONENT_PIXELS) {
     // Preserve thick/uncertain foreground evidence even when thinning cannot
     // yield a stable route; this is not promoted to a measurable path.
-    addSegment(component.map(index => (Math.floor(index / width) - minY) * localWidth + index % width - minX), "ambiguous");
+    const supportPoints = component.map(index => ({ x: index % width, y: Math.floor(index / width) }));
+    segments.push({ componentId, points: [], supportPoints, pathLengthPx: 0, supportPixelCount: component.length, responseMean: component.reduce((sum, index) => sum + response[index], 0) / component.length, status: "ambiguous" });
   }
   return segments;
 }
@@ -277,7 +278,7 @@ export function trackMajorCreaseCandidates(
     }
     if (!values.length) return finish({ status: "ok", width, height, elapsedMs: 0, candidate: emptyCandidate(width, height, angle, thumbSide) });
     values.sort((a, b) => a - b);
-    const threshold = Math.max(3, values[Math.floor(values.length * .97)] * .9);
+    const threshold = Math.max(3, values[Math.floor(values.length * .82)] * .55);
     const foreground = new Uint8Array(response.length);
     for (let i = 0; i < response.length; i++) if (response[i] >= threshold && valleyResponse[i] >= Math.max(3, threshold * .03)) foreground[i] = 1;
     const budget: WorkBudget = { used: width * height * 2, max: MAX_WORK_UNITS };
