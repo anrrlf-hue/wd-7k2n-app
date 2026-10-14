@@ -19,6 +19,7 @@ import { premiumAnnualThread, premiumClosing, premiumOverallEvidence } from "@/l
 import { buildCustomerPremiumNarrative } from "@/lib/saju-customer-narrative";
 import { validateReadingPlan } from "@/lib/reading-plan";
 import { describeReadingEvidence } from "@/lib/reading-evidence-display";
+import { gwaWa, iGa } from "@/lib/korean-particle";
 
 export const PREMIUM_REPORT_VERSION = "natal-customer-reading-2026-10-v15" as const;
 export interface PremiumReading {
@@ -63,7 +64,7 @@ export interface PremiumReport {
 }
 
 const GROUP_LABEL: Record<string, string> = {
-  비겁: "자기 선택과 사람",
+  비겁: "자기 선택",
   식상: "표현과 결과",
   재성: "쓰임과 교환",
   관성: "역할과 신뢰",
@@ -78,20 +79,57 @@ function groupsForDaeun(facts: SajuFacts): string[] {
   ].filter(Boolean))];
 }
 
-function buildDaeunConnection(facts: SajuFacts, area: "love" | "money" | "work"): string {
+function daeunPair(facts: SajuFacts): { daeun: NonNullable<SajuFacts["currentDaeun"]>; groups: string[] } | null {
   const daeun = facts.currentDaeun;
-  if (!daeun) return "현재 대운을 계산할 수 없어 원국의 관계만으로 읽었습니다.";
-  const pair = groupsForDaeun(facts).map(group => GROUP_LABEL[group]).join("와 ");
-  if (area === "money" && facts.outputStarCount === 0 && facts.wealthStarCount > 0) {
-    return `현재 ${daeun.ganzhi} 대운의 ${pair} 조합이 원국의 재성 ${facts.wealthStarCount}개와 만납니다. 드러난 식상 0은 표현이나 수입 능력의 부재를 뜻하지 않으며, 이미 가진 판단·신뢰·도움의 조건이 실제 교환과 보상으로 어떻게 이어지는지 확인하는 쪽으로 읽습니다.`;
+  return daeun ? { daeun, groups: groupsForDaeun(facts) } : null;
+}
+
+function buildOverallContext(facts: SajuFacts): string {
+  const current = daeunPair(facts);
+  if (!current) return "현재 대운을 계산할 수 없어 원국의 중심 긴장만으로 읽었습니다.";
+  if (facts.outputStarCount > 0 && facts.wealthStarCount > 0) {
+    return `원국에서는 내놓은 결과가 실제 쓰임과 보상으로 이어지는 과정이 중심입니다. 지금 ${current.daeun.ganzhi} 대운에서는 잘하는 사람으로 보이는 것만큼 맡길 수 있는 사람으로 인정받고 싶은 마음이 커질 수 있어, 결과를 넓히기 전에 지속할 범위와 자기 몫을 함께 정하는 긴장으로 읽습니다.`;
   }
-  if (area === "love" && groupsForDaeun(facts).includes("관성")) {
-    return `현재 ${daeun.ganzhi} 대운의 ${pair} 조합이 가까운 관계에 약속과 평가의 무게를 더합니다. 잘해 보이는 것보다 서로 지킬 범위와 기대를 말할 때 원국의 장점이 친밀함으로 이어질 수 있습니다.`;
+  if (facts.dayStrengthReliable && facts.dayStrength === "weak") {
+    return `원국의 장점은 혼자 더 밀어붙일 때보다 사람과 환경의 도움을 자기 결과로 연결할 때 편하게 드러납니다. 지금 ${current.daeun.ganzhi} 대운에서는 그 도움을 받으면서도 자신의 판단과 이름을 남길 수 있는지가 중심 질문입니다.`;
   }
-  if (area === "work" && groupsForDaeun(facts).includes("관성")) {
-    return `현재 ${daeun.ganzhi} 대운의 ${pair} 조합이 일에 역할과 신뢰의 질문을 더합니다. 원국에서 이미 드러난 능력을 더 많이 맡는 일과, 자신의 판단이 전문성으로 인정되는 일은 다를 수 있어 기준·권한·지원의 범위를 함께 확인하는 흐름으로 읽습니다.`;
+  return `원국에서 두드러진 기준이 지금 ${current.daeun.ganzhi} 대운의 요구와 만납니다. 익숙한 방식으로 잘해내는 것과 이 시기에 새로 맡아야 할 역할을 구분할 때 자신의 중심이 선명해집니다.`;
+}
+
+function buildLoveContext(facts: SajuFacts): string {
+  const current = daeunPair(facts);
+  const period = current ? `현재 ${current.daeun.ganzhi} 대운에서는 약속과 평가의 무게가 더해집니다.` : "현재 대운은 계산되지 않아 원국의 관계 신호만 읽습니다.";
+  if (facts.wealthStarCount > 0 && facts.outputStarCount > 0) {
+    return `${period} 사람의 매력과 반응을 알아보고 분위기를 만드는 힘은 관계의 시작을 돕지만, 계속 좋은 모습을 제공해야 한다고 느끼면 자신의 피로와 서운함을 뒤로 미룰 수 있습니다. 끌림을 만든 능력과 약한 마음을 나누는 친밀함을 같은 것으로 보지 않을 때 관계가 오래 이어질 여지가 생깁니다.`;
   }
-  return `현재 ${daeun.ganzhi} 대운의 ${pair} 조합이 원국의 흐름 위에 놓입니다. 원국에서 익숙한 방식이 이 시기에는 어떤 역할과 조건으로 이어지는지 살펴보는 것이 핵심입니다.`;
+  if (facts.resourceStarCount > 0) {
+    return `${period} 상대의 말과 사정을 충분히 이해하려는 마음이 가까워지는 통로가 됩니다. 다만 설명을 모두 끝내야 마음을 보일 수 있다고 여기면 실제 감정은 뒤로 밀릴 수 있어, 이해한 사실과 지금 느낀 마음을 나누어 말하는 것이 관계의 회복을 돕습니다.`;
+  }
+  return `${period} 관계에서는 잘 맞추는 능력보다 서로의 기대와 불편을 확인하는 대화가 중요합니다. 한 번의 반응을 관계 전체의 결론으로 만들지 않고, 다시 확인할 수 있는 작은 약속을 남기는 쪽으로 읽습니다.`;
+}
+
+function buildMoneyContext(facts: SajuFacts): string {
+  const current = daeunPair(facts);
+  const period = current ? `현재 ${current.daeun.ganzhi} 대운의 역할과 신뢰가` : "현재의 큰 운이 계산되지 않아 원국의 재성 구조가";
+  if (facts.outputStarCount === 0 && facts.wealthStarCount > 0) {
+    return `${period} 원국의 재성 ${facts.wealthStarCount}개와 만납니다. 드러난 식상 0은 표현이나 수입 능력의 부재를 뜻하지 않으며, 이미 가진 판단·신뢰·도움이 누구의 필요를 해결하고 어떤 조건으로 보상받는지 확인하는 흐름입니다.`;
+  }
+  if (facts.outputStarCount > 0 && facts.wealthStarCount > 0) {
+    return `${period} 원국의 식상과 재성 사이를 이어 줍니다. 잘 만든 결과의 반응을 모두 수입으로 착각하지 않고, 추가 시간·책임·지속 가능성을 보상 조건에 포함할 때 벌어들인 돈이 실제 생활의 몫으로 남습니다.`;
+  }
+  return `${period} 원국의 재물 신호와 만납니다. 돈을 얻는 장면과 지키는 장면을 한 번의 성과로 묶지 않고, 무엇이 실제로 남는지 확인하는 기준이 필요합니다.`;
+}
+
+function buildWorkContext(facts: SajuFacts): string {
+  const current = daeunPair(facts);
+  if (!current) return "현재 대운을 계산할 수 없어 원국의 일하는 방식과 환경 조건만으로 읽었습니다.";
+  if (facts.officerStarCount > 0) {
+    return `현재 ${current.daeun.ganzhi} 대운은 일을 잘하는 사람에서 맡길 수 있는 사람으로 보이는 이동을 강조합니다. 원국의 책임감은 권한 없는 순응과 같지 않으므로, 완료 기준·결정권·지원 범위를 합의할 수 있는 환경에서 전문성으로 남습니다.`;
+  }
+  if (facts.outputStarCount > 0) {
+    return `현재 ${current.daeun.ganzhi} 대운에서는 자기 방식으로 만든 결과가 공동의 기준과 만납니다. 아이디어를 내는 자유만큼 누가 결정하고 언제 확인할지 정하는 구조가 있어야 표현력이 소모되지 않고 역할로 이어집니다.`;
+  }
+  return `현재 ${current.daeun.ganzhi} 대운은 익힌 내용을 실제 책임으로 옮기는 질문을 더합니다. 안정적으로 맡을 범위와 새로 배울 한 가지가 함께 보이는 환경에서 신뢰와 자기 기준을 동시에 지킬 수 있습니다.`;
 }
 
 function buildAnnualConnection(periods: PremiumPeriod[]): string {
@@ -102,9 +140,9 @@ function buildAnnualConnection(periods: PremiumPeriod[]): string {
     const stem = GROUP_LABEL[TEN_GOD_GROUP[year.stemTenGod!]] ?? year.stemTenGod!;
     const branch = GROUP_LABEL[TEN_GOD_GROUP[year.branchTenGod!]] ?? year.branchTenGod!;
     const same = TEN_GOD_GROUP[year.stemTenGod!] === TEN_GOD_GROUP[year.branchTenGod!];
-    return `${year.ganzhi}에서는 ${same ? `${stem}가 반복되어` : `${stem}와 ${branch}가 함께 놓여`} ${stem}의 요구와 ${branch}의 쓰임을 조정하는 배경이 됩니다.`;
+    return `${year.ganzhi}는 ${same ? `${stem}${iGa(stem)} 반복됩니다` : `${stem}${gwaWa(stem)} ${branch}${iGa(branch)} 함께 놓입니다`}. 이 해에는 ${stem}${iGa(stem)} 요구하는 것과 ${branch}${iGa(branch)} 실제로 쓰이는 곳을 함께 살핍니다.`;
   });
-  return `세운의 연간 흐름은 ${threads.join(" ")} 이 연결은 한 가지 성과를 예고하는 것이 아니라, 연도별로 달라지는 요구와 쓰임이 실제 생활에서 어떻게 조정되는지 읽기 위한 것입니다.`;
+  return `연간 세운은 ${threads.join(" ")} 이 연간 연결은 한 가지 성과를 예고하는 것이 아니라, 연도별로 달라지는 요구와 쓰임이 실제 생활에서 어떻게 조정되는지 읽기 위한 것입니다.`;
 }
 
 function buildIntegratedDomainParagraphs(
@@ -114,7 +152,7 @@ function buildIntegratedDomainParagraphs(
   palmText?: string,
 ): string[] {
   const base = area === "love_relationship" ? customer.love : area === "money" ? customer.money : customer.work;
-  const connection = buildDaeunConnection(facts, area === "love_relationship" ? "love" : area);
+  const connection = area === "love_relationship" ? buildLoveContext(facts) : area === "money" ? buildMoneyContext(facts) : buildWorkContext(facts);
   const paragraphs = [...base, connection];
   if (palmText) paragraphs.push(palmText);
   if (area === "money" && facts.outputStarCount === 0) {
@@ -199,7 +237,7 @@ export function buildPremiumReport(input: {
   const currentDaeunBasis = facts.currentDaeun
     ? ` 현재 대운 ${facts.currentDaeun.ganzhi}(${facts.currentDaeun.stemTenGod}/${facts.currentDaeun.branchTenGod})을 함께 읽었습니다.`
     : " 현재 대운은 계산되지 않았습니다.";
-  overall.paragraphs = [...customer.overall, buildDaeunConnection(facts, "work"), buildAnnualConnection(periods)];
+  overall.paragraphs = [...customer.overall, buildOverallContext(facts), buildAnnualConnection(periods)];
   overall.basis = customer.frame.evidence.self + currentDaeunBasis;
   const overallEvidence = premiumOverallEvidence(editorial);
   if (overallEvidence) overall.basis += ` ${overallEvidence}`;
