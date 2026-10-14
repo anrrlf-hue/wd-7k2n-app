@@ -75,40 +75,20 @@ export function buildPremiumYearNarrative(symbols: AnnualPillarSymbols): Premium
   return { symbols, stemGod, branchGod, summary: `${together} ${EXACT_YEAR_RELATION[`${stemGod}|${branchGod}`] ?? YEAR_RELATION[TEN_GOD_GROUP[stemGod]][TEN_GOD_GROUP[branchGod]]}` };
 }
 
-// A year's emphasis enters the existing scene as a reason for its discomfort;
-// it is not the same annual paragraph appended to all twelve months.
-const PRESSURE: Record<string, Record<TenGodGroup, string>> = {
-  비견: {
-    비겁: "자신이 직접 고른 이유까지 서로 같아야 할 것 같았다면", 식상: "표현한 모양을 바꾸면 자기 생각도 약해질 것 같았다면", 재성: "처음 좋아서 고른 것을 덜 쓰는 일이 선택을 부정하는 듯했다면", 관성: "소중한 약속 안에서 개인적인 바람을 꺼내기 어려웠다면", 인성: "도움받은 설명에 동의하면서도 직접 고를 마음이 작아진 듯했다면",
-  },
-  겁재: {
-    비겁: "함께 즐거웠다는 말에 각자의 아쉬움을 덮어 두고 있었다면", 식상: "같이 만든 것을 한 가지 표현으로만 남겨야 할 것 같았다면", 재성: "함께 좋아한 것을 각자 다르게 쓰는 일이 어색했다면", 관성: "같이 하기로 했다는 마음 때문에 혼자 필요한 시간을 말하기 어려웠다면", 인성: "같은 도움을 받았으니 같은 속도로 익혀야 할 것 같았다면",
-  },
-  식신: {
-    비겁: "같이 고르는 재미보다 다시 편하게 해 보고 싶은 시간이 남았다면", 식상: "새로 보여 주려다 익숙하게 즐기던 부분이 줄었다면", 재성: "좋은 반응을 더 얻으려다 만드는 시간이 전처럼 즐겁지 않았다면", 관성: "계속 잘해야 한다는 마음 때문에 편하게 하던 시간이 긴장됐다면", 인성: "배운 것을 잘 설명하는 일보다 다시 직접 해 볼 때 마음이 놓였다면",
-  },
-  상관: {
-    비겁: "좋아하는 뜻이 있는데 처음 꺼낸 말만 계속 지켜야 할 것 같았다면", 식상: "달리 표현한 부분까지 처음 모습과 같아야 한다고 느꼈다면", 재성: "눈에 띄게 바꾼 모습과 실제로 편해진 부분이 서로 달랐다면", 관성: "잘해 보인 결과에 내 뜻이 남지 않아 아쉬웠다면", 인성: "받은 설명을 다른 예로 바꾼 것을 틀린 답처럼 느꼈다면",
-  },
-  편재: {
-    비겁: "내가 고른 것에서 상대가 뜻밖의 다른 쓰임을 발견했다면", 식상: "처음 표현하려던 것보다 누군가 새로 쓴 부분이 더 눈에 들어왔다면", 재성: "새로운 쓰임을 더 경험하고 싶어 익숙한 만족을 작게 느꼈다면", 관성: "새롭게 해 볼 마음이 이미 지켜 온 모습 안에 들어오기 어려웠다면", 인성: "좋다는 설명을 듣는 동안 직접 한 번 써 보고 싶은 마음이 더 커졌다면",
-  },
-  정재: {
-    비겁: "함께 고른 것보다 하루에 실제로 편해진 부분이 더 마음에 남았다면", 식상: "보여 줄 때 좋았던 표현이 자주 쓰는 동안에는 불편했다면", 재성: "새로 갖춘 기쁨보다 다음에도 자연스럽게 쓰는 만족이 필요했다면", 관성: "좋았던 것을 지키는 일이 일상에서 계속 신경 쓸 부담으로 남았다면", 인성: "충분히 배웠다는 안심과 생활에서 직접 쓸 수 있다는 느낌이 달랐다면",
-  },
-  편관: {
-    비겁: "자기 바람을 말하면 잘해 보이지 않을까 망설였다면", 식상: "한 번의 반응 때문에 표현 전체가 부족한 듯 느껴졌다면", 재성: "좋은 반응을 받은 모습을 다음에도 더 크게 보여 줘야 할 것 같았다면", 관성: "새로운 기대 하나 때문에 이미 해 온 것까지 다시 증명하고 싶어졌다면", 인성: "이유를 다 알아야 제대로 받아들인 사람으로 보일 것 같았다면",
-  },
-  정관: {
-    비겁: "개인적인 바람을 꺼내는 일이 이미 나눈 믿음을 가볍게 만들 것 같았다면", 식상: "표현을 달리하면 소중히 이어 온 뜻까지 바뀐다고 느꼈다면", 재성: "한 번 좋아한 모습을 계속 같은 크기로 제공해야 할 것 같았다면", 관성: "익숙한 약속을 지킨 뒤에도 충분히 잘했는지 마음이 남았다면", 인성: "이해해 주는 사람이 되어야 한다는 마음에 자신의 느낌을 뒤로 두었다면",
-  },
-  편인: {
-    비겁: "다른 사람의 이유를 이해할수록 직접 고르기 어려워졌다면", 식상: "표현을 바꾸며 생긴 작은 질문을 처음부터 모른다는 뜻으로 느꼈다면", 재성: "유용하다는 이유를 더 찾아도 직접 좋아하는 부분은 아직 흐렸다면", 관성: "다르게 이해한 이유가 있어도 처음 알려진 답만 말해야 할 것 같았다면", 인성: "여러 뜻을 찾아낸 뒤에도 처음 들었던 느낌이 남아 있었다면",
-  },
-  정인: {
-    비겁: "도움받아 마음이 놓였는데 직접 고른 경험은 작아진 듯했다면", 식상: "배운 방법을 지킨 만족과 스스로 해 본 만족이 달리 남았다면", 재성: "더 익혀야 한다는 마음에 이미 도움이 된 부분까지 가볍게 여겼다면", 관성: "다시 묻는 일이 쌓아 온 믿음을 잃는 것처럼 느껴졌다면", 인성: "설명이 더 늘어났는데 누군가 들어 줬을 때의 편안함은 따로 남았다면",
-  },
-};
+// The annual emphasis is rendered once in annualIntroduction. Monthly scenes
+// retain only their own symbol relation and branch-specific consequence.
+export function connectYearToMonth(story: MonthStory, stem: string, branch: string, area: PillarFact["pillar"], year: PremiumYearNarrative | null,
+  mode?: MonthObservationMode): MonthStory {
+  if (!year) return story;
+  const action = monthAction(stem, branch, area, mode);
+  const meaning = composeMonthClosure(stem, branch, year.branchGod, action, mode);
+  // The annual summary owns the common yearly theme. A month keeps only its
+  // own symbol/scene and the branch-specific consequence; do not append the
+  // same annual pressure to every month with a date prefix.
+  return { ...story,
+    meaning,
+  };
+}
 function monthAction(stem: string, branch: string, area: PillarFact["pillar"], mode?: MonthObservationMode): string {
   if (mode === "fate-pair") return stem === "상관" ? "고치지 않아도 편했던 부분을 남기고 실제 불편했던 한 곳만 다시 손보는 선택"
     : "좋아하던 시간의 크기로 한 번 더 나누되 다음에도 스스로 하고 싶은 부분을 남기는 선택";
@@ -132,44 +112,4 @@ function monthAction(stem: string, branch: string, area: PillarFact["pillar"], m
   return actions[a][b];
 }
 
-const CRAFT_CHANGE_PRESSURE: Record<string, string> = {
-  비견: "처음 고른 방법을 바꾸면 자기 판단까지 부정되는 듯했다면",
-  겁재: "상대도 쓰기 좋게 하려다 각자 다르게 편한 부분을 놓쳤다면",
-  식신: "손보며 좋았던 시간이 이번 반응 때문에 긴장스럽게 느껴졌다면",
-  상관: "눈에 띄는 모양을 더 바꾸라는 말에 실제로 고친 뜻은 흐려졌다면",
-  편재: "다른 곳에도 써 보면 좋겠다는 말에 이번에 해결한 불편은 작게 보였다면",
-  정재: "더 고치기 위해 다시 익혀야 할 순서가 이미 편해진 부분까지 어렵게 만들 것 같았다면",
-  편관: "덜 바꿨다는 반응 때문에 이미 해결한 부분까지 부족하게 느꼈다면",
-  정관: "받은 제안을 모두 따라야 그 사람의 정성을 소중히 받아들인 것 같았다면",
-  편인: "왜 더 바꾸면 좋은지 이유를 더 찾는 동안 내게 불편했던 부분은 뒤로 밀렸다면",
-  정인: "좋은 조언을 알고도 직접 내 손에 맞게 적용할 한 부분은 아직 낯설었다면",
-};
-
-const CONVERSATION_PRESSURE: Record<string, string> = {
-  비견: "내가 알아들은 이유를 바꾸면 자기 판단까지 약해질 것 같았다면",
-  겁재: "같은 이야기를 나눴으니 두 사람에게 같은 느낌이 남았다고 생각했다면",
-  식신: "말의 뜻을 잘 풀어냈어도 다시 편하게 이야기하고 싶은 마음은 줄었다면",
-  상관: "이미 전한 마음을 다른 말로 꺼내는 일이 진심을 바꾸는 듯 어색했다면",
-  편재: "혼자 찾은 이유에 없던 뜻이 실제 대화에서 들어왔다면",
-  정재: "뜻을 더 알아내는 일보다 평소처럼 편하게 말할 수 있는 시간이 필요했다면",
-  편관: "마음에 걸린 뜻을 다시 물으면 제대로 알아듣지 못한 사람으로 보일까 망설였다면",
-  정관: "늘 상대를 이해해 주는 사람이 되어야 할 것 같아 자기 느낌은 삼켰다면",
-  편인: "말에 없던 이유까지 생각하는 동안 듣고 싶었던 반응은 더 흐려졌다면",
-  정인: "정확한 답을 들은 것보다 그때의 마음을 들어 줬다는 느낌이 더 편했다면",
-};
-export function connectYearToMonth(story: MonthStory, stem: string, branch: string, area: PillarFact["pillar"], year: PremiumYearNarrative | null,
-  mode?: MonthObservationMode, monthKey = ""): MonthStory {
-  if (!year) return story;
-  const conversation = (stem === "편인" && branch === "편인" && area === "day") || mode?.startsWith("heart");
-  const craft = TEN_GOD_GROUP[stem] === "식상" && TEN_GOD_GROUP[branch] === "재성";
-  const pressure = conversation ? CONVERSATION_PRESSURE[year.stemGod]
-    : craft && stem === "상관" ? CRAFT_CHANGE_PRESSURE[year.stemGod] : PRESSURE[year.stemGod][TEN_GOD_GROUP[branch]];
-  const action = monthAction(stem, branch, area, mode);
-  const meaning = composeMonthClosure(stem, branch, year.branchGod, action, mode);
-  // Keep the observed/natal scene; change its felt conflict and actual choice.
-  // Only this annual branch, not the annual stem, owns the new resolution.
-  return { ...story,
-    scene: `${story.scene} ${monthKey ? `${monthKey}의 장면에서는 ` : ""}${pressure.replace(/다면$/, "을 수 있습니다.")}`,
-    meaning,
-  };
-}
+// A year's emphasis enters the existing scene as a reason for its discomfort;

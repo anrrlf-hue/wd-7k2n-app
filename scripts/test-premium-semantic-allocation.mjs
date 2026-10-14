@@ -34,6 +34,7 @@ const repeatedAnnualPressure = {
   7: [],
 };
 const longSentencesIn = body => body.split(/(?<=다\.)\s+/).map(s => s.trim()).filter(s => s.length > 30);
+const normalizeMonthLabels = body => body.replace(/20\d{2}년\s*\d{1,2}월(?:의 장면에서는)?/g, "").replace(/\s+/g, " ").trim();
 function checkedMonthlySentences(report, approved) {
   const presentation = buildPremiumPeriodPresentation(report);
   const exceptions = new Map(approved);
@@ -49,7 +50,8 @@ function checkedMonthlySentences(report, approved) {
   }
   const checked = report.periods.flatMap((period, index) => {
     const scene = period.interpretation.passages.find(p => p.id === 'month-lived-scene');
-    assert.ok(scene?.evidenceIds.includes('year-stem'), 'each month retains its annual pressure');
+    assert.ok(scene && !scene.evidenceIds.includes('year-stem'), 'annual pressure is not copied into each month');
+    assert.ok(report.annualIntroduction.includes('처음 읽는 세운에는'), 'the common annual theme is explained once in the annual section');
     const passages = period.interpretation.passages;
     assert.deepEqual(longSentencesIn(displayed[index]), passages.flatMap(p => longSentencesIn(p.text)),
       'the current report displays every passage without deleting repeated sentences');
@@ -90,6 +92,10 @@ for (const day of [1, 7]) {
   const { displayed, checked } = checkedMonthlySentences(report, approved);
   assert.equal(new Set(checked).size, checked.length,
     'month-specific prose must avoid repeated full sentences; the same annual pressure may recur');
+  const semanticMonthlySentences = report.periods.flatMap(period => period.interpretation.passages
+    .flatMap(p => longSentencesIn(normalizeMonthLabels(p.text))));
+  assert.equal(new Set(semanticMonthlySentences).size, semanticMonthlySentences.length,
+    'month labels cannot hide repeated meaning; common annual themes belong in annualIntroduction');
   const accidentalRepeat = '월마다 다른 선택을 해야 한다는 같은 문장을 임의로 반복합니다.';
   const mutated = structuredClone(report);
   for (const period of mutated.periods.slice(0, 2)) {

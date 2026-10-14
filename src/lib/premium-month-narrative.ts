@@ -124,15 +124,14 @@ export function buildPremiumMonthNarrative(facts: SajuFacts, month: SajuAnnualMo
   const base = composeMonthStory(stem, branch, area, anchor?.god ?? null);
   const observed = withObservedScene(base, stem, branch, area, context, evidence);
   const year = buildPremiumYearNarrative(symbols.year);
-  const story = composeMonthStory(stem, branch, area, anchor?.god ?? null, { year, observedStory: observed.story, mode: observed.mode, monthKey: month.label });
+  const story = composeMonthStory(stem, branch, area, anchor?.god ?? null, { year, observedStory: observed.story, mode: observed.mode });
   if (year) {
-    evidence.push({ id: "year-stem", kind: "calculated", source: "annual pillar stem compared with facts.dayStem", value: `${symbols.year.stem}:${year.stemGod}` },
-      { id: "year-branch", kind: "calculated", source: "annual branch main hidden stem compared with facts.dayStem", value: `${symbols.year.branch}:${year.branchGod}` });
+    evidence.push({ id: "year-branch", kind: "calculated", source: "annual branch main hidden stem compared with facts.dayStem", value: `${symbols.year.branch}:${year.branchGod}` });
   }
   const scene = story.scene;
   const passages: ReadingPlan["passages"] = [
     { id: "month-relation", kind: "traditional", text: story.opening, evidenceIds: ["month-stem", "month-branch"] },
-    { id: "month-lived-scene", kind: "reflection", text: scene, evidenceIds: [...refs, ...observed.refs, ...(year ? ["year-stem"] : [])] },
+    { id: "month-lived-scene", kind: "reflection", text: scene, evidenceIds: [...refs, ...observed.refs] },
     { id: "month-lived-resolution", kind: "reflection", text: story.meaning, evidenceIds: [...refs, ...observed.refs, ...(year ? ["year-branch"] : [])] },
   ];
   if (previous) {

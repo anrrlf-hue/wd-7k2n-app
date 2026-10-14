@@ -136,14 +136,14 @@ function livedScene(stem: string, branch: string, area: MonthArea, natalGod: str
   return scenes[a][b];
 }
 
-export function composeMonthStory(stem: string, branch: string, area: MonthArea, natalGod: string | null, context?: { year: PremiumYearNarrative | null; observedStory?: MonthStory; mode?: MonthObservationMode; monthKey?: string }): MonthStory {
+export function composeMonthStory(stem: string, branch: string, area: MonthArea, natalGod: string | null, context?: { year: PremiumYearNarrative | null; observedStory?: MonthStory; mode?: MonthObservationMode }): MonthStory {
   const a = TEN_GOD_GROUP[stem], b = TEN_GOD_GROUP[branch];
   const exact = EXACT[`${stem}|${branch}`];
   const relation = exact ?? RELATION[a][b];
   const opening = relation.text;
   const story: MonthStory = context?.observedStory ?? { id: `${stem}:${branch}:${area}:${natalGod ?? "none"}`, headline: exact?.headline ?? (stem === branch ? relation.headline : `${monthSymbolSubject(stem)} · ${monthSymbolSubject(branch)}`),
     opening, meaning: relation.outcome, scene: livedScene(stem, branch, area, natalGod), thread: "" };
-  return connectYearToMonth(story, stem, branch, area, context?.year ?? null, context?.mode, context?.monthKey);
+  return connectYearToMonth(story, stem, branch, area, context?.year ?? null, context?.mode);
 }
 
 /** A preceding month's actual symbolic emphasis can qualify this month's
