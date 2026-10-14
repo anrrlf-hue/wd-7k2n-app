@@ -104,6 +104,38 @@ const CLOSE: Record<TenGodGroup, { social: string; intimate: string; deeper: str
     deeper: "친밀함은 늘 같은 것을 고르는 데서만 생기지 않습니다. 상대에게 양보한 날에도 자기 바람을 말할 수 있고 내가 고른 날에도 상대의 아쉬움을 들을 수 있다면, 독립적인 두 사람이 함께라는 감각이 살아납니다. 누가 더 맞춰 줬는지보다 서로의 선택이 남아 있는지가 관계의 편안함을 가릅니다.",
   },
 };
+
+/** Relationship prose is selected from combinations, not only the day branch.
+ * The same close relationship symbol can therefore lead to trust, space, or
+ * care-as-advice depending on the other confirmed groups in the chart. */
+function relationshipReading(frame: NatalNarrativeFrame) {
+  const { counts: c, facts: f } = frame;
+  if (c.관성 > 0 && c.인성 > 0 && c.비겁 > 0) {
+    return {
+      mode: "trust-care-tension",
+      social: "관계에서는 약속을 지키고 상대의 사정을 이해하려는 마음이 함께 움직입니다. 그래서 가까운 사람을 챙길 때 필요한 것을 먼저 정리해 주려는 방식으로 마음을 보일 수 있습니다. 도움을 주는 일과 상대가 자기 방식으로 답을 찾을 자리를 남기는 일은 다르므로, 신뢰는 대신 해결해 주는 양보다 약속을 지키며 기다려 준 시간에서 쌓입니다.",
+      intimate: "연애에서는 잘 지내게 해 주고 싶은 마음이 조언의 모양으로 먼저 나올 수 있습니다. 상대의 선택을 존중하려 해도 걱정이 커지면 더 나은 방법을 설명하고 싶어질 수 있습니다. 해결책을 건네기 전 지금 필요한 것이 의견인지 곁에 머무는 일인지 묻는 순간, 돌봄이 부담이 아니라 믿음으로 전달됩니다.",
+      deeper: "가까움의 기준은 내가 얼마나 많이 챙겼는지가 아니라 상대가 자기 선택을 안전하게 말할 수 있는가에 있습니다. 약속을 지키는 꾸준함과 각자의 판단을 남겨 두는 여유가 함께 있을 때 신뢰가 쌓입니다. 이해한 사정을 곧바로 조언으로 바꾸지 않고 한 번 더 들어 주는 일이 이 조합의 관계 긴장을 풀어 줍니다.",
+    };
+  }
+  if (c.비겁 > 0 && c.식상 > 0 && c.관성 === 0) {
+    return {
+      mode: "space-expression",
+      social: "사람과 가까워질 때는 자기 생각을 편하게 말하면서도 각자의 생활을 침범하지 않는 간격이 중요하게 읽힙니다. 함께 즐길 장면을 먼저 만들 수 있지만, 계속 같은 속도로 반응해야 한다고 느끼면 피로가 생길 수 있습니다. 말이 잘 통하는 것과 늘 붙어 있어야 하는 것은 다른 친밀함입니다.",
+      intimate: "연애에서는 표현을 나누는 기쁨과 혼자 회복하는 시간이 함께 필요합니다. 연락이 잠시 줄어든 날에도 마음이 줄었다고 단정하기보다, 다시 이야기하고 싶은 경험이 무엇인지 남겨 두는 편이 관계를 오래 편하게 합니다. 서로의 시간을 존중할 때 표현은 의무가 아니라 반가운 선택으로 남습니다.",
+      deeper: "친밀함은 같은 취향과 같은 속도를 증명하는 일이 아닙니다. 내가 고른 시간을 지키면서도 상대의 다른 반응을 들을 수 있고, 상대에게 공간을 주면서도 다시 나눌 말을 남길 때 관계의 신뢰가 자랍니다. 표현의 양보다 각자의 생활이 관계 안에서 계속 살아 있는지가 중요합니다.",
+    };
+  }
+  if (c.식상 > 0 && c.재성 > 0) {
+    return {
+      mode: "shared-experience",
+      social: "관계에서는 함께 해 본 경험과 서로의 반응을 알아가는 과정에서 마음이 가까워집니다. 즐거운 장면을 잘 만들 수 있지만, 함께 좋아한 횟수만으로 마음의 깊이를 재면 각자의 취향이 가려질 수 있습니다. 무엇을 같이 하고 무엇은 따로 즐길지 나누는 데서 신뢰가 생깁니다.",
+      intimate: "연애에서는 표현과 생활의 즐거움이 애정의 통로가 됩니다. 상대를 기쁘게 하고 싶은 마음이 앞서도 준비한 장면의 반응을 곧바로 애정의 크기로 해석하지 않는 편이 좋습니다. 함께 즐긴 뒤 각자 좋았던 부분을 말할 때, 맞춰 준 정성과 실제로 마음에 남은 경험이 구별됩니다.",
+      deeper: "가까움은 좋은 경험을 많이 만드는 일과 각자의 취향을 편히 남기는 일을 함께 포함합니다. 상대가 좋아한 부분과 내가 다시 하고 싶은 부분이 다를 수 있다는 사실을 허용할 때 관계가 더 구체적으로 보입니다. 같은 장면을 공유한 뒤에도 서로 다른 감각을 확인하는 일이 신뢰를 쌓습니다.",
+    };
+  }
+  return null;
+}
 const WORK: Record<TenGodGroup, { environment: string; team: string; solo: string; deep: string }> = {
   관성: {
     environment: "일에서는 어려운 요구를 버티며 완성해 가는 과정에 무게가 실립니다. 무엇이 좋은 일인지 분명하고 경험이 쌓일수록 신뢰받는 환경에서 정성이 살아납니다. 반대로 오늘 해낸 것을 내일 곧바로 부족하다고 하는 환경에서는 실력보다 긴장이 앞서기 쉽습니다.",
@@ -140,6 +172,7 @@ const WORK: Record<TenGodGroup, { environment: string; team: string; solo: strin
 export function buildCustomerFreeNarrative(facts: SajuFacts): Omit<FreeSajuReport, "realWorldPersonalization"> {
   const f = buildNatalNarrativeFrame(facts), c = f.counts;
   const close = CLOSE[f.closeGod ? TEN_GOD_GROUP[f.closeGod] : "비겁"];
+  const relationship = relationshipReading(f);
   const work = WORK[f.workGod ? TEN_GOD_GROUP[f.workGod] : "인성"];
   const paragraph = (theme: Theme, text: string): ReportParagraph => ({ text, evidence: f.evidence[theme] });
   const wealth = c.재성 > 0
@@ -188,7 +221,7 @@ export function buildCustomerFreeNarrative(facts: SajuFacts): Omit<FreeSajuRepor
     return { text: `${next ? "다음" : "현재"} 큰 운은 계산상 ${period.ageRange}세 전후에 시작하는 ${period.ganzhi} 구간입니다. ${a}과 ${b}을 함께 읽습니다. ${flavor}`, evidence: `${next ? "nextDaeun" : "currentDaeun"}: ${period.ganzhi}/${period.stemTenGod}/${period.branchTenGod}, 시작 나이 ${period.ageRange}; 사건 발생이나 수입을 예고하지 않음` };
   };
   return { snapshot: paragraph("self", center(f)), temperament: paragraph("self", disposition(f)),
-    relationshipStyle: paragraph("relationship", close.social), loveStyle: paragraph("relationship", close.intimate),
+    relationshipStyle: paragraph("relationship", relationship?.social ?? close.social), loveStyle: paragraph("relationship", relationship?.intimate ?? close.intimate),
     lifeRhythm: paragraph("life", c.식상 > 0 && c.식상 === c.인성 ? "생활에는 혼자 이해하며 마음을 놓는 시간과 밖으로 표현하며 활기를 얻는 시간이 함께 있습니다. 충분히 알고 시작했어도 직접 하는 동안 다른 즐거움이 생깁니다. 사람을 만난 뒤 조용히 머물고 싶은 날과 혼자 있다가 나누고 싶은 날이 달라도 자기 리듬의 한 모습으로 읽습니다." : c.식상 > c.인성 ? "생활에서는 머릿속에 있던 것을 밖으로 꺼낼 때 활기가 생기는 쪽입니다. 새로 해 본 날의 즐거움과 익숙한 곳에 돌아와 쉬는 안도감이 함께 필요합니다. 하루를 알차게 채웠어도 좋아하는 순간이 없었다면 바쁜 정도와 만족의 이유는 달랐을 수 있습니다." : "생활에서는 조용히 생각을 모으고 익숙한 시간을 되찾을 때 마음이 정돈되는 쪽입니다. 사람을 만난 날에도 혼자 머물며 자기 느낌을 알아볼 시간이 소중합니다. 편한 반복 안에서 좋아하는 일이 사라졌다면 쉬는 시간의 길이보다 그 안에 남은 즐거움을 돌아보게 됩니다."),
     wealthStructure: paragraph("money", wealth), earningStyle: paragraph("money", earning), keepingStyle: paragraph("money", keeping), leakPattern: paragraph("money", spending),
     bigMoneyAffinity: paragraph("money", c.재성 > 0 ? "큰 기회에서는 표현한 것이 더 넓은 쓰임을 얻는 설렘을 읽습니다. 많은 사람에게 닿는 것과 자신이 아끼는 차이를 깊게 남기는 것은 다른 만족입니다. 관심의 크기만으로 재물의 성과를 정하지 않으며, 실제 투자 결과는 이 풀이로 판단하지 않습니다." : "큰 기회는 규모의 매력과 자신의 생활에 남는 의미를 함께 읽습니다. 낯선 것을 많이 얻는 설렘과 오래 감당할 수 있다는 안심은 다릅니다. 계산된 재물 상징만으로 투자 성과나 자산의 크기를 정하지 않습니다."),
@@ -203,6 +236,7 @@ export function buildCustomerFreeNarrative(facts: SajuFacts): Omit<FreeSajuRepor
 export function buildCustomerPremiumNarrative(facts: SajuFacts) {
   const f = buildNatalNarrativeFrame(facts), c = f.counts;
   const close = CLOSE[f.closeGod ? TEN_GOD_GROUP[f.closeGod] : "비겁"];
+  const relationship = relationshipReading(f);
   const work = WORK[f.workGod ? TEN_GOD_GROUP[f.workGod] : "인성"];
   const overall = f.fireMeeting && facts.dayElement === "금"
     ? "당신은 스스로 옳다고 납득한 기준을 쉽게 버리지 않지만, 현실에서는 그 기준이 실제로 쓰이는 모습까지 확인하고 싶어 합니다. 사·오·미의 불이 금을 다듬는 조합이라, 원칙을 지키는 일과 결과를 현실에 맞게 완성하는 일이 한 장면 안에서 만납니다. 잘했다는 평가를 받아도 자기 뜻이 빠지면 애착이 약해지고, 반대로 자기 뜻만 지키면 주변에서 쓸 자리가 좁아질 수 있는 긴장입니다."
@@ -211,9 +245,9 @@ export function buildCustomerPremiumNarrative(facts: SajuFacts) {
       : `${f.stem.name}인 당신은 ${f.stem.center}을 바탕으로, 익숙하게 지켜 온 뜻과 새로 달라진 바람을 함께 살피는 쪽입니다. 한 번 정한 답을 지키는 힘이 있지만, 직접 겪은 뒤 마음이 달라졌다면 그것을 후퇴로 보지 않고 현재의 기준으로 다시 읽을 여지도 있습니다.`;
   const inner = c.인성 > 0
     ? f.fireMeeting && facts.dayElement === "금"
-      ? "배운 기준을 현실에서 시험할 때는 설명을 더 모으는 것보다, 이미 아는 원칙이 어느 결과에서 살아났는지를 확인하게 됩니다. 단단함이 준비만 오래 하는 방식으로 굳지 않으려면 작은 시도에서 무엇을 지키고 무엇을 다듬을지 나누는 일이 중요합니다."
+      ? "일 밖에서는 배운 기준을 현실에서 시험할 때 설명을 더 모으는 것보다 이미 아는 원칙이 어느 결과에서 살아났는지를 확인하게 됩니다. 혼자 익히는 시간과 실제로 표현해 보는 즐거움, 다시 쉬며 감각을 회복하는 시간을 일의 성과와 섞지 않고 따로 남길수록 배움이 오래 갑니다. 단단함이 준비만 오래 하는 방식으로 굳지 않으려면 작은 시도에서 무엇을 지키고 무엇을 다듬을지 나누는 일이 중요합니다."
       : c.식상 > 0 && c.재성 > 0
-        ? "이 명식에서는 다른 사람의 반응을 들은 뒤 무엇을 바꾸고 무엇을 남길지 고르는 일이 중요한 공부가 됩니다. 많이 설명해 만족을 확인하기보다 실제로 자주 쓰인 한 장면을 관찰하면, 취향을 잃지 않으면서도 결과를 넓히는 방법이 보입니다."
+        ? "일 밖에서는 다른 사람의 반응을 들은 뒤 무엇을 바꾸고 무엇을 남길지 고르는 일이 중요한 배움이 됩니다. 많이 설명해 만족을 확인하기보다 실제로 자주 쓰인 한 장면을 관찰하면, 취향을 잃지 않으면서도 표현과 즐거움을 넓히는 방법이 보입니다."
         : "이유를 충분히 알아야 마음을 맡길 수 있지만, 설명이 끝나야만 움직일 수 있는 것은 아닙니다. 이해한 내용 중 한 부분을 먼저 해 보고 몸에 남은 느낌을 다시 읽을 때 배움이 자기 경험으로 깊어집니다."
     : "자신을 알아가는 속도는 경험을 넓히는 속도와 다를 수 있습니다. 처음에는 재미있어서 골랐던 것에 시간이 흐른 뒤 편안함이나 애착이 생기기도 합니다. 새롭게 해 본 것의 수보다 무엇에 다시 마음이 가는지 알아볼 때 자기 중심이 구체적으로 남습니다.";
   const acquisition = c.재성 > 0
@@ -250,5 +284,5 @@ export function buildCustomerPremiumNarrative(facts: SajuFacts) {
         "협업에서는 자신의 방식만 지키거나 모두 맞추는 양극단보다, 이미 책임진 몫과 함께 조정할 몫을 구별하는 일이 중요합니다. 그 구분이 있어야 신뢰와 자기 기준을 동시에 지킬 수 있습니다.",
       ];
   return { frame: f, summary: premiumSummary,
-    overall: [overall, inner], love: [close.deeper], money: [acquisition, management, expense], work: premiumWork };
+    overall: [overall, inner], love: [relationship?.deeper ?? close.deeper], money: [acquisition, management, expense], work: premiumWork };
 }

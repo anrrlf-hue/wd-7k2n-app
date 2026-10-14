@@ -24,6 +24,12 @@ const reviewed = cases.map(({ id, ...birth }) => {
   return { id, facts, free, premium };
 });
 
+assert.notDeepEqual(reviewed[0].facts.keyRelations, reviewed[1].facts.keyRelations, "A/B must retain different calculated relations");
+assert.notEqual(reviewed[0].premium.overall.paragraphs[1], reviewed[1].premium.overall.paragraphs[1], "overall outside-work reading must follow chart composition");
+assert.match(reviewed[0].premium.overall.paragraphs[1], /배움|표현|쉬며|회복/, "A overall must include a chart-grounded life-outside-work lens");
+assert.match(reviewed[0].premium.domains.find(domain => domain.key === "love_relationship").paragraphs.join(" "), /조언|약속|신뢰/, "A relationship must use trust/care combination");
+assert.match(reviewed[1].premium.domains.find(domain => domain.key === "love_relationship").paragraphs.join(" "), /공간|생활|표현/, "B relationship must use space/expression combination");
+
 assert.notEqual(reviewed[0].free.leakPattern.text, reviewed[1].free.leakPattern.text, "A/B leak pattern must not leak");
 assert.notEqual(reviewed[0].free.soloStrength.text, reviewed[1].free.soloStrength.text, "A/B solo strength must not leak");
 assert.doesNotMatch(reviewed[0].free.snapshot.text, /나무의 쓰임/, "A has no wood element");
@@ -43,6 +49,10 @@ for (const { premium } of reviewed) {
   assert.match(love, /관계|상대|친밀함/);
   assert.match(money, /재물|대가|지출|유지/);
   assert.match(work, /일|환경|성과|업무/);
+  assert.ok(premium.periods.every(period => period.symbols?.month?.ganzhi && period.basis.includes(period.symbols.month.ganzhi)), "each month retains its calculated month evidence");
 }
+
+const repeat = buildPremiumReport({ facts: reviewed[0].facts, freeReport: reviewed[0].free, referenceDate, leftPalm, rightPalm, dominantHand: "right" });
+assert.deepEqual(repeat, reviewed[0].premium, "same chart/reference date must be deterministic");
 
 console.log("PASS customer reading quality: A/B distinct free domains, evidence-gated element and palm prose, unique monthly closures, safe boundaries");
