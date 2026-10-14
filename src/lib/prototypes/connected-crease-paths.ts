@@ -60,6 +60,13 @@ function evidenceAt(evidence: RidgeEvidence, point: ConnectedPathPoint): RidgeEv
 function endpointTangent(segment: ConnectedPathSegment, direction: 1 | -1): number {
   const points = direction === 1 ? segment.points : [...segment.points].reverse();
   if (points.length < 2) return 0;
+  // Incoming tangent is measured at the junction from the final arc-length
+  // interval of the oriented segment, never from its starting pixels.
+  return angle(points[points.length - 2], points[points.length - 1]);
+}
+function startTangent(segment: ConnectedPathSegment, direction: 1 | -1): number {
+  const points = direction === 1 ? segment.points : [...segment.points].reverse();
+  if (points.length < 2) return 0;
   return angle(points[0], points[1]);
 }
 
@@ -68,7 +75,7 @@ function junctionScores(a: ConnectedPathSegment, aDirection: 1 | -1, b: Connecte
   const bPoints = bDirection === 1 ? b.points : [...b.points].reverse();
   const junction = aPoints[aPoints.length - 1];
   const incoming = endpointTangent(a, aDirection);
-  const outgoing = endpointTangent(b, bDirection);
+  const outgoing = startTangent(b, bDirection);
   const continuity = (1 + Math.cos((angleDistance(incoming, outgoing) * Math.PI) / 180)) / 2;
   const probeAngles = bPoints.slice(0, 3).map(point => evidenceAt(evidence, point)?.probeAngleDeg).filter((value): value is number => Number.isFinite(value));
   const normalTarget = outgoing + 90;
@@ -122,6 +129,7 @@ interface State {
   prior: number;
   terminationReason: ConnectedPathCandidate["terminationReason"];
   branches: number;
+  loopDetected: boolean;
 }
 
 /** Connect only exact shared endpoint pixels within one component. */
@@ -151,7 +159,7 @@ export function rankConnectedCreasePaths(
     const oriented = start.direction === 1 ? segment.points : [...segment.points].reverse();
     const startNode = key(segment.componentId, oriented[0]);
     const endNode = key(segment.componentId, oriented[oriented.length - 1]);
-    let beam: State[] = [{ refs: [start], nodes: new Set([startNode, endNode]), edges: new Set([`${start.segmentIndex}:${start.direction}`]), score: 0, length: segment.pathLengthPx, junction: 0, probe: 0, support: supportScore(oriented, ridgeEvidence), prior: thumbPrior(oriented, palmFrame), terminationReason: "no_extension", branches: 0 }];
+    let beam: State[] = [{ refs: [start], nodes: new Set([startNode, endNode]), edges: new Set([`${start.segmentIndex}:${start.direction}`]), score: 0, length: segment.pathLengthPx, junction: 0, probe: 0, support: supportScore(oriented, ridgeEvidence), prior: thumbPrior(oriented, palmFrame), terminationReason: "no_extension", branches: 0, loopDetected: false }];
     let localExpansions = 0;
     while (beam.length && localExpansions < perStart) {
       const nextBeam: State[] = [];
@@ -162,7 +170,7 @@ export function rankConnectedCreasePaths(
         const current = lastPoints[lastPoints.length - 1];
         const currentKey = key(lastSegment.componentId, current);
         const nextRefs = (adjacency.get(currentKey) ?? []).flatMap(index => index === last.segmentIndex || state.edges.has(`${index}:1`) || state.edges.has(`${index}:-1`) ? [] : [index]);
-        if (!nextRefs.length) { state.terminationReason = state.nodes.has(startNode) && state.refs.length > 1 ? "loop" : "terminal"; nextBeam.push(state); continue; }
+        if (!nextRefs.length) { state.terminationReason = state.loopDetected ? "loop" : "terminal"; nextBeam.push(state); continue; }
         state.branches = Math.max(state.branches, nextRefs.length);
         for (const nextIndex of nextRefs) {
           if (++localExpansions > perStart) { searchTruncated = true; break; }
@@ -171,7 +179,7 @@ export function rankConnectedCreasePaths(
           const nextPoints = direction === 1 ? nextSegment.points : [...nextSegment.points].reverse();
           const nextEnd = key(nextSegment.componentId, nextPoints[nextPoints.length - 1]);
           if (state.nodes.has(nextEnd)) {
-            nextBeam.push({ ...state, terminationReason: "loop", branches: Math.max(state.branches, nextRefs.length) });
+            nextBeam.push({ ...state, terminationReason: "loop", loopDetected: true, branches: Math.max(state.branches, nextRefs.length) });
             continue;
           }
           const junction = junctionScores(lastSegment, last.direction, nextSegment, direction, ridgeEvidence);
@@ -181,7 +189,7 @@ export function rankConnectedCreasePaths(
             refs: [...state.refs, { segmentIndex: nextIndex, direction }], nodes: new Set([...state.nodes, currentKey, nextEnd]), edges: new Set([...state.edges, `${nextIndex}:${direction}`]),
             score: 0, length: nextLength, junction: (state.junction * Math.max(0, state.refs.length - 1) + junction.continuity) / state.refs.length,
             probe: (state.probe * Math.max(0, state.refs.length - 1) + junction.probeAgreement) / state.refs.length,
-            support: nextSupport, prior: Math.max(state.prior, thumbPrior(nextPoints, palmFrame)), terminationReason: "no_extension", branches: state.branches,
+            support: nextSupport, prior: Math.max(state.prior, thumbPrior(nextPoints, palmFrame)), terminationReason: "no_extension", branches: state.branches, loopDetected: false,
           });
         }
       }

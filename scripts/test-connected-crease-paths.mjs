@@ -20,6 +20,21 @@ assert.ok(result.pathCandidates.every(candidate => candidate.orientedSegmentRefs
 assert.ok(result.pathCandidates.every(candidate => candidate.orderedPoints.every((point, index, points) => index === 0 || Math.hypot(point.x - points[index - 1].x, point.y - points[index - 1].y) <= Math.SQRT2)), "ordered path remains pixel-adjacent");
 assert.ok(result.pathCandidates.every(candidate => candidate.orderedPoints.every(point => (evidence.get(`${point.x},${point.y}`)?.valleyResponse ?? 0) > 0)), "selected ordered path has pixel-level ridge support");
 assert.ok(result.pathCandidates.every(candidate => candidate.actualSupportLengthPx <= 5), "junction search does not inflate length");
+assert.ok(result.pathCandidates.some(candidate => candidate.terminationReason === "terminal"), "open paths end as terminal rather than loop");
+
+const tangentEvidence = new Map();
+const tangentSegments = [
+  // The first two pixels point down, but the final arc-length interval enters
+  // the junction at -45 degrees. The -45 branch must therefore win.
+  { componentId: 3, points: [{ x: 30, y: 30 }, { x: 30, y: 31 }, { x: 31, y: 31 }, { x: 32, y: 30 }], pathLengthPx: 3.4, supportPixelCount: 4, responseMean: 12, status: "measurable" },
+  { componentId: 3, points: [{ x: 32, y: 30 }, { x: 33, y: 29 }, { x: 34, y: 28 }], pathLengthPx: 2.8, supportPixelCount: 3, responseMean: 12, status: "measurable" },
+  { componentId: 3, points: [{ x: 32, y: 30 }, { x: 33, y: 31 }, { x: 34, y: 32 }], pathLengthPx: 2.8, supportPixelCount: 3, responseMean: 12, status: "measurable" },
+];
+tangentSegments.forEach(segment => segment.points.forEach(point => tangentEvidence.set(`${point.x},${point.y}`, { valleyResponse: 12, probeAngleDeg: 45 })));
+const tangentResult = rankConnectedCreasePaths(tangentSegments, [], tangentEvidence, {}, { used: 0, limit: 8192 });
+const tangentBest = tangentResult.pathCandidates[0];
+assert.ok(tangentBest?.orientedSegmentRefs.some(ref => ref.segmentIndex === 1), "junction ranking uses the incoming tangent at the actual segment end");
+assert.ok(!tangentBest?.orientedSegmentRefs.some(ref => ref.segmentIndex === 2), "wrong branch is rejected by end tangent continuity");
 
 const loopSegments = [
   { componentId: 2, points: [{ x: 10, y: 10 }, { x: 11, y: 10 }], pathLengthPx: 1, supportPixelCount: 2, responseMean: 12, status: "measurable" },
