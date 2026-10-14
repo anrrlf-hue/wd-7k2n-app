@@ -75,10 +75,17 @@ for (let i = 0; i < width * height; i++) if (thickCurved.data[i * 4] < 180) thic
 const thickSegments = traceForegroundSegments(thickMask, width, height);
 assert.ok(thickSegments.length, "thick curve retains observed maximal segments");
 assert.ok(thickSegments.some(segment => segment.status === "ambiguous" || segment.points.length > 10), "thick curve is preserved without forced semantics");
+assert.ok(thickSegments.every(segment => segment.points.every(point => Number.isFinite(point.x) && Number.isFinite(point.y)) && segment.supportPoints.every(point => Number.isFinite(point.x) && Number.isFinite(point.y))), "thick mask path/support coordinates are finite");
+const filled = new Uint8Array(width * height);
+for (let y = 60; y < 100; y++) for (let x = 50; x < 55; x++) filled[y * width + x] = 1;
+const filledSegments = traceForegroundSegments(filled, width, height);
+assert.ok(filledSegments.length && filledSegments.some(segment => segment.supportPoints.length >= 180), "filled rectangle preserves raw support and a centerline segment");
 const edge = image(); stroke(edge, [[0, 58], [0, 92], [10, 120], [28, 144]], 45, 3);
 const edgeMask = new Uint8Array(width * height);
 for (let i = 0; i < width * height; i++) if (edge.data[i * 4] < 180) edgeMask[i] = 1;
 assert.ok(traceForegroundSegments(edgeMask, width, height).length, "bbox-padded thinning retains a boundary curve");
+const thickCurvedResult = track(thickCurved);
+assert.ok(thickCurvedResult.candidate?.segments.every(segment => segment.supportPoints.every(point => Number.isFinite(point.x) && Number.isFinite(point.y))), "end-to-end thick curve keeps finite support coordinates");
 
 const bridge = image();
 stroke(bridge, [[30, 92], [55, 92]], 45, 4);
@@ -120,12 +127,14 @@ for (let y = 40; y < 145; y += 7) for (let x = 25 + (y % 11); x < 135; x += 13) 
 assert.notEqual(track(texture).candidate?.status, "candidate", "sparse texture is not a connected crease");
 const largeWidth = 512, largeHeight = 512, largeData = new Uint8ClampedArray(largeWidth * largeHeight * 4);
 for (let i = 0; i < largeWidth * largeHeight; i++) largeData.set([205, 205, 205, 255], i * 4);
-for (let y = 30; y < 480; y += 11) for (let x = 25 + (y % 17); x < 490; x += 17) {
-  const i = (y * largeWidth + x) * 4; largeData[i] = largeData[i + 1] = largeData[i + 2] = 70;
+for (let x = 5; x < 505; x += 5) for (let y = 20; y < 480; y++) for (let xx = 0; xx < 2; xx++) {
+  const i = (y * largeWidth + x + xx) * 4; largeData[i] = largeData[i + 1] = largeData[i + 2] = 70;
 }
 const largeLandmarks = Array.from({ length: 21 }, () => ({ x: 0, y: 0 }));
-largeLandmarks[0] = { x: 256, y: 460 }; largeLandmarks[1] = { x: 170, y: 350 }; largeLandmarks[2] = { x: 130, y: 290 }; largeLandmarks[5] = { x: 130, y: 145 }; largeLandmarks[9] = { x: 256, y: 145 }; largeLandmarks[17] = { x: 382, y: 145 };
+largeLandmarks[0] = { x: 256, y: 460 }; largeLandmarks[1] = { x: 80, y: 350 }; largeLandmarks[2] = { x: 40, y: 290 }; largeLandmarks[5] = { x: 10, y: 145 }; largeLandmarks[9] = { x: 256, y: 145 }; largeLandmarks[17] = { x: 502, y: 145 };
 const largeResult = trackMajorCreaseCandidates({ width: largeWidth, height: largeHeight, data: largeData }, largeLandmarks);
-assert.ok(["ok", "truncated"].includes(largeResult.status), "texture budget terminates normally");
-if (largeResult.status === "truncated") assert.equal(largeResult.candidate?.truncated, true, "budget truncation is explicit");
+assert.ok(["ok", "truncated"].includes(largeResult.status), "many texture components terminate normally");
+const seedOverflow = track(curved, false, Array.from({ length: 1025 }, (_, i) => ({ x: i % width, y: Math.floor(i / width) })));
+assert.equal(seedOverflow.status, "truncated", "seed count limit is explicit");
+assert.equal(seedOverflow.candidate?.truncated, true, "seed truncation is explicit");
 console.log("PASS major crease candidates: foreground paths, mirror, gaps, false seed, brightness, and no-line guard");
