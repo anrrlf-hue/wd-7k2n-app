@@ -15,12 +15,12 @@ import { isPalmFactsUsable, normalizePalmFactsObservation } from "@/lib/palm-fac
 import { READING_GUIDE } from "@/lib/reading-guide";
 import { buildIntegratedPalmReading } from "@/lib/integrated-palm-reading";
 import { buildPremiumEditorialPlan } from "@/lib/premium-editorial-plan";
-import { composePremiumDomainStory, composePremiumOverallStory, premiumAnnualThread, premiumClosing, premiumOverallEvidence } from "@/lib/premium-domain-story";
+import { premiumAnnualThread, premiumClosing, premiumOverallEvidence } from "@/lib/premium-domain-story";
 import { buildCustomerPremiumNarrative } from "@/lib/saju-customer-narrative";
 import { validateReadingPlan } from "@/lib/reading-plan";
 import { describeReadingEvidence } from "@/lib/reading-evidence-display";
 
-export const PREMIUM_REPORT_VERSION = "natal-customer-reading-2026-10-v14" as const;
+export const PREMIUM_REPORT_VERSION = "natal-customer-reading-2026-10-v15" as const;
 export interface PremiumReading {
   headline: string;
   paragraphs: string[];
@@ -45,7 +45,7 @@ export interface PremiumPeriod {
   symbols?: AnnualMonthSymbols;
 }
 export interface PremiumReport {
-  version: typeof PREMIUM_REPORT_VERSION | "year-connected-reading-2026-10-v13" | "connected-reading-2026-10-v12" | "lived-reading-2026-10-v11" | "decision-reading-2026-10-v10" | "distinct-reading-2026-10-v9" | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
+  version: typeof PREMIUM_REPORT_VERSION | "natal-customer-reading-2026-10-v14" | "year-connected-reading-2026-10-v13" | "connected-reading-2026-10-v12" | "lived-reading-2026-10-v11" | "decision-reading-2026-10-v10" | "distinct-reading-2026-10-v9" | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
   title: string;
   summary: string;
   overall: PremiumReading;
@@ -60,6 +60,67 @@ export interface PremiumReport {
   palmConnections?: CompareItem[];
   profileRule?: string;
   closing?: { remember: string; question: string; basis: string };
+}
+
+const GROUP_LABEL: Record<string, string> = {
+  비겁: "자기 선택과 사람",
+  식상: "표현과 결과",
+  재성: "쓰임과 교환",
+  관성: "역할과 신뢰",
+  인성: "이해와 도움",
+};
+
+function groupsForDaeun(facts: SajuFacts): string[] {
+  if (!facts.currentDaeun) return [];
+  return [...new Set([
+    TEN_GOD_GROUP[facts.currentDaeun.stemTenGod],
+    TEN_GOD_GROUP[facts.currentDaeun.branchTenGod],
+  ].filter(Boolean))];
+}
+
+function buildDaeunConnection(facts: SajuFacts, area: "love" | "money" | "work"): string {
+  const daeun = facts.currentDaeun;
+  if (!daeun) return "현재 대운을 계산할 수 없어 원국의 관계만으로 읽었습니다.";
+  const pair = groupsForDaeun(facts).map(group => GROUP_LABEL[group]).join("와 ");
+  if (area === "money" && facts.outputStarCount === 0 && facts.wealthStarCount > 0) {
+    return `현재 ${daeun.ganzhi} 대운의 ${pair} 조합이 원국의 재성 ${facts.wealthStarCount}개와 만납니다. 드러난 식상 0은 표현이나 수입 능력의 부재를 뜻하지 않으며, 이미 가진 판단·신뢰·도움의 조건이 실제 교환과 보상으로 어떻게 이어지는지 확인하는 쪽으로 읽습니다.`;
+  }
+  if (area === "love" && groupsForDaeun(facts).includes("관성")) {
+    return `현재 ${daeun.ganzhi} 대운의 ${pair} 조합이 가까운 관계에 약속과 평가의 무게를 더합니다. 잘해 보이는 것보다 서로 지킬 범위와 기대를 말할 때 원국의 장점이 친밀함으로 이어질 수 있습니다.`;
+  }
+  if (area === "work" && groupsForDaeun(facts).includes("관성")) {
+    return `현재 ${daeun.ganzhi} 대운의 ${pair} 조합이 일에 역할과 신뢰의 질문을 더합니다. 원국에서 이미 드러난 능력을 더 많이 맡는 일과, 자신의 판단이 전문성으로 인정되는 일은 다를 수 있어 기준·권한·지원의 범위를 함께 확인하는 흐름으로 읽습니다.`;
+  }
+  return `현재 ${daeun.ganzhi} 대운의 ${pair} 조합이 원국의 흐름 위에 놓입니다. 원국에서 익숙한 방식이 이 시기에는 어떤 역할과 조건으로 이어지는지 살펴보는 것이 핵심입니다.`;
+}
+
+function buildAnnualConnection(periods: PremiumPeriod[]): string {
+  const years = [...new Map(periods.map(period => [period.symbols?.year.ganzhi, period.symbols?.year])).values()]
+    .filter((year): year is AnnualMonthSymbols["year"] => Boolean(year?.stemTenGod && year.branchTenGod));
+  if (!years.length) return "연운의 십성 관계가 충분히 확인되지 않아 월별 계산만 반영했습니다.";
+  const threads = years.map(year => {
+    const stem = GROUP_LABEL[TEN_GOD_GROUP[year.stemTenGod!]] ?? year.stemTenGod!;
+    const branch = GROUP_LABEL[TEN_GOD_GROUP[year.branchTenGod!]] ?? year.branchTenGod!;
+    const same = TEN_GOD_GROUP[year.stemTenGod!] === TEN_GOD_GROUP[year.branchTenGod!];
+    return `${year.ganzhi}에서는 ${same ? `${stem}가 반복되어` : `${stem}와 ${branch}가 함께 놓여`} ${stem}의 요구와 ${branch}의 쓰임을 조정하는 배경이 됩니다.`;
+  });
+  return `세운의 연간 흐름은 ${threads.join(" ")} 이 연결은 한 가지 성과를 예고하는 것이 아니라, 연도별로 달라지는 요구와 쓰임이 실제 생활에서 어떻게 조정되는지 읽기 위한 것입니다.`;
+}
+
+function buildIntegratedDomainParagraphs(
+  area: "love_relationship" | "money" | "work",
+  customer: ReturnType<typeof buildCustomerPremiumNarrative>,
+  facts: SajuFacts,
+  palmText?: string,
+): string[] {
+  const base = area === "love_relationship" ? customer.love : area === "money" ? customer.money : customer.work;
+  const connection = buildDaeunConnection(facts, area === "love_relationship" ? "love" : area);
+  const paragraphs = [...base, connection];
+  if (palmText) paragraphs.push(palmText);
+  if (area === "money" && facts.outputStarCount === 0) {
+    paragraphs.push("이 구성에서 드러난 식상 0은 어떤 일을 할 수 없다는 판정이 아닙니다. 다만 돈을 얻는 설명은 ‘만든 것을 팔 수 있다’는 일반론보다, 이미 가진 판단·신뢰·관계·준비가 누구의 필요를 해결하고 어떤 조건으로 인정되는지를 확인하는 쪽에 둡니다.");
+  }
+  return paragraphs.filter(Boolean);
 }
 
 /** Equal contextual readings may be grouped, but a year boundary remains visible.
@@ -134,10 +195,11 @@ export function buildPremiumReport(input: {
   const hasPalms = input.leftPalm && input.rightPalm && input.dominantHand
     && isPalmFactsUsable(input.leftPalm) && isPalmFactsUsable(input.rightPalm);
   const integration = hasPalms ? buildIntegratedPalmReading(facts, input.leftPalm!, input.rightPalm!, input.dominantHand!, editorial) : {};
+  const periods = buildPremiumPeriods(annual, facts, { leftPalm: input.leftPalm, rightPalm: input.rightPalm, dominantHand: input.dominantHand });
   const currentDaeunBasis = facts.currentDaeun
     ? ` 현재 대운 ${facts.currentDaeun.ganzhi}(${facts.currentDaeun.stemTenGod}/${facts.currentDaeun.branchTenGod})을 함께 읽었습니다.`
     : " 현재 대운은 계산되지 않았습니다.";
-  overall.paragraphs = [composePremiumOverallStory(editorial), ...customer.overall.slice(1)];
+  overall.paragraphs = [...customer.overall, buildDaeunConnection(facts, "work"), buildAnnualConnection(periods)];
   overall.basis = customer.frame.evidence.self + currentDaeunBasis;
   const overallEvidence = premiumOverallEvidence(editorial);
   if (overallEvidence) overall.basis += ` ${overallEvidence}`;
@@ -148,12 +210,8 @@ export function buildPremiumReport(input: {
     const area = reading.key;
     if (area === "wellbeing") continue;
     const connection = integration[area];
-    const hands = hasPalms ? { left: input.leftPalm!, right: input.rightPalm!, dominant: input.dominantHand! } : null;
-    const editorialStory = composePremiumDomainStory(area, editorial, hands);
-    // One editorial arc owns the three domain scenes. This keeps the report a
-    // single connected reading while making love, money and work add distinct
-    // consequences instead of projecting the same natal paragraph three times.
-    reading.paragraphs = editorialStory.split(/\n\n+/).filter(Boolean);
+    const palmText = connection?.plan.passages.map(passage => passage.text).join("\n\n");
+    reading.paragraphs = buildIntegratedDomainParagraphs(area, customer, facts, palmText);
     reading.headline = area === "money" ? "얻은 가치와 생활에 남기는 조건" : area === "work" ? "실력이 쓰이는 환경과 끝내는 방식" : "가까움에서 서로의 선택이 남는 방식";
     reading.opportunity = ""; reading.caution = ""; reading.tip = "";
     reading.observationNote = null;
@@ -166,7 +224,6 @@ export function buildPremiumReport(input: {
     topic: joint.plan.headline, kind: "보완", text: joint.plan.passages.map(p => p.text).join("\n\n"),
     signals: priorSignals[0].signals, evidence: joint.plan.evidence,
   }] : [];
-  const periods = buildPremiumPeriods(annual, facts, { leftPalm: input.leftPalm, rightPalm: input.rightPalm, dominantHand: input.dominantHand });
   const yearlySymbols = [...new Map(periods.map(period => [period.symbols!.year.ganzhi, period.symbols!.year])).values()];
   const yearContext = yearlySymbols.map(year => `세운 ${year.ganzhi}의 배경은 천간 ${year.stemTenGod ?? "미확인"}의 ${traditionalSymbolSubject(year.stemTenGod)}, 지지 ${year.branchTenGod ?? "미확인"}의 ${traditionalSymbolSubject(year.branchTenGod)}입니다.`).join(" ");
   const highlights = annualHighlights(periods);

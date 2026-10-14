@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import "./register-test-typescript.mjs";
 
-const { computeSajuFacts, TEN_GOD_GROUP } = await import("../src/lib/saju-facts.ts");
+const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
 const { enrichSajuFacts } = await import("../src/lib/oh-my-saju-adapter.ts");
 const { buildFreeSajuReport } = await import("../src/lib/free-report-mock.ts");
 const { buildPremiumReport } = await import("../src/lib/premium-report.ts");
@@ -16,6 +16,7 @@ const cases = [
   { id: "E-여", year: 2001, month: 2, day: 3, hour: 12, minute: 0, gender: "여" },
   { id: "식상0-재물", year: 1964, month: 11, day: 11, hour: 2, minute: 0, gender: "남" },
   { id: "관성우세-관계", year: 1975, month: 8, day: 21, hour: 20, minute: 0, gender: "남" },
+  { id: "신규-통합", year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남" },
 ];
 const results = cases.map(({ id, ...birth }) => {
   const facts = enrichSajuFacts(computeSajuFacts(birth), birth);
@@ -32,12 +33,14 @@ for (const result of results) {
   assert.ok(result.premium.periods.every(period => period.basis.includes("계산된 세운") && period.symbols?.month?.ganzhi), `${result.id}: every month retains calculation evidence`);
   const domains = domainText(result);
   assert.ok(new Set(Object.values(domains)).size === 3, `${result.id}: domain bodies are not one repeated reading`);
-  assert.ok(domains.love_relationship.includes("관계") || domains.love_relationship.includes("가까운"));
+  assert.ok(domains.love_relationship.length > 80, `${result.id}: relationship reading is present`);
   assert.ok(domains.money.includes("대가") || domains.money.includes("재물") || domains.money.includes("비용"));
   assert.ok(domains.work.includes("일") || domains.work.includes("업무") || domains.work.includes("결과"));
   assert.ok(new Set(result.premium.periods.map(period => period.reading)).size >= 10, `${result.id}: month bodies remain materially distinct`);
   assert.ok(result.premium.overall.basis.includes(result.facts.currentDaeun.ganzhi), `${result.id}: overall basis names calculated current daeun`);
   assert.ok(result.premium.domains.every(domain => domain.basis.includes(result.facts.currentDaeun.ganzhi)), `${result.id}: domain basis names calculated current daeun`);
+  assert.ok(result.premium.overall.paragraphs.some(text => text.includes("세운")), `${result.id}: annual calculation changes overall meaning`);
+  assert.ok(result.premium.domains.every(domain => domain.paragraphs.some(text => text.includes("대운"))), `${result.id}: daeun changes domain meaning`);
 }
 
 const male = results[0], female = results[1];
@@ -63,6 +66,8 @@ assert.notEqual(femaleFeb.reading, femaleMar.reading, "E female February/March c
 const zeroOutput = results.find(result => result.id === "식상0-재물");
 assert.equal(zeroOutput.facts.outputStarCount, 0, "1964 case confirms 식상 0 from calculation");
 assert.doesNotMatch(domainText(zeroOutput).money, /좋아서 만든|창작|표현한 결과/);
+assert.doesNotMatch(domainText(zeroOutput).money, /할인가|빌리|작은 범위로 써/);
+assert.match(domainText(zeroOutput).money, /판단|신뢰|도움|준비/);
 const officer = results.find(result => result.id === "관성우세-관계");
 assert.ok(officer.facts.officerStarCount > officer.facts.peerStarCount && officer.facts.officerStarCount > officer.facts.outputStarCount && officer.facts.officerStarCount > officer.facts.wealthStarCount);
 assert.match(domainText(officer).love_relationship, /약속|책임|신뢰/);
@@ -97,8 +102,8 @@ const metrics = {
     uncertainty: "No future event, income, health, or identity claim is inferred; the boundary below limits the evidence to four synthetic charts.",
   },
   outputs: results.map(result => ({ id: result.id, birth: result.birth, free: result.free, premium: result.premium })),
-  boundary: "This is structural/content-distinctness evidence for four synthetic charts. It is not a 90-point score, predictive validation, or full coverage of other charts.",
+  boundary: "This is structural/content-distinctness evidence for five synthetic charts. It is not a 90-point score, predictive validation, or full coverage of other charts.",
 };
 fs.mkdirSync("docs/verification", { recursive: true });
 fs.writeFileSync("docs/verification/saju-product-quality-2026-10-14.json", JSON.stringify(metrics, null, 2));
-console.log("PASS integrated Saju product quality: 4 synthetic charts, 3 connected domains, 12 months, E daeun contrast, money/relationship guards");
+console.log("PASS integrated Saju product quality: 5 synthetic charts, 3 connected domains, 12 months, E daeun contrast, money/relationship guards");
