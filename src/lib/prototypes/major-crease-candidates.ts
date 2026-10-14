@@ -99,8 +99,10 @@ function emptyCandidate(width: number, height: number, axisAngleDeg: number, thu
 }
 
 function traceSkeleton(component: number[], response: Float32Array, width: number, height: number, budget: WorkBudget, componentId: number): MajorCreaseSegment[] {
-  const minX = Math.min(...component.map(index => index % width)), maxX = Math.max(...component.map(index => index % width));
-  const minY = Math.min(...component.map(index => Math.floor(index / width))), maxY = Math.max(...component.map(index => Math.floor(index / width)));
+  const componentMinX = Math.min(...component.map(index => index % width)), componentMaxX = Math.max(...component.map(index => index % width));
+  const componentMinY = Math.min(...component.map(index => Math.floor(index / width))), componentMaxY = Math.max(...component.map(index => Math.floor(index / width)));
+  const minX = Math.max(0, componentMinX - 1), maxX = Math.min(width - 1, componentMaxX + 1);
+  const minY = Math.max(0, componentMinY - 1), maxY = Math.min(height - 1, componentMaxY + 1);
   const localWidth = maxX - minX + 1, localHeight = maxY - minY + 1;
   const binary = new Uint8Array(localWidth * localHeight);
   for (const index of component) { if (!consume(budget)) return []; binary[(Math.floor(index / width) - minY) * localWidth + index % width - minX] = 1; }
@@ -138,7 +140,7 @@ function traceSkeleton(component: number[], response: Float32Array, width: numbe
       if (!dx && !dy) continue;
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || nx >= localWidth || ny < 0 || ny >= localHeight || !binary[ny * localWidth + nx]) continue;
-      if (Math.abs(dx) === 1 && Math.abs(dy) === 1 && (binary[y * width + x + dx] || binary[(y + dy) * width + x])) continue;
+      if (Math.abs(dx) === 1 && Math.abs(dy) === 1 && (binary[y * localWidth + x + dx] || binary[(y + dy) * localWidth + x])) continue;
       result.push(ny * localWidth + nx);
     }
     return result;

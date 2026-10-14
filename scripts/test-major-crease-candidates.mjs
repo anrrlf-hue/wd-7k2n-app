@@ -75,6 +75,10 @@ for (let i = 0; i < width * height; i++) if (thickCurved.data[i * 4] < 180) thic
 const thickSegments = traceForegroundSegments(thickMask, width, height);
 assert.ok(thickSegments.length, "thick curve retains observed maximal segments");
 assert.ok(thickSegments.some(segment => segment.status === "ambiguous" || segment.points.length > 10), "thick curve is preserved without forced semantics");
+const edge = image(); stroke(edge, [[0, 58], [0, 92], [10, 120], [28, 144]], 45, 3);
+const edgeMask = new Uint8Array(width * height);
+for (let i = 0; i < width * height; i++) if (edge.data[i * 4] < 180) edgeMask[i] = 1;
+assert.ok(traceForegroundSegments(edgeMask, width, height).length, "bbox-padded thinning retains a boundary curve");
 
 const bridge = image();
 stroke(bridge, [[30, 92], [55, 92]], 45, 4);
