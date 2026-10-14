@@ -87,16 +87,21 @@ function crop(source: Float32Array, width: number, height: number, roi: { x: num
 
 function emptyTrack(): VariantTrack { return { status: "not_seen", evidenceReason: "none", pathLengthPx: 0, verticalSpanPx: 0, coverage: 0, widthSpan: 0, contrast: 0, points: [], componentCount: 0, selectedSpanPx: 0, gapRows: 0, supportPixelCount: 0, supportRows: 0, competingComponentCount: 0 }; }
 
-function trackCrop(c: { data: Float32Array; width: number; height: number; x0: number; y0: number }): VariantTrack {
+function trackCrop(c: { data: Float32Array; width: number; height: number; x0: number; y0: number }, normalX = 1, normalY = 0): VariantTrack {
   if (c.width < 7 || c.height < 12) return emptyTrack();
   const sm = blur(c.data, c.width, c.height, 1);
   const offset = Math.max(2, Math.round(c.width * .035));
   const rw = c.width - 2 * offset;
   const response = new Float32Array(c.height * rw);
   const rowMax = new Float32Array(c.height);
+  const sample = (x: number, y: number) => {
+    const sx = Math.max(0, Math.min(c.width - 1, Math.round(x))), sy = Math.max(0, Math.min(c.height - 1, Math.round(y)));
+    return sm[sy * c.width + sx];
+  };
   for (let y = 0; y < c.height; y++) for (let x = 0; x < rw; x++) {
-    const center = sm[y * c.width + x + offset];
-    const v = Math.max(0, Math.min(sm[y * c.width + x], sm[y * c.width + x + 2 * offset]) - center);
+    const centerX = x + offset, leftX = centerX - offset * normalX, leftY = y - offset * normalY, rightX = centerX + offset * normalX, rightY = y + offset * normalY;
+    const center = sample(centerX, y);
+    const v = Math.max(0, Math.min(sample(leftX, leftY), sample(rightX, rightY)) - center);
     response[y * rw + x] = v;
     if (v > rowMax[y]) rowMax[y] = v;
   }
@@ -173,8 +178,8 @@ function trackCrop(c: { data: Float32Array; width: number; height: number; x0: n
   return { status: sufficient ? "candidate" : "insufficient_evidence", evidenceReason: sufficient ? "none" : coverage < .12 ? "short" : "weak_contrast", pathLengthPx: lengthPx, verticalSpanPx, coverage, widthSpan: (maxX - minX + 1) / c.width, contrast, points, componentCount: selected.components.length, selectedSpanPx: verticalSpanPx, gapRows: verticalSpanPx - byY.size, supportPixelCount: component.length, supportRows: byY.size, competingComponentCount };
 }
 
-function trackVariant(source: Float32Array, imageWidth: number, imageHeight: number, roi: { x: number; y: number; width: number; height: number }): VariantTrack {
-  return trackCrop(crop(source, imageWidth, imageHeight, roi));
+function trackVariant(source: Float32Array, imageWidth: number, imageHeight: number, roi: { x: number; y: number; width: number; height: number }, normalX = 1, normalY = 0): VariantTrack {
+  return trackCrop(crop(source, imageWidth, imageHeight, roi), normalX, normalY);
 }
 
 function pathComparison(a: PixelPoint[], b: PixelPoint[]): { distance: number | null; supportOverlapRatio: number } {
@@ -210,20 +215,23 @@ export function trackAdditionalVerticalCreases(image: ImageData, landmarks: Norm
   const poseAngle = Math.atan2(p[9].y - p[0].y, p[9].x - p[0].x) * 180 / Math.PI;
   const poseDeviation = Math.abs(((poseAngle + 90 + 180) % 360) - 180);
   if (poseDeviation > 30) return { ...base, status: "unsupported_pose", errorCode: "unsupported_pose", elapsedMs: performance.now() - started };
+  const poseDeviationRadians = (poseAngle + 90) * Math.PI / 180;
+  const trackingDeviationRadians = Math.abs(poseDeviationRadians) >= 12 * Math.PI / 180 ? poseDeviationRadians : 0;
+  const normalX = Math.cos(trackingDeviationRadians), normalY = -Math.sin(trackingDeviationRadians);
   const palmTop = (p[5].y + p[9].y + p[13].y + p[17].y) / 4;
   const palmHeight = Math.max(20, p[0].y - palmTop), palmWidth = Math.max(12, Math.abs(p[5].x - p[17].x));
   const lowerY = Math.min(image.height - 1, p[0].y - palmHeight * .08);
   const defs: Array<[AdditionalDirection, number, number, number, number]> = [["middle_direction", 9, .22, .12, .82], ["ring_direction", 13, .22, .08, .70], ["pinky_direction", 17, .25, .06, .58]];
   const raw = gray(image.data, image.width, image.height);
   const corridors = Object.fromEntries(defs.map(([direction, centerIndex, widthRatio, start, end]) => {
-    const width = palmWidth * widthRatio, y = palmTop + palmHeight * start, endY = Math.min(lowerY, palmTop + palmHeight * end);
+    const width = palmWidth * widthRatio + palmHeight * Math.abs(Math.sin(trackingDeviationRadians)) * .35, y = palmTop + palmHeight * start, endY = Math.min(lowerY, palmTop + palmHeight * end);
     const roi = { x: Math.max(0, Math.min(image.width - width, p[centerIndex].x - width / 2)), y: Math.max(0, y), width: Math.max(6, Math.min(width, image.width)), height: Math.max(10, endY - y) };
     if (!Number.isFinite(roi.x) || !Number.isFinite(roi.y) || !Number.isFinite(roi.width) || !Number.isFinite(roi.height) || roi.x < 0 || roi.y < 0 || roi.x + roi.width > image.width || roi.y + roi.height > image.height || roi.width * roi.height > MAX_CORRIDOR_PIXELS) throw new Error("invalid_roi");
-    const rawTrack = trackVariant(raw, image.width, image.height, roi);
+    const rawTrack = trackVariant(raw, image.width, image.height, roi, normalX, normalY);
     const localCrop = crop(raw, image.width, image.height, roi);
     const localBlur = blur(localCrop.data, localCrop.width, localCrop.height, 15);
     const localData = localCrop.data.map((v, i) => v - localBlur[i]);
-    const localTrack = trackCrop({ ...localCrop, data: localData });
+    const localTrack = trackCrop({ ...localCrop, data: localData }, normalX, normalY);
     const comparison = pathComparison(rawTrack.points, localTrack.points);
     const pathTolerancePx = Math.max(2, palmWidth * .08);
     const supportOverlapRatio = comparison.supportOverlapRatio;

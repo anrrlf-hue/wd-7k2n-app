@@ -7,11 +7,28 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const bundle = process.env.CREASE_BUNDLE || path.resolve("dist/additional-vertical-crease.js");
+const workerBundle = process.env.CREASE_WORKER_BUNDLE || path.resolve("dist/additional-vertical-crease-worker.js");
+const workerAdapterBundle = process.env.CREASE_WORKER_ADAPTER_BUNDLE || path.join(path.dirname(workerBundle), "additional-vertical-crease-worker.js");
 const out = process.env.CREASE_EVIDENCE_DIR || path.resolve(".tmp/additional-crease-browser");
 fs.mkdirSync(out, { recursive: true });
 
 const server = http.createServer((req, res) => {
-  if (req.url === "/additional-vertical-crease.js") {
+  if (req.url === "/test.html") {
+    res.setHeader("content-type", "text/html");
+    res.end(`<script type="module">import('/additional-vertical-crease.js').then(m => { window.tracker = m.trackAdditionalVerticalCreases; });</script>`);
+  } else if (req.url === "/additional-vertical-crease.js") {
+    res.setHeader("content-type", "text/javascript");
+    res.setHeader("access-control-allow-origin", "*");
+    res.end(fs.readFileSync(bundle));
+  } else if (req.url === "/additional-vertical-crease-worker.js") {
+    res.setHeader("content-type", "text/javascript");
+    res.setHeader("access-control-allow-origin", "*");
+    res.end(fs.readFileSync(workerBundle));
+  } else if (req.url === "/additional-vertical-crease-worker") {
+    res.setHeader("content-type", "text/javascript");
+    res.setHeader("access-control-allow-origin", "*");
+    res.end(fs.readFileSync(workerAdapterBundle));
+  } else if (req.url === "/additional-vertical-crease") {
     res.setHeader("content-type", "text/javascript");
     res.setHeader("access-control-allow-origin", "*");
     res.end(fs.readFileSync(bundle));
@@ -19,9 +36,10 @@ const server = http.createServer((req, res) => {
 });
 await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const moduleUrl = `http://127.0.0.1:${server.address().port}/additional-vertical-crease.js`;
+const workerModuleUrl = `http://127.0.0.1:${server.address().port}/additional-vertical-crease-worker.js`;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
 const page = await browser.newPage();
-await page.setContent(`<script type="module">window.ready = import(${JSON.stringify(moduleUrl)}).then(m => { window.tracker = m.trackAdditionalVerticalCreases; });</script>`);
+await page.goto(`http://127.0.0.1:${server.address().port}/test.html`);
 await page.waitForFunction(() => window.tracker);
 
 async function runSynthetic(kind, scale = 1) {
@@ -49,6 +67,60 @@ async function runSynthetic(kind, scale = 1) {
   }, { kind, points, scale });
 }
 
+async function runRotatedPositive(degrees) {
+  return page.evaluate(({ degrees, points }) => {
+    const scale = 1, width = 600, height = 800, angle = degrees * Math.PI / 180;
+    const base = document.createElement("canvas"); base.width = width; base.height = height;
+    const d = base.getContext("2d"); d.fillStyle = "rgb(188,137,116)"; d.fillRect(0, 0, width, height); d.strokeStyle = "rgb(70,45,40)"; d.lineWidth = 1;
+    const x = 348; d.beginPath(); for (let y = 330; y < 580; y++) { const xx = x + .00005 * (y - 319) ** 2; if (y === 330) d.moveTo(xx, y); else d.lineTo(xx, y); } d.stroke();
+    const rotated = document.createElement("canvas"); rotated.width = width; rotated.height = height;
+    const r = rotated.getContext("2d"); r.translate(width / 2, height / 2); r.rotate(angle); r.translate(-width / 2, -height / 2); r.drawImage(base, 0, 0);
+    const rotatedPoints = points.map(p => { const dx = p.x - .5, dy = p.y - .5; return { x: .5 + dx * Math.cos(angle) - dy * Math.sin(angle), y: .5 + dx * Math.sin(angle) + dy * Math.cos(angle), z: p.z }; });
+    const result = window.tracker(r.getImageData(0, 0, width, height), rotatedPoints);
+    if (result.status !== "ok") return { result, meanPathErrorPx: Infinity, maxPathErrorPx: Infinity, pointCount: 0 };
+    const expected = []; for (let y = 330; y < 580; y++) { const xx = x + .00005 * (y - 319) ** 2, dx = xx - width / 2, dy = y - height / 2; expected.push({ x: width / 2 + dx * Math.cos(angle) - dy * Math.sin(angle), y: height / 2 + dx * Math.sin(angle) + dy * Math.cos(angle) }); }
+    const path = result.corridors.ring_direction.raw.points;
+    let errorSum = 0, errorCount = 0, maxPathErrorPx = 0;
+    for (const point of path) { let best = Infinity; for (const target of expected) best = Math.min(best, Math.hypot(point.x - target.x, point.y - target.y)); if (best < Infinity) { errorSum += best; errorCount++; maxPathErrorPx = Math.max(maxPathErrorPx, best); } }
+    return { result, meanPathErrorPx: errorCount ? errorSum / errorCount : Infinity, maxPathErrorPx, pointCount: path.length };
+  }, { degrees, points: Array.from({ length: 21 }, () => ({ x: .5, y: .5, z: 0 })) .map((p, i) => ({ ...p, ...(i === 0 ? { x: .52, y: .90 } : i === 5 ? { x: .27, y: .35 } : i === 9 ? { x: .52, y: .33 } : i === 13 ? { x: .58, y: .34 } : i === 17 ? { x: .73, y: .40 } : {}) })) });
+}
+
+const workerResults = await page.evaluate(async ({ workerModuleUrl, points }) => {
+  const workerSource = `import ${JSON.stringify(workerModuleUrl)};`;
+  const workerUrl = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
+  const worker = new Worker(workerUrl, { type: "module" });
+  let workerFailed = null; worker.addEventListener("error", event => { workerFailed = { message: event.message, filename: event.filename, lineno: event.lineno, colno: event.colno }; });
+  const canvas = document.createElement("canvas"); canvas.width = 600; canvas.height = 800; const context = canvas.getContext("2d"); context.fillStyle = "rgb(188,137,116)"; context.fillRect(0, 0, 600, 800); context.strokeStyle = "rgb(70,45,40)"; context.beginPath(); context.moveTo(348, 330); context.lineTo(348, 580); context.stroke();
+  const pixels = context.getImageData(0, 0, 600, 800).data;
+  const request = (message, transfer = []) => new Promise(resolve => { const timer = setTimeout(() => resolve({ id: message.id, error: workerFailed || "timeout" }), 3000); const handler = event => { if (event.data.id === message.id) { clearTimeout(timer); worker.removeEventListener("message", handler); resolve(event.data); } }; worker.addEventListener("message", handler); worker.postMessage(message, transfer); });
+  const ticks = { frames: 0, timers: 0 }, frameUntil = performance.now() + 140;
+  const frame = () => { ticks.frames++; if (performance.now() < frameUntil) requestAnimationFrame(frame); }; requestAnimationFrame(frame);
+  const timer = setInterval(() => ticks.timers++, 16);
+  const successPromise = request({ id: "success-1", width: 600, height: 800, pixels: pixels.buffer, landmarks: points }, [pixels.buffer]);
+  const transferredByteLength = pixels.byteLength;
+  const success = await successPromise;
+  const invalid = await request({ id: "invalid-1", width: 600, height: 800, pixels: new ArrayBuffer(0), landmarks: null });
+  const runtime = await request({ id: "runtime-1", width: 600, height: 800, pixels: new ArrayBuffer(12), landmarks: points }, []);
+  const concurrentA = context.getImageData(0, 0, 600, 800).data, concurrentB = context.getImageData(0, 0, 600, 800).data;
+  const concurrent = await Promise.all([
+    request({ id: "concurrent-a", width: 600, height: 800, pixels: concurrentA.buffer, landmarks: points }, [concurrentA.buffer]),
+    request({ id: "concurrent-b", width: 600, height: 800, pixels: concurrentB.buffer, landmarks: points }, [concurrentB.buffer]),
+  ]);
+  const faultUrl = URL.createObjectURL(new Blob(["throw new Error('synthetic-worker-failure');"], { type: "text/javascript" }));
+  const faulty = new Worker(faultUrl); const faulted = await new Promise(resolve => { faulty.onerror = () => { faulty.terminate(); resolve(true); }; setTimeout(() => { faulty.terminate(); resolve(false); }, 500); }); URL.revokeObjectURL(faultUrl);
+  const stalledUrl = URL.createObjectURL(new Blob(["self.onmessage = () => {};"], { type: "text/javascript" }));
+  const stalled = new Worker(stalledUrl); const timeoutResult = await new Promise(resolve => setTimeout(() => { stalled.terminate(); resolve("timeout"); }, 60)); URL.revokeObjectURL(stalledUrl);
+  await new Promise(resolve => setTimeout(resolve, 160)); clearInterval(timer); worker.terminate(); URL.revokeObjectURL(workerUrl);
+  return { success: { id: success.id, status: success.result?.status, error: success.error }, invalid, runtime, concurrent: concurrent.map(item => ({ id: item.id, status: item.result?.status, error: item.error })), faulted, ticks, workerFailed, transferredByteLength, timeoutResult, terminated: true };
+}, { workerModuleUrl, points: Array.from({ length: 21 }, () => ({ x: .5, y: .5, z: 0 })) .map((p, i) => ({ ...p, ...(i === 0 ? { x: .52, y: .90 } : i === 5 ? { x: .27, y: .35 } : i === 9 ? { x: .52, y: .33 } : i === 13 ? { x: .58, y: .34 } : i === 17 ? { x: .73, y: .40 } : {}) })) });
+assert.equal(workerResults.success.id, "success-1"); assert.equal(workerResults.success.status, "ok"); assert.equal(workerResults.success.error, undefined);
+assert.equal(workerResults.invalid.id, "invalid-1"); assert.equal(workerResults.invalid.error, "invalid_request");
+assert.equal(workerResults.runtime.id, "runtime-1"); assert.equal(workerResults.runtime.error, "invalid_request");
+assert.ok(workerResults.ticks.frames >= 4 && workerResults.ticks.timers >= 4);
+assert.deepEqual(workerResults.concurrent.map(item => item.id).sort(), ["concurrent-a", "concurrent-b"]); assert.ok(workerResults.concurrent.every(item => item.status === "ok"));
+assert.equal(workerResults.faulted, true); assert.equal(workerResults.transferredByteLength, 0); assert.equal(workerResults.timeoutResult, "timeout"); assert.equal(workerResults.terminated, true);
+
 const synthetic = {};
 for (const kind of ["clear_vertical_curve", "clear_curved", "sloped_vertical", "broken_vertical", "broken_long", "parallel_double", "horizontal_cross", "lighting_edge", "no_line", "weak_contrast", "short_high_contrast"]) synthetic[kind] = await runSynthetic(kind);
 assert.equal(synthetic.clear_vertical_curve.corridors.ring_direction.stability.stableCandidate, true);
@@ -59,6 +131,16 @@ assert.equal(synthetic.clear_curved.corridors.ring_direction.stability.stableCan
 assert.equal(synthetic.sloped_vertical.corridors.ring_direction.stability.stableCandidate, true);
 assert.ok(synthetic.clear_curved.corridors.ring_direction.stability.supportOverlapRatio >= .6);
 assert.ok(synthetic.sloped_vertical.corridors.ring_direction.stability.supportOverlapRatio >= .6);
+const rotatedPositive = {};
+for (const degrees of [-30, -15, 0, 15, 30]) {
+  rotatedPositive[degrees] = await runRotatedPositive(degrees);
+  assert.equal(rotatedPositive[degrees].result.status, "ok");
+  assert.equal(rotatedPositive[degrees].result.corridors.ring_direction.stability.stableCandidate, true);
+  assert.ok(rotatedPositive[degrees].pointCount > 40);
+  assert.ok(rotatedPositive[degrees].meanPathErrorPx <= 8, `${degrees}° mean path error ${rotatedPositive[degrees].meanPathErrorPx}`);
+  assert.ok(rotatedPositive[degrees].maxPathErrorPx <= 8, `${degrees}° max path error ${rotatedPositive[degrees].maxPathErrorPx}`);
+}
+for (const degrees of [-45, 45]) { const boundary = await runRotatedPositive(degrees); assert.equal(boundary.result.status, "unsupported_pose"); }
 const doublePoints = synthetic.parallel_double.corridors.ring_direction.raw.points;
 assert.ok(doublePoints.length > 100);
 assert.ok(doublePoints.every(p => Math.abs(p.x - 338) < .6 || Math.abs(p.x - 343) < .6));
@@ -91,6 +173,6 @@ for (const degrees of [-31, 31, 45]) assert.equal((await page.evaluate(({ points
 const resolution = {}; for (const scale of [1, 2, 3]) resolution[scale] = await runSynthetic("clear_vertical_curve", scale);
 assert.equal(resolution[2].corridors.ring_direction.stability.stableCandidate, true); assert.equal(resolution[3].corridors.ring_direction.stability.stableCandidate, true);
 const denseTexture = {}; for (const scale of [1, 2, 3]) denseTexture[scale] = await runSynthetic("dense_texture", scale);
-fs.writeFileSync(path.join(out, "synthetic-results.json"), JSON.stringify({ synthetic, resolution, denseTexture, contract: "ImageData + 21 normalized MediaPipe landmarks -> pixel-only corridor tracks; no semantic line names" }, null, 2));
-console.log(JSON.stringify({ synthetic: Object.fromEntries(Object.entries(synthetic).map(([k,v]) => [k, Object.fromEntries(Object.entries(v.corridors).map(([d,c]) => [d, c.stability.stableCandidate]))])), resolution: Object.fromEntries(Object.entries(resolution).map(([k,v]) => [k, v.elapsedMs])), denseTexture: Object.fromEntries(Object.entries(denseTexture).map(([k,v]) => [k, v.elapsedMs])) }, null, 2));
+fs.writeFileSync(path.join(out, "synthetic-results.json"), JSON.stringify({ synthetic, rotatedPositive, workerResults, resolution, denseTexture, contract: "ImageData + 21 normalized MediaPipe landmarks -> pixel-only corridor tracks; no semantic line names" }, null, 2));
+console.log(JSON.stringify({ synthetic: Object.fromEntries(Object.entries(synthetic).map(([k,v]) => [k, Object.fromEntries(Object.entries(v.corridors).map(([d,c]) => [d, c.stability.stableCandidate]))])), rotatedPositive: Object.fromEntries(Object.entries(rotatedPositive).map(([k,v]) => [k, { status: v.result.status, stable: v.result.corridors.ring_direction.stability.stableCandidate, meanPathErrorPx: v.meanPathErrorPx }])), workerResults, resolution: Object.fromEntries(Object.entries(resolution).map(([k,v]) => [k, v.elapsedMs])), denseTexture: Object.fromEntries(Object.entries(denseTexture).map(([k,v]) => [k, v.elapsedMs])) }, null, 2));
 await browser.close(); server.close();

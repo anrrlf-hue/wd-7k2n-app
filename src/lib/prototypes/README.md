@@ -29,8 +29,15 @@ rebuilding a sum for every output row.
 
 The optional `additional-vertical-crease-worker.ts` exposes a request/response
 adapter for a dedicated worker. It transfers the local pixel buffer, validates
-the request, and keeps the bounded analysis off the UI thread when the host
-chooses to install it; no production worker is wired by this prototype.
+the request and exact buffer length, serializes bounded work, and keeps the
+analysis off the UI thread when the host chooses to install it;
+`additional-vertical-crease-worker-entry.ts` is the browser entry used by the
+synthetic worker test. No production worker is wired by this prototype.
+
+For supported poses, corridor sampling follows the measured pose deviation and
+the regression rotates the same curved image and landmarks through 0°, ±15°,
+and ±30°. It checks `status`, `stableCandidate`, and every returned path point
+against the rotated source curve; angles beyond the 30° limit are rejected.
 
 The public browser regression is in
 `scripts/test-additional-vertical-crease-browser.mjs`. It runs only synthetic
@@ -58,4 +65,7 @@ The regression includes resolution 1x/2x/3x, dense-texture timing, coordinate-
 offset, the difficult curved/sloped tracks, separated fragments,
 contrast/length cases, horizontal and lighting negatives, malformed image and
 landmark inputs, and positive/negative pose-angle boundary checks. It does not
-contain or load private photos or landmarks.
+contain or load private photos or landmarks. It also starts a real browser
+Worker, checks request IDs, transferred-buffer ownership, concurrent requests,
+invalid input, worker failure, timeout termination, and main-thread frame/timer
+progress while worker analysis runs.
