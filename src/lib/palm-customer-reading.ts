@@ -46,6 +46,24 @@ export function palmShapeLabel(facts: PalmFacts): string {
     : "손 형태 세부 관찰값 미확인";
 }
 
+function handObservationPassage(facts: PalmFacts): PalmCustomerPassage | null {
+  const geometry = facts.handGeometry;
+  if (geometry?.status !== "observed" || geometry.palmWidthToLength == null || Object.keys(geometry.fingerToPalm).length < 3) return null;
+  const middle = geometry.fingerToPalm.middle;
+  const indexRing = geometry.indexRing === "index_longer" ? "검지가 약지보다 길게" : geometry.indexRing === "ring_longer" ? "약지가 검지보다 길게" : geometry.indexRing === "similar" ? "검지와 약지가 비슷한 길이로" : "검지와 약지의 관계는 확인하지 못한 채";
+  const measurements = [
+    "손바닥 폭/길이 투영 비율 " + geometry.palmWidthToLength.toFixed(2),
+    middle == null ? null : "중지/손바닥 길이 투영 비율 " + middle.toFixed(2),
+    indexRing + " 보입니다",
+  ].filter((value): value is string => Boolean(value));
+  return {
+    key: "handOverview",
+    title: "손 전체에서 확인한 형태",
+    text: "이번 사진에서는 " + measurements.join(", ") + ". 이 값은 손바닥과 손가락이 사진에 보인 범위에서 잰 투영 관찰값이며, 성격·적성·건강·미래를 판단하는 근거로 사용하지 않습니다.",
+    observation: "사진에서 " + palmShapeLabel(facts) + " 범주와 " + measurements.slice(0, 2).join(", ") + "를 확인했습니다. 손가락이 휘거나 겹친 부분은 측정에서 제외했습니다.",
+  };
+}
+
 /** A corroborated candidate is a located crease, not a validated fate line.
  * Keep its measurement in the auxiliary observation area only. */
 export function palmFatePassage(facts: PalmFacts): PalmCustomerPassage | null {
@@ -59,6 +77,8 @@ export function palmFatePassage(facts: PalmFacts): PalmCustomerPassage | null {
 export function buildPalmCustomerPassages(facts: PalmFacts): PalmCustomerPassage[] {
   if (facts.imageQuality !== "good") return [];
   const passages: PalmCustomerPassage[] = [];
+  const handOverview = handObservationPassage(facts);
+  if (handOverview) passages.push(handOverview);
   for (const key of Object.keys(PALM_LINE_NAMES) as PalmLineKey[]) {
     const line = facts.onnxLines?.modelExecuted ? facts.onnxLines[key] : undefined;
     const text = palmPersonalLineReading(key, line);
