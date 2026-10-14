@@ -21,6 +21,7 @@
 - 실제 foreground path가 있는 엄지 쪽 곡선: `supported`
 - 같은 끝점을 가진 직선: `unconfirmed`
 - 반대 방향 곡선: `unconfirmed`
+- `512×512` 실제 mask의 `(100,350)→(225,125)` 8-connected raster 직선: `unconfirmed`
 - 중앙 세로 segment: `rejected`
 - 짧은 segment: `unconfirmed`
 - mirror: 동일하게 `supported`
@@ -28,6 +29,8 @@
 - supported customer line: 기존 생활 풀이 보존
 
 합성 테스트는 지오메트리 guard와 보류 불변식을 검증할 뿐 실제 사진 인식 성공률의 증거가 아니다. 기존 `length='김'`과 endpoint만 있는 시험은 정상 곡선 증거가 아니며 `unconfirmed` 계약으로 처리한다.
+
+곡률은 arc/chord 비율 하나로 결정하지 않는다. ONNX가 제공한 실제 skeleton path를 landmark frame에 맞추고, 회전 후 isotropic image unit에서 endpoint chord 대비 굽음과 thumb-side 위치를 함께 검사한다. 따라서 pixel staircase의 길이 증가나 손바닥 폭/축 길이의 anisotropic scaling을 곡선으로 세지 않는다.
 
 저장 복원은 `PALM_READING_VERSION`을 `bilateral-reading-v8-life-geometry-guard`로 갱신했다. 과거 v7 bilateral prose는 삭제하지 않고 보존하되 현재 형식으로 자동 표시하지 않으며, 현재 facts로 재생성할 때만 새 guard를 통과한다.
 

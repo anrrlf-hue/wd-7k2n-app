@@ -32,14 +32,28 @@ export function classifyLifeLineGeometry(
     const x = p.x * cropWidth, y = p.y * cropHeight, rx = x - wrist.x, ry = y - wrist.y;
     return { along: (rx * ux + ry * uy) / axisLength, across: side * (rx * nx + ry * ny) / palmWidth };
   };
+  // Curvature metric keeps isotropic image units after rotation. Dividing the
+  // two axes by different anatomical spans would turn an ordinary straight
+  // raster line into a false bend under anisotropic hand proportions.
+  const metricPoint = (p: { x: number; y: number }) => {
+    const x = p.x * cropWidth, y = p.y * cropHeight, rx = x - wrist.x, ry = y - wrist.y;
+    return { x: (rx * ux + ry * uy) / Math.max(cropWidth, cropHeight), y: (rx * nx + ry * ny) / Math.max(cropWidth, cropHeight) };
+  };
   const path = line.pathPoints.map(point), a = point(line.start), b = point(line.end);
   const midpoint = path[Math.floor(path.length / 2)];
   const acrossValues = path.map(item => item.across), alongValues = path.map(item => item.along);
   const acrossSpan = Math.max(...acrossValues) - Math.min(...acrossValues), alongSpan = Math.max(...alongValues) - Math.min(...alongValues);
   const centralVertical = path.every(item => Math.abs(item.across) <= 0.18) && alongSpan >= 0.2;
   if (centralVertical) return { status: "rejected", reason: "central_vertical_segment" };
-  const chord = Math.hypot(b.along - a.along, b.across - a.across);
-  const arc = path.slice(1).reduce((sum, item, index) => sum + Math.hypot(item.along - path[index].along, item.across - path[index].across), 0);
-  const thumbSide = path.some(item => item.across >= 0.18) && midpoint.across >= 0.12 && acrossSpan >= 0.12 && alongSpan >= 0.2 && arc / Math.max(chord, 1e-6) >= 1.04;
+  // Do not use arc/chord alone: one-pixel staircase rasterization inflates
+  // arc length even for a straight line. Require a scale-normalized bend away
+  // from the endpoint chord. This remains invariant under crop resolution and
+  // is based on the actual foreground path, not its two extrema.
+  const metricPath = line.pathPoints.map(metricPoint), metricA = metricPath[0], metricB = metricPath[metricPath.length - 1];
+  const chordX = metricB.x - metricA.x, chordY = metricB.y - metricA.y;
+  const chord = Math.max(1e-6, Math.hypot(chordX, chordY));
+  const maxChordDeviation = Math.max(...metricPath.map(item => Math.abs(chordX * (item.y - metricA.y) - chordY * (item.x - metricA.x)) / chord));
+  const normalizedBend = maxChordDeviation / Math.max(chord, 1e-6);
+  const thumbSide = path.some(item => item.across >= 0.18) && midpoint.across >= 0.12 && acrossSpan >= 0.12 && alongSpan >= 0.2 && normalizedBend >= 0.06;
   return thumbSide ? { status: "supported", reason: "thumb_side_segment" } : { status: "unconfirmed", reason: "short_or_missing_geometry" };
 }

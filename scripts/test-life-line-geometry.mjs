@@ -1,6 +1,7 @@
 import "./register-test-typescript.mjs";
 import assert from "node:assert/strict";
 const { classifyLifeLineGeometry } = await import("../src/lib/palm-life-line-geometry.ts");
+const { computeObservation } = await import("../src/lib/palm-line-onnx.ts");
 const { palmPersonalLineReading } = await import("../src/lib/palm-customer-reading.ts");
 const landmarks = Array.from({ length: 21 }, () => ({ x: 0, y: 0 }));
 landmarks[0] = { x: 50, y: 100 }; landmarks[2] = { x: 20, y: 60 }; landmarks[5] = { x: 20, y: 20 }; landmarks[9] = { x: 50, y: 20 }; landmarks[17] = { x: 80, y: 20 };
@@ -12,6 +13,17 @@ assert.equal(classifyLifeLineGeometry(line(curvedPath[0], curvedPath.at(-1), cur
 assert.equal(classifyLifeLineGeometry(line(straightPath[0], straightPath.at(-1), straightPath), landmarks, 100, 100).status, "unconfirmed", "straight segment with same endpoints is not promoted");
 const legacyStraight = { detected: true, geometryStatus: "measurable", start: { x: .2, y: .7 }, end: { x: .45, y: .25 }, pathPoints: [{ x: .2, y: .7 }, { x: .2625, y: .5875 }, { x: .325, y: .475 }, { x: .3875, y: .3625 }, { x: .45, y: .25 }], length: "보통" };
 assert.equal(classifyLifeLineGeometry(legacyStraight, landmarks, 100, 100).status, "unconfirmed", "known straight counterexample is not promoted");
+const rasterStraightPath = [{ x: .20, y: .70 }, { x: .22, y: .64 }, { x: .25, y: .58 }, { x: .28, y: .52 }, { x: .31, y: .46 }, { x: .34, y: .40 }, { x: .37, y: .34 }, { x: .41, y: .28 }, { x: .45, y: .25 }];
+assert.equal(classifyLifeLineGeometry(line(rasterStraightPath[0], rasterStraightPath.at(-1), rasterStraightPath), landmarks, 100, 100).status, "unconfirmed", "8-connected raster staircase is not promoted as curvature");
+const rasterMask = new Uint8Array(512 * 512);
+for (let step = 0; step <= 225; step++) {
+  const rx = 100 + Math.round(125 * step / 225), ry = 350 - step;
+  rasterMask[ry * 512 + rx] = 3;
+}
+const rasterObservation = computeObservation(rasterMask, 512, 512, "life_line", { cropWidth: 100, cropHeight: 100, referenceSpan: 80 });
+assert.equal(rasterObservation.geometryStatus, "measurable", "raster mask produces measurable skeleton geometry");
+assert.ok((rasterObservation.pathPoints?.length ?? 0) >= 5, "raster mask exports the actual path");
+assert.equal(classifyLifeLineGeometry({ ...rasterObservation, length: "보통", pathPoints: rasterObservation.pathPoints }, landmarks, 100, 100).status, "unconfirmed", "512px 8-connected raster straight line is not promoted");
 assert.equal(classifyLifeLineGeometry(line(oppositeCurvePath[0], oppositeCurvePath.at(-1), oppositeCurvePath), landmarks, 100, 100).status, "unconfirmed", "opposite-side curve is not promoted");
 const centralPath = [{ x: .5, y: .82 }, { x: .5, y: .7 }, { x: .5, y: .58 }, { x: .5, y: .46 }, { x: .5, y: .38 }];
 assert.equal(classifyLifeLineGeometry(line(centralPath[0], centralPath.at(-1), centralPath), landmarks, 100, 100).status, "rejected", "central vertical segment is rejected");
