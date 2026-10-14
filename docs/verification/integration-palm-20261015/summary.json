@@ -81,10 +81,17 @@
     }
   ],
   "errors": [],
-  "relationshipEntry": "visible-after-personal-and-bilateral-results",
-  "relationshipPurposeRequired": true,
+  "relationshipEntry": "visible-after-personal-and-bilateral-results; bilateral-path-only",
+  "relationshipPurposeRequired": "no-default-selection-observed; blank-submit-not-verified",
   "relationshipResult": true,
   "relationshipErrorRetry": true,
   "relationshipCloseReentry": true,
-  "originalPhotoRecognition": "not covered"
+  "relationshipScope": "personal-plus-bilateral-result-path; personal-only-entry-not-independent",
+  "premiumRegression": "UI-mock-only",
+  "referralBrowserVerification": "real-Next-production-build-and-two-Chromium-contexts-with-local-Supabase-HTTP-adapter",
+  "buildSourceSha": "b34a83b",
+  "integrationHeadBeforeEvidenceCorrection": "a0af751b90400979105b78cc76ec16384378d647",
+  "originalPhotoRecognition": "not-covered; synthetic-palm-fixtures-only",
+  "additionalLineQuality": "not-verified",
+  "operatingSupabase": "not-verified"
 }
