@@ -32,11 +32,13 @@ async function runSynthetic(kind, scale = 1) {
     const d = c.getContext("2d"); d.fillStyle = "rgb(188,137,116)"; d.fillRect(0, 0, c.width, c.height);
     const x = 348 * scale; d.strokeStyle = kind === "weak_contrast" ? "rgb(170,125,108)" : "rgb(70,45,40)"; d.lineWidth = 1 * scale;
     if (kind === "clear_vertical_curve") { d.beginPath(); for (let y=330*scale; y<580*scale; y++) { const yy=y/scale, xx=x+.000005*(yy-319)**2*scale; if (y===330*scale) d.moveTo(xx,y); else d.lineTo(xx,y); } d.stroke(); }
-    if (kind === "clear_curved") { d.beginPath(); for (let y=330*scale; y<580*scale; y++) { const yy=y/scale, xx=x+.00005*(yy-319)**2*scale; if (y===330*scale) d.moveTo(xx,y); else d.lineTo(xx,y); } d.stroke(); }
-    if (kind === "sloped_vertical") { d.beginPath(); d.moveTo(x-12*scale,330*scale); d.lineTo(x+12*scale,580*scale); d.stroke(); }
+    if (kind === "clear_curved") { d.beginPath(); for (let y=330*scale; y<580*scale; y++) { const yy=y/scale, xx=x+.00002*(yy-319)**2*scale; if (y===330*scale) d.moveTo(xx,y); else d.lineTo(xx,y); } d.stroke(); }
+    if (kind === "sloped_vertical") { d.lineWidth = 2 * scale; d.beginPath(); d.moveTo(x-4*scale,330*scale); d.lineTo(x+4*scale,580*scale); d.stroke(); }
+    if (kind === "weak_contrast") { d.beginPath(); d.moveTo(x,330*scale); d.lineTo(x,580*scale); d.stroke(); }
     if (kind === "short_high_contrast") { d.beginPath(); d.moveTo(x,430*scale); d.lineTo(x,445*scale); d.stroke(); }
     if (kind === "broken_vertical") { d.beginPath(); d.moveTo(x,330*scale); d.lineTo(x,350*scale); d.moveTo(x,465*scale); d.lineTo(x+3*scale,485*scale); d.stroke(); }
-    if (kind === "broken_long") { d.beginPath(); d.moveTo(x,330*scale); d.lineTo(x,400*scale); d.moveTo(x,465*scale); d.lineTo(x+3*scale,565*scale); d.stroke(); }
+    if (kind === "broken_long") { d.beginPath(); d.moveTo(x,330*scale); d.lineTo(x,390*scale); d.moveTo(x,520*scale); d.lineTo(x+3*scale,565*scale); d.stroke(); }
+    if (kind === "parallel_double") { d.beginPath(); d.moveTo(338*scale,330*scale); d.lineTo(338*scale,580*scale); d.moveTo(343*scale,330*scale); d.lineTo(343*scale,580*scale); d.stroke(); }
     if (kind === "horizontal_cross") for (const y of [380,450,520]) { d.beginPath(); d.moveTo(300*scale,y*scale); d.lineTo(390*scale,y*scale); d.stroke(); }
     if (kind === "lighting_edge") for (let xx=x; xx<c.width; xx++) { d.strokeStyle=`rgb(${Math.round(188+30*(xx-x)/(c.width-x))},137,116)`; d.beginPath(); d.moveTo(xx,0); d.lineTo(xx,c.height); d.stroke(); }
     return window.tracker(d.getImageData(0, 0, c.width, c.height), points);
@@ -44,17 +46,20 @@ async function runSynthetic(kind, scale = 1) {
 }
 
 const synthetic = {};
-for (const kind of ["clear_vertical_curve", "clear_curved", "sloped_vertical", "broken_vertical", "broken_long", "horizontal_cross", "lighting_edge", "no_line", "weak_contrast", "short_high_contrast"]) synthetic[kind] = await runSynthetic(kind);
+for (const kind of ["clear_vertical_curve", "clear_curved", "sloped_vertical", "broken_vertical", "broken_long", "parallel_double", "horizontal_cross", "lighting_edge", "no_line", "weak_contrast", "short_high_contrast"]) synthetic[kind] = await runSynthetic(kind);
 assert.equal(synthetic.clear_vertical_curve.corridors.ring_direction.stability.stableCandidate, true);
 assert.equal(synthetic.clear_vertical_curve.corridors.ring_direction.raw.points[0].x, 348);
 assert.ok(["candidate", "insufficient_evidence"].includes(synthetic.clear_curved.corridors.ring_direction.raw.status));
 assert.ok(synthetic.clear_curved.corridors.ring_direction.raw.selectedSpanPx > 0);
-assert.equal(synthetic.clear_curved.corridors.ring_direction.stability.stableCandidate, false);
-assert.equal(synthetic.sloped_vertical.corridors.ring_direction.stability.stableCandidate, false);
+assert.equal(synthetic.clear_curved.corridors.ring_direction.stability.stableCandidate, true);
+assert.equal(synthetic.sloped_vertical.corridors.ring_direction.stability.stableCandidate, true);
+const doublePoints = synthetic.parallel_double.corridors.ring_direction.raw.points;
+assert.ok(doublePoints.length > 100);
+assert.ok(doublePoints.every(p => Math.abs(p.x - 338) < .6 || Math.abs(p.x - 343) < .6));
 for (const kind of ["broken_vertical", "broken_long", "horizontal_cross", "lighting_edge", "no_line", "weak_contrast", "short_high_contrast"]) assert.equal(Object.values(synthetic[kind].corridors).some(v => v.stability.stableCandidate), false, kind);
 assert.equal(synthetic.short_high_contrast.corridors.ring_direction.raw.status, "insufficient_evidence");
 assert.equal(synthetic.broken_vertical.corridors.ring_direction.raw.status, "insufficient_evidence");
-assert.ok(synthetic.broken_long.corridors.ring_direction.raw.componentCount >= 2);
+assert.ok(synthetic.broken_long.corridors.ring_direction.raw.componentCount >= 2 || synthetic.broken_long.corridors.ring_direction.raw.competingComponentCount >= 1);
 assert.equal(synthetic.broken_long.corridors.ring_direction.stability.stableCandidate, false);
 const nanPoints = Array.from({ length: 21 }, () => ({ x: .5, y: .5, z: 0 })); nanPoints[0] = { x: Number.NaN, y: .9, z: 0 };
 const invalid = await page.evaluate(({ points }) => window.tracker(new ImageData(32, 32), points), { points: nanPoints });

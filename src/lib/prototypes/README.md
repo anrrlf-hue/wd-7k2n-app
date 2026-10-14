@@ -14,9 +14,12 @@ It converts normalized coordinates with the actual image width and height,
 checks middle/ring/pinky direction corridors, and returns raw/local-contrast
 tracks, geometric path length (`pathLengthPx`), vertical span (`verticalSpanPx`),
 coverage, supported-pixel counts, selected-component count, gap rows, ROI, and
-same-y cross-variant path stability. A fragment can be reported as
-`insufficient_evidence` without being treated as a missing line; multiple
-separated components cannot become a stable candidate.
+same-y cross-variant path stability. Returned points are selected from supported
+response pixels rather than an unsupported row midpoint; `gapRows` reports rows
+without selected support and `competingComponentCount` reports separated
+long-span tracks. A fragment can be reported as `insufficient_evidence` without
+being treated as a missing line; separated competing tracks cannot become a
+stable candidate.
 
 The pixel offset used for the filtered center is restored when converting back
 to source coordinates. Blur uses prefix sums with image/ROI bounds rather than

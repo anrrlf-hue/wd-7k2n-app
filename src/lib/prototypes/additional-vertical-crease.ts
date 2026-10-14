@@ -18,6 +18,7 @@ export interface VariantTrack {
   gapRows: number;
   supportPixelCount: number;
   supportRows: number;
+  competingComponentCount: number;
 }
 export interface AdditionalCorridorResult {
   direction: AdditionalDirection;
@@ -79,7 +80,7 @@ function crop(source: Float32Array, width: number, height: number, roi: { x: num
   return { data: out, width: w, height: h, x0, y0 };
 }
 
-function emptyTrack(): VariantTrack { return { status: "not_seen", evidenceReason: "none", pathLengthPx: 0, verticalSpanPx: 0, coverage: 0, widthSpan: 0, contrast: 0, points: [], componentCount: 0, selectedSpanPx: 0, gapRows: 0, supportPixelCount: 0, supportRows: 0 }; }
+function emptyTrack(): VariantTrack { return { status: "not_seen", evidenceReason: "none", pathLengthPx: 0, verticalSpanPx: 0, coverage: 0, widthSpan: 0, contrast: 0, points: [], componentCount: 0, selectedSpanPx: 0, gapRows: 0, supportPixelCount: 0, supportRows: 0, competingComponentCount: 0 }; }
 
 function trackCrop(c: { data: Float32Array; width: number; height: number; x0: number; y0: number }): VariantTrack {
   if (c.width < 7 || c.height < 12) return emptyTrack();
@@ -117,22 +118,53 @@ function trackCrop(c: { data: Float32Array; width: number; height: number; x0: n
     if (Math.max(...ys) - Math.min(...ys) + 1 >= 2) components.push(component);
   }
   if (!components.length) return emptyTrack();
-  const component = components.sort((a, b) => {
-    const span = (v: Array<[number, number]>) => Math.max(...v.map(([y]) => y)) - Math.min(...v.map(([y]) => y)) + 1;
-    return span(b) - span(a) || b.length - a.length;
-  })[0];
+  const span = (v: Array<[number, number]>) => Math.max(...v.map(([y]) => y)) - Math.min(...v.map(([y]) => y)) + 1;
+  const minY = (v: Array<[number, number]>) => Math.min(...v.map(([y]) => y));
+  const maxY = (v: Array<[number, number]>) => Math.max(...v.map(([y]) => y));
+  const meanXAt = (v: Array<[number, number]>, y: number) => {
+    const xs = v.filter(([yy]) => yy === y).map(([, x]) => x);
+    return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+  };
+  type Track = { components: Array<Array<[number, number]>>; minY: number; maxY: number; endX: number };
+  const tracks: Track[] = [];
+  for (const component of components.sort((a, b) => minY(a) - minY(b))) {
+    const startY = minY(component), startX = meanXAt(component, startY)!;
+    const attach = tracks.filter(t => startY > t.maxY && startY - t.maxY <= 20 && Math.abs(startX - t.endX) <= drift * 2).sort((a, b) => b.maxY - a.maxY)[0];
+    if (attach) { attach.components.push(component); attach.maxY = maxY(component); attach.endX = meanXAt(component, attach.maxY)!; }
+    else tracks.push({ components: [component], minY: startY, maxY: maxY(component), endX: meanXAt(component, maxY(component))! });
+  }
+  tracks.sort((a, b) => (b.maxY - b.minY) - (a.maxY - a.minY) || b.components.flat().length - a.components.flat().length);
+  const selected = tracks[0];
+  const component = selected.components.flat();
+  const selectedMeanX = component.reduce((sum, [, x]) => sum + x, 0) / component.length;
+  const competingComponentCount = tracks.slice(1).filter(t => {
+    if ((t.maxY - t.minY + 1) < Math.max(6, c.height * .08)) return false;
+    const separated = t.maxY < Math.min(...component.map(([y]) => y)) || t.minY > Math.max(...component.map(([y]) => y));
+    const tPoints = t.components.flat();
+    const tMeanX = tPoints.reduce((sum, [, x]) => sum + x, 0) / tPoints.length;
+    return separated || Math.abs(tMeanX - selectedMeanX) > drift * 2;
+  }).length;
   const byY = new Map<number, number[]>();
   for (const [y, x] of component) byY.set(y, [...(byY.get(y) ?? []), x]);
-  const points = [...byY.entries()].sort((a, b) => a[0] - b[0]).map(([y, xs]) => ({ x: xs.reduce((a, b) => a + b, 0) / xs.length + c.x0 + offset, y: y + c.y0 }));
-  const minY = Math.min(...component.map(([y]) => y)), maxY = Math.max(...component.map(([y]) => y));
-  const verticalSpanPx = maxY - minY + 1;
+  let previousX: number | null = null;
+  const points = [...byY.entries()].sort((a, b) => a[0] - b[0]).map(([y, xs]) => {
+    const chosen = xs.reduce((best, x) => {
+      if (previousX === null) return response[y * rw + x] > response[y * rw + best] ? x : best;
+      const distance = Math.abs(x - previousX), bestDistance = Math.abs(best - previousX);
+      return distance < bestDistance || (distance === bestDistance && response[y * rw + x] > response[y * rw + best]) ? x : best;
+    }, xs[0]);
+    previousX = chosen;
+    return { x: chosen + c.x0 + offset, y: y + c.y0 };
+  });
+  const selectedMinY = Math.min(...component.map(([y]) => y)), selectedMaxY = Math.max(...component.map(([y]) => y));
+  const verticalSpanPx = selectedMaxY - selectedMinY + 1;
   const coverage = verticalSpanPx / c.height;
   const contrast = Math.min(1, component.reduce((sum, [y, x]) => sum + response[y * rw + x], 0) / component.length / 40);
   const minX = Math.min(...component.map(([, x]) => x)), maxX = Math.max(...component.map(([, x]) => x));
   let lengthPx = 0;
   for (let i = 1; i < points.length; i++) lengthPx += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
   const sufficient = coverage >= .12 && contrast >= .08;
-  return { status: sufficient ? "candidate" : "insufficient_evidence", evidenceReason: sufficient ? "none" : coverage < .12 ? "short" : "weak_contrast", pathLengthPx: lengthPx, verticalSpanPx, coverage, widthSpan: (maxX - minX + 1) / c.width, contrast, points, componentCount: components.length, selectedSpanPx: verticalSpanPx, gapRows: verticalSpanPx - byY.size, supportPixelCount: component.length, supportRows: byY.size };
+  return { status: sufficient ? "candidate" : "insufficient_evidence", evidenceReason: sufficient ? "none" : coverage < .12 ? "short" : "weak_contrast", pathLengthPx: lengthPx, verticalSpanPx, coverage, widthSpan: (maxX - minX + 1) / c.width, contrast, points, componentCount: selected.components.length, selectedSpanPx: verticalSpanPx, gapRows: verticalSpanPx - byY.size, supportPixelCount: component.length, supportRows: byY.size, competingComponentCount };
 }
 
 function trackVariant(source: Float32Array, imageWidth: number, imageHeight: number, roi: { x: number; y: number; width: number; height: number }): VariantTrack {
@@ -188,7 +220,8 @@ export function trackAdditionalVerticalCreases(image: ImageData, landmarks: Norm
     const localTrack = trackCrop({ ...localCrop, data: localData });
     const distance = pathDistance(rawTrack.points, localTrack.points);
     const pathTolerancePx = Math.max(2, palmWidth * .08);
-    return [direction, { direction, roi, raw: rawTrack, localContrast: localTrack, stability: { bothNonEmpty: rawTrack.points.length > 0 && localTrack.points.length > 0, coverageDelta: Math.abs(rawTrack.coverage - localTrack.coverage), pathDistancePx: distance, stableCandidate: rawTrack.status === "candidate" && localTrack.status === "candidate" && rawTrack.componentCount === 1 && localTrack.componentCount === 1 && rawTrack.gapRows === 0 && localTrack.gapRows === 0 && Math.abs(rawTrack.coverage - localTrack.coverage) <= .08 && distance !== null && distance <= pathTolerancePx } }];
+    const supportDensity = (track: VariantTrack) => track.verticalSpanPx > 0 ? track.supportRows / track.verticalSpanPx : 0;
+    return [direction, { direction, roi, raw: rawTrack, localContrast: localTrack, stability: { bothNonEmpty: rawTrack.points.length > 0 && localTrack.points.length > 0, coverageDelta: Math.abs(rawTrack.coverage - localTrack.coverage), pathDistancePx: distance, stableCandidate: rawTrack.status === "candidate" && localTrack.status === "candidate" && rawTrack.competingComponentCount === 0 && localTrack.competingComponentCount === 0 && supportDensity(rawTrack) >= .5 && supportDensity(localTrack) >= .5 && Math.abs(rawTrack.coverage - localTrack.coverage) <= .08 && distance !== null && distance <= pathTolerancePx } }];
   })) as Record<AdditionalDirection, AdditionalCorridorResult>;
   return { width: image.width, height: image.height, elapsedMs: performance.now() - started, status: "ok", corridors, interpretation: "pixel_candidate_only" };
   } catch {
