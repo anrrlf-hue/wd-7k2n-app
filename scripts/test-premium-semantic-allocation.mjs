@@ -27,6 +27,55 @@ const create = day => {
   return { facts, report: buildPremiumReport({ facts, referenceDate: new Date('2026-10-13T00:00:00Z') }) };
 };
 
+// Reviewed annual-pressure repeats in these invented calendars. No other
+// sentence, including another scene ending or a resolution, is exempt.
+const repeatedAnnualPressure = {
+  1: [
+    ['다른 사람의 이유를 이해할수록 직접 고르기 어려워졌을 수 있습니다.', ['2026년 10월', '2027년 1월']],
+    ['유용하다는 이유를 더 찾아도 직접 좋아하는 부분은 아직 흐렸을 수 있습니다.', ['2026년 11월', '2026년 12월']],
+    ['다시 묻는 일이 쌓아 온 믿음을 잃는 것처럼 느껴졌을 수 있습니다.', ['2027년 2월', '2027년 3월']],
+    ['도움받아 마음이 놓였는데 직접 고른 경험은 작아진 듯했을 수 있습니다.', ['2027년 4월', '2027년 7월']],
+    ['설명이 더 늘어났는데 누군가 들어 줬을 때의 편안함은 따로 남았을 수 있습니다.', ['2027년 5월', '2027년 6월']],
+    ['배운 방법을 지킨 만족과 스스로 해 본 만족이 달리 남았을 수 있습니다.', ['2027년 8월', '2027년 9월']],
+  ],
+  7: [
+    ['좋은 반응을 더 얻으려다 만드는 시간이 전처럼 즐겁지 않았을 수 있습니다.', ['2026년 10월', '2027년 1월']],
+    ['배운 것을 잘 설명하는 일보다 다시 직접 해 볼 때 마음이 놓였을 수 있습니다.', ['2026년 11월', '2026년 12월']],
+    ['좋아하는 뜻이 있는데 처음 꺼낸 말만 계속 지켜야 할 것 같았을 수 있습니다.', ['2027년 2월', '2027년 3월']],
+    ['달리 표현한 부분까지 처음 모습과 같아야 한다고 느꼈을 수 있습니다.', ['2027년 5월', '2027년 6월']],
+    ['잘해 보인 결과에 내 뜻이 남지 않아 아쉬웠을 수 있습니다.', ['2027년 8월', '2027년 9월']],
+  ],
+};
+const longSentencesIn = body => body.split(/(?<=다\.)\s+/).map(s => s.trim()).filter(s => s.length > 30);
+function checkedMonthlySentences(report, approved) {
+  const presentation = buildPremiumPeriodPresentation(report);
+  const exceptions = new Map(approved);
+  const displayed = report.periods.map(p => presentation.get(p).paragraphs.join(' '));
+  for (const [sentence, months] of exceptions) {
+    assert.deepEqual(report.periods.filter(period => period.interpretation.passages.find(p => p.id === 'month-lived-scene')?.text.includes(sentence))
+      .map(period => period.label), months, 'only the reviewed months may repeat this annual pressure');
+    for (const period of report.periods.filter(p => months.includes(p.label))) {
+      const scene = period.interpretation.passages.find(p => p.id === 'month-lived-scene');
+      assert.equal(longSentencesIn(scene.text).filter(part => part === sentence).length, 1,
+        'a reviewed annual pressure occurs only once in each monthly scene');
+    }
+  }
+  const checked = report.periods.flatMap((period, index) => {
+    const scene = period.interpretation.passages.find(p => p.id === 'month-lived-scene');
+    assert.ok(scene?.evidenceIds.includes('year-stem'), 'each month retains its annual pressure');
+    const passages = period.interpretation.passages;
+    assert.deepEqual(longSentencesIn(displayed[index]), passages.flatMap(p => longSentencesIn(p.text)),
+      'the current report displays every passage without deleting repeated sentences');
+    return passages.flatMap(p => {
+      const parts = longSentencesIn(p.text);
+      return parts.filter((sentence, partIndex) => !(p.id === 'month-lived-scene'
+        && partIndex === parts.length - 1 && exceptions.get(sentence)?.includes(period.label)
+        && p.text.endsWith(sentence)));
+    });
+  });
+  return { displayed, checked };
+}
+
 for (const day of [1, 7]) {
   const { facts, report } = create(day);
   assert.ok(isRenderablePremiumReport(report));
@@ -50,17 +99,34 @@ for (const day of [1, 7]) {
   assert.ok(isStoredPremiumReport(savedV8Shape), 'saved v8 structure must remain readable');
   assert.equal(report.periods.flatMap(p => p.months).length, 12);
   assert.equal(report.periods.length, 12);
-  const presentation = buildPremiumPeriodPresentation(report);
-  const displayed = report.periods.map(p => presentation.get(p).paragraphs.join(' '));
-  const longSentences = displayed.flatMap(body => body.split(/(?<=다\.)\s+/).map(s => s.trim()).filter(s => s.length > 30));
-  const annualPressureSentences = report.periods.map(period => {
-    const scene = period.interpretation.passages.find(p => p.id === 'month-lived-scene');
-    assert.ok(scene?.evidenceIds.includes('year-stem'), 'each month retains its annual pressure');
-    return scene.text.split(/(?<=다\.)\s+/).at(-1);
-  });
-  const monthSpecificSentences = longSentences.filter(sentence => !annualPressureSentences.includes(sentence));
-  assert.equal(new Set(monthSpecificSentences).size, monthSpecificSentences.length,
+  const approved = repeatedAnnualPressure[day];
+  const { displayed, checked } = checkedMonthlySentences(report, approved);
+  assert.equal(new Set(checked).size, checked.length,
     'month-specific prose must avoid repeated full sentences; the same annual pressure may recur');
+  const accidentalRepeat = '월마다 다른 선택을 해야 한다는 같은 문장을 임의로 반복합니다.';
+  const mutated = structuredClone(report);
+  for (const period of mutated.periods.slice(0, 2)) {
+    period.interpretation.passages.find(p => p.id === 'month-lived-scene').text += ` ${accidentalRepeat}`;
+  }
+  const mutatedChecked = checkedMonthlySentences(mutated, approved).checked;
+  assert.equal(mutatedChecked.filter(sentence => sentence === accidentalRepeat).length, 2,
+    'an arbitrary duplicated last scene sentence must stay under the duplicate check');
+  assert.notEqual(new Set(mutatedChecked).size, mutatedChecked.length);
+  const changedResolution = structuredClone(report);
+  for (const period of changedResolution.periods.slice(0, 2)) {
+    period.interpretation.passages.find(p => p.id === 'month-lived-resolution').text += ` ${accidentalRepeat}`;
+  }
+  const resolutionChecked = checkedMonthlySentences(changedResolution, approved).checked;
+  assert.equal(resolutionChecked.filter(sentence => sentence === accidentalRepeat).length, 2,
+    'monthly choice and consequence remain under the duplicate check');
+  assert.notEqual(new Set(resolutionChecked).size, resolutionChecked.length);
+  const repeatedInResolution = structuredClone(report);
+  const [allowedSentence, affectedMonths] = approved[0];
+  for (const period of repeatedInResolution.periods.filter(p => affectedMonths.includes(p.label))) {
+    period.interpretation.passages.find(p => p.id === 'month-lived-resolution').text += ` ${allowedSentence}`;
+  }
+  assert.equal(checkedMonthlySentences(repeatedInResolution, approved).checked.filter(sentence => sentence === allowedSentence).length,
+    affectedMonths.length, 'even an approved pressure sentence is not exempt inside a monthly choice or consequence');
   assert.deepEqual([...new Set(report.periods.flatMap(p => [p.symbols.month.stemTenGod, p.symbols.month.branchTenGod]))].sort(), gods.sort(), 'the two invented calendars exercise all ten names');
   assert.equal(new Set(displayed).size, 12, 'date changes alone cannot yield a duplicate monthly body');
   assert.ok(displayed.every(body => body.length > 110), 'each month retains a concrete decision after shared context is linked');
