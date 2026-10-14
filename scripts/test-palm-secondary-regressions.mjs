@@ -212,7 +212,7 @@ const coreStorySection = richSections.find((section) => section.key === "coreSto
 if (!/오른손/.test(overviewSection?.text ?? "") || !/현실 감각|현실/.test(overviewSection?.text ?? "")) {
   throw new Error("whole-hand overview missing side/shape interpretation");
 }
-if (!/두뇌선|운명선/.test(coreStorySection?.text ?? "") || !/연결/.test(coreStorySection?.text ?? "")) {
+if (!/두뇌선|감정선|생명선/.test(coreStorySection?.text ?? "") || !/자동 검출|주요선|생활 장면|실제 선택|보조 해석|균형/.test(coreStorySection?.text ?? "")) {
   throw new Error("connected core story missing cross-line interpretation");
 }
 if (!/성과|인정|평판/.test(sunSection?.text ?? "")) throw new Error("sun line reading lacks recognition/performance interpretation");
@@ -220,6 +220,8 @@ if (!/수입|거래|보상|돈/.test(wealthLineSection?.text ?? "")) throw new E
 if (!/운명선.*태양선.*재물선|일의 방향/.test(comboSection?.text ?? "")) throw new Error("secondary-line combination reading missing");
 const richText = richSections.map((section) => section.text).join("\n");
 if (/(반드시 성공|수익 보장|부자가 된다|무조건)/.test(richText)) throw new Error("deterministic success/money claim leaked into palm reading");
+if (/(선명도|마스크 신호|강한 검출)/.test(richText)) throw new Error("internal signal strength leaked as customer-facing clarity");
+if (new Set(richSections.map((section) => section.text)).size !== richSections.length) throw new Error("repeated palm sections are being used as filler");
 if (/수명을? (?:예측|판정)|몇 살까지 (?:살|생존)|질병을? (?:예측|진단)|의학적 진단입니다/.test(richText)) throw new Error("health/lifespan overclaim leaked into palm reading");
 
 const faintSecondary = {

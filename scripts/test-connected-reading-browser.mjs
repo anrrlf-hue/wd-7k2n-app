@@ -42,7 +42,7 @@ try {
     await page.locator('#premium-report').waitFor();
     await page.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; }));
     const report = await page.evaluate(() => JSON.parse(sessionStorage.getItem('saju-app:integrated-premium:v1')).report);
-    assert.equal(report.version, 'year-connected-reading-2026-10-v13');
+    assert.equal(report.version, 'natal-customer-reading-2026-10-v14');
     const body = await page.locator('#premium-report').innerText();
     for (const paragraph of [...report.overall.paragraphs, ...report.domains.flatMap(d => d.paragraphs),
       ...report.periods.flatMap(p => p.interpretation.passages.map(x => x.text))]) {

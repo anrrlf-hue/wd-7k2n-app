@@ -31,6 +31,41 @@ export interface FourLinePoseResult {
   errorCode?: "model_runtime";
   observations: FourLinePoseObservation[];
   fate: FourLinePoseObservation | null;
+  /** Development diagnostic only; never rendered as customer copy. */
+  diagnostics?: FourLineRuntimeDiagnostic[];
+}
+
+export type FourLineErrorStage = "session_init" | "preprocess" | "inference" | "output";
+export interface FourLineRuntimeDiagnostic {
+  stage: FourLineErrorStage;
+  errorName: string;
+  message: string;
+  startedAtMs: number;
+  endedAtMs: number;
+  durationMs: number;
+  serial: number;
+  nested: boolean;
+}
+
+let invocationSerial = 0;
+let activeInvocations = 0;
+
+export function createFourLineRuntimeDiagnostic(
+  stage: FourLineErrorStage,
+  error: unknown,
+  startedAtMs: number,
+  endedAtMs: number,
+  serial: number,
+  nested: boolean,
+): FourLineRuntimeDiagnostic {
+  const errorName = error instanceof Error && error.name && /^[A-Za-z][A-Za-z0-9_]*$/.test(error.name) ? error.name : "UnknownError";
+  const stageMessage: Record<FourLineErrorStage, string> = {
+    session_init: "4-line ONNX session initialization failed",
+    preprocess: "4-line ONNX input preprocessing failed",
+    inference: "4-line ONNX inference failed",
+    output: "4-line ONNX output decoding failed",
+  };
+  return { stage, errorName, message: stageMessage[stage], startedAtMs, endedAtMs, durationMs: Math.max(0, endedAtMs - startedAtMs), serial, nested };
 }
 
 let sessionPromise: Promise<ort.InferenceSession> | null = null;
@@ -104,10 +139,20 @@ export async function runPalmFourLineOnnx(
   source: PalmCanvas,
   minConfidence = 0.08,
 ): Promise<FourLinePoseResult> {
+  const serial = ++invocationSerial;
+  const nested = activeInvocations > 0;
+  activeInvocations++;
+  let stage: FourLineErrorStage = "session_init";
+  let stageStartedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+  const beginStage = (next: FourLineErrorStage) => { stage = next; stageStartedAt = typeof performance !== "undefined" ? performance.now() : Date.now(); };
+  const finish = <T extends FourLinePoseResult>(result: T): T => { activeInvocations = Math.max(0, activeInvocations - 1); return result; };
   try {
     const session = await getSession();
+    beginStage("preprocess");
     const { tensor, scale, padX, padY } = preprocess(source);
+    beginStage("inference");
     const outputMap = await session.run({ [session.inputNames[0]]: tensor });
+    beginStage("output");
     const output = outputMap[session.outputNames[0]];
     const values = output.data as Float32Array;
 
@@ -161,9 +206,11 @@ export async function runPalmFourLineOnnx(
 
     observations.sort((a, b) => b.confidence - a.confidence);
     const fate = observations.find((o) => o.class === "fate") ?? null;
-    return { status: observations.length ? "ok" : "no_detections", observations, fate };
+    return finish({ status: observations.length ? "ok" : "no_detections", observations, fate });
   } catch (err) {
-    console.error("palm 4-line ONNX inference failed:", err);
-    return { status: "error", errorCode: "model_runtime", observations: [], fate: null };
+    const endedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const diagnostic = createFourLineRuntimeDiagnostic(stage, err, stageStartedAt, endedAt, serial, nested);
+    console.error("palm 4-line ONNX diagnostic", diagnostic);
+    return finish({ status: "error", errorCode: "model_runtime", observations: [], fate: null, diagnostics: [diagnostic] });
   }
 }

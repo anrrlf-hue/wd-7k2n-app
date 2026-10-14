@@ -28,7 +28,7 @@ assert.equal((await api({ ...input, day: 16, trialReceipt: receipt })).status, 4
 assert.equal((await api({ ...input, trialReceipt: 'X' + receipt.slice(1) })).status, 403, 'tampering is rejected');
 const freeResponse = await fetch(BASE + '/api/palm/interpret', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...birthFixture, palmFacts: null }) });
 assert.equal(freeResponse.status, 200);
-const free = await freeResponse.json(); assert.equal(free.annualReport, undefined, 'the free route has no premium bypass');
+const freeReportPayload = await freeResponse.json(); assert.equal(freeReportPayload.annualReport, undefined, 'the free route has no premium bypass');
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || 'playwright-core');
 const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
 const errors = [], cases = [];
@@ -45,10 +45,10 @@ async function open({ share = 'none', copy = 'resolve', savedTrial = null, hold 
     }
     return route.continue();
   });
-  await context.addInitScript(({ entryKey, entry, palmKey, free, share, copy, savedTrial }) => {
+  await context.addInitScript(({ entryKey, entry, palmKey, free: seededFree, share, copy, savedTrial }) => {
     if (!sessionStorage.getItem('trial-seeded')) {
       sessionStorage.setItem('trial-seeded', '1'); sessionStorage.setItem(entryKey, entry);
-      sessionStorage.setItem(palmKey, JSON.stringify({ stage: 'saju_only', personalityKey: 'null', palmFacts: null, leftPalmFacts: null, rightPalmFacts: null, dominantHand: null, finalReport: free.freeReport.report, tripleCompare: [] }));
+      sessionStorage.setItem(palmKey, JSON.stringify({ stage: 'saju_only', personalityKey: 'null', palmFacts: null, leftPalmFacts: null, rightPalmFacts: null, dominantHand: null, finalReport: seededFree.freeReport.report, tripleCompare: [] }));
       if (savedTrial) sessionStorage.setItem('saju-app:premium-trial:v1', JSON.stringify(savedTrial));
     }
     window.__trialActions = [];
@@ -61,7 +61,7 @@ async function open({ share = 'none', copy = 'resolve', savedTrial = null, hold 
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: copy === 'none' ? undefined : { writeText: async text => {
       window.__trialActions.push({ action: 'copy', text }); if (copy === 'error') throw new Error('copy failed');
     } } });
-  }, { entryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture), palmKey, free, share, copy, savedTrial });
+  }, { entryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture), palmKey, free: freeReportPayload, share, copy, savedTrial });
   const page = await context.newPage(); page.setDefaultTimeout(15000); page.on('pageerror', error => errors.push(error.message));
   await page.goto(BASE + '/diagnosis/palm');
   await page.getByRole('button', { name: '링크 복사하고 무료 체험', exact: true }).waitFor();

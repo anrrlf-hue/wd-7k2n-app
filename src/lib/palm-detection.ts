@@ -23,6 +23,7 @@ import type {
   OnnxLineDetail,
   PalmFacts,
 } from "@/lib/palm-facts";
+import { classifyLifeLineGeometry } from "@/lib/palm-life-line-geometry";
 
 import { createPalmCanvas, type PalmCanvas, type PalmContext } from "@/lib/palm-canvas";
 
@@ -536,6 +537,7 @@ function mapOnnxObservation(
   if (!obs.detected) {
     return {
       detected: false,
+      geometryStatus: "not_detected",
       length: null,
       curve: null,
       depthStrength: null,
@@ -548,17 +550,37 @@ function mapOnnxObservation(
       attributeSupport: { length: "not_supported", curve: "not_supported", depth: "not_supported" },
     };
   }
-  const length = obs.lineLength < 150 ? "짧음" : obs.lineLength < 320 ? "보통" : "김";
+  if (obs.geometryStatus === "ambiguous") {
+    return {
+      detected: true,
+      geometryStatus: "ambiguous",
+      length: null,
+      curve: null,
+      depthStrength: null,
+      start: null,
+      end: null,
+      branchDetected: null,
+      ...provenance,
+      endpointEvidence: "none",
+      pathCompleteness: "unavailable",
+      attributeSupport: { length: "not_supported", curve: "not_supported", depth: "not_supported" },
+    };
+  }
+  // Labels use the centerline length normalized by the same crop's
+  // wrist-to-middle-MCP reference span; model input remains 512x512.
+  const length = obs.normalizedLineLength < 0.55 ? "짧음" : obs.normalizedLineLength < 1 ? "보통" : "김";
   const curve = obs.curveScore > 0.35 ? "완만한 곡선" : "직선에 가까움";
   const depthStrength = obs.avgThickness < 2.2 ? "약함" : obs.avgThickness < 4 ? "보통" : "강함";
-  const norm = (p: { x: number; y: number } | null) => (p ? { x: p.x / 512, y: p.y / 512 } : null);
+  const norm = (p: { x: number; y: number } | null) => (p ? { x: p.x, y: p.y } : null);
   return {
     detected: true,
+    geometryStatus: "measurable",
     length,
     curve,
     depthStrength,
     start: norm(obs.start),
     end: norm(obs.end),
+    pathPoints: obs.pathPoints?.map(point => ({ x: point.x, y: point.y })),
     branchDetected: null,
     ...provenance,
     endpointEvidence: "segment_extrema",
@@ -857,7 +879,11 @@ export async function analyzePalmFromCanvas(
   const adaptiveMargin = adaptivePalmMargin(landmarksPx);
   const adaptivePalmCrop = cropAndRotatePalm(canvas, landmarksPx, handSide === "left", adaptiveMargin);
   const enhancedPalmCrop = enhancePalmContrast(adaptivePalmCrop);
+  // Keep each variant's crop geometry paired with its own landmarks. The raw
+  // fixed-margin crop and enhanced adaptive crop do not share pixel origins.
+  const rawCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left", 100);
   const palmCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left", adaptiveMargin);
+  const referenceSpan = (points: { x: number; y: number }[]) => Math.max(1, Math.hypot(points[9].x - points[0].x, points[9].y - points[0].y));
   const secondaryLinesBase = detectSecondaryPalmLines(adaptivePalmCrop, enhancedPalmCrop, palmCropLandmarks);
 
   // Both models use the same single-threaded WASM runtime. Finish all three-line
@@ -867,11 +893,11 @@ export async function analyzePalmFromCanvas(
 
   onPhase("lines");
   const threeLineStartedAt = performance.now();
-  const onnxRaw = await runPalmLineOnnx(rawPalmCrop);
+  const onnxRaw = await runPalmLineOnnx(rawPalmCrop, { cropWidth: rawPalmCrop.width, cropHeight: rawPalmCrop.height, referenceSpan: referenceSpan(rawCropLandmarks) });
   const rawDetectedBeforeFallback = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
   const enhancedAttempted = rawDetectedBeforeFallback < 3;
   if (enhancedAttempted) onPhase("enhanced");
-  const onnxEnhanced = enhancedAttempted ? await runPalmLineOnnx(enhancedPalmCrop) : null;
+  const onnxEnhanced = enhancedAttempted ? await runPalmLineOnnx(enhancedPalmCrop, { cropWidth: enhancedPalmCrop.width, cropHeight: enhancedPalmCrop.height, referenceSpan: referenceSpan(palmCropLandmarks) }) : null;
   const threeLineElapsedMs = performance.now() - threeLineStartedAt;
 
   const chooseObservation = (cls: OnnxLineClass): { observation: OnnxLineObservation | null; variant: "raw" | "enhanced" } => {
@@ -895,6 +921,7 @@ export async function analyzePalmFromCanvas(
   const missingObservation = (cls: OnnxLineClass): OnnxLineObservation => ({
     class: cls,
     detected: false,
+    geometryStatus: "not_detected",
     pixelCount: 0,
     coverage: 0,
     boundingBox: null,
@@ -902,6 +929,7 @@ export async function analyzePalmFromCanvas(
     end: null,
     curveScore: 0,
     lineLength: 0,
+    normalizedLineLength: 0,
     avgThickness: 0,
   });
 
@@ -910,7 +938,11 @@ export async function analyzePalmFromCanvas(
         modelExecuted: true,
         heartLine: mapOnnxObservation(heartChoice.observation ?? missingObservation("heart_line"), provenanceFor(heartChoice)),
         headLine: mapOnnxObservation(headChoice.observation ?? missingObservation("head_line"), provenanceFor(headChoice)),
-        lifeLine: mapOnnxObservation(lifeChoice.observation ?? missingObservation("life_line"), provenanceFor(lifeChoice)),
+        lifeLine: (() => {
+          const observation = mapOnnxObservation(lifeChoice.observation ?? missingObservation("life_line"), provenanceFor(lifeChoice));
+          const geometry = classifyLifeLineGeometry(observation, lifeChoice.variant === "raw" ? rawCropLandmarks : palmCropLandmarks, lifeChoice.variant === "raw" ? rawPalmCrop.width : enhancedPalmCrop.width, lifeChoice.variant === "raw" ? rawPalmCrop.height : enhancedPalmCrop.height);
+          return { ...observation, anatomicalStatus: geometry.status, anatomicalReason: geometry.reason };
+        })(),
         fateLine: { presence: "unknown", note: "주요 3선 모델과 별도로 운명선 전용 보조 모델을 교차확인합니다." },
         mounts: "unknown",
         marks: "unknown",

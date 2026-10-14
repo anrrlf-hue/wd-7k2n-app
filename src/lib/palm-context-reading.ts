@@ -9,9 +9,8 @@ type LineKey = keyof typeof LINES;
 function describe(line: OnnxLineDetail | undefined): string {
   if (!line?.detected) return "판독하지 못함";
   const source = line.sourceVariant === "enhanced" ? "보정 영상 검출" : line.sourceVariant === "raw" ? "원본 사진 검출" : "검출";
-  const segmentLength = line.length && line.attributeSupport?.length !== "not_supported" ? `검출 구간 ${line.length}` : null;
-  const signal = line.depthStrength && line.attributeSupport?.depth !== "not_supported" ? `마스크 신호 ${line.depthStrength}` : null;
-  return [source, segmentLength, line.curve, signal].filter(Boolean).join(" · ") || "선 후보만 확인";
+  const curve = line.curve && line.attributeSupport?.curve !== "not_supported" ? `자동 분류 ${line.curve}` : null;
+  return [source, curve].filter(Boolean).join(" · ") || "선 후보만 확인";
 }
 
 function lineNarrative(key: LineKey, line: OnnxLineDetail): string {
@@ -30,7 +29,7 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
   const plan: ReadingPlan = {
     headline: "양손에서 확인한 모양을 함께 읽기",
     passages: [], evidence: [],
-    limits: ["사진에서 추정한 선의 모양을 전통적 상징으로 읽는 참고 풀이이며, 실제 성격·적성·수명·건강·미래를 판정하지 않습니다. 사용자가 선택한 주손을 기준으로 읽고 반대 사진은 비교 참고로 둡니다. 검출 구간의 양끝은 모델이 잡은 구간 끝점일 뿐, 손금 전체 경로와 실제 끝점·전체 길이는 확인하지 않았습니다."],
+    limits: ["사진에서 추정한 검출 구간의 자동 분류를 전통적 상징으로 읽는 참고 풀이이며, 곡률·길이·깊이는 독립 육안으로 확정하지 않습니다. 실제 성격·적성·수명·건강·미래를 판정하지 않습니다. 사용자가 선택한 주손을 기준으로 읽고 반대 사진은 비교 참고로 둡니다."],
   };
   for (const hand of ["left", "right"] as const) {
     const facts = hand === "left" ? left : right;

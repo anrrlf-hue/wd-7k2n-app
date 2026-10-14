@@ -123,6 +123,10 @@ export function buildContextualMonthReading(facts: SajuFacts, month: SajuAnnualM
       add("daeun-context", "현재 대운의 보상 주제가 이 구간에서는 역할과 약속을 통해 구체화되는 모습으로 읽힙니다. 맡을 책임이 달라진다면 필요한 자원과 돌아오는 대가도 함께 정해져 있는지 살펴보는 연결입니다.", ["daeun", "관성", "재성"]);
     } else if (background.includes("재성") && background.includes("비겁") && groups.includes("인성") && counts.인성 > 0 && counts.관성 > 0) {
       add("daeun-context", "현재 대운에는 자기 기준으로 맡을 몫을 정하는 주제와 결과·보상을 살피는 주제가 함께 놓입니다. 여기에 이달의 준비와 이해가 더해지면, 어떤 일을 어떤 조건으로 맡을지 판단 기준을 구체화하는 과정으로 볼 수 있습니다. 충분히 이해한 일에 책임을 다하려는 성향이 실제 역할과 보상에 어떻게 이어지는지가 이 구간의 연결점입니다.", ["daeun", "인성", "관성"]);
+    } else if (background.includes("관성") && groups.includes("관성")) {
+      add("daeun-context", "현재 대운에서 맡은 역할과 지켜야 할 약속이 이달의 관계 주제와 만납니다. 잘해내는 것만으로 끝내지 않고, 누가 무엇을 언제까지 맡을지 말로 정하는 장면으로 읽습니다.", ["daeun", "관성"]);
+    } else if (background.includes("비겁") && groups.includes("비겁")) {
+      add("daeun-context", "현재 대운에서 자기 몫과 선택을 정하는 주제가 이달의 관계 주제와 만납니다. 함께 움직이더라도 내가 결정할 부분과 상대와 합의할 부분을 나누는 장면으로 읽습니다.", ["daeun", "비겁"]);
     }
   }
   validateReadingPlan(plan);
