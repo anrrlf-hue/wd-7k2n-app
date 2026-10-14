@@ -444,7 +444,7 @@ function bestSecondaryLineSignal(
     status,
     strength,
     span: best.continuity,
-    creaseObservation: bounds ? { bounds: { x0: bounds.x / rawImage.width, y0: bounds.y / rawImage.height, x1: (bounds.x + bounds.width) / rawImage.width, y1: (bounds.y + bounds.height) / rawImage.height }, continuity: best.continuity, sourceVariant: best === raw ? "raw" : "enhanced" } : undefined,
+    creaseObservation: bounds ? { bounds: { x0: bounds.x / rawImage.width, y0: bounds.y / rawImage.height, x1: (bounds.x + bounds.width) / rawImage.width, y1: (bounds.y + bounds.height) / rawImage.height }, continuity: best.continuity, sourceVariant: best === raw ? "raw" : "enhanced", pathPoints: best.pathPoints?.map(point => ({ x: point.x / rawImage.width, y: point.y / rawImage.height })) } : undefined,
     note:
       status === "clear"
         ? `${label} 후보가 원본과 보정 신호에서 함께 이어집니다.`

@@ -7,6 +7,8 @@ export interface FateCandidateObservation {
   visibleVerticalSpan: number;
   /** Connected crease coverage of its search region, not a complete anatomical path. */
   creaseContinuity: number;
+  /** Actual connected foreground samples used for the candidate location. */
+  pathPoints: Array<{ x: number; y: number }>;
 }
 
 /** Retain position only when the real connected pixels overlap the model box.
@@ -14,7 +16,7 @@ export interface FateCandidateObservation {
 export function observeFateCandidate(base: SecondaryPalmLineSignal, model: { bbox: { x0: number; y0: number; x1: number; y1: number } } | null,
   landmarks: Array<{ x: number; y: number }>, width: number, height: number): FateCandidateObservation | undefined {
   const observation = base.creaseObservation;
-  if (!model || !observation || landmarks.length < 18 || width <= 0 || height <= 0) return;
+  if (!model || !observation?.pathPoints || observation.pathPoints.length < 5 || landmarks.length < 18 || width <= 0 || height <= 0) return;
   const b = observation.bounds, m = model.bbox;
   const overlapX = Math.max(0, Math.min(b.x1, m.x1) - Math.max(b.x0, m.x0));
   const overlapY = Math.max(0, Math.min(b.y1, m.y1) - Math.max(b.y0, m.y0));
@@ -31,5 +33,5 @@ export function observeFateCandidate(base: SecondaryPalmLineSignal, model: { bbo
   const visibleVerticalSpan = (b.y1 - b.y0) * height / palmLength;
   if (!Number.isFinite(visibleVerticalSpan) || visibleVerticalSpan <= 0 || visibleVerticalSpan > 2) return;
   return { version: "fate-candidate-v1", position: position < 0.33 ? "thumb_side" : position > 0.67 ? "pinky_side" : "middle",
-    visibleVerticalSpan, creaseContinuity: observation.continuity };
+    visibleVerticalSpan, creaseContinuity: observation.continuity, pathPoints: observation.pathPoints };
 }

@@ -96,7 +96,7 @@ export interface OnnxPalmLines {
 export type SecondaryLineStatus = "clear" | "faint" | "not_seen";
 
 export interface SecondaryPalmLineSignal {
-  creaseObservation?: { bounds: { x0: number; y0: number; x1: number; y1: number }; continuity: number; sourceVariant: "raw" | "enhanced" };
+  creaseObservation?: { bounds: { x0: number; y0: number; x1: number; y1: number }; continuity: number; sourceVariant: "raw" | "enhanced"; pathPoints?: Array<{ x: number; y: number }> };
   candidateObservation?: import("@/lib/palm-fate-observation").FateCandidateObservation;
   assessment?: "observed" | "not_observed" | "error" | "unsupported" | "unconfirmed";
   status: SecondaryLineStatus;
