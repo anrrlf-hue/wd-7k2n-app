@@ -12,7 +12,13 @@ const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
 const { enrichSajuFacts } = await import("../src/lib/oh-my-saju-adapter.ts");
 const { buildFreeSajuReport } = await import("../src/lib/free-report-mock.ts");
 const { buildPremiumReport } = await import("../src/lib/premium-report.ts");
-const { buildContextualMonthReading } = await import("../src/lib/premium-context-reading.ts");
+const { buildIntegratedPalmReading } = await import("../src/lib/integrated-palm-reading.ts");
+const { buildPremiumMonthNarrative } = await import("../src/lib/premium-month-narrative.ts");
+const { buildContextualMonthReading: buildContextualEvidenceReading } = await import("../src/lib/premium-context-reading.ts");
+// Keep helper-specific evidence assertions pointed at the helper; the actual
+// customer builder is exercised through buildPremiumReport and the coverage
+// artifact below, so a helper-only pass cannot mask a report regression.
+const buildContextualMonthReading = (facts, month) => buildContextualEvidenceReading(facts, month);
 const { buildPremiumPeriodPresentation } = await import("../src/lib/premium-period-presentation.ts");
 const { buildPalmBilateralReading } = await import("../src/lib/palm-bilateral.ts");
 const { buildPalmContextReading } = await import("../src/lib/palm-context-reading.ts");
@@ -57,10 +63,34 @@ for (const [i, birth] of births.entries()) {
   assert.ok(after.palmConnections.length > 0, "no self-response is required for independent palm/saju reading");
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report: after }));
   assert.ok(html.indexOf("premium-overall") < html.indexOf("1년의 주요 구간"));
-  assert.ok(!html.includes('aria-label="손금과 사주를 연결해 읽기"'), "v5 integrates observations into the corresponding reading rather than repeating a separate card");
+  const decodedHtml = html.replaceAll("&#x27;", "'").replaceAll("&quot;", '"').replaceAll("&amp;", "&");
+  if (after.version === "natal-customer-reading-2026-10-v14") {
+    assert.equal((decodedHtml.match(/aria-label="손금과 사주를 연결해 읽기"/g) ?? []).length, 1, "v14 renders one palm/saju context area");
+    for (const connection of after.palmConnections) {
+      for (const passage of connection.text.split("\n\n").filter(Boolean)) {
+        assert.equal(decodedHtml.split(passage).length - 1, 1, "each overall palm connection paragraph appears exactly once");
+      }
+    }
+    const integration = buildIntegratedPalmReading(facts, left, right, "right");
+    for (const domain of after.domains) {
+      const start = decodedHtml.indexOf(`id="premium-domain-${domain.key}"`);
+      assert.ok(start >= 0, `${domain.key} section exists`);
+      const end = decodedHtml.indexOf("</section>", start);
+      assert.ok(end > start, `${domain.key} section has a bounded end`);
+      const section = decodedHtml.slice(start, end + "</section>".length);
+      const expected = integration[domain.key]?.plan.passages.map(p => p.text).filter(Boolean) ?? [];
+      assert.ok(expected.length > 0, `${domain.key} has an expected integration plan`);
+      for (const text of expected) {
+        assert.equal(section.split(text).length - 1, 1, `${domain.key} keeps each integration paragraph in its own section`);
+        assert.equal(decodedHtml.split(text).length - 1, 1, `${domain.key} integration paragraph is not duplicated in overall or another domain prose`);
+      }
+    }
+  } else {
+    assert.equal((decodedHtml.match(/aria-label="손금과 사주를 연결해 읽기"/g) ?? []).length, 0, "v5-v13 retain the no-separate-card contract");
+  }
   for (const connection of after.palmConnections) {
     const passage = connection.text.split("\n\n")[0];
-    assert.ok(html.includes(passage), "the integrated passage remains visible in the report body");
+    assert.ok(decodedHtml.includes(passage), "the integrated passage remains visible in the report body");
   }
   assert.ok(html.indexOf("1년의 주요 구간") < html.indexOf("12개월 전체 흐름 펼쳐보기"));
   const displayed = buildPremiumPeriodPresentation(after);
@@ -86,6 +116,20 @@ for (const [i, birth] of births.entries()) {
     assert.ok(after.periods.every(p => !p.interpretation.passages.some(s => s.id === "strength-context" || s.id === "daeun-context")));
   }
   samples.push({ id: i + 1, birth, facts, free, before, after, presentation, palm: buildPalmBilateralReading(left, right, "right") });
+}
+const helperPlans = samples.flatMap(sample => sample.after.annual.months.map(month => buildContextualMonthReading(sample.facts, month)));
+assert.equal(helperPlans.length, 72, "read the contextual helper output for all 72 synthetic months");
+for (const plan of helperPlans) {
+  validateReadingPlan(plan);
+  assert.ok(plan.passages.every(p => /[.!?]$/.test(p.text.trim())), "each helper passage is a complete customer-readable sentence");
+}
+const noPalmReport = buildPremiumReport({ facts: samples[0].facts, referenceDate: date });
+const noPalmHtml = renderToStaticMarkup(createElement(PremiumReportView, { report: noPalmReport }));
+assert.equal((noPalmHtml.match(/aria-label="손금과 사주를 연결해 읽기"/g) ?? []).length, 0, "no-palm input renders no palm context area");
+for (const version of ["integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", "decision-reading-2026-10-v10", "lived-reading-2026-10-v11", "connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13"]) {
+  const legacyFixture = { ...samples[0].after, version };
+  const legacyHtml = renderToStaticMarkup(createElement(PremiumReportView, { report: legacyFixture }));
+  assert.equal((legacyHtml.match(/aria-label="손금과 사주를 연결해 읽기"/g) ?? []).length, 0, `${version} keeps the no-separate-card contract`);
 }
 assert.deepEqual(samples[0].before.periods, samples[1].before.periods, "reproduce the published collision");
 assert.notDeepEqual(samples[0].after.periods, samples[1].after.periods);

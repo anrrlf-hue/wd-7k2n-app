@@ -6,6 +6,7 @@ import { composeMonthStory, monthSymbolSubject, type MonthStory, monthMeaningCon
 import { normalizePalmFactsObservation, type PalmFacts } from "@/lib/palm-facts";
 import type { DominantHand } from "@/lib/palm-bilateral";
 import { palmPersonalLineReading } from "@/lib/palm-customer-reading";
+import { buildContextualMonthReading } from "@/lib/premium-context-reading";
 
 export const traditionalSymbolSubject = monthSymbolSubject;
 export type MonthReadingContext = { leftPalm?: PalmFacts | null; rightPalm?: PalmFacts | null; dominantHand?: DominantHand | null };
@@ -23,6 +24,38 @@ function natalAnchor(facts: SajuFacts, stem: string, branch: string) {
     if (exact ? god === wanted : TEN_GOD_GROUP[god] === TEN_GOD_GROUP[wanted]) return { pillar, part, god, exact };
   }
   return null;
+}
+
+function daeunMonthInteraction(facts: SajuFacts, stem: string, branch: string, area: PillarFact["pillar"]): { scene: string; meaning: string } | null {
+  const daeun = facts.currentDaeun;
+  if (!facts.hasTimeInput || !daeun) return null;
+  const background = new Set([TEN_GOD_GROUP[daeun.stemTenGod], TEN_GOD_GROUP[daeun.branchTenGod]].filter(Boolean));
+  const monthGroups = new Set([TEN_GOD_GROUP[stem], TEN_GOD_GROUP[branch]].filter(Boolean));
+  const setting = area === "day" ? "가까운 사람과 함께 정할 자리에서" : area === "month" ? "함께 일하는 자리에서" : area === "hour" ? "혼자 준비한 일을 마무리하는 자리에서" : "익숙한 사람들과 정할 자리에서";
+  if (background.has("관성") && background.has("식상") && monthGroups.has("관성") && monthGroups.has("인성")) {
+    return {
+      scene: `${setting} 방식을 조금 바꾸고 싶은데 익숙한 순서를 지키자는 답을 듣는 장면입니다.`,
+      meaning: "바꾸고 싶은 이유를 충분히 들어 주면, 자신의 뜻을 설명하는 일이 약속을 거스르는 행동처럼 느껴지지 않을 수 있습니다. 서로 지킬 뜻을 알아본 뒤에도 나다운 표현을 남길 수 있다는 경험이 부담을 덜어 줍니다.",
+    };
+  }
+  if (background.has("비겁") && background.has("관성") && monthGroups.has("관성") && monthGroups.has("인성")) {
+    return {
+      scene: `${setting} 일정을 대신 정해 주겠다는 제안을 들을 때, 고마우면서도 내가 고른 시간이 사라지는 듯한 아쉬움이 함께 남는 장면입니다.`,
+      meaning: "함께 정할 부분을 이야기하고 자신이 고르고 싶은 한 가지를 남기면, 도움은 내가 선택한 시간을 편하게 이어 주는 손길이 됩니다. 기대어도 자기 뜻을 잃지 않고 자기 뜻을 말해도 약속이 흔들리지 않는 경험에서 가까움이 자랍니다.",
+    };
+  }
+  return null;
+}
+
+function applyStrengthConnection(story: MonthStory, facts: SajuFacts, stem: string, branch: string): MonthStory {
+  if (!facts.dayStrengthReliable) return story;
+  if (facts.dayStrength === "weak" && TEN_GOD_GROUP[stem] === "비겁" && TEN_GOD_GROUP[branch] === "비겁") {
+    return { ...story, scene: `${story.scene} 이 마음을 혼자 지켜 내야 한다는 긴장이 함께하는 사람들 속에서 조금 풀릴 수 있지만, 서로 힘이 되는 것과 모두의 바람까지 내 몫으로 받아들이는 일은 다르게 남습니다.` };
+  }
+  if (facts.dayStrength === "strong" && stem === "편인" && branch === "비견") {
+    return { ...story, scene: `${story.scene} 설명이 늘어날수록 처음 정한 답만 더 단단해질 수 있어, 직접 겪고 편해졌던 한 순간이 다른 답을 가리킨다면 그 차이도 자기 판단 안에 들어올 자리가 필요합니다.` };
+  }
+  return story;
 }
 
 // Observations change the selected scene and its resolution. They are not a
@@ -124,16 +157,34 @@ export function buildPremiumMonthNarrative(facts: SajuFacts, month: SajuAnnualMo
   const base = composeMonthStory(stem, branch, area, anchor?.god ?? null);
   const observed = withObservedScene(base, stem, branch, area, context, evidence);
   const year = buildPremiumYearNarrative(symbols.year);
-  const story = composeMonthStory(stem, branch, area, anchor?.god ?? null, { year, observedStory: observed.story, mode: observed.mode });
+  const strengthGod = anchor?.god ?? null;
+  const interaction = !observed.mode ? daeunMonthInteraction(facts, stem, branch, area) : null;
+  const storyBase = composeMonthStory(stem, branch, area, strengthGod, { year,
+    ...(observed.mode || observed.refs.length ? { observedStory: observed.story, ...(observed.mode ? { mode: observed.mode } : {}) } : {}) });
+  const strengthStory = applyStrengthConnection(storyBase, facts, stem, branch);
+  const story = interaction ? { ...strengthStory, scene: `${strengthStory.scene} ${interaction.scene}`, meaning: `${strengthStory.meaning} ${interaction.meaning}` } : strengthStory;
   if (year) {
     evidence.push({ id: "year-branch", kind: "calculated", source: "annual branch main hidden stem compared with facts.dayStem", value: `${symbols.year.branch}:${year.branchGod}` });
   }
   const scene = story.scene;
+  const meaning = story.meaning;
   const passages: ReadingPlan["passages"] = [
     { id: "month-relation", kind: "traditional", text: story.opening, evidenceIds: ["month-stem", "month-branch"] },
-    { id: "month-lived-scene", kind: "reflection", text: scene, evidenceIds: [...refs, ...observed.refs] },
-    { id: "month-lived-resolution", kind: "reflection", text: story.meaning, evidenceIds: [...refs, ...observed.refs, ...(year ? ["year-branch"] : [])] },
+    { id: "month-lived-scene", kind: "reflection", text: scene, evidenceIds: [...refs, ...observed.refs, ...(facts.dayStrengthReliable ? ["strength"] : []), ...(interaction ? ["daeun"] : [])] },
+    { id: "month-lived-resolution", kind: "reflection", text: meaning, evidenceIds: [...refs, ...observed.refs, ...(year ? ["year-branch"] : []), ...(facts.dayStrengthReliable ? ["strength"] : []), ...(interaction ? ["daeun"] : [])] },
   ];
+  // The customer path must use the same calculated context that is shown in
+  // the evidence: natal proportions, reliable strength, natal position and
+  // the current daeun.  Keeping this selection here prevents the annual
+  // report from silently falling back to a month-symbol/first-anchor story.
+  const contextual = buildContextualMonthReading(facts, month);
+  evidence.push(...contextual.evidence.filter(item => !evidence.some(existing => existing.id === item.id)));
+  // Keep the month scene readable: the context helper supplies the chosen
+  // branch, while generic strength/position/scene paragraphs would repeat in
+  // every month. The authored combination and daeun branches are materially
+  // different and are therefore surfaced in the customer plan.
+  const usedEvidence = new Set(passages.flatMap(p => p.evidenceIds));
+  evidence.splice(0, evidence.length, ...evidence.filter(item => usedEvidence.has(item.id)));
   if (previous) {
     const prior = describeAnnualMonthSymbols(facts, previous);
     if (prior.month.stemTenGod && prior.month.branchTenGod) {

@@ -46,7 +46,7 @@ for (const label of ['2026년 10월', '2027년 2월', '2027년 3월']) {
   if (label.endsWith('10월')) for (const r of [base, other]) assert.doesNotMatch(r.plan.passages.map(p => p.text).join(' '), /업무|같은 속도로 익혀|배운 방법/);
   if (label.endsWith('3월')) {
     assert.match(passage(base, 'month-relation').text, /바꾸고 싶은 뜻.*지키고 싶은 마음/);
-    assert.match(passage(base, 'month-lived-scene').text, /작은 불편.*가까운 사람|함께 쓰는 자료/);
+    assert.match(passage(base, 'month-lived-scene').text, /마음에 둔 것.*고쳐 쓸|작은 불편.*가까운 사람|함께 쓰는 자료/);
     assert.match(final(base), /작은 예로 보여|불편했던 한 곳/);
     assert.match(final(other), /원했던 뜻이 알아보이는|실제로 고친 불편/);
     assert.doesNotMatch(final(base), /다시 손이 가|조용한 애착|자주 쓰며 편/);
