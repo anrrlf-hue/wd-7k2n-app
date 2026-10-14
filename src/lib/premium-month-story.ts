@@ -143,8 +143,11 @@ export function composeMonthStory(stem: string, branch: string, area: MonthArea,
   const exact = EXACT[`${stem}|${branch}`];
   const relation = exact ?? RELATION[a][b];
   const opening = relation.text;
-  const story: MonthStory = context?.observedStory ?? { id: `${stem}:${branch}:${area}:${natalGod ?? "none"}`, headline: exact?.headline ?? (stem === branch ? relation.headline : `${monthSymbolSubject(stem)} · ${monthSymbolSubject(branch)}`),
+  const generated: MonthStory = { id: `${stem}:${branch}:${area}:${natalGod ?? "none"}`, headline: exact?.headline ?? (stem === branch ? relation.headline : `${monthSymbolSubject(stem)} · ${monthSymbolSubject(branch)}`),
     opening, meaning: relation.outcome, scene: livedScene(stem, branch, area, natalGod), thread: "" };
+  const story: MonthStory = context?.observedStory && (context.mode || context.observedStory.scene !== generated.scene || context.observedStory.meaning !== generated.meaning)
+    ? { ...generated, scene: context.observedStory.scene, meaning: context.observedStory.meaning, thread: context.observedStory.thread }
+    : generated;
   return connectYearToMonth(story, stem, branch, area, context?.year ?? null, context?.mode);
 }
 
