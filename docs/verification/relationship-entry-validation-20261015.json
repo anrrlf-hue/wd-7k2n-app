@@ -1,0 +1,30 @@
+{
+  "branch": "fix/saju-input-clarity-20261015",
+  "commit": "b4576be",
+  "scope": "post-reading relationship comparison entry",
+  "changes": {
+    "entryVisibleAfterPersonalAndBilateralResults": true,
+    "nestedDisclosureRemoved": true,
+    "relationshipPurposeRequiresExplicitSelection": true,
+    "defaultPurpose": null,
+    "existingPersonCompareApiPreserved": true,
+    "savedPersonReusePreserved": true
+  },
+  "staticAndUnitVerification": {
+    "typescript": "pass",
+    "eslint": "pass",
+    "personCompareV1": "pass",
+    "freeSajuV3": "pass"
+  },
+  "browserVerification": {
+    "entryResultErrorCloseReentry": "blocked",
+    "blocker": "Existing test-palm-customer-browser fixture timed out before the bilateral-result screen (15s), so the new interaction sequence was not reached in this environment.",
+    "apiCallsWereNotChanged": true
+  },
+  "restrictions": {
+    "mainMerged": false,
+    "productionDeployed": false,
+    "shareRewardChanged": false,
+    "readingBodyChanged": false
+  }
+}
