@@ -19,7 +19,7 @@ type Stage = "ready" | "loading" | "premium";
 const STORAGE_KEY = "saju-app:integrated-premium:v1";
 const TRIAL_STORAGE_KEY = "saju-app:premium-trial:v1";
 
-async function requestTrial(body: string, task: AbortController, action: "verify" | "participate", extra: { trialReceipt?: string; participation?: "native_share" | "clipboard" }) {
+async function requestTrial(body: string, task: AbortController, action: "verify" | "participate", extra: { trialReceipt?: string }) {
   return runWithDeadline(task.signal, 30_000, "참여 확인이 오래 걸려 중단했어요. 다시 시도해주세요.", async signal => {
     const response = await fetch("/api/premium-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...JSON.parse(body), trialAction: action, ...extra }), signal });
     const data = await response.json() as { eligible?: boolean; trialReceipt?: string };
@@ -88,15 +88,16 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
       }
       let savedTrial: { identity?: string; receipt?: string } | null = null;
       try { savedTrial = JSON.parse(sessionStorage.getItem(TRIAL_STORAGE_KEY) || "null"); } catch { /* Optional storage. */ }
-      if (savedTrial?.identity !== identity || typeof savedTrial.receipt !== "string") { setTrialState("locked"); return; }
-      const receipt = savedTrial.receipt;
+      const savedReceipt = savedTrial?.identity === identity && typeof savedTrial.receipt === "string" ? savedTrial.receipt : undefined;
       const task = slot.begin();
-      void requestTrial(body, task, "verify", { trialReceipt: receipt }).then(() => {
+      void requestTrial(body, task, "verify", savedReceipt ? { trialReceipt: savedReceipt } : {}).then(data => {
         if (!mounted || !slot.isCurrent(task)) return;
-        setTrialReceipt(receipt); setTrialIdentity(identity); setTrialState("eligible");
+        if (typeof data.trialReceipt !== "string") throw new Error("Trial receipt missing");
+        setTrialReceipt(data.trialReceipt); setTrialIdentity(identity); setTrialState("eligible");
+        try { sessionStorage.setItem(TRIAL_STORAGE_KEY, JSON.stringify({ identity, receipt: data.trialReceipt })); } catch { /* Optional presentation state. */ }
       }).catch(() => {
         if (!mounted || !slot.isCurrent(task)) return;
-        setTrialState("locked"); setError("이 풀이의 무료 체험 참여를 다시 확인해주세요. 공유 또는 링크 복사로 참여할 수 있어요.");
+        setTrialState("locked"); setError("상대방이 무료 풀이를 완료한 뒤 무료 체험을 확인할 수 있어요. 완료 후 다시 확인해주세요.");
       }).finally(() => slot.finish(task));
     });
     let interrupted = false;
@@ -115,13 +116,13 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
     try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ identity, report, previousReport: previous })); } catch { /* Storage is optional. */ }
   }
 
-  async function registerParticipation(participation: "native_share" | "clipboard") {
+  async function registerParticipation() {
     if (activeIdentity.current !== identity) return;
     const task = tasks.current.begin();
     setError(null); setTrialState("checking");
     let receipt: string | null = null;
     try {
-      const data = await requestTrial(body, task, "participate", { participation });
+      const data = await requestTrial(body, task, "verify", {});
       if (!tasks.current.isCurrent(task) || activeIdentity.current !== identity) return;
       if (typeof data.trialReceipt !== "string") throw new Error("Trial receipt missing");
       receipt = data.trialReceipt;
@@ -136,7 +137,7 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
 
   async function loadPremium(refresh = false, verifiedReceipt?: string) {
     const receipt = verifiedReceipt ?? trialReceipt;
-    if (!receipt || (!eligible && !verifiedReceipt)) { setError("링크 공유 또는 복사로 이벤트에 참여한 뒤 무료 체험을 열 수 있어요."); return; }
+    if (!receipt || (!eligible && !verifiedReceipt)) { setError("상대방이 무료 풀이를 완료한 뒤 무료 체험을 열 수 있어요."); return; }
     if (premiumReport && !refresh && !refreshRequested) { setStage("premium"); return; }
     setRefreshRequested(refresh || refreshRequested);
     const task = tasks.current.begin();
@@ -180,7 +181,7 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
       {trialState === "checking" && <p role="status" className="mt-3 text-sm">이 풀이의 이벤트 참여를 확인하고 있어요.</p>}
       {!eligible && <ServiceShareCard trial onCompleted={registerParticipation} />}
       {refreshRequested && premiumReport && <Button variant="outline" className="mt-3 min-h-11 w-full" onClick={() => { setRefreshRequested(false); setError(null); setStage("premium"); }}>저장된 리포트 보기</Button>}
-      <p className="mt-2 text-center text-xs leading-6 text-muted-foreground">향후 유료로 제공할 깊은풀이를 현재 공유 이벤트 참여 후 무료로 체험할 수 있습니다. 기기 공유창의 정상 완료 또는 링크 복사 성공이 참여 조건이며, 결제는 없습니다.</p>
+      <p className="mt-2 text-center text-xs leading-6 text-muted-foreground">상대방 세션의 서버 확인된 무료 풀이 완료 후 무료 체험을 열 수 있습니다. 쿠키 삭제·다른 기기 자기추천은 같은 사람인지 판별하지 못합니다.</p>
       <p className="mt-1 text-center text-xs leading-6 text-muted-foreground">이 탭에서 다시 열 수 있어요. 사진 원본은 저장하지 않습니다.</p>
       {error && <p role="alert" className="mt-4 text-sm leading-6 text-destructive">{error}</p>}
     </section>}
@@ -190,7 +191,7 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
       <Button variant="outline" onClick={cancel} className="mt-4">리포트 요청 취소</Button>
     </div>}
     {stage === "premium" && premiumReport && eligible && <>
-      <p className="text-sm leading-7">이 풀이의 공유 이벤트 참여가 확인되어 무료 체험 중입니다. 공유창 완료·복사 성공을 확인했으며 실제 전달·신규 방문을 확인한 것은 아닙니다.</p>
+      <p className="text-sm leading-7">다른 익명 세션의 서버 확인된 무료 풀이 완료로 공유 이벤트 보상이 확인되어 무료 체험 중입니다.</p>
       {isRenderablePremiumReport(premiumReport) ? <PremiumReportView report={premiumReport} /> : <LegacyPremiumReportView report={premiumReport} />}
       <details className="mt-5 rounded-2xl border border-border p-4 text-sm leading-7">
         <summary className="cursor-pointer">저장해둔 풀이 다시 보기</summary>

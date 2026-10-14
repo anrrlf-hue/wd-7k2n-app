@@ -110,6 +110,7 @@ export default function DiagnosisPage() {
   const readingReference = useRef<ReadingReference | null>(null);
   const questionRequest = useRef<AbortController | null>(null);
   const [referenceExplanation, setReferenceExplanation] = useState<CautionExplanation | null>(null);
+  const referralToken = useRef<string | null>(null);
 
   useEffect(() => {
     const cancel = () => {
@@ -129,6 +130,8 @@ export default function DiagnosisPage() {
       if (cancelled) return;
       try {
         const params = new URLSearchParams(window.location.search);
+        const ref = params.get("ref");
+        referralToken.current = ref && /^[A-Za-z0-9_-]{43}$/.test(ref) ? ref : null;
         const nextMode: JourneyMode = params.get("mode") === "question" ? "question" : "free";
         const focusParam = params.get("focus");
         const urlFocus = focusParam ? parseSajuFocus(focusParam) : null;
@@ -310,6 +313,7 @@ export default function DiagnosisPage() {
           ...birthInput,
           focus,
           mbti: mbti !== "모름" ? mbti : undefined,
+          referralToken: referralToken.current ?? undefined,
         }),
         signal: controller.signal,
       });

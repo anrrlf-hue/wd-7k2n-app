@@ -8,6 +8,9 @@ import { buildPremiumReport } from "@/lib/premium-report";
 import { SAJU_FOCUS_VALUES } from "@/lib/saju-focus";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { issuePremiumTrial, verifyPremiumTrial } from "@/lib/premium-trial";
+import { cookies } from "next/headers";
+import { createAnonymousSessionId, REFERRAL_MAX_AGE_SECONDS, REFERRAL_SESSION_COOKIE, isReferralSession } from "@/lib/referral";
+import { hasReferralReward, isReferralStoreConfigured } from "@/lib/referral-store";
 
 const bodySchema = z.object({
   year: z.number().int().min(1900).max(2035),
@@ -34,15 +37,33 @@ export async function POST(request: Request) {
     const input = { ...parsed.data, focus: parsed.data.focus ?? "overall", mbti: parsed.data.mbti ?? null,
       leftPalmFacts: parsed.data.leftPalmFacts ?? null, rightPalmFacts: parsed.data.rightPalmFacts ?? null,
       dominantHand: parsed.data.dominantHand ?? null };
+    const cookieStore = await cookies();
+    const existingSession = cookieStore.get(REFERRAL_SESSION_COOKIE)?.value;
+    const validExisting = isReferralSession(existingSession);
+    const sessionId = validExisting ? existingSession : createAnonymousSessionId();
+    const responseHeaders = { "Cache-Control": "no-store" };
+    const finish = (response: NextResponse) => {
+      if (!validExisting) response.cookies.set(REFERRAL_SESSION_COOKIE, sessionId, {
+        httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: REFERRAL_MAX_AGE_SECONDS,
+      });
+      return response;
+    };
     if (raw.trialAction === "participate") {
-      if (raw.participation !== "native_share" && raw.participation !== "clipboard") {
-        return NextResponse.json({ error: "공유 완료 또는 링크 복사 성공 후 참여할 수 있어요." }, { status: 400 });
+      return finish(NextResponse.json({ error: "공유창 완료나 복사만으로는 무료 체험을 열 수 없어요. 상대방의 무료 풀이 완료가 필요합니다." }, { status: 400, headers: responseHeaders }));
+    }
+    if (raw.trialAction === "verify") {
+      if (!isReferralStoreConfigured() || !(await hasReferralReward(sessionId))) {
+        return finish(NextResponse.json({ eligible: false, error: "공유 링크를 연 사람이 무료 풀이를 완료한 뒤 무료 체험을 열 수 있어요." }, { status: 403, headers: responseHeaders }));
       }
-      return NextResponse.json({ eligible: true, trialReceipt: issuePremiumTrial(input, raw.participation) }, { headers: { "Cache-Control": "no-store" } });
+      return finish(NextResponse.json({ eligible: true, trialReceipt: issuePremiumTrial(input) }, { headers: responseHeaders }));
+    }
+    // A receipt alone is never sufficient: every premium generation rechecks
+    // the persisted inviter reward, so old/browser-forged receipts cannot bypass it.
+    if (!isReferralStoreConfigured() || !(await hasReferralReward(sessionId))) {
+      return finish(NextResponse.json({ eligible: false, error: "공유 링크를 연 사람이 무료 풀이를 완료한 뒤 무료 체험을 열 수 있어요." }, { status: 403, headers: responseHeaders }));
     }
     const receipt = verifyPremiumTrial(input, raw.trialReceipt);
-    if (!receipt) return NextResponse.json({ eligible: false, error: "링크 공유 또는 복사로 이벤트에 참여한 뒤 이 풀이를 무료로 체험할 수 있어요." }, { status: 403 });
-    if (raw.trialAction === "verify") return NextResponse.json({ eligible: true, participation: receipt.participation }, { headers: { "Cache-Control": "no-store" } });
+    if (!receipt) return finish(NextResponse.json({ eligible: false, error: "공유 링크를 연 사람이 무료 풀이를 완료한 뒤 무료 체험을 열 수 있어요." }, { status: 403, headers: responseHeaders }));
     if (raw.trialAction !== undefined) return NextResponse.json({ error: "요청을 확인하지 못했어요." }, { status: 400 });
     const shallow = computeSajuFacts(parsed.data);
     const facts = parsed.data.hour === null ? shallow : enrichSajuFacts(shallow, parsed.data);
