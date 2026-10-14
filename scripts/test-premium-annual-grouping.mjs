@@ -17,11 +17,13 @@ const periods = buildPremiumPeriods(annual, facts);
 assert.equal(periods.length, 12);
 assert.deepEqual(periods.flatMap(p => p.months), annual.months.map(m => m.label));
 assert.equal(new Set(periods.map(p => p.symbols.month.ganzhi)).size, 12);
-assert.ok(periods.every(p => p.reading.includes(p.symbols.month.ganzhi)));
+assert.ok(periods.every(p => p.basis.includes(`세운 ${p.symbols.year.ganzhi} · 월운 ${p.symbols.month.ganzhi}`)),
+  'each chronological reading retains its exact annual and monthly symbols in the customer basis');
 assert.notEqual(periods[4].reading, periods[5].reading);
 assert.notEqual(periods[10].reading, periods[11].reading);
 assert.notEqual(periods[3].symbols.year.ganzhi, periods[4].symbols.year.ganzhi,
   'the annual background changes at the solar-year boundary');
-assert.ok(periods[4].reading.includes(periods[3].symbols.year.ganzhi)
-  && periods[4].reading.includes(periods[4].symbols.year.ganzhi));
+assert.ok(periods[4].interpretation.passages.some(p => p.evidenceIds.includes('year-stem'))
+  && periods[4].interpretation.passages.some(p => p.evidenceIds.includes('year-branch')),
+  'the new solar-year symbols shape the February scene and resolution');
 console.log('PASS exact monthly stem/branch, year boundary and 12 chronological readings despite identical broad groups');

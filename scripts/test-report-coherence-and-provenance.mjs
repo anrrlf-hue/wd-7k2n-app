@@ -40,7 +40,14 @@ assert.ok(free.cautions.every(item => !/균형 구조/.test(item.evidence)));
 assert.ok(free.strengths.every(item => !/직접 밀어붙이는 추진력/.test(item.title)));
 assert.match(verdict.text, /약속의 기준을 이해하고 결과로 설명/);
 assert.doesNotMatch(verdict.text, /큰 나무처럼|당신은 .* 사람입니다/);
-assert.match(premium.summary, /완료|기준|요구/);
+assert.match(premium.summary, /이해.*전하|설명.*전달/,
+  "the premium lead must carry understanding into communication");
+assert.match(premium.summary, /상대.*도움|상대.*쓰임/,
+  "the premium lead must keep the other person's benefit in view");
+assert.match(premium.overall.paragraphs[0], /맡은 일.*이해.*(?:밖으로 보여|전달)/,
+  "the overall reading must connect the duty lead to its outward expression");
+assert.match(premium.overall.basis, /관성 3개가 다른 각 그룹보다 많고/,
+  "the reading must retain the invented chart's computed duty evidence");
 assert.equal(premium.periods.length, 12);
 const cautionTexts = free.cautions.map(item => item.detail);
 assert.equal(new Set(cautionTexts).size, 3);
