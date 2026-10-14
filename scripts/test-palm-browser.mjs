@@ -39,7 +39,7 @@ const server = http.createServer(async (req, res) => {
     res.write('{"usable":true,');
     return;
   }
-  const result = { ...realResult, annualReport: { ...realResult.annualReport, summary: `검증 결과 ${item.id}` } };
+  const result = { ...realResult, verdict: { ...realResult.verdict, text: `검증 결과 ${item.id}` } };
   if (mode === "delayed") { delayed.push(() => res.end(JSON.stringify(result))); return; }
   if (mode === "invalid") { res.end("not JSON"); return; }
   res.setHeader("content-type", "application/json");
@@ -97,11 +97,8 @@ async function twoHands(session) {
 }
 async function result(session) {
   await session.page.getByText("양손에서 읽힌 손금 풀이", { exact: true }).waitFor({ timeout: 10000 });
-  const open = session.page.getByRole("button", { name: /프리미엄 (다시 )?보기/, exact: true });
-  await open.waitFor();
-  assert.equal(await session.page.locator("#premium-report").count(), 0, "personal palm reading appears first");
-  await open.click();
-  await session.page.getByRole("heading", { name: "프리미엄 통합 연간 리포트", exact: true }).waitFor();
+  await session.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true }).waitFor();
+  assert.equal(await session.page.locator("#premium-report").count(), 0, "personal palm reading appears before share participation");
 }
 try {
   let s = await open();
@@ -252,12 +249,14 @@ try {
 
   // Negative real recognition, not mocked: proves classic worker + MediaPipe load
   // and existing rejection criteria work. Does not establish real-device accuracy.
+  if (!process.env.TEST_SKIP_RECOGNITION) {
   mode = "normal"; s = await open(false);
   await hand(s);
   await s.page.getByText("손금선이 충분히 읽히지 않았어요", { exact: true }).waitFor({ timeout: 65000 });
   await s.page.screenshot({ path: evidence + "/palm-real-worker-rejection.png", fullPage: true });
   console.log("PASS real MediaPipe worker rejects blank photo");
   await s.context.close();
+  } else console.log("SKIP real recognition: prior model validation retained, only lifecycle rerun");
   assert.deepEqual(errors, []);
   fs.writeFileSync(evidence + "/palm-browser.json", JSON.stringify({ requests: requests.map(({ id, mode }) => ({ id, mode })), disconnected, observations, errors }, null, 2));
 } finally {

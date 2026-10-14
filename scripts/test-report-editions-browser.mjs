@@ -26,7 +26,8 @@ async function api(path, body) {
   assert.equal(response.status, 200); return response.json();
 }
 const free = await api("/api/palm/interpret", { ...birthFixture, palmFacts: null });
-const current = await api("/api/premium-report", birthFixture);
+const { trialReceipt } = await api("/api/premium-report", { ...birthFixture, trialAction: "participate", participation: "clipboard" });
+const current = await api("/api/premium-report", { ...birthFixture, trialReceipt });
 const KEY = "saju-app:integrated-premium:v1";
 const body = JSON.stringify({ ...birthFixture, mbti: null, leftPalmFacts: null, rightPalmFacts: null, dominantHand: null });
 const palmKey = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender, "palm"].join(":");
@@ -42,6 +43,7 @@ try {
     const url = new URL(route.request().url());
     if (url.origin !== BASE) return route.abort();
     if (url.pathname === "/api/premium-report") {
+      if (route.request().postDataJSON()?.trialAction === "verify") return route.fulfill({ json: { eligible: true } });
       requests.push({ mode, body: route.request().postData() });
       if (mode === "hold") { held = route; heldReady(); return; }
       return route.fulfill(mode === "failure" ? { status: 500, json: { error: "검증용 일시 오류" } } : { json: current });
@@ -49,21 +51,22 @@ try {
     if (url.pathname.startsWith("/api/")) { unexpected.push(url.pathname); return route.abort(); }
     return route.continue();
   });
-  await context.addInitScript(({ KEY, body, legacy, palmKey, free, palmEntryKey, entry }) => {
+  await context.addInitScript(({ KEY, body, legacy, palmKey, free, palmEntryKey, entry, trialReceipt }) => {
     if (!sessionStorage.getItem(palmEntryKey)) sessionStorage.setItem(palmEntryKey, entry);
     if (sessionStorage.getItem("edition-test-seeded")) return;
     sessionStorage.setItem("edition-test-seeded", "1");
+    sessionStorage.setItem("saju-app:premium-trial:v1", JSON.stringify({ identity: body, receipt: trialReceipt }));
     sessionStorage.setItem(KEY, JSON.stringify({ identity: `2025년 10월:${body}`, report: legacy }));
     sessionStorage.setItem(palmKey, JSON.stringify({ stage: "saju_only", palmFacts: null, leftPalmFacts: null, rightPalmFacts: null, dominantHand: null, finalReport: free.freeReport.report, tripleCompare: [], personalityKey: "null" }));
-  }, { KEY, body, legacy, palmKey, free, palmEntryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture) });
+  }, { KEY, body, legacy, palmKey, free, palmEntryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture), trialReceipt });
   const page = await context.newPage(); page.setDefaultTimeout(15000);
   page.on("pageerror", e => errors.push(e.message));
   const saved = () => page.evaluate(key => JSON.parse(sessionStorage.getItem(key)), KEY);
   const url = BASE + "/diagnosis/palm";
   const revealEditions = async () => {
     await page.waitForFunction(() => document.querySelector("#premium-report")
-      || Array.from(document.querySelectorAll("button")).some(button => button.textContent?.trim() === "프리미엄 다시 보기"));
-    const ready = page.getByRole("button", { name: "프리미엄 다시 보기", exact: true });
+      || Array.from(document.querySelectorAll("button")).some(button => button.textContent?.trim() === "프리미엄 무료 체험 다시 보기"));
+    const ready = page.getByRole("button", { name: "프리미엄 무료 체험 다시 보기", exact: true });
     if (await ready.isVisible()) await ready.click();
     const summary = page.getByText("저장해둔 풀이 다시 보기", { exact: true });
     await summary.waitFor();
@@ -88,7 +91,7 @@ try {
   assert.equal(requests.length, 2, "retry after failed explicit update actually requests the new edition");
   assert.deepEqual((await saved()).report, current.report);
   assert.deepEqual((await saved()).previousReport, legacy);
-  assert.deepEqual(requests.map(r => JSON.parse(r.body)), [JSON.parse(body), JSON.parse(body)]);
+  assert.deepEqual(requests.map(r => JSON.parse(r.body)), [{ ...JSON.parse(body), trialReceipt }, { ...JSON.parse(body), trialReceipt }]);
   await page.getByRole("button", { name: "다른 저장본 보기", exact: true }).click();
   await upgrade().waitFor();
   await page.reload(); await revealEditions(); await upgrade().waitFor();
@@ -97,7 +100,7 @@ try {
   await page.getByRole("status").filter({ hasText: "깊은풀이를 준비" }).waitFor();
   await waitForHeld;
   await page.getByRole("button", { name: "리포트 요청 취소", exact: true }).click();
-  await page.getByRole("button", { name: "프리미엄 다시 보기", exact: true }).click();
+  await page.getByRole("button", { name: "프리미엄 무료 체험 다시 보기", exact: true }).click();
   await revealEditions();
   await upgrade().waitFor();
   assert.deepEqual((await saved()).report, legacy);

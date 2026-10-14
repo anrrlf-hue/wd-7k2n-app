@@ -108,9 +108,9 @@ export function buildIntegratedPalmReading(facts: SajuFacts, left: PalmFacts, ri
   const secondary: Array<{ hand: DominantHand; key: "fate" | "sun" | "wealth"; name: string; ref: string }> = [];
   for (const hand of ["left", "right"] as const) for (const [key, name] of [["fate", "운명선"], ["sun", "태양선"], ["wealth", "재물선"]] as const) {
     const signal = hands[hand].secondaryLines?.[key];
-    if (secondaryObservationState(key, signal) !== "observed" || signal?.status !== "clear" || (key === "fate" && !signal.corroborated)) continue;
+    if (secondaryObservationState(key, signal) !== "observed" || signal?.status !== "clear" || (key === "fate" && (!signal.corroborated || !signal.candidateObservation))) continue;
     const ref = `${hand}.secondary.${key}`;
-    evidence.push({ id: ref, kind: "observed", source: `${hand}PalmFacts.secondaryLines.${key}`, value: `${signal.status};corroborated=${signal.corroborated ?? false}` });
+    evidence.push({ id: ref, kind: "observed", source: `${hand}PalmFacts.secondaryLines.${key}`, value: JSON.stringify({ status: signal.status, corroborated: signal.corroborated ?? false, candidateObservation: signal.candidateObservation ?? null }) });
     secondary.push({ hand, key, name, ref });
   }
   if (secondary.length) {

@@ -19,11 +19,35 @@ const MEANING: Record<string, SymbolMeaning> = {
   정인: { subject: "확인된 설명과 도움", proposal: "검증해 익힌 설명과 도움", condition: "확인된 자료와 필요한 도움", result: "설명과 지원의 확인 범위" },
 };
 const PILLAR_LABEL: Record<PillarFact["pillar"], string> = { year: "연", month: "월", day: "일", hour: "시" };
-const AREA: Record<PillarFact["pillar"], { scene: string; name: string }> = {
-  year: { scene: "익숙한 관계에서", name: "오래 익숙한 환경" },
-  month: { scene: "일에서 맡아온 방식을 살피며", name: "일과 사회적 역할" },
-  day: { scene: "가까운 사람과 선택을 의논하며", name: "가까운 관계" },
-  hour: { scene: "생각해 둔 일을 마무리하며", name: "마무리 방식" },
+const AREA: Record<PillarFact["pillar"], Record<TenGodGroup, string>> = {
+  year: {
+    비겁: "오래 알고 지낸 사람들과 각자 원하는 주말을 이야기할 때",
+    식상: "익숙한 모임에서 새로 해 본 것을 나누려 할 때",
+    재성: "여럿이 함께 쓰는 비용이나 물건을 고를 때",
+    관성: "가족이나 익숙한 사람의 부탁과 내 일정이 겹칠 때",
+    인성: "늘 듣던 조언을 지금 생활에 써 보려 할 때",
+  },
+  month: {
+    비겁: "일에서 내가 편하게 하던 방법을 다른 사람도 쓰게 할 때",
+    식상: "공들인 결과를 처음 다른 사람에게 보여 줄 때",
+    재성: "하던 일의 대가나 준비 비용을 다시 말할 때",
+    관성: "마무리하던 일에 새 부탁이 더해질 때",
+    인성: "배운 방법을 실제 업무에서 처음 써 볼 때",
+  },
+  day: {
+    비겁: "가까운 사람과 쉬는 날을 어떻게 보낼지 이야기할 때",
+    식상: "가까운 사람에게 기뻤던 소식이나 새 생각을 말할 때",
+    재성: "함께 살 물건을 고르며 각자 쓸 장면을 떠올릴 때",
+    관성: "만남을 기다렸는데 서로의 일정이 달라졌을 때",
+    인성: "가까운 사람의 고민을 듣고 어떻게 도울지 생각할 때",
+  },
+  hour: {
+    비겁: "혼자 마음에 두었던 일을 작은 규모로 시작할 때",
+    식상: "취미로 만들던 것을 끝내고 누군가에게 보여 줄 때",
+    재성: "앞으로 하고 싶은 일에 필요한 비용을 마련할 때",
+    관성: "오늘 끝내려던 일과 새로 해 보고 싶은 일이 겹칠 때",
+    인성: "관심 있던 내용을 배운 뒤 직접 해 보려 할 때",
+  },
 };
 function group(god: string | null): TenGodGroup | null { return god ? TEN_GOD_GROUP[god] ?? null : null; }
 export function traditionalSymbolSubject(god: string | null): string {
@@ -166,7 +190,7 @@ export function buildPremiumMonthNarrative(
   if (anchor) {
     const { pillar, part, god } = anchor;
     anchorLabel = `${PILLAR_LABEL[pillar.pillar]}${part === "stem" ? "간" : "지"} ${Array.from(pillar.ganzhi)[part === "stem" ? 0 : 1]}/${god}`;
-    anchorScene = AREA[pillar.pillar].scene;
+    anchorScene = AREA[pillar.pillar][group(branch) ?? group(stem) ?? "인성"];
     evidence.push({ id: "natal-anchor", kind: "calculated", source: `facts.pillars.${pillar.pillar}.${part}TenGod`, value: anchorLabel });
   }
   const frame = yearFrame(symbols);
@@ -175,21 +199,10 @@ export function buildPremiumMonthNarrative(
   const condition = MEANING[branch].condition;
   const headline = decisionPlan.headline;
   add("year-common-frame",
-    `세운 ${symbols.year.ganzhi}의 ${symbols.year.stemTenGod ?? "미확인"}·${symbols.year.branchTenGod ?? "미확인"} 배경에서는 ${frame.setting}, ${frame.gate} ${frame.target}${eulReul(frame.target)} 정해보는 공통 기준으로 읽습니다.`,
+    `${frame.setting}, ${frame.gate} ${frame.target}${eulReul(frame.target)} 고르는 흐름으로 읽어볼 수 있습니다. 이 배경이 실제 사건이나 결과를 예고하는 것은 아닙니다.`,
     ["year-symbols"]);
-  if (anchor) {
-    add("month-natal-lens",
-      `원국 ${anchorLabel}의 ${AREA[anchor.pillar.pillar].name} 자리를 이달 선택의 적용 맥락으로 삼았습니다.`,
-      ["natal-anchor"]);
-    if (!anchor.exact) {
-      const related = group(anchor.god) === group(stem) ? stem : branch;
-      add("month-natal-contrast",
-        `원국의 ${anchor.god} 항목과 이달의 ${related} 항목은 같은 큰 범주여도 정편이 달라, 원국의 방식을 그대로 반복한다고 읽지 않습니다.`,
-        ["natal-anchor", "month-stem", "month-branch"]);
-    }
-  }
   add("month-applied-decision",
-    `월운 ${symbols.month.ganzhi}에서, 가령 ${anchorScene} ${decisionPlan.action} ${decisionPlan.check}`,
+    `가령 ${anchorScene}, ${decisionPlan.action} ${decisionPlan.check}`,
     anchor ? ["month-stem", "month-branch", "year-symbols", "natal-anchor"] : ["month-stem", "month-branch", "year-symbols"], "reflection");
   add("month-decision-consequence", decisionPlan.consequence, ["month-stem", "month-branch"], "reflection");
   if (before && group(before.month.stemTenGod) === group(stem) && group(before.month.branchTenGod) === group(branch)
@@ -203,7 +216,7 @@ export function buildPremiumMonthNarrative(
   if (before && before.year.ganzhi !== symbols.year.ganzhi) {
     const priorFrame = yearFrame(before);
     evidence.push({ id: "previous-year-symbols", kind: "calculated", source: "previous annual pillar compared with facts.dayStem", value: `${before.year.ganzhi}:${before.year.stemTenGod ?? "미확인"}/${before.year.branchTenGod ?? "미확인"}` });
-    add("year-decision-shift", `세운 배경이 ${before.year.ganzhi}에서 ${symbols.year.ganzhi}로 바뀌어, 앞 구간의 ${priorFrame.target}${eulReul(priorFrame.target)} 살피던 기준을 이번에는 ${frame.target}${eulReul(frame.target)} 정할 조건으로 옮겨 읽습니다. 실제 사건이 바뀐다는 예고는 아닙니다.`,
+    add("year-decision-shift", `앞 구간에서 ${priorFrame.target}${eulReul(priorFrame.target)} 살폈다면, 이번에는 ${frame.target}${eulReul(frame.target)} 고를 때 무엇이 필요한지 돌아볼 수 있습니다. 새해의 상징이 달라진 것을 실제 사건의 변화로 단정하지 않습니다.`,
       ["previous-year-symbols", "year-symbols"]);
   }
   const plan: ReadingPlan = { headline, passages, evidence, limits: base.limits };

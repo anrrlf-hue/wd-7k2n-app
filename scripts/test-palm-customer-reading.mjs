@@ -50,8 +50,14 @@ assert.equal(secondaryObservationState("fate", { ...signal, assessment: "error" 
 assert.equal(secondaryObservationState("fate", { ...signal, assessment: "not_observed" }), "not_observed");
 assert.equal(secondaryObservationState("fate", { ...signal, assessment: "observed", corroborated: false }), "unconfirmed");
 assert.equal(secondaryObservationState("fate", { ...signal, assessment: "observed" }), "observed");
-const observedFate = { ...geometryOnly, secondaryLines: { fate: { ...signal, assessment: "observed" }, sun: signal, wealth: signal } };
+const missingDetailFate = { ...geometryOnly, secondaryLines: { fate: { ...signal, assessment: "observed" }, sun: signal, wealth: signal } };
+assert.ok(!buildPalmCustomerPassages(missingDetailFate).some(p => p.key === "fate"), "legacy presence cannot invent a position or continuity");
+assert.match(palmCustomerLimits(missingDetailFate).join(" "), /위치와 구간/);
+const observedFate = structuredClone(missingDetailFate);
+observedFate.secondaryLines.fate.candidateObservation = { version: "fate-candidate-v1", position: "middle", visibleVerticalSpan: 0.65, creaseContinuity: 0.8 };
 assert.ok(buildPalmCustomerPassages(observedFate).some(p => p.key === "fate"));
+assert.ok(!buildPalmCustomerPassages(palmFixture).some(p => p.key === "handShape"), "legacy handShape without geometry cannot produce measurements");
+assert.ok(!buildPalmCustomerPassages({ ...palmFixture, handGeometry: { ...geometry, status: "not_usable" } }).some(p => p.key === "handShape"));
 assert.ok(!buildPalmCustomerPassages(observedFate).some(p => ["sun", "wealth"].includes(p.key)));
 assert.match(palmCustomerLimits(partial).join(" "), /선이 없다는 뜻은 아닙니다/);
 const evidence = [{ id: "left.headLine.curve", kind: "observed", source: "leftPalmFacts", value: "완만한 곡선" }, { id: "dominant", kind: "observed", source: "input", value: "right" }, { id: "month-stem", kind: "calculated", source: "month", value: "丙:식신" }];

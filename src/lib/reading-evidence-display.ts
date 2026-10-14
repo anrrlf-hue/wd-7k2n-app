@@ -16,7 +16,17 @@ export function describeReadingEvidence(evidence: ReadingEvidence[]): string {
     if (entry.id === "dominant") descriptions.push(`주로 쓰는 손: ${value === "left" ? "왼손" : value === "right" ? "오른손" : "선택하지 않음"}`);
     const line = /^(left|right)\.(headLine|heartLine|lifeLine)\.curve$/.exec(entry.id);
     if (line && typeof value === "string" && ["완만한 곡선", "직선에 가까움"].includes(value)) descriptions.push(`${line[1] === "left" ? "왼손" : "오른손"} ${line[2] === "headLine" ? "두뇌선" : line[2] === "heartLine" ? "감정선" : "생명선"}: 사진에서 ${value} 구간 확인`);
-    if (/^(left|right)\.secondary\.fate$/.test(entry.id)) descriptions.push(`${entry.id.startsWith("left") ? "왼손" : "오른손"} 운명선: 두 방식에서 같은 후보 확인`);
+    if (/^(left|right)\.secondary\.fate$/.test(entry.id)) {
+      let detail = "두 방식에서 같은 후보 확인";
+      try {
+        const observation = typeof value === "string" ? JSON.parse(value)?.candidateObservation : null;
+        const positions: Record<string, string> = { middle: "가운데 쪽", thumb_side: "엄지 쪽", pinky_side: "새끼손가락 쪽" };
+        if (observation && positions[observation.position] && Number.isFinite(observation.visibleVerticalSpan) && Number.isFinite(observation.creaseContinuity)) {
+          detail = `사진의 ${positions[observation.position]} 후보 구간 · 확인 범위 ${observation.visibleVerticalSpan >= 0.5 ? "비교적 넓음" : "일부"} · 찾은 영역의 주름 연결 ${observation.creaseContinuity >= 0.65 ? "비교적 넓음" : "일부"} (전체 경로 미확인)`;
+        }
+      } catch { /* Older evidence retains its original limited description. */ }
+      descriptions.push(`${entry.id.startsWith("left") ? "왼손" : "오른손"} 운명선: ${detail}`);
+    }
   }
   return [...new Set(descriptions)].join(" / ") || "태어난 사주와 확인된 입력 범위를 바탕으로 읽은 전통적 참고 풀이입니다.";
 }

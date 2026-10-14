@@ -49,7 +49,13 @@ assert.equal((await call(left, empty)).usable, false);
 const skipped = await call(null, null);
 assert.equal(skipped.palmSkipped, true); assert.equal(skipped.bilateralReading, null);
 console.log("PASS actual API: same generator, no age-theme rotation, partial lines preserved, rejected/skip never forged success");
-const annualWithHands = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...birthFixture, leftPalmFacts: left, rightPalmFacts: right, dominantHand: "right" }) });
+const annualInput = { ...birthFixture, mbti: null, leftPalmFacts: normal.leftPalmFacts, rightPalmFacts: normal.rightPalmFacts, dominantHand: "right" };
+const denied = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(annualInput) });
+assert.equal(denied.status, 403);
+const participation = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...annualInput, trialAction: "participate", participation: "clipboard" }) });
+assert.equal(participation.status, 200);
+const { trialReceipt } = await participation.json();
+const annualWithHands = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...annualInput, trialReceipt }) });
 assert.equal(annualWithHands.status, 200);
 const annualBody = await annualWithHands.json();
 assert.ok(annualBody.report.palmConnections.length > 0, "annual report keeps the confirmed palm connections");
@@ -66,12 +72,13 @@ fs.mkdirSync(evidence, { recursive: true });
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const requests = [], errors = [];
-  await context.route("**/*", route => { const u = new URL(route.request().url()); if (u.origin !== BASE) return route.abort(); if (u.pathname.startsWith("/api/")) { requests.push(u.pathname); return u.pathname === "/api/premium-report" ? route.fulfill({ json: annualBody }) : route.abort(); } return route.continue(); });
-  await context.addInitScript(({ normal, birthFixture, prior, entryKey, entry }) => {
+  await context.route("**/*", route => { const u = new URL(route.request().url()); if (u.origin !== BASE) return route.abort(); if (u.pathname.startsWith("/api/")) { if (u.pathname === "/api/premium-report" && route.request().postDataJSON()?.trialAction === "verify") return route.fulfill({ json: { eligible: true } }); requests.push(u.pathname); return u.pathname === "/api/premium-report" ? route.fulfill({ json: annualBody }) : route.abort(); } return route.continue(); });
+  await context.addInitScript(({ normal, birthFixture, prior, entryKey, entry, trialReceipt, annualInput }) => {
     if (!sessionStorage.getItem(entryKey)) sessionStorage.setItem(entryKey, entry);
+    sessionStorage.setItem("saju-app:premium-trial:v1", JSON.stringify({ identity: JSON.stringify(annualInput), receipt: trialReceipt }));
     const key = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender].join(":") + ":palm";
     if (!sessionStorage.getItem(key)) sessionStorage.setItem(key, JSON.stringify({ stage: "result", palmFacts: normal.palmFacts, leftPalmFacts: normal.leftPalmFacts, rightPalmFacts: normal.rightPalmFacts, dominantHand: "right", bilateralReading: prior, finalReport: normal.freeReport.report, tripleCompare: normal.tripleCompare, verdict: normal.verdict }));
-  }, { normal, birthFixture, prior, entryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture) });
+  }, { normal, birthFixture, prior, entryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture), trialReceipt, annualInput });
   const page = await context.newPage(); page.on("pageerror", e => errors.push(e.message));
   const url = BASE + "/diagnosis/palm";
   await page.goto(url);
@@ -97,7 +104,7 @@ try {
   await page.reload(); await page.getByRole("button", { name: "현재 형식으로 손금 정리", exact: true }).waitFor();
   assert.deepEqual((await saved()).bilateralReading, prior, "selected older edition also survives reload");
   assert.deepEqual(requests, [], "restoration must not trigger a generation or analytics call");
-  await page.getByRole("button", { name: "프리미엄 보기", exact: true }).click();
+  await page.getByRole("button", { name: "프리미엄 무료 체험 보기", exact: true }).click();
   await page.locator("#premium-report").waitFor();
   await page.waitForFunction(() => !document.body.innerText.includes("사주와 손금을 함께 읽으면"));
   for (const item of annualBody.report.palmConnections) {

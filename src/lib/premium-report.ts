@@ -14,11 +14,11 @@ import { isPalmFactsUsable, normalizePalmFactsObservation } from "@/lib/palm-fac
 import { READING_GUIDE } from "@/lib/reading-guide";
 import { buildIntegratedPalmReading } from "@/lib/integrated-palm-reading";
 import { buildPremiumEditorialPlan } from "@/lib/premium-editorial-plan";
-import { composePremiumDomainStory, composePremiumOverallStory } from "@/lib/premium-domain-story";
+import { composePremiumDomainStory, composePremiumOverallStory, premiumOverallEvidence } from "@/lib/premium-domain-story";
 import { validateReadingPlan } from "@/lib/reading-plan";
 import { describeReadingEvidence } from "@/lib/reading-evidence-display";
 
-export const PREMIUM_REPORT_VERSION = "decision-reading-2026-10-v10" as const;
+export const PREMIUM_REPORT_VERSION = "lived-reading-2026-10-v11" as const;
 export interface PremiumReading {
   headline: string;
   paragraphs: string[];
@@ -43,7 +43,7 @@ export interface PremiumPeriod {
   symbols?: AnnualMonthSymbols;
 }
 export interface PremiumReport {
-  version: typeof PREMIUM_REPORT_VERSION | "distinct-reading-2026-10-v9" | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
+  version: typeof PREMIUM_REPORT_VERSION | "decision-reading-2026-10-v10" | "distinct-reading-2026-10-v9" | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
   title: string;
   summary: string;
   overall: PremiumReading;
@@ -132,6 +132,7 @@ export function buildPremiumReport(input: {
     && isPalmFactsUsable(input.leftPalm) && isPalmFactsUsable(input.rightPalm);
   const integration = hasPalms ? buildIntegratedPalmReading(facts, input.leftPalm!, input.rightPalm!, input.dominantHand!, editorial) : {};
   overall.paragraphs = [composePremiumOverallStory(editorial)];
+  overall.basis += ` ${premiumOverallEvidence(editorial)}`;
   overall.opportunity = "";
   overall.caution = "";
   if (editorial.id === "duty-translation") {

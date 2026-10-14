@@ -23,12 +23,12 @@ import type { CompareItem } from "@/lib/triple-compare";
 import type { BirthInput, PersonalityInputEcho } from "@/lib/saju";
 import type { SajuFocus } from "@/lib/saju-focus";
 import type { PremiumReport } from "@/lib/premium-report";
-import { isCurrentPremiumReport } from "@/lib/premium-report-validation";
 import { track } from "@/lib/analytics";
 import { buildPalmBilateralReading, isStoredPalmReading, PALM_READING_VERSION, type DominantHand, type PalmBilateralReading } from "@/lib/palm-bilateral";
 
 import { PalmTaskSlot, requestPalmReport, runWithDeadline } from "@/lib/palm-analysis-task";
 import { PalmWorkerClient } from "@/lib/palm-worker-client";
+import { palmShapeLabel } from "@/lib/palm-customer-reading";
 import type { PalmAnalysisPhase } from "@/lib/palm-detection";
 
 const ANALYSIS_PHASES = {
@@ -95,14 +95,6 @@ interface PalmResumeState {
   tripleCompare: CompareItem[];
   verdict: ReportParagraph | null;
 }
-
-const HAND_SHAPE_KO: Record<PalmFacts["handShape"], string> = {
-  square: "넓은 시작점 간격 · 짧은 중지 비율",
-  rectangular: "넓은 시작점 간격 · 긴 중지 비율",
-  elongated: "좁은 시작점 간격 · 짧은 중지 비율",
-  slender: "좁은 시작점 간격 · 긴 중지 비율",
-  unknown: "확인 안 됨",
-};
 
 async function fileToCanvas(file: File, maxDim = 1280): Promise<HTMLCanvasElement> {
   let bitmap: ImageBitmap | null = null;
@@ -480,9 +472,6 @@ export function PalmPageClient({
       setStage("retake");
       return;
     }
-    if (leftFacts && rightFacts && !isCurrentPremiumReport(data.annualReport)) {
-      throw new Error("통합 리포트 내용을 확인하지 못했어요. 촬영한 양손을 유지한 채 다시 받을 수 있습니다.");
-    }
     retryReport.current = null;
     setInitialAnnualReport(data.annualReport ? { report: data.annualReport, identity: `${resumeKey}:${personalityKey}` } : null);
     setBilateralReading(data.bilateralReading ?? null);
@@ -712,7 +701,7 @@ export function PalmPageClient({
       className={`journey-surface ${stage === "result" || stage === "saju_only" ? "result-bright" : ""}`}
     >
       <div className="journey-shell">
-      <JourneyHeader annualJourney chapter={stage === "result" || stage === "saju_only" ? 3 : 2} />
+      <JourneyHeader annualJourney chapter={stage === "result" || stage === "saju_only" || (stage === "loading" && !reportIncludesPalm) ? 3 : 2} />
       <div>
       <CompanionHeading showCompanion={stage !== "upload"} state={stage === "upload" ? "palm-guide" : "palm-observing"} presence={stage === "upload" ? "transition" : "quiet"}>
       <p className="section-eyebrow">{stage === "saju_only" || (stage === "loading" && !reportIncludesPalm) ? "나의 사주 풀이" : stage === "result" ? "나의 손금 풀이" : "손금 촬영과 풀이"}</p>
@@ -999,7 +988,7 @@ export function PalmPageClient({
                       </div>
                     )}
                     <p className="mt-2 text-sm font-semibold">{innateHandLabel} · 비교하는 손</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[innatePalmFacts.handShape]}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{palmShapeLabel(innatePalmFacts)}</p>
                   </div>
                   <div className="rounded-xl bg-accent p-3">
                     {currentPreviewUrl && (
@@ -1009,7 +998,7 @@ export function PalmPageClient({
                       </div>
                     )}
                     <p className="mt-2 text-sm font-semibold">{currentHandLabel} · 주로 쓰는 손</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{HAND_SHAPE_KO[currentPalmFacts.handShape]}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{palmShapeLabel(currentPalmFacts)}</p>
                   </div>
                 </div>
                 </details>
@@ -1017,7 +1006,7 @@ export function PalmPageClient({
             ) : (
               <p className="text-xs text-muted-foreground">
                 {palmFacts.handSide === "left" ? "왼손" : palmFacts.handSide === "right" ? "오른손" : "손"} ·{" "}
-                {HAND_SHAPE_KO[palmFacts.handShape]}
+                {palmShapeLabel(palmFacts)}
               </p>
             )}
           </motion.div>

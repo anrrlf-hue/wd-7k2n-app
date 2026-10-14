@@ -161,7 +161,7 @@ assert(!resultSource.includes("PersonCompareCard"), "UI01: person comparison sho
 assert(resultSource.includes("다음은 손금으로 이어봅니다"), "UI02: initial Saju should lead to palm before relationship expansion");
 assert(postReadingSource.includes("PersonCompareCard"), "UI03: person comparison must be available after the personal Saju/palm/detail flow");
 assert(
-  postReadingSource.includes("프리미엄 보기") && postReadingSource.includes("<PersonCompareCard"),
+  postReadingSource.includes("프리미엄 무료 체험 보기") && postReadingSource.includes("<PersonCompareCard"),
   "UI04: person comparison should remain after the personal detail/premium flow",
 );
 for (const phrase of ["나와 이 사람", "이 사람과 나 보기", "두 사람 함께 보기", "다른 사람과 비교해보기"]) {

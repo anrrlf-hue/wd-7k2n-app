@@ -35,6 +35,7 @@ export function fuseFateSignal(
   const span = Math.max(base.span, modelLineLike ? modelVerticalSpan : 0);
 
   return {
+    creaseObservation: base.creaseObservation,
     status,
     strength: Math.min(1, strength),
     span,

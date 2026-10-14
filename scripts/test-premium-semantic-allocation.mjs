@@ -31,7 +31,10 @@ for (const day of [1, 7]) {
   const { facts, report } = create(day);
   assert.ok(isRenderablePremiumReport(report));
   assert.ok(isStoredPremiumReport(report));
-  assert.equal(report.version, 'decision-reading-2026-10-v10');
+  assert.equal(report.version, 'lived-reading-2026-10-v11');
+  const savedV10Shape = structuredClone(report);
+  savedV10Shape.version = "decision-reading-2026-10-v10";
+  assert.ok(isStoredPremiumReport(savedV10Shape), "saved v10 structure must remain readable");
   const savedV9Shape = structuredClone(report);
   savedV9Shape.version = 'distinct-reading-2026-10-v9';
   assert.ok(isStoredPremiumReport(savedV9Shape), 'saved v9 structure must remain readable');
@@ -92,8 +95,9 @@ for (const day of [1, 7]) {
   assert.ok(html.includes('월운'));
   assert.ok(report.annualIntroduction.includes('세운') && report.annualIntroduction.includes('천간'));
   assert.ok(!report.overall.paragraphs.join(' ').includes('작은 결과를 보여준 뒤'), 'the overall reading must not spend the work scene');
-  assert.match(report.overall.paragraphs.join(' '), /원국의 서로 다른 자리.*(?:연|월|일|시)(?:간|지)/,
-    'the premium opening should expose the calculated positions behind its synthesis');
+  assert.doesNotMatch(report.overall.paragraphs.join(' '), /전체 풀이의 중심|원국의 서로 다른 자리|맥락으로 삼/);
+  assert.match(report.overall.basis, /원국의 서로 다른 자리.*(?:연|월|일|시)(?:간|지)/,
+    'the calculated positions remain inspectable in the folded basis');
   const love = report.domains.find(d => d.key === 'love_relationship').paragraphs.join(' ');
   const money = report.domains.find(d => d.key === 'money').paragraphs.join(' ');
   const work = report.domains.find(d => d.key === 'work').paragraphs.join(' ');

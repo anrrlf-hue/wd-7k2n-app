@@ -22,7 +22,7 @@ const interpretation = z.object({
   return ids.size === plan.evidence.length && plan.passages.every(p => p.evidenceIds.every(id => ids.has(id)));
 });
 const renderableReport = z.object({
-  version: z.enum(["annual-reading-2026-10-v2", "context-reading-2026-10-v3", "personal-reading-2026-10-v4", "integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", PREMIUM_REPORT_VERSION]),
+  version: z.enum(["annual-reading-2026-10-v2", "context-reading-2026-10-v3", "personal-reading-2026-10-v4", "integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", "decision-reading-2026-10-v10", PREMIUM_REPORT_VERSION]),
   title: z.literal("프리미엄 통합 연간 리포트"), summary: text, note: text,
   overall: reading,
   domains: z.array(reading.extend({ key: z.enum(keys), label: text })).length(3).refine(items => items.every((item, i) => item.key === keys[i])),
@@ -48,9 +48,9 @@ const renderableReport = z.object({
     && new Set(report.annualHighlights).size === report.annualHighlights.length
     && report.annualHighlights.every(label => report.periods.some(period => period.months[0] === label))
     && report.periods.every(period => period.interpretation)
-  )).refine(report => !["personal-reading-2026-10-v4", "integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", PREMIUM_REPORT_VERSION].includes(report.version) || Boolean(report.closing))
-  .refine(report => !["evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", PREMIUM_REPORT_VERSION].includes(report.version) || Boolean(report.annualMethod))
-  .refine(report => !["distinct-reading-2026-10-v9", PREMIUM_REPORT_VERSION].includes(report.version) || report.periods.every(period => Boolean(period.symbols)));
+  )).refine(report => !["personal-reading-2026-10-v4", "integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", "decision-reading-2026-10-v10", PREMIUM_REPORT_VERSION].includes(report.version) || Boolean(report.closing))
+  .refine(report => !["evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", "decision-reading-2026-10-v10", PREMIUM_REPORT_VERSION].includes(report.version) || Boolean(report.annualMethod))
+  .refine(report => !["distinct-reading-2026-10-v9", "decision-reading-2026-10-v10", PREMIUM_REPORT_VERSION].includes(report.version) || report.periods.every(period => Boolean(period.symbols)));
 
 // Preserve saved v1 prose in its original view; only an explicit request creates
 // the new edition. Accept no half-written report that could crash either view.

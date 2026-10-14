@@ -17,14 +17,19 @@ async function api(path, body) {
   return response.json();
 }
 const free = await api("/api/palm/interpret", { ...birthFixture, palmFacts: null });
-const premium = await api("/api/premium-report", birthFixture);
+const inputBody = { ...birthFixture, mbti: null, leftPalmFacts: null, rightPalmFacts: null, dominantHand: null };
+const { trialReceipt } = await api("/api/premium-report", { ...inputBody, trialAction: "participate", participation: "clipboard" });
+const premium = await api("/api/premium-report", { ...inputBody, trialReceipt });
 let mode = "normal", number = 0;
 const requests = [], disconnected = [], delayed = [];
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "content-type");
   if (req.method === "OPTIONS") return res.end();
   const chunks = []; for await (const chunk of req) chunks.push(chunk);
-  const request = { id: ++number, mode, body: JSON.parse(Buffer.concat(chunks).toString()) };
+  const rawBody = JSON.parse(Buffer.concat(chunks).toString());
+  if (rawBody.trialAction === "verify") { res.setHeader("content-type", "application/json"); return res.end(JSON.stringify({ eligible: true })); }
+  assert.equal(rawBody.trialReceipt, trialReceipt, "each generation retains scope-bound eligibility");
+  const request = { id: ++number, mode, body: rawBody };
   requests.push(request);
   res.on("close", () => { if (!res.writableEnded) disconnected.push(request.id); });
   const response = { report: { ...premium.report, summary: request.mode === "delayed" ? `${premium.report.summary} 검증 응답 ${request.id}` : premium.report.summary } };
@@ -50,25 +55,26 @@ async function open({ blockedStorage = false, width = 390 } = {}) {
     if (u.pathname.startsWith("/api/")) { unexpected.push(u.pathname); return route.abort(); }
     return route.continue();
   });
-  await context.addInitScript(({ stubUrl, palmEntryKey, entry }) => {
+  await context.addInitScript(({ stubUrl, palmEntryKey, entry, inputBody, trialReceipt }) => {
     if (!sessionStorage.getItem(palmEntryKey)) sessionStorage.setItem(palmEntryKey, entry);
+    sessionStorage.setItem("saju-app:premium-trial:v1", JSON.stringify({ identity: JSON.stringify(inputBody), receipt: trialReceipt }));
     const original = window.fetch;
     window.fetch = (input, init) => original(input === "/api/premium-report" ? stubUrl : input, init);
-  }, { stubUrl, palmEntryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture) });
+  }, { stubUrl, palmEntryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture), inputBody, trialReceipt });
   const page = await context.newPage(); page.setDefaultTimeout(15000);
   page.on("pageerror", e => errors.push(e.message));
   page.on("console", m => { if (m.type() === "warning" && m.text().includes("[premium-report]")) fs.appendFileSync(`${evidence}/request-errors.txt`, m.text() + "\n"); });
   await page.goto(url);
   assert.equal(await page.getByRole("region", { name: "무료 사주 링크 공유" }).count(), 0);
   await page.getByRole("button", { name: "손금은 나중에 추가하고, 먼저 사주 결과 보기", exact: true }).click();
-  try { await page.getByRole("button", { name: "프리미엄 보기", exact: true }).waitFor(); }
+  try { await page.getByRole("button", { name: "프리미엄 무료 체험 보기", exact: true }).waitFor(); }
   catch (error) { fs.writeFileSync(`${evidence}/premium-entry-failure.txt`, JSON.stringify({ body: await page.locator("body").innerText(), errors, unexpected }, null, 2)); throw error; }
   if (blockedStorage) await page.evaluate(() => {
     for (const key of ["getItem", "setItem"]) Object.defineProperty(Storage.prototype, key, { value: () => { throw new DOMException("blocked", "SecurityError"); } });
   });
   return { context, page };
 }
-async function start(s) { await s.page.getByRole("button", { name: "프리미엄 보기", exact: true }).click(); }
+async function start(s) { await s.page.getByRole("button", { name: "프리미엄 무료 체험 보기", exact: true }).click(); }
 async function result(s) { await s.page.getByRole("heading", { name: "프리미엄 통합 연간 리포트", exact: true }).waitFor(); }
 try {
   for (const width of [390, 1440]) {
@@ -92,8 +98,8 @@ try {
     }
     const count = requests.length;
     await p.getByRole("button", { name: "프리미엄 접기", exact: true }).click();
-    await p.getByRole("button", { name: "프리미엄 다시 보기", exact: true }).click(); await result(s);
-    await p.reload(); await p.getByRole("button", { name: "프리미엄 다시 보기", exact: true }).click(); await result(s);
+    await p.getByRole("button", { name: "프리미엄 무료 체험 다시 보기", exact: true }).click(); await result(s);
+    await p.reload(); await p.getByRole("button", { name: "프리미엄 무료 체험 다시 보기", exact: true }).click(); await result(s);
     assert.equal(requests.length, count, "reopen/reload must not regenerate same input and month");
     // A different person's input must not restore the previous report.
     await p.evaluate(({ key, entry }) => sessionStorage.setItem(key, entry), { key: PALM_ENTRY_KEY, entry: palmEntry({ ...birthFixture, day: 16 }) });

@@ -13,6 +13,7 @@ import { runPalmLineOnnx, type OnnxLineClass, type OnnxLineObservation } from "@
 import { runPalmFourLineOnnx } from "@/lib/palm-4line-onnx";
 import { fuseFateSignal } from "@/lib/palm-fate-fusion";
 import { measurePalmHandGeometry } from "@/lib/palm-hand-geometry";
+import { observeFateCandidate } from "@/lib/palm-fate-observation";
 import type {
   HandShape,
   HandSide,
@@ -434,11 +435,13 @@ function bestSecondaryLineSignal(
 
   const best = secondarySignalScore(enhanced) > secondarySignalScore(raw) ? enhanced : raw;
   const strength = Math.min(1, best.contrast * 0.55 + best.density * 0.45);
+  const bounds = best.componentBounds;
 
   return {
     status,
     strength,
     span: best.continuity,
+    creaseObservation: bounds ? { bounds: { x0: bounds.x / rawImage.width, y0: bounds.y / rawImage.height, x1: (bounds.x + bounds.width) / rawImage.width, y1: (bounds.y + bounds.height) / rawImage.height }, continuity: best.continuity, sourceVariant: best === raw ? "raw" : "enhanced" } : undefined,
     note:
       status === "clear"
         ? `${label} 후보가 원본과 보정 신호에서 함께 이어집니다.`
@@ -926,6 +929,8 @@ export async function analyzePalmFromCanvas(
         ...secondaryLinesBase,
         fate: {
           ...fusedFate!,
+          candidateObservation: fusedFate?.corroborated && fusedFate.status === "clear"
+            ? observeFateCandidate(secondaryLinesBase.fate, fateModel, palmCropLandmarks, enhancedPalmCrop.width, enhancedPalmCrop.height) : undefined,
           assessment: fourLine?.status === "error" ? "error" as const
             : !fourLine ? "unconfirmed" as const
               : fateModel && fusedFate?.corroborated && fusedFate.status === "clear" ? "observed" as const

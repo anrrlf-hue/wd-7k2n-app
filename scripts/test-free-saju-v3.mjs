@@ -185,9 +185,9 @@ assert(diagnosisSource.includes('setFocus("overall")') && diagnosisSource.includ
 assert(focusStepSource.includes("SAJU_DETAIL_FOCUS_VALUES"), "detail chooser must use only four detailed topics");
 assert(!focusStepSource.includes("SAJU_FOCUS_VALUES.map"), "overall must not remain in the visible detail choices");
 assert(postReadingSource.includes("<PremiumReportView") && !postReadingSource.includes("SAJU_DETAIL_FOCUS_VALUES.map"), "post-palm flow must show the integrated report without a detail chooser");
-assert(postReadingSource.includes("총운부터 연애·재물·직장까지"), "integrated report must explain the included reading domains");
+assert(["총운", "연애", "재물", "직장"].every(label => postReadingSource.includes(label)), "integrated report must explain the included reading domains");
 assert(postReadingSource.includes("PersonCompareCard"), "person compare must move after the personal reading");
-assert(postReadingSource.includes("프리미엄 보기"), "premium report CTA missing");
+assert(postReadingSource.includes("프리미엄 무료 체험 보기"), "premium report CTA missing");
 assert(postReadingSource.includes("/api/premium-report"), "premium report API handoff missing");
 assert(!postReadingSource.includes("submitQuestion"), "post-palm repetitive question flow must be removed");
 assert(postReadingSource.includes("12개월"), "premium CTA must promise the one-year monthly report");

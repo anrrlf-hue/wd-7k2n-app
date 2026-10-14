@@ -321,7 +321,7 @@ assert(
 );
 assert(
   palmPageSource.includes("PostReadingDetailFlow") &&
-    postReadingSource.includes("프리미엄 보기") &&
+    postReadingSource.includes("프리미엄 무료 체험 보기") &&
     postReadingSource.includes("/api/premium-report") &&
     !postReadingSource.includes("submitQuestion") &&
     !postReadingSource.includes("history.length"),

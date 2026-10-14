@@ -117,7 +117,8 @@ try {
   assert.deepEqual(captured, [1024, 2048, 1024, 2200, 2200]);
   const callCount = captured.length;
   await post(palm, { ...birthFixture, palmFacts: null });
-  await post(premium, birthFixture);
+  const participation = await post(premium, { ...birthFixture, trialAction: "participate", participation: "clipboard" });
+  await post(premium, { ...birthFixture, trialReceipt: participation.trialReceipt });
   assert.equal(captured.length, callCount, "palm and integrated annual paths stay internal even while opt-in is ON");
   console.log("PASS ON via fetch mock: initial/standalone/question handlers use existing model route; palm and annual routes stay internal");
 

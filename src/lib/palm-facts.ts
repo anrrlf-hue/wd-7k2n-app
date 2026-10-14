@@ -89,6 +89,8 @@ export interface OnnxPalmLines {
 export type SecondaryLineStatus = "clear" | "faint" | "not_seen";
 
 export interface SecondaryPalmLineSignal {
+  creaseObservation?: { bounds: { x0: number; y0: number; x1: number; y1: number }; continuity: number; sourceVariant: "raw" | "enhanced" };
+  candidateObservation?: import("@/lib/palm-fate-observation").FateCandidateObservation;
   assessment?: "observed" | "not_observed" | "error" | "unsupported" | "unconfirmed";
   status: SecondaryLineStatus;
   strength: number;
@@ -165,6 +167,7 @@ export interface PalmFacts {
  * MediaPipe confidence into a probability of a traditional interpretation. */
 export function normalizePalmFactsObservation(facts: PalmFacts): PalmFacts {
   if (!facts.onnxLines) return facts;
+  if (facts.onnxLines.modelExecuted !== true) return { ...facts, onnxLines: null };
   const diagnostics = facts.pipelineDiagnostics;
   const keys = ["heartLine", "headLine", "lifeLine"] as const;
   const normalized = { ...facts.onnxLines };
@@ -209,7 +212,7 @@ export function isPalmFactsUsable(facts: PalmFacts): boolean {
   if (facts.onnxLines?.modelExecuted && onnxDetectedLineCount(facts) > 0) return true;
   const geometry = facts.handGeometry;
   if (geometry?.status === "observed" && geometry.palmWidthToLength && Object.keys(geometry.fingerToPalm).length >= 3 && (facts.handShape !== "unknown" || geometry.indexRing)) return true;
-  return facts.secondaryLines?.fate.assessment === "observed" && facts.secondaryLines.fate.status === "clear" && Boolean(facts.secondaryLines.fate.corroborated);
+  return facts.secondaryLines?.fate.assessment === "observed" && facts.secondaryLines.fate.status === "clear" && Boolean(facts.secondaryLines.fate.corroborated && facts.secondaryLines.fate.candidateObservation);
 }
 
 /** 재촬영 화면에 보여줄, 실패 원인별 짧은 안내. attempt(1부터)가 올라갈수록
