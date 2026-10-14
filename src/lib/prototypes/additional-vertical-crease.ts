@@ -1,6 +1,10 @@
 export type AdditionalDirection = "middle_direction" | "ring_direction" | "pinky_direction";
 export type AdditionalStatus = "candidate" | "insufficient_evidence" | "not_seen";
 export type AdditionalAnalysisStatus = "ok" | "invalid_input" | "unsupported_pose" | "error";
+const MAX_IMAGE_PIXELS = 6_000_000;
+const MAX_IMAGE_DIMENSION = 3_000;
+const MAX_CORRIDOR_PIXELS = 500_000;
+const MAX_WORK_UNITS = 30_000_000;
 
 export interface NormalizedHandLandmark { x: number; y: number; z?: number }
 export interface PixelPoint { x: number; y: number }
@@ -29,12 +33,13 @@ export interface AdditionalCorridorResult {
     bothNonEmpty: boolean;
     coverageDelta: number;
     pathDistancePx: number | null;
+    supportOverlapRatio: number;
     stableCandidate: boolean;
   };
 }
 export interface AdditionalCreaseAnalysis {
   status: AdditionalAnalysisStatus;
-  errorCode?: "invalid_landmarks" | "image_too_large" | "unsupported_pose" | "runtime";
+  errorCode?: "invalid_image" | "invalid_landmarks" | "image_too_large" | "work_limit" | "unsupported_pose" | "runtime";
   width: number;
   height: number;
   elapsedMs: number;
@@ -96,7 +101,7 @@ function trackCrop(c: { data: Float32Array; width: number; height: number; x0: n
     if (v > rowMax[y]) rowMax[y] = v;
   }
   const sorted = Array.from(rowMax).sort((a, b) => a - b);
-  const threshold = Math.max(2.5, sorted[Math.floor(sorted.length * .78)] * .9);
+  const threshold = Math.max(1.5, sorted[Math.floor(sorted.length * .78)] * .7);
   const seen = new Uint8Array(response.length), components: Array<Array<[number, number]>> = [];
   const drift = Math.max(2, Math.round(c.width * .08));
   for (let sy = 0; sy < c.height; sy++) for (let sx = 0; sx < rw; sx++) {
@@ -114,13 +119,13 @@ function trackCrop(c: { data: Float32Array; width: number; height: number; x0: n
         }
       }
     }
-    const ys = component.map(([y]) => y);
-    if (Math.max(...ys) - Math.min(...ys) + 1 >= 2) components.push(component);
+    let componentMinY = c.height, componentMaxY = -1;
+    for (const [y] of component) { componentMinY = Math.min(componentMinY, y); componentMaxY = Math.max(componentMaxY, y); }
+    if (componentMaxY - componentMinY + 1 >= 2) components.push(component);
   }
   if (!components.length) return emptyTrack();
-  const span = (v: Array<[number, number]>) => Math.max(...v.map(([y]) => y)) - Math.min(...v.map(([y]) => y)) + 1;
-  const minY = (v: Array<[number, number]>) => Math.min(...v.map(([y]) => y));
-  const maxY = (v: Array<[number, number]>) => Math.max(...v.map(([y]) => y));
+  const minY = (v: Array<[number, number]>) => { let result = c.height; for (const [y] of v) result = Math.min(result, y); return result; };
+  const maxY = (v: Array<[number, number]>) => { let result = -1; for (const [y] of v) result = Math.max(result, y); return result; };
   const meanXAt = (v: Array<[number, number]>, y: number) => {
     const xs = v.filter(([yy]) => yy === y).map(([, x]) => x);
     return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
@@ -139,7 +144,7 @@ function trackCrop(c: { data: Float32Array; width: number; height: number; x0: n
   const selectedMeanX = component.reduce((sum, [, x]) => sum + x, 0) / component.length;
   const competingComponentCount = tracks.slice(1).filter(t => {
     if ((t.maxY - t.minY + 1) < Math.max(6, c.height * .08)) return false;
-    const separated = t.maxY < Math.min(...component.map(([y]) => y)) || t.minY > Math.max(...component.map(([y]) => y));
+    const separated = t.maxY < selected.minY || t.minY > selected.maxY;
     const tPoints = t.components.flat();
     const tMeanX = tPoints.reduce((sum, [, x]) => sum + x, 0) / tPoints.length;
     return separated || Math.abs(tMeanX - selectedMeanX) > drift * 2;
@@ -156,11 +161,12 @@ function trackCrop(c: { data: Float32Array; width: number; height: number; x0: n
     previousX = chosen;
     return { x: chosen + c.x0 + offset, y: y + c.y0 };
   });
-  const selectedMinY = Math.min(...component.map(([y]) => y)), selectedMaxY = Math.max(...component.map(([y]) => y));
+  const selectedMinY = selected.minY, selectedMaxY = selected.maxY;
   const verticalSpanPx = selectedMaxY - selectedMinY + 1;
   const coverage = verticalSpanPx / c.height;
   const contrast = Math.min(1, component.reduce((sum, [y, x]) => sum + response[y * rw + x], 0) / component.length / 40);
-  const minX = Math.min(...component.map(([, x]) => x)), maxX = Math.max(...component.map(([, x]) => x));
+  let minX = rw, maxX = -1;
+  for (const [, x] of component) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }
   let lengthPx = 0;
   for (let i = 1; i < points.length; i++) lengthPx += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
   const sufficient = coverage >= .12 && contrast >= .08;
@@ -171,31 +177,30 @@ function trackVariant(source: Float32Array, imageWidth: number, imageHeight: num
   return trackCrop(crop(source, imageWidth, imageHeight, roi));
 }
 
-function pathXAtY(points: PixelPoint[], y: number): number | null {
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1], b = points[i];
-    if (y >= a.y && y <= b.y) return a.x + (b.x - a.x) * ((y - a.y) / Math.max(1e-6, b.y - a.y));
+function pathComparison(a: PixelPoint[], b: PixelPoint[]): { distance: number | null; supportOverlapRatio: number } {
+  if (!a.length || !b.length) return { distance: null, supportOverlapRatio: 0 };
+  let ai = 0, bi = 0, sum = 0, count = 0;
+  while (ai < a.length && bi < b.length) {
+    if (a[ai].y === b[bi].y) { sum += Math.abs(a[ai].x - b[bi].x); count++; ai++; bi++; }
+    else if (a[ai].y < b[bi].y) ai++;
+    else bi++;
   }
-  return null;
-}
-
-function pathDistance(a: PixelPoint[], b: PixelPoint[]): number | null {
-  if (!a.length || !b.length) return null;
-  const start = Math.max(a[0].y, b[0].y), end = Math.min(a[a.length - 1].y, b[b.length - 1].y);
-  if (end < start) return null;
-  let sum = 0, count = 0;
-  for (let y = Math.ceil(start); y <= Math.floor(end); y++) { const ax = pathXAtY(a, y), bx = pathXAtY(b, y); if (ax !== null && bx !== null) { sum += Math.abs(ax - bx); count++; } }
-  return count ? sum / count : null;
+  return { distance: count ? sum / count : null, supportOverlapRatio: count / Math.max(a.length, b.length) };
 }
 
 export function trackAdditionalVerticalCreases(image: ImageData, landmarks: NormalizedHandLandmark[]): AdditionalCreaseAnalysis {
   const started = performance.now();
   const base = { width: image?.width ?? 0, height: image?.height ?? 0, elapsedMs: 0, corridors: {}, interpretation: "pixel_candidate_only" as const };
-  if (!image || image.width <= 0 || image.height <= 0 || image.data.length !== image.width * image.height * 4 || image.width * image.height > 6_000_000) {
-    return { ...base, status: "invalid_input", errorCode: image?.width * (image?.height ?? 0) > 6_000_000 ? "image_too_large" : "invalid_landmarks", elapsedMs: performance.now() - started };
+  const imageWidth = image?.width, imageHeight = image?.height, imageData = image?.data;
+  if (!image || !Number.isInteger(imageWidth) || !Number.isInteger(imageHeight) || imageWidth <= 0 || imageHeight <= 0 || imageWidth > MAX_IMAGE_DIMENSION || imageHeight > MAX_IMAGE_DIMENSION || !(imageData instanceof Uint8ClampedArray) || imageData.length !== imageWidth * imageHeight * 4) {
+    const tooLarge = Boolean(imageWidth && imageHeight && (imageWidth * imageHeight > MAX_IMAGE_PIXELS || imageWidth > MAX_IMAGE_DIMENSION || imageHeight > MAX_IMAGE_DIMENSION));
+    return { ...base, status: "invalid_input", errorCode: tooLarge ? "image_too_large" : "invalid_image", elapsedMs: performance.now() - started };
   }
-  if (!Array.isArray(landmarks) || landmarks.length !== 21 || landmarks.some(v => !Number.isFinite(v.x) || !Number.isFinite(v.y) || !Number.isFinite(v.z ?? 0))) {
+  if (!Array.isArray(landmarks) || landmarks.length !== 21 || landmarks.some(v => !v || !Number.isFinite(v.x) || !Number.isFinite(v.y) || v.x < 0 || v.x > 1 || v.y < 0 || v.y > 1 || !Number.isFinite(v.z ?? 0))) {
     return { ...base, status: "invalid_input", errorCode: "invalid_landmarks", elapsedMs: performance.now() - started };
+  }
+  if (imageWidth * imageHeight * 6 > MAX_WORK_UNITS) {
+    return { ...base, status: "invalid_input", errorCode: "work_limit", elapsedMs: performance.now() - started };
   }
   try {
   const p = landmarks.map(v => ({ x: v.x * image.width, y: v.y * image.height }));
@@ -204,7 +209,7 @@ export function trackAdditionalVerticalCreases(image: ImageData, landmarks: Norm
   }
   const poseAngle = Math.atan2(p[9].y - p[0].y, p[9].x - p[0].x) * 180 / Math.PI;
   const poseDeviation = Math.abs(((poseAngle + 90 + 180) % 360) - 180);
-  if (poseDeviation > 45) return { ...base, status: "unsupported_pose", errorCode: "unsupported_pose", elapsedMs: performance.now() - started };
+  if (poseDeviation > 30) return { ...base, status: "unsupported_pose", errorCode: "unsupported_pose", elapsedMs: performance.now() - started };
   const palmTop = (p[5].y + p[9].y + p[13].y + p[17].y) / 4;
   const palmHeight = Math.max(20, p[0].y - palmTop), palmWidth = Math.max(12, Math.abs(p[5].x - p[17].x));
   const lowerY = Math.min(image.height - 1, p[0].y - palmHeight * .08);
@@ -213,18 +218,21 @@ export function trackAdditionalVerticalCreases(image: ImageData, landmarks: Norm
   const corridors = Object.fromEntries(defs.map(([direction, centerIndex, widthRatio, start, end]) => {
     const width = palmWidth * widthRatio, y = palmTop + palmHeight * start, endY = Math.min(lowerY, palmTop + palmHeight * end);
     const roi = { x: Math.max(0, Math.min(image.width - width, p[centerIndex].x - width / 2)), y: Math.max(0, y), width: Math.max(6, Math.min(width, image.width)), height: Math.max(10, endY - y) };
+    if (!Number.isFinite(roi.x) || !Number.isFinite(roi.y) || !Number.isFinite(roi.width) || !Number.isFinite(roi.height) || roi.x < 0 || roi.y < 0 || roi.x + roi.width > image.width || roi.y + roi.height > image.height || roi.width * roi.height > MAX_CORRIDOR_PIXELS) throw new Error("invalid_roi");
     const rawTrack = trackVariant(raw, image.width, image.height, roi);
     const localCrop = crop(raw, image.width, image.height, roi);
     const localBlur = blur(localCrop.data, localCrop.width, localCrop.height, 15);
     const localData = localCrop.data.map((v, i) => v - localBlur[i]);
     const localTrack = trackCrop({ ...localCrop, data: localData });
-    const distance = pathDistance(rawTrack.points, localTrack.points);
+    const comparison = pathComparison(rawTrack.points, localTrack.points);
     const pathTolerancePx = Math.max(2, palmWidth * .08);
+    const supportOverlapRatio = comparison.supportOverlapRatio;
     const supportDensity = (track: VariantTrack) => track.verticalSpanPx > 0 ? track.supportRows / track.verticalSpanPx : 0;
-    return [direction, { direction, roi, raw: rawTrack, localContrast: localTrack, stability: { bothNonEmpty: rawTrack.points.length > 0 && localTrack.points.length > 0, coverageDelta: Math.abs(rawTrack.coverage - localTrack.coverage), pathDistancePx: distance, stableCandidate: rawTrack.status === "candidate" && localTrack.status === "candidate" && rawTrack.competingComponentCount === 0 && localTrack.competingComponentCount === 0 && supportDensity(rawTrack) >= .5 && supportDensity(localTrack) >= .5 && Math.abs(rawTrack.coverage - localTrack.coverage) <= .08 && distance !== null && distance <= pathTolerancePx } }];
+    return [direction, { direction, roi, raw: rawTrack, localContrast: localTrack, stability: { bothNonEmpty: rawTrack.points.length > 0 && localTrack.points.length > 0, coverageDelta: Math.abs(rawTrack.coverage - localTrack.coverage), pathDistancePx: comparison.distance, supportOverlapRatio, stableCandidate: rawTrack.status === "candidate" && localTrack.status === "candidate" && rawTrack.competingComponentCount === 0 && localTrack.competingComponentCount === 0 && supportDensity(rawTrack) >= .5 && supportDensity(localTrack) >= .5 && supportOverlapRatio >= .6 && Math.abs(rawTrack.coverage - localTrack.coverage) <= .08 && comparison.distance !== null && comparison.distance <= pathTolerancePx } }];
   })) as Record<AdditionalDirection, AdditionalCorridorResult>;
   return { width: image.width, height: image.height, elapsedMs: performance.now() - started, status: "ok", corridors, interpretation: "pixel_candidate_only" };
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "invalid_roi") return { ...base, status: "invalid_input", errorCode: "invalid_landmarks", elapsedMs: performance.now() - started };
     return { ...base, status: "error", errorCode: "runtime", elapsedMs: performance.now() - started };
   }
 }
