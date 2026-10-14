@@ -66,8 +66,8 @@ for (const [i, birth] of births.entries()) {
     for (const text of d.paragraphs) assert.equal(html.split(text).length - 1, 1, "every passage is rendered once");
     if (d.key === "money") {
       assert.match(d.paragraphs[0], /획득에서는/);
-      assert.match(d.paragraphs[1], /관리에서는.*가령/);
-      assert.match(d.paragraphs[2], /지출에서는.*가령/);
+      assert.match(d.paragraphs[1], /유지에서는/);
+      assert.match(d.paragraphs[2], /지출에서는/);
     }
     assert.equal(d.opportunity, "", "the same example is not repeated in a second card");
     assert.equal(d.caution, "", "the already explained caution is not repeated below");

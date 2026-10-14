@@ -158,7 +158,7 @@ const CONVERSATION_PRESSURE: Record<string, string> = {
   정인: "정확한 답을 들은 것보다 그때의 마음을 들어 줬다는 느낌이 더 편했다면",
 };
 export function connectYearToMonth(story: MonthStory, stem: string, branch: string, area: PillarFact["pillar"], year: PremiumYearNarrative | null,
-  mode?: MonthObservationMode): MonthStory {
+  mode?: MonthObservationMode, monthKey = ""): MonthStory {
   if (!year) return story;
   const conversation = (stem === "편인" && branch === "편인" && area === "day") || mode?.startsWith("heart");
   const craft = TEN_GOD_GROUP[stem] === "식상" && TEN_GOD_GROUP[branch] === "재성";
@@ -169,7 +169,7 @@ export function connectYearToMonth(story: MonthStory, stem: string, branch: stri
   // Keep the observed/natal scene; change its felt conflict and actual choice.
   // Only this annual branch, not the annual stem, owns the new resolution.
   return { ...story,
-    scene: `${story.scene} ${pressure.replace(/다면$/, "을 수 있습니다.")}`,
+    scene: `${story.scene} ${monthKey ? `${monthKey}의 장면에서는 ` : ""}${pressure.replace(/다면$/, "을 수 있습니다.")}`,
     meaning,
   };
 }

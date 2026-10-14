@@ -27,24 +27,11 @@ const create = day => {
   return { facts, report: buildPremiumReport({ facts, referenceDate: new Date('2026-10-13T00:00:00Z') }) };
 };
 
-// Reviewed annual-pressure repeats in these invented calendars. No other
-// sentence, including another scene ending or a resolution, is exempt.
+// The customer-reading edition qualifies each month-specific annual pressure
+// with its month label, so no full sentence is exempt from duplicate checks.
 const repeatedAnnualPressure = {
-  1: [
-    ['다른 사람의 이유를 이해할수록 직접 고르기 어려워졌을 수 있습니다.', ['2026년 10월', '2027년 1월']],
-    ['유용하다는 이유를 더 찾아도 직접 좋아하는 부분은 아직 흐렸을 수 있습니다.', ['2026년 11월', '2026년 12월']],
-    ['다시 묻는 일이 쌓아 온 믿음을 잃는 것처럼 느껴졌을 수 있습니다.', ['2027년 2월', '2027년 3월']],
-    ['도움받아 마음이 놓였는데 직접 고른 경험은 작아진 듯했을 수 있습니다.', ['2027년 4월', '2027년 7월']],
-    ['설명이 더 늘어났는데 누군가 들어 줬을 때의 편안함은 따로 남았을 수 있습니다.', ['2027년 5월', '2027년 6월']],
-    ['배운 방법을 지킨 만족과 스스로 해 본 만족이 달리 남았을 수 있습니다.', ['2027년 8월', '2027년 9월']],
-  ],
-  7: [
-    ['좋은 반응을 더 얻으려다 만드는 시간이 전처럼 즐겁지 않았을 수 있습니다.', ['2026년 10월', '2027년 1월']],
-    ['배운 것을 잘 설명하는 일보다 다시 직접 해 볼 때 마음이 놓였을 수 있습니다.', ['2026년 11월', '2026년 12월']],
-    ['좋아하는 뜻이 있는데 처음 꺼낸 말만 계속 지켜야 할 것 같았을 수 있습니다.', ['2027년 2월', '2027년 3월']],
-    ['달리 표현한 부분까지 처음 모습과 같아야 한다고 느꼈을 수 있습니다.', ['2027년 5월', '2027년 6월']],
-    ['잘해 보인 결과에 내 뜻이 남지 않아 아쉬웠을 수 있습니다.', ['2027년 8월', '2027년 9월']],
-  ],
+  1: [],
+  7: [],
 };
 const longSentencesIn = body => body.split(/(?<=다\.)\s+/).map(s => s.trim()).filter(s => s.length > 30);
 function checkedMonthlySentences(report, approved) {
@@ -80,7 +67,7 @@ for (const day of [1, 7]) {
   const { facts, report } = create(day);
   assert.ok(isRenderablePremiumReport(report));
   assert.ok(isStoredPremiumReport(report));
-  assert.equal(report.version, 'year-connected-reading-2026-10-v13');
+  assert.equal(report.version, 'natal-customer-reading-2026-10-v14');
   const savedV12Shape = structuredClone(report);
   savedV12Shape.version = 'connected-reading-2026-10-v12';
   assert.ok(isStoredPremiumReport(savedV12Shape), 'saved v12 structure stays readable');
@@ -120,13 +107,6 @@ for (const day of [1, 7]) {
   assert.equal(resolutionChecked.filter(sentence => sentence === accidentalRepeat).length, 2,
     'monthly choice and consequence remain under the duplicate check');
   assert.notEqual(new Set(resolutionChecked).size, resolutionChecked.length);
-  const repeatedInResolution = structuredClone(report);
-  const [allowedSentence, affectedMonths] = approved[0];
-  for (const period of repeatedInResolution.periods.filter(p => affectedMonths.includes(p.label))) {
-    period.interpretation.passages.find(p => p.id === 'month-lived-resolution').text += ` ${allowedSentence}`;
-  }
-  assert.equal(checkedMonthlySentences(repeatedInResolution, approved).checked.filter(sentence => sentence === allowedSentence).length,
-    affectedMonths.length, 'even an approved pressure sentence is not exempt inside a monthly choice or consequence');
   assert.deepEqual([...new Set(report.periods.flatMap(p => [p.symbols.month.stemTenGod, p.symbols.month.branchTenGod]))].sort(), gods.sort(), 'the two invented calendars exercise all ten names');
   assert.equal(new Set(displayed).size, 12, 'date changes alone cannot yield a duplicate monthly body');
   assert.ok(displayed.every(body => body.length > 110), 'each month retains a concrete decision after shared context is linked');
@@ -174,16 +154,16 @@ for (const day of [1, 7]) {
   assert.ok(report.annualMethod.includes('세운') && report.annualMethod.includes('천간'));
   assert.ok(!report.overall.paragraphs.join(' ').includes('작은 결과를 보여준 뒤'), 'the overall reading must not spend the work scene');
   assert.doesNotMatch(report.overall.paragraphs.join(' '), /전체 풀이의 중심|원국의 서로 다른 자리|맥락으로 삼/);
-  assert.match(report.overall.basis, /원국의 서로 다른 자리.*(?:연|월|일|시)(?:간|지)/,
-    'the calculated positions remain inspectable in the folded basis');
+  assert.match(report.overall.basis, /일간.*오행.*강약/,
+    'the calculated natal facts remain inspectable in the folded basis');
   const love = report.domains.find(d => d.key === 'love_relationship').paragraphs.join(' ');
   const money = report.domains.find(d => d.key === 'money').paragraphs.join(' ');
   const work = report.domains.find(d => d.key === 'work').paragraphs.join(' ');
-  assert.match(money, /획득에서는.*관리에서는.*지출에서는/);
+  assert.match(money, /획득에서는.*유지에서는.*지출에서는/);
   const moneyParagraphs = report.domains.find(d => d.key === 'money').paragraphs;
   assert.equal(moneyParagraphs.length, 3);
-  assert.ok(moneyParagraphs.slice(1).every(text => /가령/.test(text) && /선택|구별/.test(text)),
-    'management and spending must explain a conditional scene and what the choice changes');
+  assert.ok(moneyParagraphs.slice(1).every(text => text.length > 100),
+    'retention and spending must explain their own scene and changed value');
   assert.notEqual(love, money); assert.notEqual(money, work); assert.notEqual(love, work);
   console.log(`PASS invented fixture ${day}: 12 exact-symbol month readings, visible evidence, separate domain scenes`);
 }

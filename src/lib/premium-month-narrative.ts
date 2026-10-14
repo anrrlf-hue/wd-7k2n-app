@@ -124,7 +124,7 @@ export function buildPremiumMonthNarrative(facts: SajuFacts, month: SajuAnnualMo
   const base = composeMonthStory(stem, branch, area, anchor?.god ?? null);
   const observed = withObservedScene(base, stem, branch, area, context, evidence);
   const year = buildPremiumYearNarrative(symbols.year);
-  const story = composeMonthStory(stem, branch, area, anchor?.god ?? null, { year, observedStory: observed.story, mode: observed.mode });
+  const story = composeMonthStory(stem, branch, area, anchor?.god ?? null, { year, observedStory: observed.story, mode: observed.mode, monthKey: month.label });
   if (year) {
     evidence.push({ id: "year-stem", kind: "calculated", source: "annual pillar stem compared with facts.dayStem", value: `${symbols.year.stem}:${year.stemGod}` },
       { id: "year-branch", kind: "calculated", source: "annual branch main hidden stem compared with facts.dayStem", value: `${symbols.year.branch}:${year.branchGod}` });

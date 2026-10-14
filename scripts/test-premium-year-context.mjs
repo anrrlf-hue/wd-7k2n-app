@@ -46,9 +46,9 @@ for (const label of ['2026년 10월', '2027년 2월', '2027년 3월']) {
   if (label.endsWith('10월')) for (const r of [base, other]) assert.doesNotMatch(r.plan.passages.map(p => p.text).join(' '), /업무|같은 속도로 익혀|배운 방법/);
   if (label.endsWith('3월')) {
     assert.match(passage(base, 'month-relation').text, /바꾸고 싶은 뜻.*지키고 싶은 마음/);
-    assert.match(passage(base, 'month-lived-scene').text, /덜 바꾼 모습.*원래 편했던 부분/);
-    assert.match(final(base), /이미 편해진 부분을 설명.*막힌 한 곳에만 도움/);
-    assert.match(final(other), /원했던 뜻을 상대도 알아볼/);
+    assert.match(passage(base, 'month-lived-scene').text, /작은 불편.*가까운 사람|함께 쓰는 자료/);
+    assert.match(final(base), /작은 예로 보여|불편했던 한 곳/);
+    assert.match(final(other), /원했던 뜻이 알아보이는|실제로 고친 불편/);
     assert.doesNotMatch(final(base), /다시 손이 가|조용한 애착|자주 쓰며 편/);
   }
   contrast.push({ synthetic: true, label, baseCalendarYear: month.year, otherCalendarYear: month.year + 5, fixedMonthlySymbols: base.symbols.month, base, other });
@@ -75,7 +75,7 @@ for (const p of report.periods) {
 const summaries = [...new Map(report.periods.map(p => [p.symbols.year.ganzhi, p.symbols.year])).values()].map(buildPremiumYearNarrative);
 assert.ok(summaries.every(y => report.annualIntroduction.includes(y.summary)), 'the same actual annual frame used in months appears once in the annual introduction');
 assert.equal(new Set(summaries.map(y => y.summary)).size, 2);
-assert.equal(report.version, 'year-connected-reading-2026-10-v13');
+assert.equal(report.version, 'natal-customer-reading-2026-10-v14');
 assert.ok(isCurrentPremiumReport(report));
 if (process.env.YEAR_READING_BEFORE) {
   const old = JSON.parse(fs.readFileSync(process.env.YEAR_READING_BEFORE, 'utf8'));

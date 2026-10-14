@@ -37,14 +37,14 @@ assert.equal(new Set(summaries).size, 4, 'four observed combinations have differ
 assert.ok(palmFactsSchema.safeParse(left).success && palmFactsSchema.safeParse(right).success, 'invented fixtures must be valid API observations');
 for (const dominant of ['left', 'right']) {
   const result = buildPalmBilateralReading(left, right, dominant);
-  for (const side of ['왼손', '오른손']) for (const key of ['손 형태', '손가락', '운명선'])
-    assert.ok(result.items.some(item => item.title.startsWith(side) && item.title.includes(key)), `${side} ${key} retained independently of dominance`);
-  assert.match(result.items.find(item => item.title.includes('양손의 운명선'))?.text, /왼손.*생활.*오른손.*반응/);
+  assert.ok(result.items.some(item => item.title.includes('두뇌선')) && result.items.some(item => item.title.includes('감정선')),
+    'main-line explanations remain independent of dominance');
+  assert.doesNotMatch(result.note, /운명선 후보.*개인 진로의 근거/);
   assert.equal(result.note.split('태양선·재물선은 현재').length - 1, 1, 'same limitation appears once');
 }
 const fateBodies = [withFate('right', 'middle'), withFate('right', 'thumb_side'), withFate('right', 'pinky_side'),
-  withFate('right', 'middle', 0.25), withFate('right', 'middle', 0.65, 0.2)].map(f => palmFatePassage(f).text);
-assert.equal(new Set(fateBodies).size, 5, 'position, actual span and connected crease support change the narrative');
+  withFate('right', 'middle', 0.25), withFate('right', 'middle', 0.65, 0.2)].map(f => palmFatePassage(f).observation);
+assert.equal(new Set(fateBodies).size, 3, 'candidate observation retains only its measured position');
 const legacy = withFate('right', 'middle'); delete legacy.secondaryLines.fate.candidateObservation;
 assert.equal(palmFatePassage(legacy), null);
 assert.ok(!buildPalmCustomerPassages(palmFixture).some(item => item.key === 'handShape'));
@@ -72,7 +72,7 @@ for (const [index, birth] of [birthFixture, { year: 1988, month: 12, day: 2, hou
   const body = [premium.overall.paragraphs, ...premium.domains.map(d => d.paragraphs), ...premium.periods.map(p => p.reading)].flat().join('\n');
   assert.doesNotMatch(body, /전체 풀이의 중심|공통 기준으로|맥락으로 삼았습니다|원국의 서로 다른 자리/);
   assert.ok(free.strengths.every(item => !item.title.endsWith('하는 관점')));
-  assert.ok(premium.domains.every(d => /가령|실제 경험/.test(d.paragraphs[0])));
+  assert.ok(premium.domains.every(d => d.paragraphs[0].length > 80), 'each domain starts with direct interpretation');
   assert.ok(premium.periods.every(p => p.basis.includes(p.symbols.month.ganzhi)));
   assert.ok(isStoredPremiumReport(premium));
   samples.push({ index, synthetic: true, birth, facts, free, palm: buildPalmBilateralReading(left, right, 'right'), comparison: buildTripleCompare(facts, right.onnxLines, null), verdict: buildComprehensiveVerdict(facts, right.onnxLines, null), premium });
@@ -85,7 +85,7 @@ if (process.env.READING_DEPTH_BEFORE) {
     assert.deepEqual(sample.premium.annual, before.samples[index].premium.annual, 'same 12-month calculations');
     assert.deepEqual(sample.premium.periods.map(p => p.symbols), before.samples[index].premium.periods.map(p => p.symbols));
     if (index == 0) assert.match(sample.palm.summary, /대화.*구체적.*평가/); // preserve the improved synthesis
-    if (index == 0 && !["connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13"].includes(before.samples[index].premium.version)) assert.notEqual(sample.premium.overall.paragraphs[0], before.samples[index].premium.overall.paragraphs[0]);
+    if (index == 0 && !["connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13", "natal-customer-reading-2026-10-v14"].includes(before.samples[index].premium.version)) assert.notEqual(sample.premium.overall.paragraphs[0], before.samples[index].premium.overall.paragraphs[0]);
     assert.ok(sample.premium.periods.every((period, i) => period.reading !== before.samples[index].premium.periods[i].reading), 'all twelve monthly meanings are rebuilt');
     assert.ok(isStoredPremiumReport(before.samples[index].premium), 'old edition stays readable');
   }

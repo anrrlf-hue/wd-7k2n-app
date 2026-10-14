@@ -57,7 +57,9 @@ function center(frame: NatalNarrativeFrame): string {
   const { facts: f, stem: s, fireMeeting, leaders } = frame;
   if (fireMeeting && f.dayElement === "금") return `당신의 명식에는 ${s.name}의 ${s.center}과, 그 단단함을 현실에 맞게 다듬는 불의 힘이 함께 있습니다. 사·오·미로 이어지는 불의 자리가 금을 둘러싸므로, 자기 뜻을 지키는 것과 세상에 쓸 만한 모습으로 다듬는 것이 함께 중요한 풀이입니다.`;
   const surrounding = f.fiveElements.수 > 0 && f.fiveElements.화 === 0 && f.dayElement === "금"
-    ? "금의 섬세함 곁에 물의 표현과 나무의 쓰임이 놓여, 잘 다듬은 것을 혼자 간직하는 마음과 밖에 내보여 살아 움직이게 하는 마음이 만납니다."
+    ? f.fiveElements.목 > 0
+      ? "금의 섬세함 곁에 물의 표현과 나무의 쓰임이 놓여, 잘 다듬은 것을 혼자 간직하는 마음과 밖에 내보여 살아 움직이게 하는 마음이 만납니다."
+      : "금의 섬세함 곁에 물의 표현이 놓여, 잘 다듬은 것을 혼자 간직하는 마음과 밖에 내보여 살아 움직이게 하는 마음이 만납니다."
     : leaders.length > 1 ? `명식에서는 ${leaders.map(g => ({ 비겁: "자기 뜻", 식상: "표현", 재성: "실제 가치", 관성: "신뢰", 인성: "이해" })[g]).join("과 ")}의 비중이 나란히 놓입니다. 하나의 바람만 채워서는 다른 쪽에 아쉬움이 남기 쉬운 구성을 읽습니다.`
       : `그 곁에는 ${leaders[0] ? ({ 비겁: "스스로 고르는 마음", 식상: "밖으로 표현하는 즐거움", 재성: "생활에 남는 가치", 관성: "믿음직하게 남고 싶은 마음", 인성: "충분히 이해하고 싶은 마음" })[leaders[0]] : "여러 생활의 바람"}이 놓여 있습니다.`;
   return `${s.name}인 당신의 중심은 ${s.center}으로 읽힙니다. ${surrounding}`;
