@@ -78,10 +78,11 @@ try {
   assert.match(link, /[?&]ref=[A-Za-z0-9_-]{43}$/); assert.ok(adapterState.events.includes("invite:stored"));
   await recipient.goto(link);
   await recipient.locator("#birthDate").fill("1990-01-01");
+  await recipient.getByRole("button", { name: "날짜 확정", exact: true }).click();
   await recipient.getByText("출생정보를 서버에서 계산하고 기기에 저장하는 데 동의합니다.").click();
   await recipient.getByRole("button", { name: "다음", exact: true }).click();
   await recipient.getByRole("button", { name: "태어난 시간을 모르겠어요", exact: true }).click();
-  await recipient.getByRole("button", { name: "다음", exact: true }).click(); await recipient.getByRole("button", { name: "다음", exact: true }).click();
+  await recipient.getByRole("button", { name: "다음", exact: true }).click();
   await inviter.getByRole("button", { name: /무료 풀이 완료 확인/ }).click();
   await inviter.getByRole("alert").filter({ hasText: "아직" }).waitFor();
   try { await recipient.getByText("내 사주표", { exact: true }).waitFor({ timeout: 30000 }); }
