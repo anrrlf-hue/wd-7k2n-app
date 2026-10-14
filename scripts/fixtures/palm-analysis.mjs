@@ -1,5 +1,5 @@
 // Synthetic observations for lifecycle tests; these are not recognition evidence.
-const line = { detected: true, length: "보통", curve: "완만한 곡선", depthStrength: "보통", start: { x: 0.2, y: 0.3 }, end: { x: 0.7, y: 0.8 }, branchDetected: null };
+const line = { detected: true, length: "보통", curve: "완만한 곡선", depthStrength: "보통", start: { x: 0.2, y: 0.3 }, end: { x: 0.7, y: 0.8 }, branchDetected: null, anatomicalStatus: "supported", anatomicalReason: "thumb_side_segment" };
 export const palmFixture = {
   handSide: "right", imageQuality: "good", handShape: "square",
   majorLines: ["생명선", "감정선", "두뇌선"],

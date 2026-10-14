@@ -187,6 +187,7 @@ export function normalizePalmFactsObservation(facts: PalmFacts): PalmFacts {
       : diagnostics?.enhancedAttempted === false || diagnostics?.enhancedDetectedLineCount === 0 || diagnostics?.enhancedPixelCount?.[key] === 0 ? false : undefined);
     normalized[key] = {
       ...line, sourceVariant, rawDetected, enhancedDetected,
+      ...(key === "lifeLine" && !line.anatomicalStatus ? { anatomicalStatus: "unconfirmed" as const, anatomicalReason: "short_or_missing_geometry" as const } : {}),
       endpointEvidence: line.endpointEvidence ?? (line.detected ? "segment_extrema" : "none"),
       pathCompleteness: line.pathCompleteness ?? (line.detected ? "not_verified" : "unavailable"),
       attributeSupport: line.attributeSupport ?? (line.detected
