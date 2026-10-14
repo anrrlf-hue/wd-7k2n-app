@@ -203,6 +203,6 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
       </details>
       <button type="button" onClick={() => setStage("ready")} className="mt-5 min-h-10 w-full text-sm text-muted-foreground underline underline-offset-4">프리미엄 접기</button>
     </>}
-    {stage !== "loading" && <>{eligible && <ServiceShareCard />}<details className="mt-6"><summary className="cursor-pointer text-sm">다른 사람과의 관계도 보고 싶다면</summary><PersonCompareCard me={birthInput} /></details></>}
+    {stage !== "loading" && <>{eligible && <ServiceShareCard />}<PersonCompareCard me={birthInput} /></>}
   </section>;
 }
