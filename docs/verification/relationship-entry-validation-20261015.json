@@ -24,6 +24,11 @@
     "errors": [],
     "apiCallsWereNotChanged": true
   },
+  "libraryEvidence": {
+    "entryCard": "libfile_73f2db8f86448191a68b46232224d86a",
+    "relationshipSelection": "libfile_02f1f1f042748191b5becef4d36451d4",
+    "relationshipResult": "libfile_a598cd1f378881918f446152ecd0ffe3"
+  },
   "restrictions": {
     "mainMerged": false,
     "productionDeployed": false,
