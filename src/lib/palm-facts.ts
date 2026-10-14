@@ -47,12 +47,14 @@ export interface LineFeature {
  * 측정치)은 절대 지어내지 않고 null로 둔다. */
 export interface OnnxLineDetail {
   detected: boolean;
+  /** segmentation observed vs single-path geometry measurable */
+  geometryStatus?: "not_detected" | "measurable" | "ambiguous";
   length: LineLength | null;
   curve: LineDirection | null;
   /** 마스크 픽셀 수(굵기·뚜렷함) 기반 근사치. 실제 "깊이"를 측정한 값이
    * 아니라는 걸 명시하기 위해 depthStrength로 이름 붙였다. */
   depthStrength: "약함" | "보통" | "강함" | null;
-  /** 512x512 모델 좌표계를 0~1로 정규화한 시작점/끝점(주성분 투영 극값) */
+  /** 선택된 crop 좌표를 0~1로 정규화한 시작점/끝점(중심선 투영 극값). 기존 API 범위 유지. */
   start: { x: number; y: number } | null;
   end: { x: number; y: number } | null;
   /** 이 모델은 분기(fork) 검출을 지원하지 않는다 — 항상 null. */

@@ -35,6 +35,13 @@ for (const head of [true, false]) for (const heart of [true, false]) {
 assert.equal(new Set(summaries).size, 4, 'four observed combinations have different interpretations');
 
 assert.ok(palmFactsSchema.safeParse(left).success && palmFactsSchema.safeParse(right).success, 'invented fixtures must be valid API observations');
+const geometryStatusFixture = structuredClone(palmFixture);
+geometryStatusFixture.onnxLines.headLine.geometryStatus = 'ambiguous';
+const parsedGeometryStatus = palmFactsSchema.safeParse(geometryStatusFixture);
+assert.ok(parsedGeometryStatus.success && parsedGeometryStatus.data.onnxLines.headLine.geometryStatus === 'ambiguous', 'new geometry status survives API parsing');
+const legacyGeometryStatus = structuredClone(palmFixture);
+delete legacyGeometryStatus.onnxLines.headLine.geometryStatus;
+assert.ok(palmFactsSchema.safeParse(legacyGeometryStatus).success, 'legacy observations remain parse-compatible');
 for (const dominant of ['left', 'right']) {
   const result = buildPalmBilateralReading(left, right, dominant);
   assert.ok(result.items.some(item => item.title.includes('두뇌선')) && result.items.some(item => item.title.includes('감정선')),

@@ -2,6 +2,9 @@ import { z } from "zod";
 
 const onnxLineDetailSchema = z.object({
   detected: z.boolean(),
+  // Optional for backward compatibility with stored pre-geometry-status data.
+  // New observations preserve whether segmentation was measurable or ambiguous.
+  geometryStatus: z.enum(["not_detected", "measurable", "ambiguous"]).optional(),
   length: z.enum(["짧음", "보통", "김"]).nullable(),
   curve: z.enum(["완만한 곡선", "직선에 가까움"]).nullable(),
   depthStrength: z.enum(["약함", "보통", "강함"]).nullable(),
