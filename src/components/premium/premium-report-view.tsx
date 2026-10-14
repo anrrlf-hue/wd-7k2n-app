@@ -24,7 +24,7 @@ function ReadingContent({ reading, showTip = true, evidence }: { reading: Premiu
 }
 
 export function PremiumReportView({ report }: { report: PremiumReport }) {
-  const currentLayout = ["integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", "decision-reading-2026-10-v10", "lived-reading-2026-10-v11", "connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13"].includes(report.version);
+  const currentLayout = ["integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", "decision-reading-2026-10-v10", "lived-reading-2026-10-v11", "connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13", "natal-customer-reading-2026-10-v14"].includes(report.version);
   const highlights = report.annualHighlights?.flatMap(label => {
     const period = report.periods.find(p => p.months[0] === label);
     return period ? [period] : [];
@@ -54,14 +54,15 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
       <p className="section-eyebrow">총운</p><ReadingContent reading={report.overall} showTip={!report.closing} />
     </section>
     {report.domains.map(domain => <section id={`premium-domain-${domain.key}`} key={domain.key} className="scroll-mt-5 rounded-3xl border border-border bg-card p-5">
-      <p className="section-eyebrow">{domain.label}</p><ReadingContent reading={domain} showTip={!report.closing} evidence={report.palmConnections?.find(item => item.text === domain.paragraphs.join("\n\n"))?.evidence} />
+      <p className="section-eyebrow">{domain.label}</p><ReadingContent reading={domain} showTip={!report.closing} />
     </section>)}
-    {!!report.palmConnections?.length && !currentLayout && <section className="rounded-3xl border border-border bg-card p-5" aria-label="손금과 사주를 연결해 읽기">
+    {!!report.palmConnections?.length && (!currentLayout || report.version === "natal-customer-reading-2026-10-v14") && <section className="rounded-3xl border border-border bg-card p-5" aria-label="손금과 사주를 연결해 읽기">
       <p className="section-eyebrow">손금과 함께 보면</p>
-      <h3 className="mt-2 text-xl leading-8 font-semibold">같은 장면을 서로 다른 관점에서 읽기</h3>
+      <h3 className="mt-2 text-xl leading-8 font-semibold">두 풀이를 함께 읽을 때 더 보이는 마음</h3>
       {report.palmConnections.map(item => <div key={item.topic} className="mt-4">
         <h4 className="font-semibold">{item.topic}</h4>
         <p className="mt-2 whitespace-pre-line text-base leading-8 text-muted-foreground">{item.text}</p>
+        {!!item.evidence?.length && <details className="mt-3 text-sm text-muted-foreground"><summary>함께 읽은 근거</summary><p className="mt-2 leading-6">{customerReadingBasis("", item.evidence)}</p></details>}
       </div>)}
     </section>}
     <section id="premium-annual" className="scroll-mt-5 rounded-3xl border border-(--gold-soft) bg-card p-5">

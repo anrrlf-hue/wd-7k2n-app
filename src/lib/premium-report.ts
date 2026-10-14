@@ -15,11 +15,12 @@ import { isPalmFactsUsable, normalizePalmFactsObservation } from "@/lib/palm-fac
 import { READING_GUIDE } from "@/lib/reading-guide";
 import { buildIntegratedPalmReading } from "@/lib/integrated-palm-reading";
 import { buildPremiumEditorialPlan } from "@/lib/premium-editorial-plan";
-import { composePremiumDomainStory, composePremiumOverallStory, premiumOverallEvidence, premiumReportLead, premiumAnnualThread, premiumClosing } from "@/lib/premium-domain-story";
+import { premiumAnnualThread, premiumClosing } from "@/lib/premium-domain-story";
+import { buildCustomerPremiumNarrative } from "@/lib/saju-customer-narrative";
 import { validateReadingPlan } from "@/lib/reading-plan";
 import { describeReadingEvidence } from "@/lib/reading-evidence-display";
 
-export const PREMIUM_REPORT_VERSION = "year-connected-reading-2026-10-v13" as const;
+export const PREMIUM_REPORT_VERSION = "natal-customer-reading-2026-10-v14" as const;
 export interface PremiumReading {
   headline: string;
   paragraphs: string[];
@@ -44,7 +45,7 @@ export interface PremiumPeriod {
   symbols?: AnnualMonthSymbols;
 }
 export interface PremiumReport {
-  version: typeof PREMIUM_REPORT_VERSION | "connected-reading-2026-10-v12" | "lived-reading-2026-10-v11" | "decision-reading-2026-10-v10" | "distinct-reading-2026-10-v9" | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
+  version: typeof PREMIUM_REPORT_VERSION | "year-connected-reading-2026-10-v13" | "connected-reading-2026-10-v12" | "lived-reading-2026-10-v11" | "decision-reading-2026-10-v10" | "distinct-reading-2026-10-v9" | "evidence-reading-2026-10-v8" | "edited-reading-2026-10-v7" | "coherent-reading-2026-10-v6" | "integrated-reading-2026-10-v5" | "personal-reading-2026-10-v4" | "context-reading-2026-10-v3" | "annual-reading-2026-10-v2";
   title: string;
   summary: string;
   overall: PremiumReading;
@@ -129,47 +130,36 @@ export function buildPremiumReport(input: {
   const natal = buildPersonalReading(facts);
   const editorial = buildPremiumEditorialPlan(facts, natal.rule);
   const { overall, domains } = natal;
+  const customer = buildCustomerPremiumNarrative(facts);
   const hasPalms = input.leftPalm && input.rightPalm && input.dominantHand
     && isPalmFactsUsable(input.leftPalm) && isPalmFactsUsable(input.rightPalm);
   const integration = hasPalms ? buildIntegratedPalmReading(facts, input.leftPalm!, input.rightPalm!, input.dominantHand!, editorial) : {};
-  overall.paragraphs = [composePremiumOverallStory(editorial)];
-  overall.basis += ` ${premiumOverallEvidence(editorial)}`;
+  overall.paragraphs = customer.overall;
+  overall.basis = customer.frame.evidence.self;
+  overall.headline = "자기 중심과 마음속의 다른 바람";
   overall.opportunity = "";
   overall.caution = "";
-  if (editorial.id === "duty-translation") {
-    const names = { year: "연", month: "월", day: "일", hour: "시" };
-    const positions = editorial.natalEvidence.placements
-      .filter(item => ["관성", "인성", "식상", "비겁", "재성"].includes(item.group))
-      .map(item => `${names[item.pillar]}${item.part === "stem" ? "간" : "지"} ${item.symbol}/${item.tenGod}`);
-    const positionBasis = `선택 근거: 관성 ${editorial.natalEvidence.counts.관성}개가 다른 각 그룹보다 많고, 확인된 자리 ${positions.join(" · ")}. 이 배치는 전통적 해석의 근거이며 실제 능력이나 결과를 판정하지 않습니다.`;
-    overall.basis += ` ${positionBasis}`;
-    for (const reading of domains) reading.basis += ` ${positionBasis}`;
-  }
   for (const reading of domains) {
     const area = reading.key;
     if (area === "wellbeing") continue;
     const connection = integration[area];
-    reading.paragraphs = composePremiumDomainStory(area, editorial,
-      hasPalms ? { left: input.leftPalm!, right: input.rightPalm!, dominant: input.dominantHand! } : null).split("\n\n");
-    if (hasPalms && connection?.plan.passages.some(p => p.kind === "traditional")) {
-      if (area === "money") reading.headline = "보람과 대가가 내 하루에 남기는 것";
-      if (area === "work") reading.headline = "생각이 편하게 쓰이는 일과 마음이 막히는 환경";
-      if (area === "love_relationship") reading.headline = "마음을 전한 뒤에 서로에게 남는 것";
-    }
-    // Each passage owns its example and consequence; money keeps earning,
-    // management and spending apart. Stored editions retain their own cards.
-    reading.opportunity = "";
-    reading.caution = "";
-    reading.tip = "";
-    reading.observationNote = connection?.observationNote;
-    if (connection) reading.basis += ` 사진에서 함께 본 특징: ${describeReadingEvidence(connection.plan.evidence)}.`;
+    const natalParagraphs = area === "love_relationship" ? customer.love : area === "money" ? customer.money : customer.work;
+    const joint = connection?.plan.passages.filter(p => p.kind === "traditional").map(p => p.text) ?? [];
+    // Each paragraph has a separate meaning: natal depth, observed interaction,
+    // and (money only) preserving/spending. No connection copies this body.
+    reading.paragraphs = area === "money" ? [natalParagraphs[0], ...joint, ...natalParagraphs.slice(1)] : [...natalParagraphs, ...joint];
+    reading.headline = area === "money" ? "얻은 가치와 생활에 남기는 만족" : area === "work" ? "실력이 자라는 환경과 일에 남는 애착" : "가까워지는 마음과 서로 편한 거리";
+    reading.opportunity = ""; reading.caution = ""; reading.tip = "";
+    reading.observationNote = null;
+    reading.basis = customer.frame.evidence[area === "love_relationship" ? "relationship" : area];
+    if (connection) reading.basis += ` 함께 읽은 주요선: ${describeReadingEvidence(connection.plan.evidence)}.`;
   }
   const priorSignals = hasPalms ? buildTripleCompare(facts, (input.dominantHand === "left" ? input.leftPalm! : input.rightPalm!).onnxLines, null) : [];
-  const palmConnections: CompareItem[] = Object.entries(integration).filter(([area]) => area !== "overall").map(([area, item]) => ({
-    topic: item.plan.headline, kind: "보완", text: domains.find(domain => domain.key === area)?.paragraphs.join("\n\n") ?? item.plan.passages.map(p => p.text).join("\n\n"),
-    signals: priorSignals[area === "love_relationship" ? 1 : 0]?.signals,
-    evidence: item.plan.evidence,
-  }));
+  const joint = integration.overall;
+  const palmConnections: CompareItem[] = joint ? [{
+    topic: joint.plan.headline, kind: "보완", text: joint.plan.passages.map(p => p.text).join("\n\n"),
+    signals: priorSignals[0].signals, evidence: joint.plan.evidence,
+  }] : [];
   const periods = buildPremiumPeriods(annual, facts, { leftPalm: input.leftPalm, rightPalm: input.rightPalm, dominantHand: input.dominantHand });
   const yearlySymbols = [...new Map(periods.map(period => [period.symbols!.year.ganzhi, period.symbols!.year])).values()];
   const yearContext = yearlySymbols.map(year => `세운 ${year.ganzhi}의 배경은 천간 ${year.stemTenGod ?? "미확인"}의 ${traditionalSymbolSubject(year.stemTenGod)}, 지지 ${year.branchTenGod ?? "미확인"}의 ${traditionalSymbolSubject(year.branchTenGod)}입니다.`).join(" ");
@@ -179,7 +169,7 @@ export function buildPremiumReport(input: {
   return {
     version: PREMIUM_REPORT_VERSION,
     title: "프리미엄 통합 연간 리포트",
-    summary: premiumReportLead(editorial),
+    summary: customer.summary,
     overall, domains, annual, periods,
     profileRule: natal.rule,
     closing: natal.closing ? premiumClosing(editorial, natal.closing) : undefined,

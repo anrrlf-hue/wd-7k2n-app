@@ -12,7 +12,9 @@ export function describeReadingEvidence(evidence: ReadingEvidence[]): string {
     const field = entry.id.replace("saju.", "");
     if (COUNTS[field] && typeof value === "number") descriptions.push(`사주에서 ${COUNTS[field]} ${value}개`);
     if (entry.id === "saju.close" && typeof value === "string") descriptions.push(`일지의 관계 상징: ${value}`);
-    if (entry.id === "saju.workplace" && typeof value === "string") descriptions.push(`월주의 일과 환경 상징: ${value}`);
+    if (["saju.workplace", "saju.month"].includes(entry.id) && typeof value === "string") descriptions.push(`월주의 일과 환경 상징: ${value}`);
+    if (entry.id === "saju.wealth" && typeof value === "number") descriptions.push(`드러난 재물 상징: ${value}개`);
+    if (/^(left|right)\.(headLine|heartLine)\.sourceVariant$/.test(entry.id) && value === "enhanced") descriptions.push(`${entry.id.startsWith("left") ? "왼손" : "오른손"}의 밝기를 보완한 사진에서 확인한 구간 사용`);
     if (entry.id === "dominant") descriptions.push(`주로 쓰는 손: ${value === "left" ? "왼손" : value === "right" ? "오른손" : "선택하지 않음"}`);
     const line = /^(left|right)\.(headLine|heartLine|lifeLine)\.curve$/.exec(entry.id);
     if (line && typeof value === "string" && ["완만한 곡선", "직선에 가까움"].includes(value)) descriptions.push(`${line[1] === "left" ? "왼손" : "오른손"} ${line[2] === "headLine" ? "두뇌선" : line[2] === "heartLine" ? "감정선" : "생명선"}: 사진에서 ${value} 구간 확인`);
