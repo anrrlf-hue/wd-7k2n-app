@@ -50,6 +50,9 @@ const maleFeb = male.premium.periods.find(period => period.months.includes("2027
 const femaleFeb = female.premium.periods.find(period => period.months.includes("2027년 2월"));
 assert.ok(maleFeb && femaleFeb, "E pair includes February 2027");
 assert.notEqual(maleFeb.reading, femaleFeb.reading, "E male/female February has different month meaning");
+assert.match(domainText(male).money, /정관·상관/);
+assert.match(domainText(female).money, /비견·정관/);
+assert.notEqual(domainText(male).money, domainText(female).money, "different daeun ten-god pairs change the money meaning");
 const natalContrast = results.find(result => result.id === "식상0-재물");
 const officerContrast = results.find(result => result.id === "관성우세-관계");
 assert.notEqual(male.premium.overall.paragraphs.join(" "), natalContrast.premium.overall.paragraphs.join(" "), "same daeun group does not erase a different natal arc");
@@ -71,6 +74,9 @@ assert.match(domainText(zeroOutput).money, /판단|신뢰|도움|준비/);
 const officer = results.find(result => result.id === "관성우세-관계");
 assert.ok(officer.facts.officerStarCount > officer.facts.peerStarCount && officer.facts.officerStarCount > officer.facts.outputStarCount && officer.facts.officerStarCount > officer.facts.wealthStarCount);
 assert.match(domainText(officer).love_relationship, /약속|책임|신뢰/);
+const newcomer = results.find(result => result.id === "신규-통합");
+assert.match(domainText(newcomer).money, /편재·비견/);
+assert.doesNotMatch(domainText(newcomer).money, /역할과 신뢰가 원국/);
 
 const metrics = {
   referenceDate: referenceDate.toISOString(),
