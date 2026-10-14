@@ -37,8 +37,10 @@ const onnxPalmLinesSchema = z.object({
 });
 
 const secondaryLineSignalSchema = z.object({
-  creaseObservation: z.object({ bounds: z.object({ x0: z.number().min(0).max(1), y0: z.number().min(0).max(1), x1: z.number().min(0).max(1), y1: z.number().min(0).max(1) }), continuity: z.number().min(0).max(1), sourceVariant: z.enum(["raw", "enhanced"]) }).optional(),
-  candidateObservation: z.object({ version: z.literal("fate-candidate-v1"), position: z.enum(["middle", "thumb_side", "pinky_side"]), visibleVerticalSpan: z.number().finite().positive().max(2), creaseContinuity: z.number().min(0).max(1) }).optional(),
+  creaseObservation: z.object({ bounds: z.object({ x0: z.number().min(0).max(1), y0: z.number().min(0).max(1), x1: z.number().min(0).max(1), y1: z.number().min(0).max(1) }), continuity: z.number().min(0).max(1), sourceVariant: z.enum(["raw", "enhanced"]), pathPoints: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).min(5).optional() }).optional(),
+  // Legacy candidate observations remain readable, but new runtime candidates
+  // include pathPoints and the observer requires them before promotion.
+  candidateObservation: z.object({ version: z.literal("fate-candidate-v1"), position: z.enum(["middle", "thumb_side", "pinky_side"]), visibleVerticalSpan: z.number().finite().positive().max(2), creaseContinuity: z.number().min(0).max(1), pathPoints: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).min(5).optional() }).optional(),
   assessment: z.enum(["observed", "not_observed", "error", "unsupported", "unconfirmed"]).optional(),
   status: z.enum(["clear", "faint", "not_seen"]),
   strength: z.number().min(0).max(1),

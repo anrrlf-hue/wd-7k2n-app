@@ -63,7 +63,7 @@ anchors[0] = { x: 50, y: 90 }; anchors[9] = { x: 50, y: 40 };
 anchors[5] = { x: 20, y: 40 }; anchors[17] = { x: 80, y: 40 };
 const model = { bbox: { x0: 0, y0: 0, x1: 1, y1: 1 } };
 for (const [center, expected] of [[0.25, 'thumb_side'], [0.5, 'middle'], [0.75, 'pinky_side']]) {
-  const signal = { creaseObservation: { bounds: { x0: center - 0.02, x1: center + 0.02, y0: 0.4, y1: 0.7 }, continuity: 0.7, sourceVariant: 'raw' } };
+  const signal = { creaseObservation: { bounds: { x0: center - 0.02, x1: center + 0.02, y0: 0.4, y1: 0.7 }, continuity: 0.7, sourceVariant: 'raw', pathPoints: Array.from({ length: 8 }, (_, i) => ({ x: center, y: 0.4 + i * 0.04 })) } };
   const observed = observeFateCandidate(signal, model, anchors, 100, 100);
   assert.equal(observed.position, expected); assert.ok(Math.abs(observed.visibleVerticalSpan - 0.6) < 0.00001);
   assert.equal(observed.creaseContinuity, 0.7);

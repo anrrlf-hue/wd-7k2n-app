@@ -10,6 +10,7 @@ import {
 } from "@mediapipe/tasks-vision";
 import { analyzeEdgeBand, analyzeVerticalCreaseBand } from "@/lib/palm-line-features";
 import { runPalmLineOnnx, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
+import { comparePalmPaths, type PalmPathAgreement } from "@/lib/palm-line-stability";
 import { runPalmFourLineOnnx } from "@/lib/palm-4line-onnx";
 import { fuseFateSignal } from "@/lib/palm-fate-fusion";
 import { measurePalmHandGeometry } from "@/lib/palm-hand-geometry";
@@ -21,6 +22,7 @@ import type {
   LineFeature,
   LineName,
   OnnxLineDetail,
+  PalmPipelineDiagnostics,
   PalmFacts,
 } from "@/lib/palm-facts";
 import { classifyLifeLineGeometry } from "@/lib/palm-life-line-geometry";
@@ -442,7 +444,7 @@ function bestSecondaryLineSignal(
     status,
     strength,
     span: best.continuity,
-    creaseObservation: bounds ? { bounds: { x0: bounds.x / rawImage.width, y0: bounds.y / rawImage.height, x1: (bounds.x + bounds.width) / rawImage.width, y1: (bounds.y + bounds.height) / rawImage.height }, continuity: best.continuity, sourceVariant: best === raw ? "raw" : "enhanced" } : undefined,
+    creaseObservation: bounds ? { bounds: { x0: bounds.x / rawImage.width, y0: bounds.y / rawImage.height, x1: (bounds.x + bounds.width) / rawImage.width, y1: (bounds.y + bounds.height) / rawImage.height }, continuity: best.continuity, sourceVariant: best === raw ? "raw" : "enhanced", pathPoints: best.pathPoints?.map(point => ({ x: point.x / rawImage.width, y: point.y / rawImage.height })) } : undefined,
     note:
       status === "clear"
         ? `${label} 후보가 원본과 보정 신호에서 함께 이어집니다.`
@@ -918,6 +920,23 @@ export async function analyzePalmFromCanvas(
   });
   const modelExecuted = Boolean(onnxRaw || onnxEnhanced);
 
+  const variantPathAgreement = (cls: OnnxLineClass): PalmPathAgreement | undefined => {
+    const raw = onnxRaw?.observations.find((observation) => observation.class === cls);
+    const enhanced = onnxEnhanced?.observations.find((observation) => observation.class === cls);
+    if (!raw?.pathPoints || !enhanced?.pathPoints) return undefined;
+    return comparePalmPaths(
+      raw.pathPoints,
+      { landmarks: rawCropLandmarks, cropWidth: rawPalmCrop.width, cropHeight: rawPalmCrop.height },
+      enhanced.pathPoints,
+      { landmarks: palmCropLandmarks, cropWidth: enhancedPalmCrop.width, cropHeight: enhancedPalmCrop.height },
+    );
+  };
+  const pathAgreement = {
+    heartLine: variantPathAgreement("heart_line"),
+    headLine: variantPathAgreement("head_line"),
+    lifeLine: variantPathAgreement("life_line"),
+  };
+
   const missingObservation = (cls: OnnxLineClass): OnnxLineObservation => ({
     class: cls,
     detected: false,
@@ -1014,6 +1033,7 @@ export async function analyzePalmFromCanvas(
       headLine: headChoice.variant,
       lifeLine: lifeChoice.variant,
     },
+    variantPathAgreement: Object.fromEntries(Object.entries(pathAgreement).filter(([, value]) => value)) as PalmPipelineDiagnostics["variantPathAgreement"],
   } as const;
   console.debug("[palm-pipeline]", pipelineDiagnostics);
 

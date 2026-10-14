@@ -46,6 +46,25 @@ export function palmShapeLabel(facts: PalmFacts): string {
     : "손 형태 세부 관찰값 미확인";
 }
 
+function handObservationPassage(facts: PalmFacts): PalmCustomerPassage | null {
+  const geometry = facts.handGeometry;
+  if (geometry?.status !== "observed" || geometry.palmWidthToLength == null || Object.keys(geometry.fingerToPalm).length < 3) return null;
+  const middle = geometry.fingerToPalm.middle;
+  const indexRing = geometry.indexRing === "index_longer" ? "검지가 약지보다 길게" : geometry.indexRing === "ring_longer" ? "약지가 검지보다 길게" : geometry.indexRing === "similar" ? "검지와 약지가 비슷한 길이로" : "검지와 약지의 관계는 확인하지 못한 채";
+  const shape = palmShapeLabel(facts);
+  const observations = [
+    shape.includes("넓은") ? "손바닥이 가로로 넓게" : "손바닥이 세로로 길게",
+    middle == null ? null : shape.includes("긴 중지") ? "중지가 손바닥에 비해 길게" : "중지가 손바닥에 비해 짧게",
+    indexRing,
+  ].filter((value): value is string => Boolean(value));
+  return {
+    key: "handOverview",
+    title: "손 전체에서 확인한 형태",
+    text: "이번 사진에서는 " + observations.join(", ") + " 보입니다. 손바닥과 손가락이 사진에 보인 범위에서 확인한 형태 관찰이며, 성격·적성·건강·미래를 판단하는 근거로 사용하지 않습니다.",
+    observation: "사진에서 " + observations.join(", ") + " 보이는 모습을 확인했습니다. 손가락이 휘거나 겹친 부분은 관찰에서 제외했습니다.",
+  };
+}
+
 /** A corroborated candidate is a located crease, not a validated fate line.
  * Keep its measurement in the auxiliary observation area only. */
 export function palmFatePassage(facts: PalmFacts): PalmCustomerPassage | null {
@@ -59,6 +78,8 @@ export function palmFatePassage(facts: PalmFacts): PalmCustomerPassage | null {
 export function buildPalmCustomerPassages(facts: PalmFacts): PalmCustomerPassage[] {
   if (facts.imageQuality !== "good") return [];
   const passages: PalmCustomerPassage[] = [];
+  const handOverview = handObservationPassage(facts);
+  if (handOverview) passages.push(handOverview);
   for (const key of Object.keys(PALM_LINE_NAMES) as PalmLineKey[]) {
     const line = facts.onnxLines?.modelExecuted ? facts.onnxLines[key] : undefined;
     const text = palmPersonalLineReading(key, line);
