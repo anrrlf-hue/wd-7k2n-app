@@ -13,12 +13,16 @@ export interface MajorCreaseModelSeed { x: number; y: number; classIndex?: numbe
 export interface MajorCreaseSegment {
   componentId: number;
   points: MajorCreasePixelPoint[];
-  /** Raw foreground support set; distinct from the ordered path points. */
-  supportPoints: MajorCreasePixelPoint[];
   pathLengthPx: number;
   supportPixelCount: number;
   responseMean: number;
   status: "measurable" | "ambiguous";
+}
+export interface MajorCreaseComponent {
+  componentId: number;
+  supportPoints: MajorCreasePixelPoint[];
+  pixelCount: number;
+  responseMean: number;
 }
 
 export interface MajorCreaseCandidate {
@@ -26,6 +30,7 @@ export interface MajorCreaseCandidate {
   coordinateSpace: "aligned-image-px";
   imageSize: { width: number; height: number };
   points: MajorCreasePixelPoint[];
+  components: MajorCreaseComponent[];
   segments: MajorCreaseSegment[];
   rawSupport: {
     pixelCount: number;
@@ -49,6 +54,7 @@ export interface MajorCreaseTrackResult {
   elapsedMs: number;
   candidate: MajorCreaseCandidate | null;
   errorCode?: "invalid_image" | "invalid_landmarks" | "work_limit" | "runtime";
+  budget?: { used: number; limit: number; reason?: "work_limit" | "component_limit" | "thinning_limit" | "seed_limit" };
 }
 
 const MAX_IMAGE_PIXELS = 6_000_000;
@@ -100,7 +106,7 @@ function pathLength(points: MajorCreasePixelPoint[]): number {
 }
 
 function emptyCandidate(width: number, height: number, axisAngleDeg: number, thumbSide: "left" | "right"): MajorCreaseCandidate {
-  return { status: "not_seen", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: [], segments: [], rawSupport: { pixelCount: 0, responseMean: 0, threshold: 0, coverage: 0, modelSeedSupport: 0 }, gaps: [], competingCandidates: [], direction: { axisAngleDeg, thumbSide }, probe: null, truncated: false };
+  return { status: "not_seen", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: [], components: [], segments: [], rawSupport: { pixelCount: 0, responseMean: 0, threshold: 0, coverage: 0, modelSeedSupport: 0 }, gaps: [], competingCandidates: [], direction: { axisAngleDeg, thumbSide }, probe: null, truncated: false };
 }
 
 function traceSkeleton(component: number[], response: Float32Array, width: number, height: number, budget: WorkBudget, componentId: number): MajorCreaseSegment[] {
@@ -159,8 +165,7 @@ function traceSkeleton(component: number[], response: Float32Array, width: numbe
     if (path.length < 2) return;
     const points = path.map(index => ({ x: index % localWidth + minX, y: Math.floor(index / localWidth) + minY }));
     const responseMean = path.reduce((sum, index) => sum + response[(Math.floor(index / localWidth) + minY) * width + index % localWidth + minX], 0) / path.length;
-    const supportPoints = component.map(index => ({ x: index % width, y: Math.floor(index / width) }));
-    segments.push({ componentId, points, supportPoints, pathLengthPx: pathLength(points), supportPixelCount: component.length, responseMean, status });
+    segments.push({ componentId, points, pathLengthPx: pathLength(points), supportPixelCount: component.length, responseMean, status });
   };
   for (const node of nodes) for (const next of neighbours(node)) {
     const firstEdge = edgeKey(node, next);
@@ -191,8 +196,7 @@ function traceSkeleton(component: number[], response: Float32Array, width: numbe
   if (!segments.length && component.length >= MIN_COMPONENT_PIXELS) {
     // Preserve thick/uncertain foreground evidence even when thinning cannot
     // yield a stable route; this is not promoted to a measurable path.
-    const supportPoints = component.map(index => ({ x: index % width, y: Math.floor(index / width) }));
-    segments.push({ componentId, points: [], supportPoints, pathLengthPx: 0, supportPixelCount: component.length, responseMean: component.reduce((sum, index) => sum + response[index], 0) / component.length, status: "ambiguous" });
+    segments.push({ componentId, points: [], pathLengthPx: 0, supportPixelCount: component.length, responseMean: component.reduce((sum, index) => sum + response[index], 0) / component.length, status: "ambiguous" });
   }
   return segments;
 }
@@ -290,7 +294,7 @@ export function trackMajorCreaseCandidates(
       const truncatedReason = probeBudget.truncatedReason;
       const candidate = emptyCandidate(width, height, angle, thumbSide);
       candidate.truncated = Boolean(truncatedReason); candidate.truncatedReason = truncatedReason;
-      return finish({ status: truncatedReason ? "truncated" : "ok", width, height, elapsedMs: 0, candidate });
+      return finish({ status: truncatedReason ? "truncated" : "ok", width, height, elapsedMs: 0, candidate, budget: { used: probeBudget.used, limit: MAX_WORK_UNITS, reason: truncatedReason } });
     }
     values.sort((a, b) => a - b);
     const threshold = Math.max(3, values[Math.floor(values.length * .82)] * .55);
@@ -311,7 +315,8 @@ export function trackMajorCreaseCandidates(
     const allComponents = components(response, foreground, width, height, budget);
     const tracks = allComponents.flatMap((component, componentId) => traceSkeleton(component, response, width, height, budget, componentId));
     const measurable = tracks.filter(track => track.status === "measurable").sort((a, b) => b.pathLengthPx - a.pathLengthPx);
-    const ambiguousComponents = tracks.filter(track => track.status === "ambiguous").map(track => ({ componentId: track.componentId, supportPixelCount: track.supportPixelCount, responseMean: track.responseMean, points: track.points, supportPoints: track.supportPoints }));
+    const ambiguousComponents = tracks.filter(track => track.status === "ambiguous").map(track => ({ componentId: track.componentId, supportPixelCount: track.supportPixelCount, responseMean: track.responseMean, points: track.points }));
+    const componentRecords: MajorCreaseComponent[] = allComponents.map((component, componentId) => ({ componentId, supportPoints: component.map(index => ({ x: index % width, y: Math.floor(index / width) })), pixelCount: component.length, responseMean: component.reduce((sum, index) => sum + response[index], 0) / component.length }));
     const selected = measurable[0];
     const segments = [...measurable].sort((a, b) => Math.min(...a.points.map(point => point.y)) - Math.min(...b.points.map(point => point.y)));
     const gaps = segments.slice(1).flatMap((segment, offset) => {
@@ -330,10 +335,10 @@ export function trackMajorCreaseCandidates(
     }
     const truncatedReason = budget.truncatedReason ?? probeBudget.truncatedReason;
     const truncated = Boolean(truncatedReason);
-    const ambiguousSegments = ambiguousComponents.map(item => ({ componentId: item.componentId, points: item.points, supportPoints: item.supportPoints, pathLengthPx: pathLength(item.points), supportPixelCount: item.supportPixelCount, responseMean: item.responseMean, status: "ambiguous" as const }));
+    const ambiguousSegments = ambiguousComponents.map(item => ({ componentId: item.componentId, points: item.points, pathLengthPx: pathLength(item.points), supportPixelCount: item.supportPixelCount, responseMean: item.responseMean, status: "ambiguous" as const }));
     const allSegments = [...segments, ...ambiguousSegments];
-    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, probe, truncated, truncatedReason } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, probe, truncated, truncatedReason };
-    return finish({ status: truncated ? "truncated" : "ok", width, height, elapsedMs: 0, candidate });
+    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, components: componentRecords, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, probe, truncated, truncatedReason } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", components: componentRecords, segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, probe, truncated, truncatedReason };
+    return finish({ status: truncated ? "truncated" : "ok", width, height, elapsedMs: 0, candidate, budget: { used: budget.used + probeBudget.used, limit: MAX_WORK_UNITS, reason: truncatedReason } });
   } catch {
     return finish({ status: "runtime", errorCode: "runtime", width, height, elapsedMs: 0, candidate: null });
   }

@@ -78,11 +78,11 @@ for (let i = 0; i < width * height; i++) if (thickCurved.data[i * 4] < 180) thic
 const thickSegments = traceForegroundSegments(thickMask, width, height);
 assert.ok(thickSegments.length, "thick curve retains observed maximal segments");
 assert.ok(thickSegments.some(segment => segment.status === "ambiguous" || segment.points.length > 10), "thick curve is preserved without forced semantics");
-assert.ok(thickSegments.every(segment => segment.points.every(point => Number.isFinite(point.x) && Number.isFinite(point.y)) && segment.supportPoints.every(point => Number.isFinite(point.x) && Number.isFinite(point.y))), "thick mask path/support coordinates are finite");
+assert.ok(thickSegments.every(segment => segment.points.every(point => Number.isFinite(point.x) && Number.isFinite(point.y)) && Number.isFinite(segment.supportPixelCount)), "thick mask path/support metadata is finite");
 const filled = new Uint8Array(width * height);
 for (let y = 60; y < 100; y++) for (let x = 50; x < 55; x++) filled[y * width + x] = 1;
 const filledSegments = traceForegroundSegments(filled, width, height);
-assert.ok(filledSegments.length && filledSegments.some(segment => segment.supportPoints.length >= 180), "filled rectangle preserves raw support and a centerline segment");
+assert.ok(filledSegments.length && filledSegments.some(segment => segment.supportPixelCount >= 180), "filled rectangle preserves raw support and a centerline segment");
 const manyComponents = new Uint8Array(512 * 512);
 for (let y = 10; y < 500; y += 20) for (let x = 10; x < 500; x += 20) for (let yy = 0; yy < 5; yy++) for (let xx = 0; xx < 5; xx++) manyComponents[(y + yy) * 512 + x + xx] = 1;
 assert.equal(traceForegroundSegmentsWithBudget(manyComponents, 512, 512).truncatedReason, "component_limit", "18px+ component limit is explicit");
@@ -93,7 +93,7 @@ for (let i = 0; i < width * height; i++) if (edge.data[i * 4] < 180) edgeMask[i]
 assert.ok(traceForegroundSegments(edgeMask, width, height).length, "bbox-padded thinning retains a boundary curve");
 const thickCurvedResult = track(thickCurved);
 assert.ok(thickCurvedResult.candidate && thickCurvedResult.candidate.segments.length > 0, "end-to-end thick curve returns observed segments");
-const thickObserved = thickCurvedResult.candidate.segments.flatMap(segment => segment.supportPoints);
+const thickObserved = thickCurvedResult.candidate.components.flatMap(component => component.supportPoints);
 const thickExpected = [];
 for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) if (thickCurved.data[(y * width + x) * 4] < 180) thickExpected.push({ x, y });
 assert.ok(thickObserved.every(point => Number.isFinite(point.x) && Number.isFinite(point.y) && thickCurved.data[(point.y * width + point.x) * 4] < 180), "end-to-end thick support stays on foreground");
