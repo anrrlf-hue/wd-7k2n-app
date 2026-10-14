@@ -29,7 +29,7 @@ import { buildPalmBilateralReading, isStoredPalmReading, PALM_READING_VERSION, t
 import { PalmTaskSlot, requestPalmReport, runWithDeadline } from "@/lib/palm-analysis-task";
 import { PalmWorkerClient } from "@/lib/palm-worker-client";
 import { palmShapeLabel } from "@/lib/palm-customer-reading";
-import type { PalmAnalysisPhase } from "@/lib/palm-detection";
+import type { PalmAnalysisDebugSnapshot, PalmAnalysisPhase } from "@/lib/palm-detection";
 
 const ANALYSIS_PHASES = {
   decode: "사진을 불러오고 있어요",
@@ -572,7 +572,14 @@ export function PalmPageClient({
           const preview = existingPreview ?? canvas.toDataURL("image/jpeg", 0.9);
           capturedCanvas.current = { canvas, preview };
           replacePreview(preview);
-          return analyzer.current.analyze(canvas, signal, (phase: PalmAnalysisPhase) => markPhase(task, phase));
+          // Deliberately compile out of production: this hook is only for local
+          // review of the crop/model boundary and must never expose raw pixels,
+          // landmarks, or masks through a customer-visible event.
+          const debugCapture = process.env.NODE_ENV !== "production" && new URLSearchParams(window.location.search).get("palmDebug") === "1";
+          return analyzer.current.analyze(canvas, signal, (phase: PalmAnalysisPhase) => markPhase(task, phase), {
+            debug: debugCapture,
+            onDebug: debugCapture ? (snapshot: PalmAnalysisDebugSnapshot) => window.dispatchEvent(new CustomEvent("palm-debug", { detail: snapshot })) : undefined,
+          });
         });
       if (!tasks.current.isCurrent(task)) return;
       const preview = capturedCanvas.current!.preview;

@@ -1,14 +1,21 @@
 import { analyzePalmFromCanvas } from "./palm-detection";
+import type { PalmAnalysisDebugSnapshot } from "./palm-detection";
 
 // Classic worker: MediaPipe's WASM loader uses importScripts. Pixels stay local.
-self.onmessage = async (event: MessageEvent<{ id: number; pixels: ImageData }>) => {
+self.onmessage = async (event: MessageEvent<{ id: number; pixels: ImageData; debug?: boolean }>) => {
   const { id, pixels } = event.data;
   try {
     const canvas = new OffscreenCanvas(pixels.width, pixels.height);
     const context = canvas.getContext("2d");
     if (!context) throw new Error("사진 처리 기능을 시작하지 못했어요.");
     context.putImageData(pixels, 0, 0);
-    const facts = await analyzePalmFromCanvas(canvas, (phase) => self.postMessage({ id, phase }));
+    const facts = await analyzePalmFromCanvas(canvas, (phase) => self.postMessage({ id, phase }), event.data.debug ? (snapshot: PalmAnalysisDebugSnapshot) => {
+      const transfer: ArrayBuffer[] = [];
+      for (const variant of [snapshot.raw.result, snapshot.enhanced.result]) {
+        if (variant?.mask) transfer.push(variant.mask.buffer as ArrayBuffer);
+      }
+      self.postMessage({ id, debug: snapshot }, { transfer });
+    } : undefined);
     self.postMessage({ id, facts });
   } catch (error) {
     self.postMessage({ id, error: error instanceof Error ? error.message : "손금 분석을 완료하지 못했어요." });

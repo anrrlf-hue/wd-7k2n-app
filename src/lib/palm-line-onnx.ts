@@ -74,6 +74,8 @@ export interface OnnxPalmLineResult {
   observations: OnnxLineObservation[];
   maskWidth: number;
   maskHeight: number;
+  /** Test-only raw class mask; never included in PalmFacts. */
+  mask?: Uint8Array;
   /** start/end are 0~1 in the source crop; measurements remain crop-pixel based. */
   coordinateSpace: "source-crop-normalized-0to1";
 }
@@ -286,7 +288,7 @@ export async function runPalmLineOnnx(source: CanvasImageSource, context?: OnnxM
         referenceSpan: Math.max(sourceWidth, sourceHeight),
       }),
     );
-    return { observations, maskWidth: width, maskHeight: height, coordinateSpace: "source-crop-normalized-0to1" };
+    return { observations, maskWidth: width, maskHeight: height, mask, coordinateSpace: "source-crop-normalized-0to1" };
   } catch (err) {
     console.error("palm-line ONNX inference failed:", err);
     return null;

@@ -9,7 +9,7 @@ import {
   type NormalizedLandmark,
 } from "@mediapipe/tasks-vision";
 import { analyzeEdgeBand, analyzeVerticalCreaseBand } from "@/lib/palm-line-features";
-import { runPalmLineOnnx, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
+import { runPalmLineOnnx, type OnnxLineClass, type OnnxLineObservation, type OnnxPalmLineResult } from "@/lib/palm-line-onnx";
 import { comparePalmPaths, type PalmPathAgreement } from "@/lib/palm-line-stability";
 import { runPalmFourLineOnnx } from "@/lib/palm-4line-onnx";
 import { fuseFateSignal } from "@/lib/palm-fate-fusion";
@@ -767,6 +767,53 @@ export interface PalmAnalysisSource {
   canvas: PalmCanvas;
 }
 
+export interface PalmCropDebugTransform {
+  margin: number;
+  angle: number;
+  center: { x: number; y: number };
+  min: { x: number; y: number };
+  width: number;
+  height: number;
+  mirrored: boolean;
+}
+
+export interface PalmAnalysisDebugVariant {
+  width: number;
+  height: number;
+  maskWidth: number;
+  maskHeight: number;
+  mask: Uint8Array | null;
+  observations: OnnxLineObservation[];
+}
+
+export interface PalmAnalysisDebugSnapshot {
+  source: { width: number; height: number; landmarks: { x: number; y: number }[] };
+  raw: { transform: PalmCropDebugTransform; result: PalmAnalysisDebugVariant | null };
+  enhanced: { transform: PalmCropDebugTransform; result: PalmAnalysisDebugVariant | null };
+}
+
+function debugCropTransform(landmarksPx: { x: number; y: number }[], isLeftHanded: boolean, margin: number): PalmCropDebugTransform {
+  const wrist = landmarksPx[0];
+  const middleMcp = landmarksPx[9];
+  const v = { x: middleMcp.x - wrist.x, y: middleMcp.y - wrist.y };
+  const angle = Math.atan2(-v.x, -v.y);
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const center = {
+    x: landmarksPx.reduce((sum, p) => sum + p.x, 0) / landmarksPx.length,
+    y: landmarksPx.reduce((sum, p) => sum + p.y, 0) / landmarksPx.length,
+  };
+  const rotated = landmarksPx.map((p) => ({ x: (p.x - center.x) * cos - (p.y - center.y) * sin, y: (p.x - center.x) * sin + (p.y - center.y) * cos }));
+  const minX = Math.min(...rotated.map((p) => p.x)) - margin;
+  const minY = Math.min(...rotated.map((p) => p.y)) - margin;
+  const maxX = Math.max(...rotated.map((p) => p.x)) + margin;
+  const maxY = Math.max(...rotated.map((p) => p.y)) + margin;
+  return { margin, angle, center, min: { x: minX, y: minY }, width: Math.max(1, Math.round(maxX - minX)), height: Math.max(1, Math.round(maxY - minY)), mirrored: !isLeftHanded };
+}
+
+function debugVariant(result: OnnxPalmLineResult | null, width: number, height: number): PalmAnalysisDebugVariant | null {
+  return result ? { width, height, maskWidth: result.maskWidth, maskHeight: result.maskHeight, mask: result.mask ?? null, observations: result.observations } : null;
+}
+
 /**
  * 이미지(캔버스에 이미 그려진 상태)를 분석해 PalmFacts를 만든다.
  * 손 미검출/저조도/손 잘림 중 하나라도 걸리면 선 분석 없이 바로 재촬영
@@ -775,6 +822,7 @@ export interface PalmAnalysisSource {
 export async function analyzePalmFromCanvas(
   canvas: PalmCanvas,
   onPhase: (phase: PalmAnalysisPhase) => void = () => {},
+  onDebug?: (snapshot: PalmAnalysisDebugSnapshot) => void,
 ): Promise<PalmFacts> {
   onPhase("landmarks");
   const ctx = canvas.getContext("2d");
@@ -900,6 +948,11 @@ export async function analyzePalmFromCanvas(
   const enhancedAttempted = rawDetectedBeforeFallback < 3;
   if (enhancedAttempted) onPhase("enhanced");
   const onnxEnhanced = enhancedAttempted ? await runPalmLineOnnx(enhancedPalmCrop, { cropWidth: enhancedPalmCrop.width, cropHeight: enhancedPalmCrop.height, referenceSpan: referenceSpan(palmCropLandmarks) }) : null;
+  onDebug?.({
+    source: { width: canvas.width, height: canvas.height, landmarks: landmarksPx },
+    raw: { transform: debugCropTransform(landmarksPx, handSide === "left", 100), result: debugVariant(onnxRaw, rawPalmCrop.width, rawPalmCrop.height) },
+    enhanced: { transform: debugCropTransform(landmarksPx, handSide === "left", adaptiveMargin), result: debugVariant(onnxEnhanced, enhancedPalmCrop.width, enhancedPalmCrop.height) },
+  });
   const threeLineElapsedMs = performance.now() - threeLineStartedAt;
 
   const chooseObservation = (cls: OnnxLineClass): { observation: OnnxLineObservation | null; variant: "raw" | "enhanced" } => {
