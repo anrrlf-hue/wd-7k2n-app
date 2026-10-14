@@ -62,6 +62,9 @@ assert.equal(curvedResult.status, "ok");
 assert.ok(curvedResult.candidate && curvedResult.candidate.status === "candidate", "visible curve becomes a candidate");
 assertForegroundPath(curvedResult, curved, .7, "complete curve");
 assert.equal(curvedResult.candidate.rawSupport.modelSeedSupport, 0, "false model seed does not force support");
+assert.equal(curvedResult.candidate.probe?.directionCount, 12, "normal probes cover a 180-degree range");
+assert.equal(curvedResult.candidate.probe?.offsetCount, 3, "probe offsets scale with palm width");
+assert.ok((curvedResult.candidate.probe?.offsetPx ?? 0) >= 2, "probe offset has a pixel floor");
 
 const mirrored = image(); stroke(mirrored, curve(true), 45, 1);
 const mirroredResult = track(mirrored, true);

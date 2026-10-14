@@ -37,6 +37,7 @@ export interface MajorCreaseCandidate {
   gaps: Array<{ afterSegment: number; pixelDistancePx: number; relation: "unknown" }>;
   competingCandidates: Array<{ supportPixelCount: number; responseMean: number; points: MajorCreasePixelPoint[] }>;
   direction: { axisAngleDeg: number; thumbSide: "left" | "right" };
+  probe: { normalAngleDeg: number; offsetPx: number; directionCount: number; offsetCount: number } | null;
   truncated: boolean;
 }
 
@@ -98,7 +99,7 @@ function pathLength(points: MajorCreasePixelPoint[]): number {
 }
 
 function emptyCandidate(width: number, height: number, axisAngleDeg: number, thumbSide: "left" | "right"): MajorCreaseCandidate {
-  return { status: "not_seen", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: [], segments: [], rawSupport: { pixelCount: 0, responseMean: 0, threshold: 0, coverage: 0, modelSeedSupport: 0 }, gaps: [], competingCandidates: [], direction: { axisAngleDeg, thumbSide }, truncated: false };
+  return { status: "not_seen", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: [], segments: [], rawSupport: { pixelCount: 0, responseMean: 0, threshold: 0, coverage: 0, modelSeedSupport: 0 }, gaps: [], competingCandidates: [], direction: { axisAngleDeg, thumbSide }, probe: null, truncated: false };
 }
 
 function traceSkeleton(component: number[], response: Float32Array, width: number, height: number, budget: WorkBudget, componentId: number): MajorCreaseSegment[] {
@@ -255,7 +256,10 @@ export function trackMajorCreaseCandidates(
     const angle = Math.atan2(axisY, axisX) * 180 / Math.PI;
     const source = gray(rawAlignedImage.data, width, height);
     const smoothed = blur(source, width, height, 1), local = blur(source, width, height, Math.max(3, Math.round(Math.min(width, height) * .025)));
-    const response = new Float32Array(width * height), valleyResponse = new Float32Array(width * height), values: number[] = [];
+    const response = new Float32Array(width * height), valleyResponse = new Float32Array(width * height), bestProbeDirection = new Int16Array(width * height), bestProbeOffset = new Int8Array(width * height), values: number[] = [];
+    bestProbeDirection.fill(-1); bestProbeOffset.fill(-1);
+    const probeDirections = 12, probeOffsets = [Math.max(2, Math.min(palmWidth * .025, 12)), Math.max(3, Math.min(palmWidth * .05, 20)), Math.max(4, Math.min(palmWidth * .08, 28))];
+    const probeBudget: WorkBudget = { used: width * height * 2, max: MAX_WORK_UNITS };
     for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
       const rx = x - p[0].x, ry = y - p[0].y;
       const along = rx * ux + ry * uy, across = side * (rx * nx + ry * ny);
@@ -264,24 +268,40 @@ export function trackMajorCreaseCandidates(
       const index = y * width + x;
       // Multiple normal offsets prevent one fixed horizontal probe from
       // deciding the answer; all foreground still comes from raw pixels.
-      let directional = 0;
-      for (const degrees of [-22, -10, 0, 10, 22]) {
-        const radians = degrees * Math.PI / 180, tx = ux * Math.cos(radians) - nx * Math.sin(radians), ty = uy * Math.cos(radians) - ny * Math.sin(radians);
-        const normalX = -ty, normalY = tx;
-        const px = Math.max(0, Math.min(width - 1, Math.round(x + normalX * 2))), py = Math.max(0, Math.min(height - 1, Math.round(y + normalY * 2)));
-        const qx = Math.max(0, Math.min(width - 1, Math.round(x - normalX * 2))), qy = Math.max(0, Math.min(height - 1, Math.round(y - normalY * 2)));
-        directional = Math.max(directional, Math.min(smoothed[py * width + px], smoothed[qy * width + qx]) - smoothed[index]);
+      let directional = 0, chosenDirection = -1, chosenOffset = -1;
+      for (let directionIndex = 0; directionIndex < probeDirections; directionIndex++) {
+        const radians = Math.atan2(ny, nx) + directionIndex * Math.PI / probeDirections;
+        const normalX = Math.cos(radians), normalY = Math.sin(radians);
+        for (let offsetIndex = 0; offsetIndex < probeOffsets.length; offsetIndex++) {
+          if (!consume(probeBudget)) break;
+          const offset = probeOffsets[offsetIndex];
+          const px = Math.max(0, Math.min(width - 1, Math.round(x + normalX * offset))), py = Math.max(0, Math.min(height - 1, Math.round(y + normalY * offset)));
+          const qx = Math.max(0, Math.min(width - 1, Math.round(x - normalX * offset))), qy = Math.max(0, Math.min(height - 1, Math.round(y - normalY * offset)));
+          const valley = Math.min(smoothed[py * width + px], smoothed[qy * width + qx]) - smoothed[index];
+          if (valley > directional) { directional = valley; chosenDirection = directionIndex; chosenOffset = offsetIndex; }
+        }
       }
       const localContrast = Math.max(0, local[index] - source[index], local[index] - smoothed[index]);
       const v = Math.max(localContrast, directional);
-      response[index] = v; valleyResponse[index] = directional; if (v > 0) values.push(v);
+      response[index] = v; valleyResponse[index] = directional; bestProbeDirection[index] = chosenDirection; bestProbeOffset[index] = chosenOffset; if (v > 0) values.push(v);
     }
     if (!values.length) return finish({ status: "ok", width, height, elapsedMs: 0, candidate: emptyCandidate(width, height, angle, thumbSide) });
     values.sort((a, b) => a - b);
     const threshold = Math.max(3, values[Math.floor(values.length * .82)] * .55);
     const foreground = new Uint8Array(response.length);
     for (let i = 0; i < response.length; i++) if (response[i] >= threshold && valleyResponse[i] >= Math.max(3, threshold * .03)) foreground[i] = 1;
-    const budget: WorkBudget = { used: width * height * 2, max: MAX_WORK_UNITS };
+    const probeVotes = new Map<string, number>();
+    for (let i = 0; i < foreground.length; i++) if (foreground[i] && bestProbeDirection[i] >= 0) {
+      const key = `${bestProbeDirection[i]}:${bestProbeOffset[i]}`;
+      probeVotes.set(key, (probeVotes.get(key) ?? 0) + 1);
+    }
+    const winningProbe = [...probeVotes.entries()].sort((a, b) => b[1] - a[1])[0];
+    const probe = winningProbe ? (() => {
+      const [directionIndex, offsetIndex] = winningProbe[0].split(":").map(Number);
+      const normalAngleDeg = (Math.atan2(ny, nx) + directionIndex * Math.PI / probeDirections) * 180 / Math.PI;
+      return { normalAngleDeg, offsetPx: probeOffsets[offsetIndex], directionCount: probeDirections, offsetCount: probeOffsets.length };
+    })() : null;
+    const budget: WorkBudget = { used: width * height * 2 + probeBudget.used, max: MAX_WORK_UNITS };
     const allComponents = components(response, foreground, width, height, budget);
     const tracks = allComponents.flatMap((component, componentId) => traceSkeleton(component, response, width, height, budget, componentId));
     const measurable = tracks.filter(track => track.status === "measurable").sort((a, b) => b.pathLengthPx - a.pathLengthPx);
@@ -302,10 +322,11 @@ export function trackMajorCreaseCandidates(
       if (!consume(budget)) { budget.truncatedReason ??= "seed_limit"; break; }
       if (selected?.points.some(point => Math.hypot(point.x - seed.x, point.y - seed.y) <= Math.max(4, palmWidth * .04))) modelSeedSupport++;
     }
-    const truncated = Boolean(budget.truncatedReason);
+    const truncatedReason = budget.truncatedReason ?? probeBudget.truncatedReason;
+    const truncated = Boolean(truncatedReason);
     const ambiguousSegments = ambiguousComponents.map(item => ({ componentId: item.componentId, points: item.points, supportPoints: item.supportPoints, pathLengthPx: pathLength(item.points), supportPixelCount: item.supportPixelCount, responseMean: item.responseMean, status: "ambiguous" as const }));
     const allSegments = [...segments, ...ambiguousSegments];
-    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, truncated } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, truncated };
+    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, probe, truncated } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, probe, truncated };
     return finish({ status: truncated ? "truncated" : "ok", width, height, elapsedMs: 0, candidate });
   } catch {
     return finish({ status: "runtime", errorCode: "runtime", width, height, elapsedMs: 0, candidate: null });
