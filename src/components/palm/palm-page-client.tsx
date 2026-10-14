@@ -1015,9 +1015,9 @@ export function PalmPageClient({
           <div className="mt-3">
             {rightPalmFacts && leftPalmFacts ? (
               <>
-                {bilateralReading?.version === PALM_READING_VERSION ? <PalmBilateralSection reading={bilateralReading} /> : <div className="rounded-2xl border border-border p-4">
+                {bilateralReading?.version === PALM_READING_VERSION ? <PalmBilateralSection reading={bilateralReading} handObservations={[{ label: "왼손 입력 사진", facts: leftPalmFacts }, { label: "오른손 입력 사진", facts: rightPalmFacts }]} /> : <div className="rounded-2xl border border-border p-4">
                   <p className="text-sm leading-7">이전 형식으로 저장된 손금 풀이입니다. 저장된 문장은 그대로 두고, 원할 때 현재 형식으로 다시 정리할 수 있어요.</p>
-                  {bilateralReading && <details className="mt-3"><summary className="cursor-pointer text-sm">저장 당시 손금 문장 보기</summary><PalmBilateralSection reading={bilateralReading} /></details>}
+                  {bilateralReading && <details className="mt-3"><summary className="cursor-pointer text-sm">저장 당시 손금 문장 보기</summary><PalmBilateralSection reading={bilateralReading} handObservations={[{ label: "왼손 입력 사진", facts: leftPalmFacts }, { label: "오른손 입력 사진", facts: rightPalmFacts }]} /></details>}
                   <Button variant="outline" className="mt-3 min-h-11" onClick={() => {
                     if (!dominantHand) return;
                     setPreviousBilateralReading(bilateralReading);

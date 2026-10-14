@@ -25,6 +25,7 @@ const normal = await api(left, right), partialOutput = await api(partial, right)
 const measured = await api(leftReadingFixture, rightReadingFixture);
 const rejected = await api({ ...failed, handSide: "left" }, failed);
 assert.equal(rejected.usable, false); assert.equal(rejected.freeReport, undefined);
+const withObservedHandShape = (facts) => ({ ...facts, handGeometry: { version: "landmark-geometry-v1", status: "observed", reasons: [], palmWidthToLength: 0.7, fingerToPalm: { thumb: 0.5, index: 0.7, middle: 0.8, ring: 0.7, pinky: 0.6 }, indexRing: "similar" } });
 const premiumFixture = buildPremiumReport({
   facts: computeSajuFacts(birthFixture),
   freeReport: normal.freeReport.report,
@@ -108,10 +109,11 @@ async function capture(s, name) {
   return text;
 }
 try {
-  let s = await open(state(normal.rightPalmFacts, normal.leftPalmFacts, normal), premiumFixture);
+  let s = await open(state(withObservedHandShape(normal.rightPalmFacts), withObservedHandShape(normal.leftPalmFacts), normal), premiumFixture);
   await s.page.getByText("양손에서 읽힌 손금 풀이", { exact: true }).waitFor();
   assert.equal(await s.page.locator("#premium-report").count(), 0);
   assert.match(await capture(s, "normal"), /새로운 일을 익힐 때/);
+  assert.match(await s.page.locator("body").innerText(), /손별로 확인한 형태/);
   await s.page.waitForFunction(() => [...document.querySelectorAll("button")].some(button => /링크 복사하고 무료 체험|프리미엄 무료 체험 (보기|다시 보기)/.test(button.textContent || "")), null, { timeout: 15000 });
   const trialButton = s.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true });
   const premiumButton = s.page.getByRole("button", { name: /프리미엄 무료 체험 (보기|다시 보기)/ });
