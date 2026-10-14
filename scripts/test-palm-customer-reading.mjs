@@ -40,7 +40,12 @@ const geometryOnly = { ...failed, handGeometry: geometry, handShape: "slender" }
 assert.equal(isPalmFactsUsable(geometryOnly), true);
 assert.ok(buildPalmCustomerPassages(geometryOnly).some(p => p.key === "handOverview"), "observed hand geometry is shown as a bounded observation passage");
 assert.ok(!buildPalmCustomerPassages(geometryOnly).some(p => p.key === "fingers"), "finger ratios remain observation-only and do not create a personality passage");
-assert.match(buildPalmCustomerPassages(geometryOnly).find(p => p.key === "handOverview")?.text ?? "", /투영 관찰값/);
+const handOverview = buildPalmCustomerPassages(geometryOnly).find(p => p.key === "handOverview");
+assert.match(handOverview?.text ?? "", /손바닥이 세로로 길게/);
+assert.match(handOverview?.text ?? "", /중지가 손바닥에 비해 길게/);
+assert.match(handOverview?.text ?? "", /검지가 약지보다 길게/);
+assert.doesNotMatch(handOverview?.text ?? "", /0\.61|0\.95|투영 비율/);
+assert.doesNotMatch(handOverview?.observation ?? "", /0\.61|0\.95|투영 비율/);
 assert.ok(!buildPalmCustomerPassages(geometryOnly).some(p => /Line$/.test(p.key)));
 assert.equal(palmFactsSchema.safeParse({ ...geometryOnly, handGeometry: { ...geometry, fingerToPalm: {} } }).success, false);
 const partial = structuredClone(palmFixture); partial.onnxLines.headLine.detected = false;
