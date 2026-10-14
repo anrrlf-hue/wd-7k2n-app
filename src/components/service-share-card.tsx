@@ -40,7 +40,9 @@ export function ServiceShareCard({ trial = false, onCompleted }: { trial?: boole
     return url ? { ...defaultShareData, url } : defaultShareData;
   });
   const [shared, setShared] = useState(false);
-  const [shareDataReady, setShareDataReady] = useState(() => !trial || Boolean(readStoredInviteUrl()));
+  // A cached URL is only presentation state. Trial links must be revalidated
+  // against the current session before enabling sharing or completion checks.
+  const [shareDataReady, setShareDataReady] = useState(() => !trial);
   const [preparing, setPreparing] = useState(false);
   const preparation = useRef<Promise<typeof defaultShareData> | null>(null);
   const linkInput = useRef<HTMLInputElement>(null);

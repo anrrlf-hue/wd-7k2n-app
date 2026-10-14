@@ -23,7 +23,13 @@ class ReferralCheckError extends Error { constructor(public readonly status: "pe
 
 async function requestTrial(body: string, task: AbortController, action: "verify" | "participate", extra: { trialReceipt?: string }) {
   return runWithDeadline(task.signal, 30_000, "참여 확인이 오래 걸려 중단했어요. 다시 시도해주세요.", async signal => {
-    const response = await fetch("/api/premium-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...JSON.parse(body), trialAction: action, ...extra }), signal });
+    let response: Response;
+    try {
+      response = await fetch("/api/premium-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...JSON.parse(body), trialAction: action, ...extra }), signal });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+      throw new ReferralCheckError("unavailable");
+    }
     const data = await response.json() as { eligible?: boolean; trialReceipt?: string; status?: "pending" | "unavailable" };
     signal.throwIfAborted();
     if (!response.ok || data.eligible !== true) throw new ReferralCheckError(data.status === "unavailable" ? "unavailable" : "pending");
@@ -99,7 +105,9 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
         try { sessionStorage.setItem(TRIAL_STORAGE_KEY, JSON.stringify({ identity, receipt: data.trialReceipt })); } catch { /* Optional presentation state. */ }
       }).catch((error: unknown) => {
         if (!mounted || !slot.isCurrent(task)) return;
-        setTrialState("locked"); setError(error instanceof ReferralCheckError && error.status === "unavailable" ? "공유 이벤트 저장소를 사용할 수 없어 확인하지 못했어요. 잠시 후 다시 시도해주세요." : "상대방이 무료 풀이를 완료한 뒤 무료 체험을 확인할 수 있어요. 완료 후 다시 확인해주세요.");
+        const unavailable = error instanceof ReferralCheckError && error.status === "unavailable"
+          || (typeof error === "object" && error !== null && "status" in error && (error as { status?: string }).status === "unavailable");
+        setTrialState("locked"); setError(unavailable ? "공유 이벤트 저장소를 사용할 수 없어 확인하지 못했어요. 잠시 후 다시 시도해주세요." : "상대방이 무료 풀이를 완료한 뒤 무료 체험을 확인할 수 있어요. 완료 후 다시 확인해주세요.");
       }).finally(() => slot.finish(task));
     });
     let interrupted = false;
