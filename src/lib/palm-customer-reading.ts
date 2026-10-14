@@ -20,7 +20,7 @@ export function palmLineObservation(line?: OnnxLineDetail): string {
 }
 
 export function palmPersonalLineReading(key: PalmLineKey, line?: OnnxLineDetail): string | null {
-  if (!line?.detected || !line.curve || line.attributeSupport?.curve === "not_supported") return null;
+  if (!line?.detected || !line.curve || line.attributeSupport?.curve === "not_supported" || (key === "lifeLine" && line.anatomicalStatus !== undefined && line.anatomicalStatus !== "supported")) return null;
   const curved = line.curve === "완만한 곡선";
   if (key === "headLine") return curved
     ? "새로운 일을 익힐 때 설명을 그대로 외우기보다 내가 이미 아는 무엇과 비슷한지 연결하며 이해하는 쪽으로 읽습니다. 가령 처음 배운 도구를 써보다 막혔다면, 앞서 해본 다른 일의 순서를 떠올리거나 작은 예를 바꾸어 보며 뜻이 잡히는 장면입니다. 답은 받아 적었는데 아직 내 말로 설명되지 않는 답답함과, 다른 예에서 갑자기 이해가 붙는 만족을 함께 떠올릴 수 있습니다. 남이 알려준 답과 스스로 이해한 답은 같은 속도로 완성되지 않을 수 있습니다."

@@ -74,6 +74,9 @@ export interface OnnxLineDetail {
     curve: "segment_only" | "not_supported";
     depth: "mask_signal_only" | "not_supported";
   };
+  /** Conservative landmark cross-check; model class alone never supplies this. */
+  anatomicalStatus?: "supported" | "rejected" | "unconfirmed";
+  anatomicalReason?: "thumb_side_segment" | "central_vertical_segment" | "short_or_missing_geometry" | "ambiguous_geometry";
 }
 
 export interface OnnxPalmLines {

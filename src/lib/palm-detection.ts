@@ -23,6 +23,7 @@ import type {
   OnnxLineDetail,
   PalmFacts,
 } from "@/lib/palm-facts";
+import { classifyLifeLineGeometry } from "@/lib/palm-life-line-geometry";
 
 import { createPalmCanvas, type PalmCanvas, type PalmContext } from "@/lib/palm-canvas";
 
@@ -936,7 +937,11 @@ export async function analyzePalmFromCanvas(
         modelExecuted: true,
         heartLine: mapOnnxObservation(heartChoice.observation ?? missingObservation("heart_line"), provenanceFor(heartChoice)),
         headLine: mapOnnxObservation(headChoice.observation ?? missingObservation("head_line"), provenanceFor(headChoice)),
-        lifeLine: mapOnnxObservation(lifeChoice.observation ?? missingObservation("life_line"), provenanceFor(lifeChoice)),
+        lifeLine: (() => {
+          const observation = mapOnnxObservation(lifeChoice.observation ?? missingObservation("life_line"), provenanceFor(lifeChoice));
+          const geometry = classifyLifeLineGeometry(observation, lifeChoice.variant === "raw" ? rawCropLandmarks : palmCropLandmarks, lifeChoice.variant === "raw" ? rawPalmCrop.width : enhancedPalmCrop.width, lifeChoice.variant === "raw" ? rawPalmCrop.height : enhancedPalmCrop.height);
+          return { ...observation, anatomicalStatus: geometry.status, anatomicalReason: geometry.reason };
+        })(),
         fateLine: { presence: "unknown", note: "주요 3선 모델과 별도로 운명선 전용 보조 모델을 교차확인합니다." },
         mounts: "unknown",
         marks: "unknown",

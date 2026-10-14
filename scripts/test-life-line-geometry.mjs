@@ -1,0 +1,17 @@
+import "./register-test-typescript.mjs";
+import assert from "node:assert/strict";
+const { classifyLifeLineGeometry } = await import("../src/lib/palm-life-line-geometry.ts");
+const { palmPersonalLineReading } = await import("../src/lib/palm-customer-reading.ts");
+const landmarks = Array.from({ length: 21 }, () => ({ x: 0, y: 0 }));
+landmarks[0] = { x: 50, y: 100 }; landmarks[2] = { x: 20, y: 60 }; landmarks[5] = { x: 20, y: 20 }; landmarks[9] = { x: 50, y: 20 }; landmarks[17] = { x: 80, y: 20 };
+const line = (start, end, length = "김") => ({ detected: true, geometryStatus: "measurable", start, end, length });
+assert.equal(classifyLifeLineGeometry(line({ x: .2, y: .62 }, { x: .48, y: .38 }), landmarks, 100, 100).status, "supported", "thumb-side curve survives the guard");
+assert.equal(classifyLifeLineGeometry(line({ x: .48, y: .82 }, { x: .5, y: .38 }), landmarks, 100, 100).status, "rejected", "central vertical segment is rejected");
+assert.equal(classifyLifeLineGeometry(line({ x: .46, y: .6 }, { x: .5, y: .48 }, "짧음")).status, "unconfirmed", "short segment stays unconfirmed");
+const mirrored = landmarks.map(point => ({ x: 100 - point.x, y: point.y }));
+assert.equal(classifyLifeLineGeometry(line({ x: .8, y: .62 }, { x: .52, y: .38 }), mirrored, 100, 100).status, "supported", "mirror preserves thumb-side classification");
+const customerLine = { detected: true, curve: "완만한 곡선", attributeSupport: { curve: "segment_only" } };
+assert.equal(palmPersonalLineReading("lifeLine", { ...customerLine, anatomicalStatus: "rejected" }), null, "rejected central segment cannot become life-line prose");
+assert.equal(palmPersonalLineReading("lifeLine", { ...customerLine, anatomicalStatus: "unconfirmed" }), null, "unconfirmed short/unknown segment cannot become life-line prose");
+assert.ok(palmPersonalLineReading("lifeLine", { ...customerLine, anatomicalStatus: "supported" }), "supported geometry retains existing life-line prose");
+console.log("PASS life-line geometry guard: thumb-side, central vertical, short, and mirrored cases");

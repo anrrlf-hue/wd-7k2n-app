@@ -21,6 +21,8 @@ const onnxLineDetailSchema = z.object({
     curve: z.enum(["segment_only", "not_supported"]),
     depth: z.enum(["mask_signal_only", "not_supported"]),
   }).optional(),
+  anatomicalStatus: z.enum(["supported", "rejected", "unconfirmed"]).optional(),
+  anatomicalReason: z.enum(["thumb_side_segment", "central_vertical_segment", "short_or_missing_geometry", "ambiguous_geometry"]).optional(),
 });
 
 const onnxPalmLinesSchema = z.object({
