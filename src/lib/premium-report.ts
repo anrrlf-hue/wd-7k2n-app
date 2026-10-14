@@ -70,6 +70,9 @@ const GROUP_LABEL: Record<string, string> = {
   관성: "역할과 신뢰",
   인성: "이해와 도움",
 };
+const ANNUAL_GROUP_LABEL: Record<string, string> = {
+  비겁: "자기 선택", 식상: "표현", 재성: "쓰임", 관성: "역할", 인성: "이해",
+};
 
 function groupsForDaeun(facts: SajuFacts): string[] {
   if (!facts.currentDaeun) return [];
@@ -82,6 +85,23 @@ function groupsForDaeun(facts: SajuFacts): string[] {
 function daeunPair(facts: SajuFacts): { daeun: NonNullable<SajuFacts["currentDaeun"]>; groups: string[] } | null {
   const daeun = facts.currentDaeun;
   return daeun ? { daeun, groups: groupsForDaeun(facts) } : null;
+}
+
+function natalLeaders(facts: SajuFacts): string[] {
+  const counts: Record<string, number> = {
+    비겁: facts.peerStarCount, 식상: facts.outputStarCount, 재성: facts.wealthStarCount,
+    관성: facts.officerStarCount, 인성: facts.resourceStarCount,
+  };
+  const maximum = Math.max(...Object.values(counts));
+  return Object.entries(counts).filter(([, count]) => count === maximum && maximum > 0).map(([group]) => group);
+}
+
+function natalPlacement(facts: SajuFacts, group: string): string {
+  const placements = facts.pillars
+    .filter(pillar => facts.hasTimeInput || pillar.pillar !== "hour")
+    .filter(pillar => TEN_GOD_GROUP[pillar.stemTenGod] === group || TEN_GOD_GROUP[pillar.branchTenGod] === group)
+    .map(pillar => pillar.pillar === "year" ? "연주" : pillar.pillar === "month" ? "월주" : pillar.pillar === "day" ? "일주" : "시주");
+  return [...new Set(placements)].join("·") || "명식 전반";
 }
 
 type DaeunArea = "overall" | "love" | "money" | "work";
@@ -132,6 +152,13 @@ function daeunReading(facts: SajuFacts, area: DaeunArea): string {
 
 function buildOverallContext(facts: SajuFacts): string {
   const current = daeunPair(facts);
+  const leaders = natalLeaders(facts);
+  if (leaders[0] === "관성") {
+    return `원국에서는 ${natalPlacement(facts, "관성")}에 드러난 관성의 힘, 즉 맡은 역할을 끝까지 지키고 신뢰를 쌓는 기준이 중심입니다. 잘해내는 능력보다 어떤 약속을 계속 맡을지와 어디까지 책임질지를 정하는 일이 삶의 방향을 가릅니다. ${current ? daeunReading(facts, "overall") : "현재 대운을 계산할 수 없어 원국의 책임 기준만으로 읽었습니다."}`;
+  }
+  if (leaders[0] === "인성") {
+    return `원국에서는 ${natalPlacement(facts, "인성")}의 인성처럼 이유를 이해하고 충분한 바탕을 만든 뒤 움직이는 힘이 중심입니다. 많이 아는 것보다 무엇을 실제 경험으로 옮길지 정할 때 자기 중심이 선명해집니다. ${current ? daeunReading(facts, "overall") : "현재 대운을 계산할 수 없어 원국의 이해와 준비를 중심으로 읽었습니다."}`;
+  }
   if (!current) return "현재 대운을 계산할 수 없어 원국의 중심 긴장만으로 읽었습니다.";
   if (facts.outputStarCount > 0 && facts.wealthStarCount > 0) {
     return `원국에서는 내놓은 결과가 실제 쓰임과 보상으로 이어지는 과정이 중심입니다. ${daeunReading(facts, "overall")} 결과를 넓히기 전에 지속할 범위와 자기 몫을 함께 정하는 긴장으로 읽습니다.`;
@@ -145,6 +172,10 @@ function buildOverallContext(facts: SajuFacts): string {
 function buildLoveContext(facts: SajuFacts): string {
   const current = daeunPair(facts);
   const period = current ? daeunReading(facts, "love") : "현재 대운은 계산되지 않아 원국의 관계 신호만 읽습니다.";
+  const leaders = natalLeaders(facts);
+  if (leaders[0] === "관성") {
+    return `${period} 원국의 관계 중심은 잘 보이는 매력보다 약속을 지키는 태도와 책임의 범위를 확인하는 데 있습니다. 믿음직한 사람으로 남으려다 불편함을 숨기지 않도록, 지킬 약속·조정할 약속·쉬어야 할 시간을 나누어 말할 때 친밀함이 의무로 굳지 않습니다.`;
+  }
   if (facts.wealthStarCount > 0 && facts.outputStarCount > 0) {
     return `${period} 사람의 매력과 반응을 알아보고 분위기를 만드는 힘은 관계의 시작을 돕지만, 계속 좋은 모습을 제공해야 한다고 느끼면 자신의 피로와 서운함을 뒤로 미룰 수 있습니다. 끌림을 만든 능력과 약한 마음을 나누는 친밀함을 같은 것으로 보지 않을 때 관계가 오래 이어질 여지가 생깁니다.`;
   }
@@ -157,6 +188,13 @@ function buildLoveContext(facts: SajuFacts): string {
 function buildMoneyContext(facts: SajuFacts): string {
   const current = daeunPair(facts);
   const period = current ? daeunReading(facts, "money") : "현재의 큰 운이 계산되지 않아 원국의 재성 구조가";
+  const leaders = natalLeaders(facts);
+  if (leaders[0] === "관성") {
+    return `${period} 원국의 관성 ${facts.officerStarCount}개가 강조되어, 돈을 얻는 문제는 맡은 책임과 정당한 대가를 맞추는 일에 가깝습니다. 보유에서는 매달 지킬 생활비와 관계에서 대신 떠안는 비용을 구분하고, 지출에서는 인정받기 위한 의무 지출과 실제 회복을 위한 지출을 나누어야 남는 몫이 생깁니다.`;
+  }
+  if (leaders[0] === "비겁") {
+    return `${period} 원국의 비겁이 강조되어, 돈은 남의 기준보다 내 몫과 선택권을 지키는 방식으로 읽힙니다. 얻는 돈의 출처보다 공동 비용·빌려주는 일·내가 다시 쓸 여유를 분리해 두는 것이 보유의 핵심입니다.`;
+  }
   if (facts.outputStarCount === 0 && facts.wealthStarCount > 0) {
     return `${period} 원국의 재성 ${facts.wealthStarCount}개와 만납니다. 드러난 식상 0은 표현이나 수입 능력의 부재를 뜻하지 않으며, 이미 가진 판단·신뢰·도움이 누구의 필요를 해결하고 어떤 조건으로 보상받는지 확인하는 흐름입니다.`;
   }
@@ -168,6 +206,10 @@ function buildMoneyContext(facts: SajuFacts): string {
 
 function buildWorkContext(facts: SajuFacts): string {
   const current = daeunPair(facts);
+  const leaders = natalLeaders(facts);
+  if (leaders[0] === "관성") {
+    return `${current ? daeunReading(facts, "work") : "현재 대운을 계산할 수 없어 원국의 일하는 방식만으로 읽습니다."} 원국의 ${natalPlacement(facts, "관성")} 관성은 업무에서 완료 기준·권한·평가 방식이 분명할수록 강점이 됩니다. 책임만 늘고 결정권이 없는 자리보다, 맡은 범위와 조정 절차가 합의된 환경에서 신뢰가 전문성으로 남습니다.`;
+  }
   if (!current) return "현재 대운을 계산할 수 없어 원국의 일하는 방식과 환경 조건만으로 읽었습니다.";
   return daeunReading(facts, "work");
 }
@@ -177,12 +219,14 @@ function buildAnnualConnection(periods: PremiumPeriod[]): string {
     .filter((year): year is AnnualMonthSymbols["year"] => Boolean(year?.stemTenGod && year.branchTenGod));
   if (!years.length) return "연운의 십성 관계가 충분히 확인되지 않아 월별 계산만 반영했습니다.";
   const threads = years.map(year => {
-    const stem = GROUP_LABEL[TEN_GOD_GROUP[year.stemTenGod!]] ?? year.stemTenGod!;
-    const branch = GROUP_LABEL[TEN_GOD_GROUP[year.branchTenGod!]] ?? year.branchTenGod!;
+    const stem = ANNUAL_GROUP_LABEL[TEN_GOD_GROUP[year.stemTenGod!]] ?? "새 기준";
+    const branch = ANNUAL_GROUP_LABEL[TEN_GOD_GROUP[year.branchTenGod!]] ?? "현실의 장면";
     const same = TEN_GOD_GROUP[year.stemTenGod!] === TEN_GOD_GROUP[year.branchTenGod!];
-    return `${year.ganzhi}에는 ${same ? `${stem}${iGa(stem)} 반복되고` : `${stem}${gwaWa(stem)} ${branch}${iGa(branch)} 함께 놓입니다`}. 이 해에는 ${stem}${iGa(stem)} 요구하는 것과 ${branch}${iGa(branch)} 실제로 쓰이는 곳을 함께 살핍니다.`;
+    return same
+      ? `${year.ganzhi}에는 ${stem}${iGa(stem)} 되풀이되어, 그 기준이 한 해의 배경이 됩니다.`
+      : `${year.ganzhi}에는 ${stem}${gwaWa(stem)} ${branch}${iGa(branch)} 만납니다. 마음속 기준과 실제 장면이 어디에서 어긋나고 조정되는지 살필 해입니다.`;
   });
-  return `연간 세운의 흐름은 ${threads.join(" ")} 이 연간 연결은 한 가지 성과를 예고하는 것이 아니라, 연도별로 달라지는 요구와 쓰임이 실제 생활에서 어떻게 조정되는지 읽기 위한 것입니다.`;
+  return `연간 세운 흐름은 ${threads.join(" ")} 해마다 달라지는 요구가 실제 생활에서 어떻게 조정되는지 읽는 연결입니다.`;
 }
 
 function buildIntegratedDomainParagraphs(
@@ -191,7 +235,22 @@ function buildIntegratedDomainParagraphs(
   facts: SajuFacts,
   palmText?: string,
 ): string[] {
-  const base = area === "love_relationship" ? customer.love : area === "money" ? customer.money : customer.work;
+  const leaders = natalLeaders(facts);
+  const officerBase: Record<"money" | "work", string[]> = {
+    money: [
+      "재물의 획득은 표현을 크게 드러내는 일보다 맡은 역할을 끝까지 수행하고 그 책임에 맞는 대가를 받는 과정에 가깝습니다. 잘해낸 일과 새로 떠맡을 일을 나누어야 신뢰가 무급의 추가 업무로 바뀌지 않습니다.",
+      "유지에서는 생활비와 앞으로의 책임을 위한 준비금, 그리고 관계에서 대신 부담하는 비용을 따로 보아야 합니다. 모두를 지키려는 마음이 커도 매달 실제로 남겨 둘 자기 몫을 먼저 정해야 돈이 안정으로 남습니다.",
+      "지출에서는 남에게 인정받기 위한 의무와 자신의 회복을 위한 선택을 구분합니다. 체면이나 부탁 때문에 쓰는 돈이 반복되면 책임을 다한 뒤에도 여유가 남지 않으므로, 지출마다 누구의 약속을 위한 것인지 확인하는 일이 필요합니다.",
+    ],
+    work: [
+      "일에서는 맡은 일을 정확히 끝내고 기준을 지키는 힘이 중심입니다. 결과가 좋다는 이유로 책임 범위가 계속 넓어지지 않도록 완료 기준과 추가 대가를 함께 확인할 때 신뢰가 전문성으로 남습니다.",
+      "잘 맞는 환경은 권한과 평가 방식이 분명하고, 문제가 생겼을 때 조정 절차가 있는 곳입니다. 책임만 주어지고 결정할 권한이 없다면 믿음직함이 소진으로 바뀌기 쉽습니다.",
+      "협업에서는 빈틈을 대신 메우기 전에 누가 결정하고 어디까지 도울지 정하는 일이 중요합니다. 혼자 버텨야 믿음직한 사람이 되는 것이 아니라, 필요한 도움을 제때 요청할 수 있어야 오래 일할 수 있습니다.",
+    ],
+  };
+  const base = leaders[0] === "관성" && area !== "love_relationship"
+    ? officerBase[area]
+    : area === "love_relationship" ? customer.love : area === "money" ? customer.money : customer.work;
   const connection = area === "love_relationship" ? buildLoveContext(facts) : area === "money" ? buildMoneyContext(facts) : buildWorkContext(facts);
   const paragraphs = [...base, connection];
   if (palmText) paragraphs.push(palmText);
@@ -277,7 +336,13 @@ export function buildPremiumReport(input: {
   const currentDaeunBasis = facts.currentDaeun
     ? ` 현재 대운 ${facts.currentDaeun.ganzhi}(${facts.currentDaeun.stemTenGod}/${facts.currentDaeun.branchTenGod})을 함께 읽었습니다.`
     : " 현재 대운은 계산되지 않았습니다.";
-  overall.paragraphs = [...customer.overall, buildOverallContext(facts), buildAnnualConnection(periods)];
+  const overallBase = natalLeaders(facts)[0] === "관성"
+    ? [
+      "원국의 중심에는 맡은 역할을 끝까지 지키고 신뢰를 쌓는 기준이 놓여 있습니다. 잘해냈다는 평가보다 어떤 약속을 계속 맡을지, 누구의 기대까지 책임질지를 스스로 정해야 삶의 방향이 흐려지지 않습니다.",
+      "책임감은 강점이지만 모든 요청에 같은 무게로 답할 필요는 없습니다. 지킬 약속과 조정할 약속을 나누고, 일을 잘하는 사람이라는 이름 뒤에 쉬어야 할 시간을 남길 때 신뢰가 오래 갑니다.",
+    ]
+    : customer.overall;
+  overall.paragraphs = [...overallBase, buildOverallContext(facts), buildAnnualConnection(periods)];
   overall.basis = customer.frame.evidence.self + currentDaeunBasis;
   const overallEvidence = premiumOverallEvidence(editorial);
   if (overallEvidence) overall.basis += ` ${overallEvidence}`;
