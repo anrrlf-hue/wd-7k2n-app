@@ -6,7 +6,7 @@ The browser requests an opaque `ref` link from `POST /api/referrals`. The API st
 
 The premium route no longer treats `native_share`, `clipboard`, client completion flags, or analytics as evidence. It issues a realm-bound signed receipt only after the inviter's server session has a persisted reward, and rechecks that reward for every premium generation. If the persistent store, rollout flag, realm, public origin, or server-only credential is unavailable, referral creation and premium verification fail closed. The in-memory/browser state remains presentation-only and is not evidence.
 
-Referral rollout requires server-only `SAJU_REFERRAL_ENABLED=true` plus `SAJU_REFERRAL_REALM=test|live`. Test deployments additionally require `SAJU_REFERRAL_PUBLIC_ORIGIN`; clients cannot select the realm. Live uses the existing production origin. Malformed referral cookies are replaced, verification refreshes and persists the newest receipt, and the completion-check action remains available after reload/manual-copy. Referral URL preparation is cached before share/copy so the browser API remains user-gesture bound.
+Referral rollout requires server-only `SAJU_REFERRAL_ENABLED=true` plus `SAJU_REFERRAL_REALM=test|live`. Test deployments additionally require `SAJU_REFERRAL_PUBLIC_ORIGIN`; clients cannot select the realm. Live uses the existing production origin. Malformed referral cookies are replaced, verification refreshes and persists the newest receipt, and the completion-check action remains available after reload/manual-copy. A cached referral URL is presentation-only: trial UI starts unverified, validates it against the current session/expiry, and only then enables sharing; otherwise it requests a new invite. Referral URL preparation is completed before share/copy so the browser API remains user-gesture bound.
 
 The migration is `supabase/migrations/20261015000000_referral_evidence.sql`. It was not applied to any remote/production database. No credential was created, no production setting was changed, and no production deployment was made.
 
@@ -17,7 +17,7 @@ Known product limitation: an anonymous cookie is a session handle, not proof of 
 - `node scripts/test-referral-evidence.mjs` is a source contract test only; it is not a database proof. The updated API contract test is `node scripts/test-premium-trial-browser.mjs` when a local server is running; it expects `participate=400`, missing-store `verify=503`, no receipt, and malformed-cookie replacement.
 - TypeScript: `./node_modules/.bin/tsc --noEmit`.
 - Focused ESLint: passed with the repository's existing unused `journeyModeFromLocation` warning.
-- Supabase production migration/RPC, real multi-session browser completion, cookie deletion behavior, and production rollout: not verified because the migration and server-only store credential were intentionally not provisioned. `node scripts/test-referral-two-browser.mjs` does verify the browser ordering and reward protocol against an isolated in-process adapter; it is not evidence of a real Supabase store.
+- Supabase production migration/RPC, cookie deletion behavior, and production rollout: not verified because the migration and server-only store credential were intentionally not provisioned. `node scripts/test-referral-two-browser.mjs` builds/runs the Next production server and verifies the real `/diagnosis/palm`, `/diagnosis?from=share`, `/api/saju`, `/api/referrals`, and `/api/premium-report` flow in two Chromium contexts. Only the Supabase REST/RPC HTTP boundary is replaced by an isolated adapter; this is not evidence of a real Supabase deployment.
 
 ## Additional local database verification
 
@@ -25,7 +25,7 @@ No Supabase CLI, `psql`, local Supabase config, running database, or Supabase en
 
 The migration applied successfully after those test-only roles existed. The RPC was exercised for: first claim, `test` versus `live` realm isolation, duplicate recipient, one reward per inviter, same-session self-referral, expired invite, and a forced two-session lock race. The race produced one `claimed` and one `duplicate_recipient`. Direct table access and RPC execution as `anon` were denied. This validates the SQL behavior in local PostgreSQL, not Supabase production behavior or the Next.js-to-Supabase network path.
 
-With a local Next server and no referral store configuration, the updated API contract test passed: unavailable premium `503`, legacy `participate` `400`, unavailable verify `503`, no receipt, and malformed session-cookie replacement. A real two-browser reward flow remains unverified because this environment has no configured persistent store credential/project.
+With a local Next server and no referral store configuration, the updated API contract test passed: unavailable premium `503`, legacy `participate` `400`, unavailable verify `503`, no receipt, and malformed session-cookie replacement. The production-build adapter test additionally verified delayed RPC response ordering and expired/other-session cached-link revalidation followed by new invite issuance.
 
 ## Parallel branch integration points
 
