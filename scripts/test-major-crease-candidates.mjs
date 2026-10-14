@@ -1,7 +1,7 @@
 // Synthetic-only regression for the diagnostic pixel-path tracker.
 import "./register-test-typescript.mjs";
 import assert from "node:assert/strict";
-const { trackMajorCreaseCandidates, traceForegroundSegments } = await import("../src/lib/prototypes/major-crease-candidates.ts");
+const { trackMajorCreaseCandidates, traceForegroundSegments, traceForegroundSegmentsWithBudget } = await import("../src/lib/prototypes/major-crease-candidates.ts");
 
 const width = 160, height = 160;
 function image(background = 210) {
@@ -80,6 +80,9 @@ const filled = new Uint8Array(width * height);
 for (let y = 60; y < 100; y++) for (let x = 50; x < 55; x++) filled[y * width + x] = 1;
 const filledSegments = traceForegroundSegments(filled, width, height);
 assert.ok(filledSegments.length && filledSegments.some(segment => segment.supportPoints.length >= 180), "filled rectangle preserves raw support and a centerline segment");
+const manyComponents = new Uint8Array(512 * 512);
+for (let y = 10; y < 500; y += 20) for (let x = 10; x < 500; x += 20) for (let yy = 0; yy < 5; yy++) for (let xx = 0; xx < 5; xx++) manyComponents[(y + yy) * 512 + x + xx] = 1;
+assert.equal(traceForegroundSegmentsWithBudget(manyComponents, 512, 512).truncatedReason, "component_limit", "18px+ component limit is explicit");
 const edge = image(); stroke(edge, [[0, 58], [0, 92], [10, 120], [28, 144]], 45, 3);
 const edgeMask = new Uint8Array(width * height);
 for (let i = 0; i < width * height; i++) if (edge.data[i * 4] < 180) edgeMask[i] = 1;

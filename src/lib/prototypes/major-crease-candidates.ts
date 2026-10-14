@@ -218,9 +218,14 @@ function components(response: Float32Array, foreground: Uint8Array, width: numbe
 
 /** Small deterministic hook for geometry regressions; no image semantics. */
 export function traceForegroundSegments(foreground: Uint8Array, width: number, height: number): MajorCreaseSegment[] {
-  if (foreground.length !== width * height) return [];
-  const budget = { used: 0, max: MAX_WORK_UNITS };
-  return components(new Float32Array(foreground), foreground, width, height, budget).flatMap((component, componentId) => traceSkeleton(component, new Float32Array(foreground), width, height, budget, componentId));
+  return traceForegroundSegmentsWithBudget(foreground, width, height).segments;
+}
+
+export function traceForegroundSegmentsWithBudget(foreground: Uint8Array, width: number, height: number): { segments: MajorCreaseSegment[]; truncatedReason?: "work_limit" | "component_limit" | "thinning_limit" | "seed_limit" } {
+  if (foreground.length !== width * height) return { segments: [] };
+  const budget: WorkBudget = { used: 0, max: MAX_WORK_UNITS };
+  const segments = components(new Float32Array(foreground), foreground, width, height, budget).flatMap((component, componentId) => traceSkeleton(component, new Float32Array(foreground), width, height, budget, componentId));
+  return { segments, truncatedReason: budget.truncatedReason };
 }
 
 export function trackMajorCreaseCandidates(
