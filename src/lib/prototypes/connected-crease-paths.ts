@@ -128,6 +128,7 @@ interface State {
   junction: number;
   probe: number;
   support: number;
+  weakestSupport: number;
   prior: number;
   terminationReason: ConnectedPathCandidate["terminationReason"];
   branches: number;
@@ -136,7 +137,7 @@ interface State {
 }
 
 function stateScore(state: State) {
-  return state.length / (state.length + 96) * .35 + state.junction * .2 + state.probe * .15 + Math.min(state.support / 32, 1) * .25 + state.prior * .05;
+  return state.length / (state.length + 96) * .35 + state.junction * .2 + state.probe * .15 + Math.min(state.weakestSupport / 32, 1) * .25 + state.prior * .05;
 }
 
 type OrientedRef = { segmentIndex: number; direction: "forward" | "reverse" };
@@ -184,7 +185,9 @@ export function rankConnectedCreasePaths(
     const oriented = start.direction === 1 ? segment.points : [...segment.points].reverse();
     const startNode = key(segment.componentId, oriented[0]);
     const endNode = key(segment.componentId, oriented[oriented.length - 1]);
-    let beam: State[] = [{ refs: [start], nodes: new Set([startNode, endNode]), edges: new Set([`${start.segmentIndex}:${start.direction}`]), score: 0, length: segment.pathLengthPx, junction: 0, probe: 0, support: supportScore(oriented, ridgeEvidence), prior: thumbPrior(oriented, palmFrame), terminationReason: "no_extension", branches: 0, loopDetected: false, junctionCompetition: [] }];
+    const initialSupport = supportScore(oriented.length > 2 ? oriented.slice(1, -1) : oriented, ridgeEvidence);
+    let beam: State[] = [{ refs: [start], nodes: new Set([startNode, endNode]), edges: new Set([`${start.segmentIndex}:${start.direction}`]), score: 0, length: segment.pathLengthPx, junction: 0, probe: 0, support: initialSupport, weakestSupport: initialSupport, prior: thumbPrior(oriented, palmFrame), terminationReason: "no_extension", branches: 0, loopDetected: false, junctionCompetition: [] }];
+    const completed: State[] = [];
     let localExpansions = 0;
     while (beam.length && localExpansions < perStart) {
       const nextBeam: State[] = [];
@@ -196,8 +199,8 @@ export function rankConnectedCreasePaths(
         const currentKey = key(lastSegment.componentId, current);
         const nextRefs = (adjacency.get(currentKey) ?? []).flatMap(index => index === last.segmentIndex || state.edges.has(`${index}:1`) || state.edges.has(`${index}:-1`) ? [] : [index]);
         // Ending here is always an option; extension must earn its way past it.
-        if (!nextRefs.length) { state.terminationReason = state.loopDetected ? "loop" : "terminal"; nextBeam.push(state); continue; }
-        nextBeam.push({ ...state, terminationReason: state.loopDetected ? "loop" : "terminal" });
+        if (!nextRefs.length) { state.terminationReason = state.loopDetected ? "loop" : "terminal"; completed.push(state); continue; }
+        completed.push({ ...state, terminationReason: state.loopDetected ? "loop" : "terminal" });
         state.branches = Math.max(state.branches, nextRefs.length);
         const branchScores = nextRefs.map(nextIndex => {
           const nextSegment = segments[nextIndex];
@@ -214,28 +217,37 @@ export function rankConnectedCreasePaths(
           const nextPoints = direction === 1 ? nextSegment.points : [...nextSegment.points].reverse();
           const nextEnd = key(nextSegment.componentId, nextPoints[nextPoints.length - 1]);
           if (state.nodes.has(nextEnd)) {
-            nextBeam.push({ ...state, terminationReason: "loop", loopDetected: true, branches: Math.max(state.branches, nextRefs.length) });
+            completed.push({ ...state, terminationReason: "loop", loopDetected: true, branches: Math.max(state.branches, nextRefs.length) });
             continue;
           }
           const junction = junctionScores(lastSegment, last.direction, nextSegment, direction, ridgeEvidence);
           const branchGap = branchScores.length > 1 ? Math.abs(branchScores[0].value - branchScores[1].value) : 1;
           const competition = branchScores.length > 1 ? [{ x: current.x, y: current.y, alternatives: branchScores.length, scoreGap: branchGap, ambiguous: branchGap < .12 }] : [];
           const nextLength = state.length + nextSegment.pathLengthPx;
-          const nextSupport = (state.support * state.length + supportScore(nextPoints, ridgeEvidence) * nextSegment.pathLengthPx) / Math.max(1, nextLength);
+          // The shared junction belongs to the prior path for support scoring;
+          // do not let one strong pixel hide a weak continuation texture.
+          const extensionSupport = supportScore(nextPoints.slice(1), ridgeEvidence);
+          const nextSupport = (state.support * state.length + extensionSupport * nextSegment.pathLengthPx) / Math.max(1, nextLength);
           nextBeam.push({
             refs: [...state.refs, { segmentIndex: nextIndex, direction }], nodes: new Set([...state.nodes, currentKey, nextEnd]), edges: new Set([...state.edges, `${nextIndex}:${direction}`]),
             score: 0, length: nextLength, junction: (state.junction * Math.max(0, state.refs.length - 1) + junction.continuity) / state.refs.length,
             probe: (state.probe * Math.max(0, state.refs.length - 1) + junction.probeAgreement) / state.refs.length,
-            support: nextSupport, prior: Math.max(state.prior, thumbPrior(nextPoints, palmFrame)), terminationReason: "no_extension", branches: state.branches, loopDetected: false, junctionCompetition: [...state.junctionCompetition, ...competition],
+            support: nextSupport, weakestSupport: Math.min(state.weakestSupport, extensionSupport), prior: Math.max(state.prior, thumbPrior(nextPoints, palmFrame)), terminationReason: "no_extension", branches: state.branches, loopDetected: false, junctionCompetition: [...state.junctionCompetition, ...competition],
           });
         }
       }
-      beam = nextBeam.sort((a, b) => stateScore(b) - stateScore(a)).slice(0, BEAM_WIDTH);
-      if (!beam.some(state => state.terminationReason === "no_extension")) break;
+      const seenStates = new Set<string>();
+      beam = nextBeam.sort((a, b) => stateScore(b) - stateScore(a)).filter(state => {
+        const signature = state.refs.map(ref => `${ref.segmentIndex}:${ref.direction}`).join("|");
+        if (seenStates.has(signature)) return false;
+        seenStates.add(signature);
+        return true;
+      }).slice(0, BEAM_WIDTH);
+      if (!beam.length) break;
     }
     if (localExpansions >= perStart && beam.some(state => state.terminationReason === "no_extension")) searchTruncated = true;
-    for (const state of beam) {
-      const scoreItems = { length: state.length / (state.length + 96), junctionContinuity: state.junction, probeAgreement: state.probe, ridgeSupport: Math.min(state.support / 32, 1), thumbPrior: state.prior };
+    for (const state of [...completed, ...beam]) {
+      const scoreItems = { length: state.length / (state.length + 96), junctionContinuity: state.refs.length > 1 ? state.junction : .5, probeAgreement: state.refs.length > 1 ? state.probe : .5, ridgeSupport: Math.min(state.weakestSupport / 32, 1), thumbPrior: state.prior };
       const score = scoreItems.length * .35 + scoreItems.junctionContinuity * .2 + scoreItems.probeAgreement * .15 + scoreItems.ridgeSupport * .25 + scoreItems.thumbPrior * .05;
       finished.push({ refs: state.refs.map(ref => ({ segmentIndex: ref.segmentIndex, direction: ref.direction === 1 ? "forward" : "reverse" })), actualSupportLengthPx: state.length, score, scoreItems, terminationReason: searchTruncated && state.terminationReason === "no_extension" ? "searchTruncated" : state.terminationReason, competingBranches: state.branches, ambiguous: state.refs.some(ref => segments[ref.segmentIndex].status === "ambiguous"), junctionCompetition: state.junctionCompetition, searchTruncated });
     }
@@ -244,7 +256,10 @@ export function rankConnectedCreasePaths(
   const unique = finished.filter((candidate, index, list) => {
     const refs = canonicalRefs(candidate);
     if (list.slice(0, index).some(previous => canonicalRefs(previous).join("|") === refs.join("|"))) return false;
-    return !list.some(other => other !== candidate && isStrictPrefix(refs, canonicalRefs(other)));
+    // A longer extension is not automatically better: retain an intentional
+    // stop when its local evidence score is at least as strong as the weak
+    // continuation. Only a strictly better-scoring extension removes it.
+    return !list.some(other => other !== candidate && isStrictPrefix(refs, canonicalRefs(other)) && other.score > candidate.score + .001);
   }).slice(0, MAX_FINAL);
   const selected = unique.slice(0, MAX_FINAL);
   const ambiguous = selected.length > 1 && Math.abs(selected[0].score - selected[1].score) < .06;

@@ -26,6 +26,16 @@ assert.ok(result.pathCandidates.every(candidate => candidate.orientedSegmentRefs
 
 const reversible = rankConnectedCreasePaths([segments[0]], [], evidence, {}, { used: 0, limit: 8192 });
 assert.equal(reversible.pathCandidates.length, 1, "forward/reverse views of one segment collapse to one canonical path");
+const strongThenTexture = [
+  { componentId: 7, points: [{ x: 50, y: 50 }, { x: 51, y: 50 }, { x: 52, y: 50 }, { x: 53, y: 50 }], pathLengthPx: 3, supportPixelCount: 4, responseMean: 20, status: "measurable" },
+  { componentId: 7, points: [{ x: 53, y: 50 }, { x: 54, y: 51 }, { x: 55, y: 52 }], pathLengthPx: 2.8, supportPixelCount: 3, responseMean: .2, status: "measurable" },
+];
+const strongEvidence = new Map();
+strongThenTexture[0].points.forEach(point => strongEvidence.set(`${point.x},${point.y}`, { valleyResponse: 20, probeAngleDeg: 90 }));
+strongThenTexture[1].points.slice(1).forEach(point => strongEvidence.set(`${point.x},${point.y}`, { valleyResponse: .1, probeAngleDeg: 90 }));
+const strongStop = rankConnectedCreasePaths(strongThenTexture, [], strongEvidence, {}, { used: 0, limit: 8192 });
+assert.deepEqual(strongStop.pathCandidates[0].orientedSegmentRefs.map(ref => ref.segmentIndex), [0], "strong segment can intentionally stop before weak texture extension");
+assert.equal(strongStop.pathCandidates[0].terminationReason, "terminal", "strong segment stop is retained as an explicit termination candidate");
 const ambiguousInput = segments.map((segment, index) => index === 1 ? { ...segment, status: "ambiguous" } : segment);
 const ambiguousResult = rankConnectedCreasePaths(ambiguousInput, [], evidence, {}, { used: 0, limit: 8192 });
 assert.ok(ambiguousResult.pathCandidates.some(candidate => candidate.ambiguous && candidate.orientedSegmentRefs.some(ref => ref.segmentIndex === 1)), "ambiguous segment status reaches its path candidate");
