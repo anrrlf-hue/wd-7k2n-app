@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test:finance-regressions": "node scripts/test-finance-regressions.mjs",
     "deploy:prod": "npx -y vercel@59.23.2 --prod --yes",
-    "test:reality-answer-regressions": "node scripts/test-reality-answer-regressions.mjs"
+    "test:reality-answer-regressions": "node scripts/test-reality-answer-regressions.mjs",
+    "verify:additional-crease": "node scripts/verify/additional-vertical-crease.mjs"
   },
   "dependencies": {
     "@fullstackfamily/manseryeok": "^1.0.8",

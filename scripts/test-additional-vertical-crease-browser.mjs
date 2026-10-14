@@ -24,25 +24,50 @@ const page = await browser.newPage();
 await page.setContent(`<script type="module">window.ready = import(${JSON.stringify(moduleUrl)}).then(m => { window.tracker = m.trackAdditionalVerticalCreases; });</script>`);
 await page.waitForFunction(() => window.tracker);
 
-async function runSynthetic(kind) {
+async function runSynthetic(kind, scale = 1) {
   const points = Array.from({ length: 21 }, () => ({ x: .5, y: .5, z: 0 }));
   for (const [idx, x, y] of [[0,.52,.90],[5,.27,.35],[9,.43,.33],[13,.58,.34],[17,.73,.40]]) points[idx] = { x, y, z: 0 };
-  return page.evaluate(({ kind, points }) => {
-    const c = document.createElement("canvas"); c.width = 600; c.height = 800;
+  return page.evaluate(({ kind, points, scale }) => {
+    const c = document.createElement("canvas"); c.width = 600 * scale; c.height = 800 * scale;
     const d = c.getContext("2d"); d.fillStyle = "rgb(188,137,116)"; d.fillRect(0, 0, c.width, c.height);
-    const x = 348; d.strokeStyle = "rgb(70,45,40)"; d.lineWidth = 1;
-    if (kind === "clear_vertical_curve") { d.beginPath(); for (let y=330; y<580; y++) { const xx=x+.000005*(y-319)**2; if (y===330) d.moveTo(xx,y); else d.lineTo(xx,y); } d.stroke(); }
-    if (kind === "broken_vertical") { d.beginPath(); d.moveTo(x,330); d.lineTo(x,350); d.moveTo(x,465); d.lineTo(x+3,485); d.stroke(); }
-    if (kind === "horizontal_cross") for (const y of [380,450,520]) { d.beginPath(); d.moveTo(300,y); d.lineTo(390,y); d.stroke(); }
+    const x = 348 * scale; d.strokeStyle = kind === "weak_contrast" ? "rgb(170,125,108)" : "rgb(70,45,40)"; d.lineWidth = 1 * scale;
+    if (kind === "clear_vertical_curve") { d.beginPath(); for (let y=330*scale; y<580*scale; y++) { const yy=y/scale, xx=x+.000005*(yy-319)**2*scale; if (y===330*scale) d.moveTo(xx,y); else d.lineTo(xx,y); } d.stroke(); }
+    if (kind === "clear_curved") { d.beginPath(); for (let y=330*scale; y<580*scale; y++) { const yy=y/scale, xx=x+.00005*(yy-319)**2*scale; if (y===330*scale) d.moveTo(xx,y); else d.lineTo(xx,y); } d.stroke(); }
+    if (kind === "sloped_vertical") { d.beginPath(); d.moveTo(x-12*scale,330*scale); d.lineTo(x+12*scale,580*scale); d.stroke(); }
+    if (kind === "short_high_contrast") { d.beginPath(); d.moveTo(x,430*scale); d.lineTo(x,445*scale); d.stroke(); }
+    if (kind === "broken_vertical") { d.beginPath(); d.moveTo(x,330*scale); d.lineTo(x,350*scale); d.moveTo(x,465*scale); d.lineTo(x+3*scale,485*scale); d.stroke(); }
+    if (kind === "broken_long") { d.beginPath(); d.moveTo(x,330*scale); d.lineTo(x,400*scale); d.moveTo(x,465*scale); d.lineTo(x+3*scale,565*scale); d.stroke(); }
+    if (kind === "horizontal_cross") for (const y of [380,450,520]) { d.beginPath(); d.moveTo(300*scale,y*scale); d.lineTo(390*scale,y*scale); d.stroke(); }
     if (kind === "lighting_edge") for (let xx=x; xx<c.width; xx++) { d.strokeStyle=`rgb(${Math.round(188+30*(xx-x)/(c.width-x))},137,116)`; d.beginPath(); d.moveTo(xx,0); d.lineTo(xx,c.height); d.stroke(); }
     return window.tracker(d.getImageData(0, 0, c.width, c.height), points);
-  }, { kind, points });
+  }, { kind, points, scale });
 }
 
 const synthetic = {};
-for (const kind of ["clear_vertical_curve", "broken_vertical", "horizontal_cross", "lighting_edge", "no_line"]) synthetic[kind] = await runSynthetic(kind);
+for (const kind of ["clear_vertical_curve", "clear_curved", "sloped_vertical", "broken_vertical", "broken_long", "horizontal_cross", "lighting_edge", "no_line", "weak_contrast", "short_high_contrast"]) synthetic[kind] = await runSynthetic(kind);
 assert.equal(synthetic.clear_vertical_curve.corridors.ring_direction.stability.stableCandidate, true);
-for (const kind of ["broken_vertical", "horizontal_cross", "lighting_edge", "no_line"]) assert.equal(Object.values(synthetic[kind].corridors).some(v => v.stability.stableCandidate), false, kind);
+assert.equal(synthetic.clear_vertical_curve.corridors.ring_direction.raw.points[0].x, 348);
+assert.ok(["candidate", "insufficient_evidence"].includes(synthetic.clear_curved.corridors.ring_direction.raw.status));
+assert.ok(synthetic.clear_curved.corridors.ring_direction.raw.selectedSpanPx > 0);
+assert.equal(synthetic.clear_curved.corridors.ring_direction.stability.stableCandidate, false);
+assert.equal(synthetic.sloped_vertical.corridors.ring_direction.stability.stableCandidate, false);
+for (const kind of ["broken_vertical", "broken_long", "horizontal_cross", "lighting_edge", "no_line", "weak_contrast", "short_high_contrast"]) assert.equal(Object.values(synthetic[kind].corridors).some(v => v.stability.stableCandidate), false, kind);
+assert.equal(synthetic.short_high_contrast.corridors.ring_direction.raw.status, "insufficient_evidence");
+assert.equal(synthetic.broken_vertical.corridors.ring_direction.raw.status, "insufficient_evidence");
+assert.ok(synthetic.broken_long.corridors.ring_direction.raw.componentCount >= 2);
+assert.equal(synthetic.broken_long.corridors.ring_direction.stability.stableCandidate, false);
+const nanPoints = Array.from({ length: 21 }, () => ({ x: .5, y: .5, z: 0 })); nanPoints[0] = { x: Number.NaN, y: .9, z: 0 };
+const invalid = await page.evaluate(({ points }) => window.tracker(new ImageData(32, 32), points), { points: nanPoints });
+assert.equal(invalid.status, "invalid_input");
+const degenerate = await page.evaluate(() => window.tracker(new ImageData(32, 32), Array.from({ length: 21 }, () => ({ x: .5, y: .5, z: 0 }))));
+assert.equal(degenerate.status, "invalid_input");
+const normalPoints = Array.from({ length: 21 }, () => ({ x: .5, y: .5, z: 0 })); normalPoints[0] = { x: .52, y: .9, z: 0 }; normalPoints[5] = { x: .27, y: .35, z: 0 }; normalPoints[9] = { x: .43, y: .33, z: 0 }; normalPoints[13] = { x: .58, y: .34, z: 0 }; normalPoints[17] = { x: .73, y: .40, z: 0 };
+const oversized = await page.evaluate(({ points }) => window.tracker(new ImageData(2500, 2500), points), { points: normalPoints });
+assert.equal(oversized.status, "invalid_input"); assert.equal(oversized.errorCode, "image_too_large");
+const rotatePoints = (turns) => normalPoints.map(p => turns === 1 ? ({ x: .5 - (p.y - .5), y: .5 + (p.x - .5), z: p.z }) : ({ x: 1 - p.x, y: 1 - p.y, z: p.z }));
+for (const points of [rotatePoints(1), rotatePoints(2)]) assert.equal((await page.evaluate(({ points }) => window.tracker(new ImageData(32, 32), points), { points })).status, "unsupported_pose");
+const resolution = {}; for (const scale of [1, 2, 3]) resolution[scale] = await runSynthetic("clear_vertical_curve", scale);
+assert.equal(resolution[2].corridors.ring_direction.stability.stableCandidate, true); assert.equal(resolution[3].corridors.ring_direction.stability.stableCandidate, true);
 fs.writeFileSync(path.join(out, "synthetic-results.json"), JSON.stringify({ synthetic, contract: "ImageData + 21 normalized MediaPipe landmarks -> pixel-only corridor tracks; no semantic line names" }, null, 2));
-console.log(JSON.stringify({ synthetic: Object.fromEntries(Object.entries(synthetic).map(([k,v]) => [k, Object.fromEntries(Object.entries(v.corridors).map(([d,c]) => [d, c.stability.stableCandidate]))])) }, null, 2));
+console.log(JSON.stringify({ synthetic: Object.fromEntries(Object.entries(synthetic).map(([k,v]) => [k, Object.fromEntries(Object.entries(v.corridors).map(([d,c]) => [d, c.stability.stableCandidate]))])), resolution: Object.fromEntries(Object.entries(resolution).map(([k,v]) => [k, v.elapsedMs])) }, null, 2));
 await browser.close(); server.close();
