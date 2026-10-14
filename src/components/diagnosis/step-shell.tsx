@@ -32,8 +32,6 @@ export function StepShell({
                   ? "출생정보 · 2 / 4"
                   : stepKey === "time"
                     ? "출생정보 · 3 / 4"
-                    : stepKey === "personality"
-                      ? "MBTI · 4 / 4 · 선택사항"
                       : "분석 준비")}
           </p>
           <Progress value={progress} className="h-1" />

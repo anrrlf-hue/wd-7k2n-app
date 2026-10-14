@@ -23,11 +23,23 @@ try {
     page.on("pageerror", error => errors.push(error.message));
     await page.goto(BASE + "/diagnosis?mode=free&focus=overall&start=free");
     await page.getByText("입력·풀이·손금 특징은 이 탭에, 내 출생정보는 이 기기에 자동 저장됩니다.", { exact: true }).waitFor();
-    await page.getByText("운영자가 외부 해석을 켜면 계산된 사주 정보와 입력한 MBTI·질문이 Anthropic에 전송될 수 있습니다.", { exact: true }).waitFor();
+    await page.getByText("운영자가 외부 해석을 켜면 계산된 사주 정보와 질문이 Anthropic에 전송될 수 있습니다.", { exact: true }).waitFor();
+    assert.equal(await page.getByText(/MBTI/).count(), 0);
     assert.equal(await page.locator("input").count(), 2);
-    await page.locator('input[type="date"]').fill("1990-05-15");
+    const dateInput = page.locator('input[type="date"]');
+    assert.equal(await dateInput.getAttribute("aria-describedby"), "birthDateHelp");
+    assert.ok(await dateInput.evaluate((element) => element.tabIndex >= 0));
+    await dateInput.focus();
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "birthDate");
+    await dateInput.fill("1990-05-15");
     const next = page.getByRole("button", { name: "다음", exact: true });
     assert.equal(await next.isDisabled(), true);
+    await page.getByRole("button", { name: "날짜 확정", exact: true }).click();
+    await page.getByText("1990년 5월 15일", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "생년월일 수정", exact: true }).click();
+    await dateInput.fill("1991-06-16");
+    await page.getByRole("button", { name: "취소", exact: true }).click();
+    await page.getByText("1990년 5월 15일", { exact: true }).waitFor();
     await page.getByRole("checkbox").check();
     assert.equal(await next.isEnabled(), true);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
@@ -44,6 +56,6 @@ try {
   }
   assert.deepEqual(errors, []);
   assert.deepEqual(apiRequests, []);
-  fs.writeFileSync(`${evidence}/input-consent-browser.json`, JSON.stringify({ synthetic: true, widths, requiredConsent: true, noAddedInput: true, policyLinkAndCopyAligned: true, errors, apiRequests }, null, 2));
-  console.log("PASS input consent 390/1440px: storage/external processing visible, consent required, two existing inputs, policy link works, no overflow or API calls");
+  fs.writeFileSync(`${evidence}/input-consent-browser.json`, JSON.stringify({ synthetic: true, widths, requiredConsent: true, dateConfirmEditCancel: true, keyboardFocusable: true, mbtiInputAbsent: true, noAddedInput: true, policyLinkAndCopyAligned: true, errors, apiRequests }, null, 2));
+  console.log("PASS input/date accessibility 390/1440px: date confirm/edit/cancel, keyboard focus, MBTI absent, consent required, policy link, no overflow, no API calls");
 } finally { await browser.close(); }

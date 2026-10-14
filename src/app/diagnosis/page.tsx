@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button";
 import { StepShell } from "@/components/diagnosis/step-shell";
 import { BirthDateStep } from "@/components/diagnosis/birth-date-step";
 import { BirthTimeStep } from "@/components/diagnosis/birth-time-step";
-import { PersonalityStep } from "@/components/diagnosis/personality-step";
 import { LoadingStep } from "@/components/diagnosis/loading-step";
 import { ResultStep } from "@/components/diagnosis/result-step";
 import { SajuFocusStep } from "@/components/diagnosis/saju-focus-step";
 import { QuestionFirstStep } from "@/components/diagnosis/question-first-step";
 import { QuestionAnswerResult } from "@/components/diagnosis/question-answer-result";
 import type { BirthInput, FullSajuDiagnosis } from "@/lib/saju";
-import type { MbtiType } from "@/lib/mbti-facts";
 import { parseSajuFocus, type SajuFocus } from "@/lib/saju-focus";
 import type { RealityAnswer } from "@/lib/reality-answer-contract";
 import type { RealityAnswerEngineResult } from "@/lib/reality-answer-engine";
@@ -28,7 +26,6 @@ type Step =
   | "question"
   | "date"
   | "time"
-  | "personality"
   | "loading"
   | "answering"
   | "result"
@@ -46,7 +43,8 @@ interface StoredFreeSession {
   gender: "남" | "여";
   knowsTime: boolean;
   birthTime: string;
-  mbti: MbtiType | "모름";
+  /** Kept optional for reading old v3 sessions without deleting user data. */
+  mbti?: string;
   diagnosis: FullSajuDiagnosis;
 }
 
@@ -57,14 +55,10 @@ interface StoredQuestionSession {
   gender: "남" | "여";
   knowsTime: boolean;
   birthTime: string;
-  mbti: MbtiType | "모름";
+  /** Kept optional for reading old question sessions without deleting user data. */
+  mbti?: string;
   answer: RealityAnswer;
   questionPlan?: QuestionEnginePlan | null;
-}
-
-function journeyModeFromLocation(): JourneyMode {
-  if (typeof window === "undefined") return "free";
-  return new URLSearchParams(window.location.search).get("mode") === "question" ? "question" : "free";
 }
 
 function birthInputFromState(input: {
@@ -99,7 +93,6 @@ export default function DiagnosisPage() {
   const [gender, setGender] = useState<"남" | "여">("남");
   const [knowsTime, setKnowsTime] = useState(false);
   const [birthTime, setBirthTime] = useState("");
-  const [mbti, setMbti] = useState<MbtiType | "모름">("모름");
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [diagnosis, setDiagnosis] = useState<FullSajuDiagnosis | null>(null);
   const [questionAnswer, setQuestionAnswer] = useState<RealityAnswer | null>(null);
@@ -156,7 +149,6 @@ export default function DiagnosisPage() {
                 setGender(saved.gender);
                 setKnowsTime(saved.knowsTime);
                 setBirthTime(saved.birthTime);
-                setMbti(saved.mbti);
                 setPrivacyAccepted(true);
                 setQuestionAnswer(saved.answer);
                 setQuestionPlan(saved.questionPlan ?? null);
@@ -177,7 +169,6 @@ export default function DiagnosisPage() {
                 setGender(saved.gender);
                 setKnowsTime(saved.knowsTime);
                 setBirthTime(saved.birthTime);
-                setMbti(saved.mbti);
                 setPrivacyAccepted(true);
                 setStep("question");
                 return;
@@ -209,7 +200,7 @@ export default function DiagnosisPage() {
                 : `${String(birth.hour).padStart(2, "0")}:${String(birth.minute ?? 0).padStart(2, "0")}`,
             );
             setPrivacyAccepted(true);
-            setStep("personality");
+            setStep("time");
             return;
           }
           setFocus("overall");
@@ -229,7 +220,6 @@ export default function DiagnosisPage() {
         setGender(saved.gender);
         setKnowsTime(saved.knowsTime);
         setBirthTime(saved.birthTime);
-        setMbti(saved.mbti);
         setPrivacyAccepted(true);
         setDiagnosis(saved.diagnosis);
         setStep("result");
@@ -261,7 +251,6 @@ export default function DiagnosisPage() {
     setBirthDate("");
     setKnowsTime(false);
     setBirthTime("");
-    setMbti("모름");
     setPrivacyAccepted(false);
     setDiagnosis(null);
     setQuestionAnswer(null);
@@ -309,7 +298,6 @@ export default function DiagnosisPage() {
         body: JSON.stringify({
           ...birthInput,
           focus,
-          mbti: mbti !== "모름" ? mbti : undefined,
         }),
         signal: controller.signal,
       });
@@ -332,7 +320,6 @@ export default function DiagnosisPage() {
           gender,
           knowsTime,
           birthTime,
-          mbti,
           diagnosis: data,
         };
         sessionStorage.setItem(FREE_STORAGE_KEY, JSON.stringify(toStore));
@@ -406,7 +393,6 @@ export default function DiagnosisPage() {
               previousQuestion: questionAnswer?.question.raw ?? questionPlan?.raw ?? null,
               previousDomain: questionAnswer?.question.domain ?? questionPlan?.domain ?? null,
               readingReference: readingReference.current,
-              mbti: mbti !== "모름" ? mbti : undefined,
             }),
             signal,
           });
@@ -453,7 +439,6 @@ export default function DiagnosisPage() {
           gender,
           knowsTime,
           birthTime,
-          mbti,
           answer: data.answer,
           questionPlan: data.questionPlan ?? null,
         };
@@ -480,29 +465,25 @@ export default function DiagnosisPage() {
   const progressLabel =
     mode === "question"
       ? step === "focus"
-        ? "분야 선택 · 1 / 5"
+        ? "분야 선택 · 1 / 4"
         : step === "question"
-          ? "내 질문 · 2 / 5"
+          ? "내 질문 · 2 / 4"
           : step === "date"
-            ? "출생정보 · 3 / 5"
+            ? "출생정보 · 3 / 4"
             : step === "time"
-              ? "출생정보 · 4 / 5"
-              : step === "personality"
-                ? "MBTI · 5 / 5 · 선택사항"
-                : "답과 시기 보는 중"
+              ? "출생정보 · 4 / 4"
+              : "답과 시기 보는 중"
       : undefined;
 
   const progress =
     mode === "question"
       ? step === "focus"
-        ? 20
+        ? 25
         : step === "question"
-          ? 40
+          ? 50
           : step === "date"
-            ? 60
-            : step === "time"
-              ? 80
-              : 100
+            ? 75
+            : 100
       : step === "focus"
         ? 25
         : step === "date"
@@ -567,22 +548,14 @@ export default function DiagnosisPage() {
           time={birthTime}
           onKnowsTimeChange={setKnowsTime}
           onTimeChange={setBirthTime}
-          onNext={() => setStep("personality")}
-          onBack={() => setStep("date")}
-        />
-      )}
-
-      {step === "personality" && (
-        <PersonalityStep
-          mbti={mbti}
-          onMbtiChange={setMbti}
           onNext={() => {
             if (mode === "question") void handleFetchQuestionAnswer();
             else void handleFetchDiagnosis();
           }}
-          onBack={() => setStep("time")}
+          onBack={() => setStep("date")}
         />
       )}
+
 
       {step === "loading" && <LoadingStep />}
       {step === "answering" && <>
@@ -645,7 +618,7 @@ export default function DiagnosisPage() {
           focus={focus}
           question={question}
           birthInput={answerBirthInput}
-          mbti={mbti === "모름" ? null : mbti}
+          mbti={null}
           answer={questionAnswer}
           questionPlan={questionPlan}
           onAskAgain={askAgain}
