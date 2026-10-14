@@ -44,7 +44,7 @@ export function buildNatalNarrativeFrame(facts: SajuFacts) {
   const fireMeeting = ["巳", "午", "未"].every(b => branches.has(b)) && facts.keyRelations.some(r => /巳午未.*(방합|화국)/.test(r));
   const evidence: Record<Theme, string> = {
     self: `일간 ${facts.dayStem}; 오행 ${Object.entries(facts.fiveElements).map(([element, count]) => `${element} ${count}개`).join(" · ")}; ${facts.dayStrengthReliable ? `강약 ${({ strong: "강한 편", weak: "약한 편", neutral: "중화" })[facts.dayStrength]}` : "출생시간 미상으로 강약 미사용"}${fireMeeting ? "; 확인 관계 巳午未 방합" : ""}`,
-    relationship: `일지 ${day?.ganzhi ?? "미확인"}/${closeGod ?? "미확인"}; 일간 ${facts.dayStem}; 표현 식상 ${counts.식상}, 신뢰 관성 ${counts.관성}`,
+    relationship: `일주 ${day?.ganzhi ?? "미확인"}; 일지 ${day?.branchHanja ?? "미확인"}/${closeGod ?? "미확인"}; 일간 ${facts.dayStem}; 표현 식상 ${counts.식상}, 신뢰 관성 ${counts.관성}, 이해 인성 ${counts.인성}, 자기 선택 비겁 ${counts.비겁}`,
     money: `드러난 재성 ${counts.재성}, 식상 ${counts.식상}, 비겁 ${counts.비겁}, 관성 ${counts.관성}, 인성 ${counts.인성}; ${hour ? `시주 ${hour.ganzhi}/${hour.stemTenGod}/${hour.branchTenGod}` : "시주 미사용"}`,
     work: `월주 ${month?.ganzhi ?? "미확인"}/${month?.stemTenGod ?? "미확인"}/${workGod ?? "미확인"}; 일간 ${facts.dayStem}; 드러난 식상 ${counts.식상}, 비겁 ${counts.비겁}, 인성 ${counts.인성}`,
     life: `드러난 식상 ${counts.식상}, 인성 ${counts.인성}; ${facts.dayStrengthReliable ? `강약 ${({ strong: "강한 편", weak: "약한 편", neutral: "중화" })[facts.dayStrength]}` : "강약 미사용"}; 생활 리듬의 상징 해석, 의료 진단 아님`,
@@ -250,9 +250,9 @@ export function buildCustomerPremiumNarrative(facts: SajuFacts) {
       : `${f.stem.name}인 당신은 ${f.stem.center}을 바탕으로, 익숙하게 지켜 온 뜻과 새로 달라진 바람을 함께 살피는 쪽입니다. 한 번 정한 답을 지키는 힘이 있지만, 직접 겪은 뒤 마음이 달라졌다면 그것을 후퇴로 보지 않고 현재의 기준으로 다시 읽을 여지도 있습니다.`;
   const inner = c.인성 > 0
     ? f.fireMeeting && facts.dayElement === "금"
-      ? "일 밖에서는 배운 기준을 현실에서 시험할 때 설명을 더 모으는 것보다 이미 아는 원칙이 어느 결과에서 살아났는지를 확인하게 됩니다. 혼자 익히는 시간과 실제로 표현해 보는 즐거움, 다시 쉬며 감각을 회복하는 시간을 일의 성과와 섞지 않고 따로 남길수록 배움이 오래 갑니다. 단단함이 준비만 오래 하는 방식으로 굳지 않으려면 작은 시도에서 무엇을 지키고 무엇을 다듬을지 나누는 일이 중요합니다."
+      ? "일 밖에서는 배운 기준을 혼자 편안히 되짚는 시간과, 관계 밖에서 자기 취향을 즐기는 시간이 중요한 바탕이 됩니다. 책이나 익숙한 관심사를 조용히 살피다가도 마음에 남은 한 부분을 자기 말로 표현할 때 배움이 깊어집니다. 누군가에게 유용한 결과를 만드는 일과 별개로, 아무 평가 없이 좋아하는 시간을 남겨 두어야 다시 배우고 싶은 마음도 살아납니다."
       : c.식상 > 0 && c.재성 > 0
-        ? "일 밖에서는 다른 사람의 반응을 들은 뒤 무엇을 바꾸고 무엇을 남길지 고르는 일이 중요한 배움이 됩니다. 많이 설명해 만족을 확인하기보다 실제로 자주 쓰인 한 장면을 관찰하면, 취향을 잃지 않으면서도 표현과 즐거움을 넓히는 방법이 보입니다."
+        ? "일 밖에서는 함께 만든 결과의 반응보다 혼자 있을 때 자연스럽게 손이 가는 취향을 알아보는 일이 배움이 됩니다. 새로운 것을 표현하는 즐거움과 오래 좋아해 온 감각을 번갈아 누리면, 관계나 쓰임의 평가가 없어도 무엇이 자신을 편안하게 하는지 선명해집니다. 잘 만든 결과를 더 넓히는 일과 아무 목적 없이 즐기는 시간을 따로 두는 것이 이 구성의 균형입니다."
         : "이유를 충분히 알아야 마음을 맡길 수 있지만, 설명이 끝나야만 움직일 수 있는 것은 아닙니다. 이해한 내용 중 한 부분을 먼저 해 보고 몸에 남은 느낌을 다시 읽을 때 배움이 자기 경험으로 깊어집니다."
     : "자신을 알아가는 속도는 경험을 넓히는 속도와 다를 수 있습니다. 처음에는 재미있어서 골랐던 것에 시간이 흐른 뒤 편안함이나 애착이 생기기도 합니다. 새롭게 해 본 것의 수보다 무엇에 다시 마음이 가는지 알아볼 때 자기 중심이 구체적으로 남습니다.";
   const acquisition = c.재성 > 0

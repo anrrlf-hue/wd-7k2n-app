@@ -29,6 +29,13 @@ assert.notEqual(reviewed[0].premium.overall.paragraphs[1], reviewed[1].premium.o
 assert.match(reviewed[0].premium.overall.paragraphs[1], /배움|표현|쉬며|회복/, "A overall must include a chart-grounded life-outside-work lens");
 assert.match(reviewed[0].premium.domains.find(domain => domain.key === "love_relationship").paragraphs.join(" "), /조언|약속|신뢰/, "A relationship must use trust/care combination");
 assert.match(reviewed[1].premium.domains.find(domain => domain.key === "love_relationship").paragraphs.join(" "), /공간|생활|표현/, "B relationship must use space/expression combination");
+assert.match(reviewed[0].premium.domains.find(domain => domain.key === "love_relationship").basis, /일주 庚辰; 일지 辰\/편인.*인성 2.*비겁 2/, "A relationship basis must expose the selected counts and correct day labels");
+assert.doesNotMatch(reviewed[0].premium.domains.find(domain => domain.key === "love_relationship").basis, /일지 庚辰/, "day stem must not be mislabeled as day branch");
+const aMoney = reviewed[0].premium.domains.find(domain => domain.key === "money").paragraphs;
+assert.match(aMoney[1], /설명의 각도|상대의 질문/, "A palm money connection must add a distinct observed meaning");
+assert.doesNotMatch(aMoney[1], /수고의 가치를 작게/, "A palm money connection must not repeat the natal acquisition conclusion");
+assert.match(reviewed[0].premium.overall.paragraphs[1], /관계 밖|아무 평가 없이|혼자 편안/, "A overall life reading must leave room outside work coaching");
+assert.match(reviewed[1].premium.overall.paragraphs[1], /혼자 있을 때|아무 목적 없이|취향/, "B overall life reading must use its own composition");
 assert.notEqual(reviewed[0].free.nextMove.text, reviewed[0].free.timingShift.text, "A current/next daeun conclusions must differ");
 assert.notEqual(reviewed[1].free.nextMove.text, reviewed[1].free.timingShift.text, "B current/next daeun conclusions must differ");
 for (const { free } of reviewed) {
@@ -58,6 +65,9 @@ for (const { premium } of reviewed) {
   assert.match(work, /일|환경|성과|업무/);
   assert.ok(premium.periods.every(period => period.symbols?.month?.ganzhi && period.basis.includes(period.symbols.month.ganzhi)), "each month retains its calculated month evidence");
 }
+const june = reviewed[0].premium.periods.find(period => period.label.includes("6월"));
+assert.ok(june, "A June period must exist");
+assert.equal((june.reading.match(/이미 편하게|작은 경험|작은 부분/g) ?? []).length, 0, "A June must not accumulate the prior comfortable-small-part conclusion");
 
 const repeat = buildPremiumReport({ facts: reviewed[0].facts, freeReport: reviewed[0].free, referenceDate, leftPalm, rightPalm, dominantHand: "right" });
 assert.deepEqual(repeat, reviewed[0].premium, "same chart/reference date must be deterministic");
