@@ -54,7 +54,7 @@ export function BirthDateStep({
         양력 생일을 입력해 주세요. 성별은 대운의 방향을 계산할 때 사용해요.
       </p>
 
-      <div className="mystic-card mt-10 flex flex-col gap-3 border-(--gold-soft) p-5">
+      <div className="mystic-card mt-6 flex flex-col gap-3 border-(--gold-soft) p-4 sm:mt-8 sm:p-5">
         <Label htmlFor="birthDate" className="text-base font-semibold text-(--gold)">
           생년월일
         </Label>
@@ -124,7 +124,7 @@ export function BirthDateStep({
         )}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4">
         {(["남", "여"] as const).map((g) => (
           <button
             key={g}
@@ -140,7 +140,7 @@ export function BirthDateStep({
         ))}
       </div>
 
-      <label className="mt-6 flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
+      <label className="mt-4 flex items-start gap-3 rounded-2xl border border-border bg-card p-3 sm:mt-6 sm:p-4">
         <input
           type="checkbox"
           checked={consent}
@@ -149,15 +149,15 @@ export function BirthDateStep({
         />
         <span className="text-sm leading-6 text-muted-foreground">
           출생정보를 서버에서 계산하고 기기에 저장하는 데 동의합니다.
-          <span className="mt-2 block">입력·풀이·손금 특징은 이 탭에, 내 출생정보는 이 기기에 자동 저장됩니다.</span>
-          <span className="mt-2 block">운영자가 외부 해석을 켜면 계산된 사주 정보와 질문이 Anthropic에 전송될 수 있습니다.</span>
+          <span className="mt-1 block sm:mt-2">입력·풀이·손금 특징은 이 탭에, 내 출생정보는 이 기기에 자동 저장됩니다.</span>
+          <span className="mt-1 block sm:mt-2">운영자가 외부 해석을 켜면 계산된 사주 정보와 질문이 Anthropic에 전송될 수 있습니다.</span>
           <Link href="/privacy" target="_blank" className="font-medium text-foreground underline underline-offset-4">
             개인정보처리방침 보기
           </Link>
         </span>
       </label>
 
-      <div className="mt-auto pt-8">
+      <div className="mt-auto pt-4 sm:pt-8">
         <Button
           size="lg"
           disabled={!value || !consent}

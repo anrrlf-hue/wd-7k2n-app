@@ -1,6 +1,6 @@
 {
   "branch": "fix/saju-input-clarity-20261015",
-  "commit": "b4576be",
+  "commit": "pending-final-verification",
   "scope": "post-reading relationship comparison entry",
   "changes": {
     "entryVisibleAfterPersonalAndBilateralResults": true,
@@ -17,8 +17,10 @@
     "freeSajuV3": "pass"
   },
   "browserVerification": {
-    "entryResultErrorCloseReentry": "blocked",
-    "blocker": "Existing test-palm-customer-browser fixture timed out before the bilateral-result screen (15s), so the new interaction sequence was not reached in this environment.",
+    "entryResultErrorCloseReentry": "pass",
+    "fixture": "synthetic palm facts; no real image upload or external API",
+    "observed": ["entry visible once after personal/bilateral result", "explicit relationship selection", "comparison success", "comparison API error and retry", "close and re-entry"],
+    "errors": [],
     "apiCallsWereNotChanged": true
   },
   "restrictions": {

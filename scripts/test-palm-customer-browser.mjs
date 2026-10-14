@@ -28,6 +28,7 @@ const state = (r, l, output) => ({ stage: "result", personalityKey: "null", palm
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
 const captures = [], errors = [];
+const compareRequests = [];
 let compareMode = "ok";
 const compareResult = {
   result: {
@@ -57,6 +58,7 @@ async function open(saved, report, mockFailure = false) {
     };
   }, { entryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture), key, saved, report, birth: birthFixture, failed, mockFailure });
   const page = await context.newPage(); page.setDefaultTimeout(15000); page.on("pageerror", e => errors.push(e.message));
+  page.on("request", request => { if (request.url().endsWith("/api/person-compare")) compareRequests.push(request.postDataJSON()); });
   await page.route("**/api/person-compare", route => {
     if (compareMode === "error") return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "비교 서버 점검 중" }) });
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(compareResult) });
@@ -101,9 +103,13 @@ try {
   await s.page.getByRole("button", { name: "다른 사람과 비교해보기", exact: true }).click();
   compareMode = "error";
   await s.page.getByRole("button", { name: "직장·동료", exact: true }).click();
+  await s.page.getByPlaceholder("예: 민수, 배우자, 동업자").fill("민수");
+  await s.page.locator('input[type="date"]').last().fill("1985-06-15");
   await s.page.getByRole("button", { name: "두 사람 함께 보기", exact: true }).click();
-  await s.page.getByRole("alert").filter({ hasText: "비교 서버 점검 중" }).waitFor();
+  await s.page.getByRole("alert").waitFor();
+  assert.ok(compareRequests.some(request => request?.purpose === "work_colleague"), "relationship failure must reach /api/person-compare");
   compareMode = "ok";
+  await s.page.getByRole("button", { name: "연애·결혼", exact: true }).click();
   await s.page.getByRole("button", { name: "두 사람 함께 보기", exact: true }).click();
   await s.page.getByText("서로의 속도를 맞추는 관계", { exact: true }).waitFor();
   await s.page.getByRole("button", { name: "다른 사람과 비교해보기", exact: true }).click();

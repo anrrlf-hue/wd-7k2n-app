@@ -32,6 +32,7 @@ try {
     await dateInput.focus();
     assert.equal(await page.evaluate(() => document.activeElement?.id), "birthDate");
     await dateInput.fill("1990-05-15");
+    await page.screenshot({ path: `${evidence}/date-selection-${width}.png`, fullPage: true });
     const next = page.getByRole("button", { name: "다음", exact: true });
     assert.equal(await next.isDisabled(), true);
     await page.getByRole("button", { name: "날짜 확정", exact: true }).click();
@@ -40,6 +41,7 @@ try {
     await dateInput.fill("1991-06-16");
     await page.getByRole("button", { name: "취소", exact: true }).click();
     await page.getByText("1990년 5월 15일", { exact: true }).waitFor();
+    await page.screenshot({ path: `${evidence}/date-cancelled-${width}.png`, fullPage: true });
     await page.getByRole("checkbox").check();
     assert.equal(await next.isEnabled(), true);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
