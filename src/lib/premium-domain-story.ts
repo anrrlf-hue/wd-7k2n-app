@@ -1,7 +1,5 @@
 import type { PremiumEditorialPlan, EditorialArcId } from "@/lib/premium-editorial-plan";
-import type { IntegratedPassage } from "@/lib/integrated-palm-reading";
-import type { DominantHand } from "@/lib/palm-bilateral";
-import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
+import { integrateLoveStory, integrateMoneyStory, integrateWorkStory, type ObservedHands } from "@/lib/premium-domain-integration";
 import { buildSajuMoneyMeaning } from "@/lib/saju-money-meaning";
 
 type Domain = "love_relationship" | "money" | "work";
@@ -25,7 +23,7 @@ const STORIES: Record<EditorialArcId, DomainStories> = {
       ground: "돈을 얻는 과정에서는 스스로 잘해 냈다고 느끼는 가치와 실제로 돈을 받는 통로가 따로 읽힙니다.",
       tension: "가령 부탁받은 일을 공들여 끝내고도 대가 이야기를 먼저 꺼내기 머뭇거리면, 보람은 생겼는데 정작 자신의 시간은 공짜로 남을 수 있습니다.",
       example: "상대가 만족했다는 말은 듣기 좋지만, 그 말만으로 지급 시점이나 추가 작업 비용이 정해지지는 않습니다.",
-      alternative: "결과를 넘길 때 받을 금액과 시점을 짧게 적어 두는 선택은 잘해 낸 기쁨이 다음 생활에 쓸 자원으로 이어질 통로를 만듭니다. 실제 수입을 예측하는 뜻은 아닙니다.",
+      alternative: "결과를 넘길 때 받을 금액과 시점을 짧게 적어 두는 선택은 잘해 낸 기쁨이 다음 생활에 쓸 자원으로 이어질 통로를 만듭니다.",
     },
     work: {
       ground: "일에서는 목적을 납득한 뒤 내 손으로 완성하고 싶은 마음과 맡은 일을 지키려는 마음이 맞닿습니다.",
@@ -45,7 +43,7 @@ const STORIES: Record<EditorialArcId, DomainStories> = {
       ground: "돈을 얻을 가능성과 그 일을 해낼 도움을 함께 살피는 구성이 읽힙니다.",
       tension: "가령 대가가 괜찮아 보여 일을 받았는데 준비 도구를 사거나 이동하는 비용까지 혼자 내야 하면, 처음의 기대와 손에 남는 몫이 달라질 수 있습니다.",
       example: "제시된 금액에 앞서 준비 비용과 들어갈 시간을 한 번 적어 보면, 도움을 받는 조건이 단순한 편의가 아니라 실제 몫을 바꾼다는 것을 볼 수 있습니다.",
-      alternative: "필요한 지원을 말하는 선택은 일을 못 하겠다는 선언보다 같은 일을 감당할 수 있게 만드는 과정으로 볼 수 있습니다. 금액이나 이익을 이 상징으로 정하지 않습니다.",
+      alternative: "필요한 지원을 말하는 선택은 일을 못 하겠다는 선언보다 같은 일을 감당할 수 있게 만드는 과정으로 볼 수 있습니다.",
     },
     work: {
       ground: "일의 뜻을 이해하고 스스로 해 보려는 마음에 배우거나 도움받는 통로가 함께 읽힙니다.",
@@ -65,7 +63,7 @@ const STORIES: Record<EditorialArcId, DomainStories> = {
       ground: "만들어 보여 준 결과와 누군가 실제로 원하는 쓰임을 연결하는 장면이 읽힙니다.",
       tension: "가령 만든 물건이나 작업에 좋은 반응을 얻어도 사람들이 돈을 내고 원하는 부분은 내가 가장 공들인 부분과 다를 수 있습니다.",
       example: "칭찬받은 이유와 실제 구매한 이유를 나눠 들어 보면, 더 정교하게 만들 일보다 편하게 쓰도록 바꿀 일이 먼저 보일 수 있습니다.",
-      alternative: "작게 제공해 본 뒤 쓰인 부분을 확인하는 선택은 호응의 크기만 보고 재료나 시간을 크게 늘리는 부담을 줄일 여지를 남깁니다. 판매나 수익이 생긴다는 예고는 아닙니다.",
+      alternative: "작게 제공해 본 뒤 쓰인 부분을 확인하는 선택은 호응의 크기만 보고 재료나 시간을 크게 늘리는 부담을 줄일 여지를 남깁니다.",
     },
     work: {
       ground: "생각을 결과로 꺼내고 그 결과가 쓰이는 자리에서 다시 배우는 과정이 읽힙니다.",
@@ -85,7 +83,7 @@ const STORIES: Record<EditorialArcId, DomainStories> = {
       ground: "새 결과를 제공하는 힘과 그것을 이어 만들 자원이 함께 읽힙니다.",
       tension: "가령 첫 작업을 도와 준 사람이 있을 때 한 번의 성공만 보고 같은 양을 계속 받으면, 그 도움이 매번 가능한지는 뒤늦게 문제가 될 수 있습니다.",
       example: "다시 만들 때도 필요한 비용과 도움을 따로 적으면, 첫 반응의 기쁨 뒤에 반복해서 감당할 규모가 보일 수 있습니다.",
-      alternative: "작은 규모부터 이어 가는 선택은 눈앞의 가능성을 다 잡는 대신 다음 결과를 만들 여유를 남깁니다. 이 구성으로 사업 성과를 예측하지 않습니다.",
+      alternative: "작은 규모부터 이어 가는 선택은 눈앞의 가능성을 다 잡는 대신 다음 결과를 만들 여유를 남깁니다.",
     },
     work: {
       ground: "새로운 결과를 만드는 관심과 배운 것을 적용하는 과정이 함께 읽힙니다.",
@@ -119,13 +117,13 @@ const STORIES: Record<EditorialArcId, DomainStories> = {
       ground: "마음을 행동으로 책임 있게 보여 주고 싶으면서, 상대의 뜻도 이해하고 싶은 모습으로 읽힙니다.",
       tension: "가령 힘들었다는 이야기를 듣고 해결 방법을 정리해 줬는데 반응이 차가우면, 도와주려던 마음이 닿지 않은 듯 허탈할 수 있습니다.",
       example: "상대가 당장 원한 것이 방법이었는지, 그 시간을 함께 견뎌 준다는 말이었는지 들어 보면 이미 알고 있던 문제에도 다른 답이 필요할 수 있습니다.",
-      alternative: "조언하기 전에 ‘많이 힘들었겠다’는 말을 건네는 선택은 해결할 능력을 포기하는 것이 아닙니다. 도움과 위로가 다른 순간에 닿을 수 있음을 살피는 전통적 참고 해석입니다.",
+      alternative: "조언하기 전에 ‘많이 힘들었겠다’는 말을 건네는 선택은 해결할 능력을 포기하는 것이 아닙니다. 도움과 위로가 다른 순간에 닿을 수 있음을 함께 살펴볼 수 있습니다.",
     },
     money: {
       ground: "익힌 것을 누군가에게 유용하게 내놓는 과정과 그것을 돈으로 돌려받는 과정을 따로 읽습니다.",
       tension: "가령 설명이나 도움을 부탁받아 쉽게 해 준 일이라도 상대에게는 시간을 아껴 준 가치가 있을 수 있습니다. 내게 익숙하다는 이유만으로 가치까지 작아지는 것은 아닙니다.",
       example: "어떤 불편이 줄었는지 들어 보면, 시간을 오래 들여야만 대가를 말할 수 있다는 생각과 실제 쓰임의 차이가 보일 수 있습니다.",
-      alternative: "다음에는 제공할 내용과 받을 대가를 먼저 말해 보세요. 잘 아는 일을 계속 제공할 여유가 생길 수 있으며, 이 상징으로 소득의 크기를 추정하지는 않습니다.",
+      alternative: "다음에는 제공할 내용과 받을 대가를 먼저 말해 보세요. 잘 아는 일을 계속 제공할 여유가 생길 수 있으며,",
     },
     work: {
       ground: "요청의 뜻을 이해하고 배운 내용을 다른 사람이 알아볼 결과로 옮기는 과정이 읽힙니다.",
@@ -185,7 +183,7 @@ const STORIES: Record<EditorialArcId, DomainStories> = {
       ground: "돈을 얻는 과정에서 배우고 준비한 내용을 실제로 제공할 수 있는 형태로 옮기는 장면을 읽습니다.",
       tension: "가령 더 배운 뒤 시작해야 한다고 느끼면, 이미 할 수 있는 작은 도움도 내놓지 못한 채 준비 비용만 늘어날 수 있습니다.",
       example: "지금 설명할 수 있는 한 내용만 작은 범위로 제공해 보면, 더 필요한 공부와 실제로 쓰인 지식이 다른 부분임을 볼 수 있습니다.",
-      alternative: "모든 것을 아는 상태를 기다리기보다 제공 가능한 내용과 아직 모르는 부분을 함께 밝히는 선택이 첫 교환의 경험을 만들 여지를 줍니다. 실제 수입을 약속하지 않습니다.",
+      alternative: "모든 것을 아는 상태를 기다리기보다 제공 가능한 내용과 아직 모르는 부분을 함께 밝히는 선택이 첫 교환의 경험을 만들 여지를 줍니다.",
     },
     work: {
       ground: "새 일을 이해한 뒤 신중하게 적용하고 싶다는 마음이 읽힙니다.",
@@ -205,7 +203,7 @@ const STORIES: Record<EditorialArcId, DomainStories> = {
       ground: "새로 해 본 결과를 밖으로 보여 주는 힘과 그것을 계속 제공할 비용을 함께 읽습니다.",
       tension: "가령 자신 있게 첫 결과를 보여 줬더니 추가 요청이 와도, 빠르게 보여 줄 수 있던 한 번과 매번 같은 속도로 만들 일은 다를 수 있습니다.",
       example: "첫 결과에 실제로 쓴 시간을 남겨 두면, 기분 좋은 반응 때문에 놓친 준비 시간이 다음 대가를 말할 근거가 될 수 있습니다.",
-      alternative: "다음 작업을 받기 전에 시간과 제공 내용을 짧게 말하는 선택은 새로운 시도를 오래 이어 갈 여유를 남깁니다. 반응이 수입으로 이어진다는 확정은 아닙니다.",
+      alternative: "다음 작업을 받기 전에 시간과 제공 내용을 짧게 말하는 선택은 새로운 시도를 오래 이어 갈 여유를 남깁니다.",
     },
     work: {
       ground: "먼저 시도하며 생각을 구체적인 결과로 만드는 모습이 읽힙니다.",
@@ -237,14 +235,14 @@ const STORIES: Record<EditorialArcId, DomainStories> = {
 };
 
 const OVERALL: Record<EditorialArcId, string> = {
-  "agency-duty": "납득한 일에 자신의 판단을 보태고 싶으면서 맡은 약속도 잘 지키고 싶은 모습으로 읽힙니다. 가령 해야 할 일을 잘 끝냈는데도 내 방법을 한 번 써 보지 못했다면, 성취와 아쉬움이 함께 남을 수 있습니다. 반대로 직접 고른 방법이 쓰였다면 결과의 크기보다 그 일에 내가 참여했다는 느낌이 더 오래 남을 수 있습니다. 무엇을 해냈는지와 그 과정에서 내 생각이 어디에 들어갔는지를 따로 돌아보면 만족의 이유를 더 구체적으로 살필 수 있습니다.",
-  "agency-duty-supported": "스스로 납득해 움직이는 마음과 배워서 해내는 과정이 함께 읽힙니다. 가령 도움을 받아 일을 끝냈을 때 고마우면서도 혼자 해낸 것이 아니라는 아쉬움이 생길 수 있습니다. 그러나 도움을 받아 알게 된 것을 다음에는 직접 해 보는 경험은 자기 판단의 폭을 넓힐 여지가 있습니다. 혼자 했는지보다 그 경험 뒤에 무엇을 새로 할 수 있게 되었는지 돌아보는 참고 해석입니다.",
+  "agency-duty": "내가 납득할 수 있는 이유와 누군가에게 믿음직하게 남고 싶은 마음이 함께 읽힙니다. 하고 싶은 마음을 혼자 지키는 것만으로도, 기대에 잘 맞추는 것만으로도 충분히 편안해지기 어려울 수 있습니다. 자신의 선택을 상대도 이해하면서 서로 소중하게 여기는 것이 이어질 때 애착이 깊어지는 모습입니다. 반대로 옳은 이유는 충분한데 마음이 따라가지 않는다면, 더 잘하려는 노력에 앞서 무엇을 좋아해서 선택했는지 돌아볼 여지가 있습니다. 납득과 책임을 한꺼번에 만족시키려는 마음 안에도 좋아하는 것에 머물고 싶은 개인적인 바람이 남아 있을 수 있습니다.",
+  "agency-duty-supported": "스스로 납득해 움직이는 마음과 배워서 해내는 과정이 함께 읽힙니다. 가령 도움을 받아 일을 끝냈을 때 고마우면서도 혼자 해낸 것이 아니라는 아쉬움이 생길 수 있습니다. 그러나 도움을 받아 알게 된 것을 다음에는 직접 해 보는 경험은 자기 판단의 폭을 넓힐 여지가 있습니다. 혼자 했는지보다 그 경험 뒤에 무엇을 새로 할 수 있게 되었는지에 만족이 남을 수 있습니다.",
   "creation-exchange": "생각을 밖으로 꺼내는 즐거움과 그 결과가 누군가에게 쓰이는 만족이 함께 읽힙니다. 가령 만드는 동안 재미있던 것이 실제로 쓰이지 않을 때에는, 만드는 기쁨과 남에게 도움이 되는 기쁨이 다르다는 것을 느낄 수 있습니다. 무엇을 좋아하며 만들었는지와 상대가 어느 부분을 썼는지를 함께 돌아보면, 표현을 잃지 않고도 다음 결과를 다른 모습으로 내놓을 여지가 생깁니다.",
   "creation-exchange-supported": "새로운 것을 만들어 보고 싶다는 마음과 배운 내용을 잘 적용하고 싶은 마음이 함께 읽힙니다. 좋은 예시를 많이 알수록 처음 만든 결과가 부족해 보일 수 있지만, 그 차이는 실패를 뜻하기보다 다음에 익힐 부분을 보여 줄 수도 있습니다. 한 번에 완성하려는 부담 대신 지난 시도에서 달라진 한 부분을 알아보면, 배움이 자기 결과로 남는 기쁨을 살펴볼 수 있습니다.",
-  "duty-supported": "믿고 맡긴 일을 잘 이어 가고 싶은 마음 옆에 도움을 받아 익히는 통로가 놓입니다. 가령 익숙한 일을 새 방식으로 해야 할 때 다시 질문하는 일이 어색하게 느껴질 수 있습니다. 이미 쌓은 경험과 지금 모르는 부분은 함께 있을 수 있어, 모르는 것을 드러냈다고 그동안의 신뢰가 사라진다고 단정하지 않아도 됩니다. 배운 뒤 더 편하게 할 수 있었던 순간을 돌아보는 전통적 해석입니다.",
+  "duty-supported": "믿고 맡긴 일을 잘 이어 가고 싶은 마음 옆에 도움을 받아 익히는 통로가 놓입니다. 가령 익숙한 일을 새 방식으로 해야 할 때 다시 질문하는 일이 어색하게 느껴질 수 있습니다. 이미 쌓은 경험과 지금 모르는 부분은 함께 있을 수 있어, 모르는 것을 드러냈다고 그동안의 신뢰가 사라진다고 단정하지 않아도 됩니다. 배운 뒤 더 편하게 할 수 있었던 순간을 돌아볼 수 있습니다.",
   "duty-translation": "맡은 일을 이해하는 과정과 이해한 것을 밖으로 보여 주는 과정이 함께 읽힙니다. 가령 일을 끝내고도 설명이 부족하지 않았는지 계속 돌아보면, 실제로 남은 일이 있는 것과 잘했다는 확신을 더 얻고 싶은 마음이 겹쳐 있을 수 있습니다. 상대가 쓸 수 있게 전달한 결과와 내가 스스로 납득할 만큼 다듬은 결과는 반드시 같은 지점에서 끝나지 않습니다. 이미 쓰인 부분을 알아보고 아직 바꿀 부분만 남겨 두는 경험은 정성을 줄이지 않으면서도 한 일을 끝냈다는 편안함을 느낄 여지를 줍니다.",
   "duty-boundaries": "믿음직하게 남고 싶은 마음이 자기 시간이 필요한 순간에도 이어지는 모습으로 읽힙니다. 가령 부탁을 모두 들어 준 날에 뿌듯함보다 피곤함이 크게 남으면, 잘해 주려던 마음과 자신에게 필요했던 여유가 다른 방향에 놓였을 수 있습니다. 무엇을 못 했는지보다 이번에 어디까지 편하게 할 수 있었는지 돌아보면, 도움을 오래 이어 갈 방법을 더 작고 구체적으로 찾을 여지가 있습니다.",
-  "agency-value": "자신이 좋다고 느낀 선택을 실제 생활에서도 쓸모 있게 남기고 싶은 모습으로 읽힙니다. 가령 내가 편해진 방법을 남에게 권했는데 반응이 다르면, 선택이 틀렸다고 보기 전에 두 사람이 줄이고 싶은 불편이 달랐는지 살펴볼 수 있습니다. 마음에 드는 이유를 지키면서도 쓰는 사람에 따라 형태를 바꿀 여지가 있다는 전통적 참고 해석입니다.",
+  "agency-value": "자신이 좋다고 느낀 선택을 실제 생활에서도 쓸모 있게 남기고 싶은 모습으로 읽힙니다. 가령 내가 편해진 방법을 남에게 권했는데 반응이 다르면, 선택이 틀렸다고 보기 전에 두 사람이 줄이고 싶은 불편이 달랐는지 살펴볼 수 있습니다. 마음에 드는 이유를 지키면서도 쓰는 사람에 따라 형태를 바꿀 여지가 있습니다.",
   "understanding-duty": "충분히 알아야 마음 놓고 시작할 수 있다는 모습과 실제 해 보며 더 잘 이해하는 과정이 함께 읽힙니다. 가령 자료를 읽을 때는 분명했던 내용이 손으로 해 보는 순간 낯설게 느껴질 수 있습니다. 그 낯섦이 모두 지식의 부족은 아닐 수 있어, 작게 실행한 뒤 생긴 질문과 시작 전에 반복하던 걱정을 따로 돌아볼 수 있습니다.",
   "agency-expression": "먼저 움직여 본 결과를 통해 자기 생각이 구체적인 모습이 되는 흐름으로 읽힙니다. 가령 말로만 생각할 때는 자신 있던 방법도 직접 보여 주면 뜻밖의 질문을 만날 수 있습니다. 그 질문 때문에 처음 생각이 무너진다고 보기보다, 혼자서는 떠올리지 못한 쓰임을 발견할 여지도 있습니다. 시작한 용기와 반응을 듣고 고친 흔적이 함께 자신의 경험으로 남을 수 있습니다.",
   balanced: "여러 상징이 비슷하게 놓여 한 가지 성격으로 자신을 설명하기보다 실제 경험의 차이를 살펴볼 여지가 있습니다. 가령 처음에는 새로운 것이 즐거웠지만 오래 이어 갈 때는 익숙함이 편해질 수 있고, 가까운 사람과 시간을 보낸 뒤 혼자 쉬는 것도 좋을 수 있습니다. 서로 다른 마음이 생기는 장면을 기억해 두면, 자신이 일관되지 않다고 판단하기 전에 지금 필요한 것이 달라졌는지 볼 수 있습니다.",
@@ -281,50 +279,55 @@ export function composePremiumOverallStory(plan: PremiumEditorialPlan): string {
   return OVERALL[plan.id];
 }
 
-const positionName = { year: "연", month: "월", day: "일", hour: "시" } as const;
-function readable(line?: OnnxLineDetail): boolean {
-  return Boolean(line?.detected && line.curve && line.attributeSupport?.curve !== "not_supported" && line.depthStrength !== "약함");
+const LEADS: Record<EditorialArcId, string> = {
+  "agency-duty": "납득할 이유와 내 마음이 함께 남을 때 선택에 애착이 생기는 모습으로 읽힙니다.",
+  "agency-duty-supported": "혼자 해낸 정도보다 배운 뒤 새로 할 수 있게 된 경험에 마음을 둘 여지가 있습니다.",
+  "creation-exchange": "만드는 동안의 기쁨과 누군가 실제로 쓴 보람이 함께 읽힙니다.",
+  "creation-exchange-supported": "좋은 예시를 알아가는 마음과 서툴러도 내 결과를 남기고 싶은 마음이 만납니다.",
+  "duty-supported": "믿음직하게 남고 싶은 마음 안에도 누군가에게 기대고 싶은 바람이 놓입니다.",
+  "duty-translation": "이해한 것을 잘 전하고 싶은 마음과 상대에게 도움이 되고 싶은 마음이 함께 읽힙니다.",
+  "duty-boundaries": "정성을 오래 이어 가고 싶은 마음과 내 시간을 남기고 싶은 마음이 나란히 놓입니다.",
+  "agency-value": "좋다고 느낀 선택이 자신의 생활과 다른 사람의 쓰임에도 남기를 바라는 모습입니다.",
+  "understanding-duty": "충분히 알고 싶은 마음이 직접 해 보고 익히는 경험과 만납니다.",
+  "agency-expression": "먼저 보여 준 생각에 다른 사람의 질문이 닿으며 자기 표현이 구체화될 여지가 있습니다.",
+  balanced: "같은 사람 안에서도 처음의 설렘과 오래 이어 갈 때의 편안함이 다르게 남을 수 있습니다.",
+};
+export const premiumReportLead = (plan: PremiumEditorialPlan) => LEADS[plan.id];
+const ANNUAL: Record<EditorialArcId, string> = {
+  "agency-duty": "상대의 뜻을 이해한 뒤에도 자기 마음이 남아 있는 순간을 편하게 받아들일 여지가 있습니다. 가까운 사람에게는 기대했던 마음을, 일에서는 설명이 실제로 닿았던 보람을, 돈에서는 계속하고도 내 하루가 남았던 만족을 다르게 느낄 수 있습니다. 충분히 납득한 선택도 직접 겪는 동안 좋아하는 이유가 새로 생길 수 있습니다.",
+  "agency-duty-supported": "누군가와 함께해서 편해진 순간은 혼자 하지 못한 흔적보다 다음에 직접 해 볼 수 있게 된 경험으로 남을 수 있습니다. 가까움에서는 기대는 편안함을, 일에서는 배운 것을 적용해 본 기쁨을, 돈에서는 준비가 실제 쓰임에 닿았던 만족을 다르게 느낄 여지가 있습니다.",
+  "creation-exchange": "재미있게 하던 것을 밖에 보여 준 뒤에는 만드는 동안 알지 못했던 마음도 생길 수 있습니다. 다른 사람이 좋아한 부분을 알아가는 경험과 혼자서도 계속 좋아하는 시간을 함께 남기면, 반응이 적은 순간에도 처음의 즐거움을 잃지 않을 여지가 있습니다. 새로운 쓰임을 찾는 만족과 익숙하게 이어 가는 만족은 서로 다른 달의 장면으로 펼쳐질 수 있습니다.",
+  "creation-exchange-supported": "좋은 예를 배운 뒤 직접 해 볼 때는 알던 것보다 서툰 부분이 먼저 보일 수 있습니다. 그러나 그 부분을 달리해 본 흔적은 배운 내용을 자기 것으로 남기는 시작이 될 여지가 있습니다. 상대에게 전해 본 마음, 돈을 써서 직접 익힌 경험, 일에서 다른 예를 풀어 본 시간이 각기 다른 만족으로 이어질 수 있습니다.",
+  "duty-supported": "늘 편하게 해 오던 것을 다시 묻는 순간에도 그동안 쌓은 경험은 남아 있습니다. 누군가에게 기대고 다시 직접 해 보는 시간이 이어지면, 괜찮다고 말해야만 믿음직한 사람으로 남는 것은 아니었음을 느낄 여지가 있습니다. 도움받은 마음과 스스로 편해진 경험이 함께 놓일 수 있습니다.",
+  "duty-translation": "머릿속에 잘 정리된 내용이 상대에게 닿는 모양은 예상과 다를 수 있습니다. 설명을 더 다듬은 만족과 듣는 사람이 편해진 보람을 다르게 알아보면, 끝난 일을 계속 마음에 붙잡는 이유도 달리 보일 여지가 있습니다. 잘 전하고 싶은 정성 안에서도 이미 닿은 부분을 알아볼 자리가 생깁니다.",
+  "duty-boundaries": "잘해 준 날의 뿌듯함과 자기 시간을 누린 편안함은 함께 남을 수 있습니다. 가까운 사람을 돕는 기쁨, 돈을 써서 쉬워진 하루, 일을 끝내고 마음을 놓은 순간이 서로 다른 경험이라는 것을 느끼면, 정성을 오래 이어 가는 모습도 조금씩 달라질 여지가 있습니다.",
+  "agency-value": "좋다고 고른 것이 실제로 쓰이는 동안 처음 생각하지 못한 만족이 생길 수 있습니다. 상대에게는 편한 부분이 다를 수도 있고 내게는 조용히 다시 손이 가는 부분이 더 중요해질 수도 있습니다. 처음 고른 이유를 잃지 않으면서 생활에 닿은 쓰임을 알아가는 경험이 애착의 모양을 넓힐 여지가 있습니다.",
+  "understanding-duty": "알고 있다는 안심과 직접 할 수 있다는 편안함은 다른 순간에 생길 수 있습니다. 배우던 사람이 질문하고 한 부분을 해 보는 동안, 새로운 설명이 필요한 때와 이미 익힌 것을 써도 되는 때가 달리 느껴질 여지가 있습니다. 가까운 사람에게 마음을 묻는 일도 혼자 해석한 이유에 없던 답을 남길 수 있습니다.",
+  "agency-expression": "먼저 보여 준 것에 질문이 돌아오면 처음의 자신감과 다른 마음이 생길 수 있습니다. 예상하지 못한 쓰임을 알아본 기쁨과 내 뜻을 더 잘 전하고 싶은 바람을 함께 남기면, 반응을 듣는 시간이 시작한 용기를 지우지 않을 여지가 있습니다.",
+  balanced: "함께 즐거웠던 시간 뒤에 혼자 편안히 있고 싶은 마음이 남아도 같은 사람 안의 경험일 수 있습니다. 새로운 것을 처음 누릴 때와 익숙하게 이어 갈 때 좋은 이유가 달라지듯, 관계와 돈과 일에서 만족을 느끼는 순간도 한 모습으로 고정되지 않을 여지가 있습니다.",
+};
+export function premiumAnnualThread(plan: PremiumEditorialPlan): string { return ANNUAL[plan.id]; }
+const CLOSING: Partial<Record<EditorialArcId, [string, string]>> = {
+  "agency-duty": ["서로 이해한 선택 안에서도 개인적으로 좋아하는 시간을 남길 수 있습니다.", "누군가에게 잘 설명하지 않아도 다시 하고 싶은 한 순간은 무엇이었나요?"],
+  "creation-exchange-supported": ["잘 아는 예와 조금 다르게 해 본 흔적이 함께 남아도 자신의 경험이 될 수 있습니다.", "배운 뒤 직접 해 보면서 처음 알게 된 즐거움은 어느 부분에 있었나요?"],
+  "creation-exchange": ["누군가에게 쓰인 보람 옆에도 혼자 만드는 동안 좋아했던 시간을 남길 수 있습니다.", "반응을 듣기 전부터 다시 해 보고 싶었던 부분은 무엇이었나요?"],
+};
+export function premiumClosing(plan: PremiumEditorialPlan, original: { remember: string; question: string; basis: string }) {
+  const pair = CLOSING[plan.id];
+  return pair ? { ...original, remember: pair[0], question: pair[1] } : original;
 }
 
-/** An observed shape supplies a limited lens inside the same paragraph. If it
- * was not readable, the natal explanation stands on its own. */
-function observedBridge(area: Domain, connection: IntegratedPassage | undefined, hands: { left: PalmFacts; right: PalmFacts; dominant: DominantHand } | null): string {
-  if (!hands || !connection?.plan.passages.some(p => p.kind === "traditional")) return "";
-  if (area === "money") {
-    const readings = (["left", "right"] as const).flatMap(hand => {
-      const fate = hands[hand].secondaryLines?.fate;
-      if (!fate?.candidateObservation || !connection.plan.evidence.some(e => e.id === `${hand}.secondary.fate`)) return [];
-      const view = fate.candidateObservation.position === "thumb_side" ? "돈을 얻기 위해 바뀌는 하루와 지키고 싶은 생활의 간격"
-        : fate.candidateObservation.position === "pinky_side" ? "함께한 사람에게 인정받은 기쁨과 실제 대가를 받은 만족의 차이"
-          : "잘해내는 일의 보람과 앞으로도 같은 시간을 쓰고 싶은 마음의 차이";
-      return [`${hand === "left" ? "왼손" : "오른손"}의 운명선 후보를 전통적 상징으로 읽으면 ${view}도 돌아볼 수 있습니다.`];
-    });
-    return readings.join(" ");
-  }
-  const key = area === "work" ? "headLine" : "heartLine";
-  const main = hands[hands.dominant].onnxLines?.[key], other = hands[hands.dominant === "left" ? "right" : "left"].onnxLines?.[key];
-  if (!readable(main)) return "";
-  const mainName = hands.dominant === "left" ? "왼손" : "오른손";
-  const lens = area === "work"
-    ? main!.curve === "완만한 곡선"
-      ? "두뇌선의 곡선 구간을 함께 읽으면, 익숙한 예에 새 내용을 연결하면서 이해가 붙는 순간도 떠올릴 수 있습니다. 같은 설명을 더 듣는 일보다 작은 예를 바꾸어 보는 경험이 막힌 부분을 다르게 보여 줄 여지가 있습니다."
-      : "두뇌선의 직선에 가까운 구간을 함께 읽으면, 무엇이 달라졌는지 납득한 뒤 새 방법을 받아들이는 장면도 떠올릴 수 있습니다. 바꾸기 전의 불안과 바꾼 뒤 편해진 이유를 구체적으로 비교해볼 여지가 있습니다."
-    : main!.curve === "완만한 곡선"
-      ? "감정선의 곡선 구간을 함께 읽으면, 말로 나눈 순간 뒤에도 다시 마음을 전하고 싶어지는 모습이 떠오릅니다. 이미 끝난 이야기라도 그때 듣고 싶었던 반응을 말하면 뒤늦게 서로를 이해할 여지가 있습니다."
-      : "감정선의 직선에 가까운 구간을 함께 읽으면, 작은 일을 잊지 않고 챙긴 행동에 마음을 담는 모습을 떠올릴 수 있습니다. 상대가 그 행동의 뜻을 알아보았는지 짧게 나누면 말없이 해 온 배려도 대화 안에 들어올 여지가 있습니다.";
-  const otherNote = readable(other) && main!.curve !== other!.curve
-    ? " 반대 손에서는 다른 모양이 확인돼, 이 표현을 모든 장면의 성격으로 고정하지 않고 참고로 둡니다." : "";
-  return `${mainName} ${lens}${otherNote}`;
-}
+const positionName = { year: "연", month: "월", day: "일", hour: "시" } as const;
 
 /** Money has three decisions that the overall and work sections do not own.
  * Exposed natal groups select the interpretive questions; they do not tell us
  * a person's income, account balance, or actual spending. */
-export function composePremiumDomainStory(area: Domain, plan: PremiumEditorialPlan, connection: IntegratedPassage | undefined,
-  hands: { left: PalmFacts; right: PalmFacts; dominant: DominantHand } | null): string {
+export function composePremiumDomainStory(area: Domain, plan: PremiumEditorialPlan,
+  hands: ObservedHands | null): string {
   const story = STORIES[plan.id][area];
   const money = area === "money" ? buildSajuMoneyMeaning(plan) : null;
-  const main = [story.ground, observedBridge(area, connection, hands), area === "money" ? `획득에서는 ${story.tension}` : story.tension,
+  const integrated = area === "work" ? integrateWorkStory(plan, hands) : area === "money" ? integrateMoneyStory(plan, hands) : integrateLoveStory(plan, hands);
+  const main = integrated ?? [story.ground, area === "money" ? `획득에서는 ${story.tension}` : story.tension,
     story.example, story.alternative].filter(Boolean).join(" ");
   return [main, money?.premiumManagement, money?.premiumSpending].filter(Boolean).join("\n\n");
 }

@@ -31,7 +31,10 @@ for (const day of [1, 7]) {
   const { facts, report } = create(day);
   assert.ok(isRenderablePremiumReport(report));
   assert.ok(isStoredPremiumReport(report));
-  assert.equal(report.version, 'lived-reading-2026-10-v11');
+  assert.equal(report.version, 'connected-reading-2026-10-v12');
+  const savedV11Shape = structuredClone(report);
+  savedV11Shape.version = 'lived-reading-2026-10-v11';
+  assert.ok(isStoredPremiumReport(savedV11Shape), 'saved v11 structure stays readable');
   const savedV10Shape = structuredClone(report);
   savedV10Shape.version = "decision-reading-2026-10-v10";
   assert.ok(isStoredPremiumReport(savedV10Shape), "saved v10 structure must remain readable");
@@ -48,7 +51,7 @@ for (const day of [1, 7]) {
   const displayed = report.periods.map(p => presentation.get(p).paragraphs.join(' '));
   const longSentences = displayed.flatMap(body => body.split(/(?<=다\.)\s+/).map(s => s.trim()).filter(s => s.length > 30));
   assert.equal(new Set(longSentences).size, longSentences.length,
-    'the displayed calendar must share a repeated explanation once, including repeated natal evidence');
+    'the complete generated calendar must avoid repeated full sentences without presentation deletions');
   assert.deepEqual([...new Set(report.periods.flatMap(p => [p.symbols.month.stemTenGod, p.symbols.month.branchTenGod]))].sort(), gods.sort(), 'the two invented calendars exercise all ten names');
   assert.equal(new Set(displayed).size, 12, 'date changes alone cannot yield a duplicate monthly body');
   assert.ok(displayed.every(body => body.length > 110), 'each month retains a concrete decision after shared context is linked');
@@ -66,7 +69,7 @@ for (const day of [1, 7]) {
     assert.doesNotMatch(displayed[index], /정재이|편재이|문제과|결과으로|결과을|설명를|부분로/);
     if (period.symbols.month.stemTenGod === period.symbols.month.branchTenGod) {
       assert.ok(!period.headline.includes(' · '), 'one exact symbol must have one topic, not a doubled heading');
-      assert.ok(period.interpretation.passages.some(p => p.id === 'month-applied-decision'));
+      assert.ok(period.interpretation.passages.some(p => p.id === 'month-lived-scene'));
       assert.doesNotMatch(displayed[index], /두 번의 사건|두 조언/);
     }
   }
@@ -79,21 +82,21 @@ for (const day of [1, 7]) {
     assert.notEqual(left.symbols.month.branchTenGod, right.symbols.month.branchTenGod);
     assert.notEqual(displayed[a], displayed[b]);
     assert.notEqual(left.headline, right.headline, 'a changed pair must change the decision, not only the god names');
-    assert.ok(right.interpretation.passages.some(p => p.id === 'month-decision-shift'));
-    assert.notEqual(left.interpretation.passages.find(p => p.id === 'month-applied-decision').text,
-      right.interpretation.passages.find(p => p.id === 'month-applied-decision').text);
+    assert.ok(right.interpretation.passages.some(p => p.evidenceIds.includes('previous-month-symbols')));
+    assert.notEqual(left.interpretation.passages.find(p => p.id === 'month-lived-scene').text,
+      right.interpretation.passages.find(p => p.id === 'month-lived-scene').text);
   }
   for (const [a, b] of [[0, 10], [1, 11]]) {
     const left = report.periods[a], right = report.periods[b];
     if (left.symbols.month.stemTenGod !== right.symbols.month.stemTenGod) continue;
-    assert.notEqual(left.interpretation.passages.find(p => p.id === 'month-applied-decision').text,
-      right.interpretation.passages.find(p => p.id === 'month-applied-decision').text,
+    assert.notEqual(left.interpretation.passages.find(p => p.id === 'month-lived-scene').text,
+      right.interpretation.passages.find(p => p.id === 'month-lived-scene').text,
       'the same stem ten-god must become a different decision when branch, year and natal relation change');
   }
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report }));
   assert.ok(html.includes('12개월 전체 흐름 펼쳐보기'));
   assert.ok(html.includes('월운'));
-  assert.ok(report.annualIntroduction.includes('세운') && report.annualIntroduction.includes('천간'));
+  assert.ok(report.annualMethod.includes('세운') && report.annualMethod.includes('천간'));
   assert.ok(!report.overall.paragraphs.join(' ').includes('작은 결과를 보여준 뒤'), 'the overall reading must not spend the work scene');
   assert.doesNotMatch(report.overall.paragraphs.join(' '), /전체 풀이의 중심|원국의 서로 다른 자리|맥락으로 삼/);
   assert.match(report.overall.basis, /원국의 서로 다른 자리.*(?:연|월|일|시)(?:간|지)/,
