@@ -1,0 +1,38 @@
+{
+  "branch": "fix/saju-input-clarity-20261015",
+  "commit": "97269a5c90f91dd2472a5665a23e8abe6a481a97",
+  "implementation_commit": "d29c94fd85f8cbcd26b74abfd7e0722f8db95cd4",
+  "scope": "post-reading relationship comparison entry",
+  "changes": {
+    "entryVisibleAfterPersonalAndBilateralResults": true,
+    "nestedDisclosureRemoved": true,
+    "relationshipPurposeRequiresExplicitSelection": true,
+    "defaultPurpose": null,
+    "existingPersonCompareApiPreserved": true,
+    "savedPersonReusePreserved": true
+  },
+  "staticAndUnitVerification": {
+    "typescript": "pass",
+    "eslint": "pass",
+    "personCompareV1": "pass",
+    "freeSajuV3": "pass"
+  },
+  "browserVerification": {
+    "entryResultErrorCloseReentry": "pass",
+    "fixture": "synthetic palm facts; no real image upload or external API",
+    "observed": ["entry visible once after personal/bilateral result", "explicit relationship selection", "comparison success", "comparison API error and retry", "close and re-entry"],
+    "errors": [],
+    "apiCallsWereNotChanged": true
+  },
+  "libraryEvidence": {
+    "entryCard": "libfile_73f2db8f86448191a68b46232224d86a",
+    "relationshipSelection": "libfile_02f1f1f042748191b5becef4d36451d4",
+    "relationshipResult": "libfile_a598cd1f378881918f446152ecd0ffe3"
+  },
+  "restrictions": {
+    "mainMerged": false,
+    "productionDeployed": false,
+    "shareRewardChanged": false,
+    "readingBodyChanged": false
+  }
+}

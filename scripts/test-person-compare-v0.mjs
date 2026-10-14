@@ -164,9 +164,11 @@ assert(
   postReadingSource.includes("프리미엄 무료 체험 보기") && postReadingSource.includes("<PersonCompareCard"),
   "UI04: person comparison should remain after the personal detail/premium flow",
 );
-for (const phrase of ["나와 이 사람", "이 사람과 나 보기", "두 사람 함께 보기", "다른 사람과 비교해보기"]) {
+for (const phrase of ["나와 이 사람", "이 사람과 나는 어떨까?", "두 사람 함께 보기", "다른 사람과 비교해보기"]) {
   assert(compareCardSource.includes(phrase), `UI05: missing natural compare copy: ${phrase}`);
 }
+assert(compareCardSource.includes('useState<PersonComparePurpose | null>(null)'), "UI05b: relationship purpose must require an explicit choice");
+assert(postReadingSource.includes("<PersonCompareCard me={birthInput} />") && !postReadingSource.includes("<details className=\"mt-6\"><summary"), "UI05c: comparison entry must not be hidden inside a second disclosure");
 assert(compareCardSource.includes("<ServiceShareCard") && !compareCardSource.includes("result.shareText"), "UI06: comparison must share only the service invitation");
 assert(!compareCardSource.includes("setSelectedFollowUp"), "UI07: removed question follow-ups returned to comparison UI");
 assert(!compareCardSource.includes("result.followUps.map"), "UI08: removed question follow-up buttons returned");
