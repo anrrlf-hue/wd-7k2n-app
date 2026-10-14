@@ -1,9 +1,11 @@
+import { eulReul } from "@/lib/korean-particle";
 import { buildPalmContextReading } from "@/lib/palm-context-reading";
 import { normalizePalmFactsObservation } from "@/lib/palm-facts";
 import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
+import { buildPalmCustomerPassages, palmCustomerLimits, palmPersonalLineReading, palmLineObservation, measuredPalmShape } from "@/lib/palm-customer-reading";
 
 export type DominantHand = "left" | "right";
-export const PALM_READING_VERSION = "bilateral-reading-v3";
+export const PALM_READING_VERSION = "bilateral-reading-v6";
 export interface PalmBilateralItem {
   title: string;
   observation?: string;
@@ -25,10 +27,7 @@ export function isStoredPalmReading(value: unknown): value is PalmBilateralReadi
 }
 
 function observed(line: OnnxLineDetail | null | undefined): string {
-  if (!line?.detected) return "판독하지 못함";
-  const source = line.sourceVariant === "enhanced" ? "보정 영상" : line.sourceVariant === "raw" ? "원본 사진" : "사진";
-  const parts = [source, line.length && `검출 구간 ${line.length}`, line.curve && `구간 방향 ${line.curve}`, line.depthStrength && `검출 신호 ${line.depthStrength}`].filter(Boolean);
-  return parts.length ? parts.join(" · ") : "선 후보 확인, 세부 모양 미확인";
+  return palmLineObservation(line ?? undefined);
 }
 
 /** Compare each observed feature once. Absence is never a low personality score.
@@ -41,39 +40,61 @@ export function buildPalmBilateralReading(left: PalmFacts, right: PalmFacts, dom
   const currentLabel = dominantHand === "right" ? "오른손" : "왼손";
   const plan = buildPalmContextReading(left, right, dominantHand);
   const items: PalmBilateralItem[] = [];
-  for (const [key, title, passageId] of [
-    ["headLine", "두뇌선 · 생각을 구체화하는 방식", "headLine-reading"],
-    ["heartLine", "감정선 · 마음을 주고받는 방식", "heartLine-reading"],
-    ["lifeLine", "생명선 · 생활 기반을 살펴보는 방식", "lifeLine-reading"],
+  for (const [key, title] of [
+    ["headLine", "두뇌선 · 생각과 결정"],
+    ["heartLine", "감정선 · 마음을 주고받는 방식"],
+    ["lifeLine", "생명선 · 생활과 활동 리듬"],
   ] as const) {
     const l = observed(left.onnxLines?.[key]), r = observed(right.onnxLines?.[key]);
-    const parts = plan.passages.filter(p => [passageId, `${key}-unread`, `${key}-bilateral-common`, `${key}-bilateral-difference`].includes(p.id)).map(p => p.text);
-    if (!parts.length && !current.onnxLines?.[key].detected) parts.push(`${currentLabel}의 세부 모양을 충분히 읽지 못해 이 항목의 해석은 보류합니다.`);
-    items.push({ title, observation: l === r ? `양손: ${l}.` : `왼손: ${l}. 오른손: ${r}.`, text: parts.join(" ") });
+    const primaryText = palmPersonalLineReading(key, current.onnxLines?.[key]);
+    const other = dominantHand === "right" ? left : right;
+    const otherLabel = dominantHand === "right" ? "왼손" : "오른손";
+    const reading = primaryText ?? palmPersonalLineReading(key, other.onnxLines?.[key]);
+    if (!reading) continue;
+    const parts = [reading];
+    const leftText = palmPersonalLineReading(key, left.onnxLines?.[key]), rightText = palmPersonalLineReading(key, right.onnxLines?.[key]);
+    if (left.imageQuality === "good" && right.imageQuality === "good" && leftText && rightText && left.onnxLines?.[key].curve !== right.onnxLines?.[key].curve) {
+      const comparison = key === "headLine"
+        ? "두 사진의 두뇌선 모양이 달라 함께 읽으면, 익숙한 예에 연결하며 이해가 붙는 순간과 이유를 한 줄로 정리해야 마음이 놓이는 순간을 함께 볼 수 있습니다. 예를 떠올리는 과정과 실제로 고르는 과정에서 다른 방식이 편했을 수 있습니다."
+        : key === "heartLine"
+          ? "두 사진의 감정선 모양이 달라 함께 읽으면, 말로 반응을 주고받고 싶은 마음과 조용히 챙기는 행동에 남겨 둔 마음을 나란히 볼 수 있습니다. 같은 사람도 이야기하고 싶은 순간과 말없이 해 주는 것이 편한 순간을 다르게 느낄 수 있습니다."
+          : "두 사진의 생명선 모양이 달라 함께 읽으면, 새로운 활동에서 얻는 즐거움과 익숙한 순서로 돌아왔을 때의 편안함을 나란히 볼 수 있습니다. 활동을 고를 때와 하루를 마칠 때 마음에 남는 것이 달랐는지 떠올릴 여지가 있습니다.";
+      parts.push(comparison);
+    }
+    if (!primaryText) parts.push(`이 항목은 모양이 읽힌 ${otherLabel} 사진을 기준으로 봤으며 ${currentLabel}과의 비교는 아직 하지 않았습니다.`);
+    items.push({ title, observation: l === r ? `양손: ${l}` : `왼손: ${l} 오른손: ${r}`, text: parts.join(" ") });
   }
-  // Only corroborated fate candidates support an extra work reflection. Faint
-  // or absent candidates are not filled with a generic success narrative.
-  if (current.secondaryLines?.fate.status === "clear" && current.secondaryLines.fate.corroborated) {
-    items.push({
-      title: "운명선 후보 · 일에서 맡는 역할",
-      observation: `${currentLabel}에서 운명선 후보를 두 분석 방식이 함께 찾았습니다.`,
-      text: "맡은 일의 방향을 스스로 정하고 이어가는 모습으로 읽어볼 수 있습니다. 가령 공동 작업을 시작한다면, 무엇을 책임질지와 어디까지 스스로 결정할지를 함께 정할 때 자신의 몫이 선명해집니다.",
-    });
+  const extras = { left: buildPalmCustomerPassages(left), right: buildPalmCustomerPassages(right) };
+  for (const key of ["handShape", "fingers", "fate"]) {
+    const l = extras.left.find(p => p.key === key), r = extras.right.find(p => p.key === key);
+    if (l && r && l.text === r.text) {
+      items.push({ title: `양손 · ${l.title}`, observation: `왼손: ${l.observation} 오른손: ${r.observation}`, text: l.text });
+    } else {
+      if (l) items.push({ title: `왼손 · ${l.title}`, observation: `왼손: ${l.observation}`, text: l.text });
+      if (r) items.push({ title: `오른손 · ${r.title}`, observation: `오른손: ${r.observation}`, text: r.text });
+      if (l && r) {
+        const position = { middle: "일에서 스스로 남기고 싶은 의미", thumb_side: "생활에서 지키고 싶은 리듬", pinky_side: "함께하는 사람과 나누고 싶은 반응" };
+        const lp = left.secondaryLines?.fate.candidateObservation?.position, rp = right.secondaryLines?.fate.candidateObservation?.position;
+        const ls = measuredPalmShape(left), rs = measuredPalmShape(right);
+        const longMiddle = (shape: PalmFacts["handShape"] | null) => shape === "rectangular" || shape === "slender";
+        const relation = key === "fingers" && left.handGeometry?.indexRing !== "similar" && right.handGeometry?.indexRing !== "similar"
+          ? "두 사진에서는 자기 의견을 세우는 모습과 표현한 결과의 반응을 듣는 모습을 나란히 읽어볼 수 있습니다. 가령 내 생각을 잘 보여주었다고 느껴도 남이 좋은 반응을 보이지 않을 때에는, 의견을 지킨 만족과 알아주기를 바란 마음이 다르게 남을 수 있습니다. 어떤 마음이 더 컸는지 돌아보는 참고이며 두 손을 과거와 현재로 나누지는 않습니다."
+          : key === "handShape" && longMiddle(ls) !== longMiddle(rs)
+            ? "두 사진의 중지 비율에서는 세부를 이해한 뒤 마음을 놓는 모습과 직접 해보고 감을 잡는 모습을 나란히 읽습니다. 가령 시작 전에는 충분히 알고 싶었지만 작은 시도를 해 본 뒤에야 질문이 구체적이 되는 장면입니다. 이해와 실행을 하나의 성격으로 고정하기보다 어떤 순서에서 마음이 편해졌는지 돌아보는 참고입니다. 사진의 손 자세도 비율에 영향을 줍니다."
+            : key === "fate" && lp && rp && lp !== rp
+              ? `왼손 후보에서는 ${position[lp]}${eulReul(position[lp])}, 오른손 후보에서는 ${position[rp]}${eulReul(position[rp])} 참고로 읽습니다. 가령 잘해낼 수 있는 일이더라도 그 일을 고르면서 기대했던 것과 계속하고 싶은 이유는 달라질 수 있습니다. 두 질문을 함께 놓으면 능숙함 하나로 만족을 정하기보다 자신에게 남았던 다른 의미를 돌아볼 여지가 있습니다. 다른 시점의 변화나 진로 예측으로 보지는 않습니다.`
+              : null;
+        if (relation) items.push({ title: `양손의 ${key === "handShape" ? "형태" : key === "fingers" ? "손가락 비율" : "운명선 후보"} 함께 보기`,
+          observation: `왼손: ${l.observation} 오른손: ${r.observation}`, text: relation });
+      }
+    }
   }
-  for (const [key, name] of [["sun", "태양선"], ["wealth", "재물선"]] as const) {
-    if (current.secondaryLines?.[key].status !== "clear") continue;
-    items.push({
-      title: `${name} 후보 · 보조 관측`,
-      observation: `${currentLabel}에서 ${name} 후보 영역의 영상 신호가 확인됐습니다. 주요 3선과는 다른 보조 분석값입니다.`,
-      text: key === "sun"
-        ? "만든 것을 다른 사람에게 보여주고 반응을 받는 모습으로 읽어볼 수 있습니다. 스스로 만족한 부분과 상대가 알아본 장점이 같았는지 떠올려보면, 다음에 무엇을 더 잘 보여줄지 구체적으로 생각할 수 있습니다."
-        : "자신의 기여와 돌아오는 조건을 함께 살피는 관점입니다. 일을 맡거나 무언가를 주고받는다면, 어디까지 해줄지와 무엇을 기대하는지를 처음부터 나누어보세요.",
-    });
-  }
+  const limits = new Map<string, string[]>();
+  for (const [label, facts] of [["왼손", left], ["오른손", right]] as const) for (const text of palmCustomerLimits(facts)) limits.set(text, [...(limits.get(text) ?? []), label]);
   return {
     version: PALM_READING_VERSION,
-    summary: plan.passages.find(p => p.id === "head-heart-composition")?.text ?? `주로 쓰는 ${currentLabel}에서 읽힌 선을 중심으로 해석합니다. 확인하지 못한 선은 채우지 않았습니다.`,
+    summary: plan.passages.find(p => p.id === "head-heart-composition")?.text ?? "이번 사진에서 읽힌 선과 손의 특징을 중심으로 풀이합니다. 아직 확인하지 못한 부분은 아래에 따로 표시했습니다.",
     items,
-    note: `${plan.limits[0]} ${plan.passages.find(p => p.id === "visibility")?.text ?? ""}`.trim(),
+    note: [...limits].map(([text, labels]) => labels.length === 2 ? text : `${labels[0]}: ${text}`).join("\n") + "\n두 손은 같은 시기의 사진으로, 다른 모양을 과거·현재의 변화로 단정하지 않습니다.",
   };
 }

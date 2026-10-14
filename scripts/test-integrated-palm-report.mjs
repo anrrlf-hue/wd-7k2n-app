@@ -15,7 +15,10 @@ const prior = old.buildPalmBilateralReading(left, right, "right");
 const next = buildPalmBilateralReading(left, right, "right");
 assert.equal(prior.items[0].text, prior.items[1].text, "reproduce full duplicated hand narratives on same features");
 assert.equal(new Set(next.items.map(x => x.text).filter(Boolean)).size, next.items.filter(x => x.text).length);
-assert.ok(next.items.every(x => x.observation.startsWith("양손:")));
+const mainLineItems = next.items.filter(x => /^(두뇌선|감정선|생명선)/.test(x.title));
+assert.equal(mainLineItems.length, 3);
+assert.ok(mainLineItems.every(x => x.observation.startsWith("양손:")), "identical observed main lines retain both-hand provenance");
+assert.ok(next.items.filter(x => !mainLineItems.includes(x)).every(x => x.observation.startsWith("오른손:")), "additional features name the hand actually used");
 const different = structuredClone(right);
 different.onnxLines.headLine.curve = "직선에 가까움";
 assert.notEqual(buildPalmBilateralReading(left, different, "right").items[0].text, next.items[0].text);
@@ -24,12 +27,12 @@ assert.notEqual(buildPalmBilateralReading(left, different, "left").items[0].text
 const unread = structuredClone(right);
 for (const key of ["headLine", "heartLine"]) unread.onnxLines[key] = { detected: false, length: null, curve: null, depthStrength: null, start: null, end: null, branchDetected: null };
 const partial = buildPalmBilateralReading(left, unread, "right");
-assert.ok(partial.items.slice(0, 2).every(x => x.text.includes("보류")));
-assert.ok(partial.note.includes("수명·건강"));
-assert.match(partial.items[2].text, /생명선.*생활 기반과 활동 리듬/, "a detected life-line segment should retain its limited traditional reading");
-assert.doesNotMatch(partial.items[2].text, /수명 예측|건강 진단/);
+assert.ok(partial.items.slice(0, 2).every(x => x.text.includes("왼손 사진을 기준")), "use only the other hand actually observed, never invent the missing dominant line");
+assert.match(partial.note, /건강·수명|수명·건강/);
+assert.match(partial.items[2].text, /생활|활동/, "a detected life-line segment should retain its limited traditional reading");
+assert.match(partial.items[2].text, /건강이나 수명의 예측은 아닙니다|건강이나 수명을 판단하지 않습니다/);
 const empty = { ...unread, onnxLines: null };
-assert.ok(buildPalmBilateralReading(empty, empty, "right").items.every(x => x.text.includes("보류")));
+assert.equal(buildPalmBilateralReading(empty, empty, "right").items.length, 0, "no generic paragraphs when both hands are unreadable");
 console.log("PASS reproduced old duplicate paragraphs; new same/different/dominant-hand branches and missing-line abstention");
 
 const BASE = process.env.TEST_BASE_URL || "http://127.0.0.1:3027";
@@ -46,7 +49,13 @@ assert.equal((await call(left, empty)).usable, false);
 const skipped = await call(null, null);
 assert.equal(skipped.palmSkipped, true); assert.equal(skipped.bilateralReading, null);
 console.log("PASS actual API: same generator, no age-theme rotation, partial lines preserved, rejected/skip never forged success");
-const annualWithHands = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...birthFixture, leftPalmFacts: left, rightPalmFacts: right, dominantHand: "right" }) });
+const annualInput = { ...birthFixture, mbti: null, leftPalmFacts: normal.leftPalmFacts, rightPalmFacts: normal.rightPalmFacts, dominantHand: "right" };
+const denied = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(annualInput) });
+assert.equal(denied.status, 403);
+const participation = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...annualInput, trialAction: "participate", participation: "clipboard" }) });
+assert.equal(participation.status, 200);
+const { trialReceipt } = await participation.json();
+const annualWithHands = await fetch(BASE + "/api/premium-report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...annualInput, trialReceipt }) });
 assert.equal(annualWithHands.status, 200);
 const annualBody = await annualWithHands.json();
 assert.ok(annualBody.report.palmConnections.length > 0, "annual report keeps the confirmed palm connections");
@@ -63,16 +72,17 @@ fs.mkdirSync(evidence, { recursive: true });
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const requests = [], errors = [];
-  await context.route("**/*", route => { const u = new URL(route.request().url()); if (u.origin !== BASE) return route.abort(); if (u.pathname.startsWith("/api/")) { requests.push(u.pathname); return u.pathname === "/api/premium-report" ? route.fulfill({ json: annualBody }) : route.abort(); } return route.continue(); });
-  await context.addInitScript(({ normal, birthFixture, prior, entryKey, entry }) => {
+  await context.route("**/*", route => { const u = new URL(route.request().url()); if (u.origin !== BASE) return route.abort(); if (u.pathname.startsWith("/api/")) { if (u.pathname === "/api/premium-report" && route.request().postDataJSON()?.trialAction === "verify") return route.fulfill({ json: { eligible: true } }); requests.push(u.pathname); return u.pathname === "/api/premium-report" ? route.fulfill({ json: annualBody }) : route.abort(); } return route.continue(); });
+  await context.addInitScript(({ normal, birthFixture, prior, entryKey, entry, trialReceipt, annualInput }) => {
     if (!sessionStorage.getItem(entryKey)) sessionStorage.setItem(entryKey, entry);
+    sessionStorage.setItem("saju-app:premium-trial:v1", JSON.stringify({ identity: JSON.stringify(annualInput), receipt: trialReceipt }));
     const key = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender].join(":") + ":palm";
     if (!sessionStorage.getItem(key)) sessionStorage.setItem(key, JSON.stringify({ stage: "result", palmFacts: normal.palmFacts, leftPalmFacts: normal.leftPalmFacts, rightPalmFacts: normal.rightPalmFacts, dominantHand: "right", bilateralReading: prior, finalReport: normal.freeReport.report, tripleCompare: normal.tripleCompare, verdict: normal.verdict }));
-  }, { normal, birthFixture, prior, entryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture) });
+  }, { normal, birthFixture, prior, entryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture), trialReceipt, annualInput });
   const page = await context.newPage(); page.on("pageerror", e => errors.push(e.message));
   const url = BASE + "/diagnosis/palm";
   await page.goto(url);
-  await page.getByText("양손 분석 완료", { exact: true }).waitFor();
+  await page.getByText("양손에서 읽힌 손금 풀이", { exact: true }).waitFor();
   const storageKey = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender, "palm"].join(":");
   const saved = () => page.evaluate(key => JSON.parse(sessionStorage.getItem(key)), storageKey);
   await page.getByText("저장 당시 손금 문장 보기", { exact: true }).click();
@@ -86,7 +96,7 @@ try {
   for (const item of next.items.filter(item => item.text)) assert.equal(text.split(item.text).length - 1, 1);
   await page.getByText("양손에서 보이는 특징과 해석", { exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: evidence + "/palm-observations-restored.png" });
-  await page.reload(); await page.getByText("양손 분석 완료", { exact: true }).waitFor();
+  await page.reload(); await page.getByText("양손에서 읽힌 손금 풀이", { exact: true }).waitFor();
   assert.deepEqual((await saved()).bilateralReading, next);
   await page.getByRole("button", { name: "다른 손금 저장본 보기", exact: true }).click();
   await page.getByRole("button", { name: "현재 형식으로 손금 정리", exact: true }).waitFor();
@@ -94,7 +104,7 @@ try {
   await page.reload(); await page.getByRole("button", { name: "현재 형식으로 손금 정리", exact: true }).waitFor();
   assert.deepEqual((await saved()).bilateralReading, prior, "selected older edition also survives reload");
   assert.deepEqual(requests, [], "restoration must not trigger a generation or analytics call");
-  await page.getByRole("button", { name: "프리미엄 보기", exact: true }).click();
+  await page.getByRole("button", { name: "프리미엄 무료 체험 보기", exact: true }).click();
   await page.locator("#premium-report").waitFor();
   await page.waitForFunction(() => !document.body.innerText.includes("사주와 손금을 함께 읽으면"));
   for (const item of annualBody.report.palmConnections) {
@@ -108,7 +118,7 @@ try {
   await page.evaluate(({ key, entry }) => sessionStorage.setItem(key, entry), { key: PALM_ENTRY_KEY, entry: palmEntry(birthFixture, { mbti: "ENTJ", personalityAnswers: null }) });
   await page.reload();
   await page.getByRole("alert").filter({ hasText: "성향 정보가 달라졌어요" }).waitFor();
-  assert.equal(await page.getByText("양손 분석 완료", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("양손에서 읽힌 손금 풀이", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "촬영 유지하고 리포트 다시 받기" }).waitFor();
   assert.deepEqual(errors, []);
   console.log("PASS exact old palm snapshot preserved; explicit migration retains previous edition; switching/reload never silently regenerates; changed personality retains hands for retry");

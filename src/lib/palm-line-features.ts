@@ -15,6 +15,7 @@ export interface EdgeBandSignal {
 }
 
 export interface VerticalCreaseSignal extends EdgeBandSignal {
+  componentBounds?: { x: number; y: number; width: number; height: number };
   /** 0~1. 가장 긴 실제 연결 성분이 ROI 높이를 얼마나 이어지는지 */
   continuity: number;
   /** 0~1. 가장 긴 연결 성분이 ROI 가로폭을 얼마나 차지하는지.
@@ -175,6 +176,7 @@ export function analyzeVerticalCreaseBand(
   let bestCols = 0;
   let bestCount = 0;
   let bestContrast = 0;
+  let componentBounds: VerticalCreaseSignal["componentBounds"];
 
   for (let start = 0; start < candidate.length; start++) {
     if (!candidate[start] || seen[start]) continue;
@@ -221,6 +223,7 @@ export function analyzeVerticalCreaseBand(
       bestCols = cols;
       bestCount = count;
       bestContrast = count ? contrastSum / count : 0;
+      componentBounds = { x: x0 + minX, y: y0 + minY, width: cols, height: rows };
     }
   }
 
@@ -235,6 +238,7 @@ export function analyzeVerticalCreaseBand(
     continuity,
     widthSpan,
     contrast: contrastScore,
+    componentBounds,
   };
 }
 

@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   // 자동으로 못 잡을 수 있어 명시).
   outputFileTracingIncludes: {
     "/api/saju": ["./vendor/oh-my-saju/**/*"],
+    "/api/premium-report": ["./.next/server/server-reference-manifest.json"],
   },
 };
 

@@ -40,7 +40,14 @@ assert.ok(free.cautions.every(item => !/균형 구조/.test(item.evidence)));
 assert.ok(free.strengths.every(item => !/직접 밀어붙이는 추진력/.test(item.title)));
 assert.match(verdict.text, /약속의 기준을 이해하고 결과로 설명/);
 assert.doesNotMatch(verdict.text, /큰 나무처럼|당신은 .* 사람입니다/);
-assert.match(premium.summary, /완료|기준|요구/);
+assert.match(premium.summary, /이해.*전하|설명.*전달/,
+  "the premium lead must carry understanding into communication");
+assert.match(premium.summary, /상대.*도움|상대.*쓰임/,
+  "the premium lead must keep the other person's benefit in view");
+assert.match(premium.overall.paragraphs[0], /맡은 일.*이해.*(?:밖으로 보여|전달)/,
+  "the overall reading must connect the duty lead to its outward expression");
+assert.match(premium.overall.basis, /관성 3개가 다른 각 그룹보다 많고/,
+  "the reading must retain the invented chart's computed duty evidence");
 assert.equal(premium.periods.length, 12);
 const cautionTexts = free.cautions.map(item => item.detail);
 assert.equal(new Set(cautionTexts).size, 3);
@@ -59,7 +66,7 @@ assert.match(free.keepingStyle.text, /기존 일을 마칠.*새 선택.*이전 �
 assert.match(free.leakPattern.text, /도구·수업.*적용할 작업.*실제 시도는 미뤄/);
 const money = premium.domains.find(item => item.key === "money");
 assert.equal(money.paragraphs.length, 3, "earning, management and spending retain separate readable passages");
-assert.match(money.paragraphs[1], /가령.*따로 남기는 선택.*모두 다른 일에 쓰는 선택/);
+assert.match(money.paragraphs[1], /가령.*반복 비용.*따로 남기는 선택.*모두 다른 일에 쓰는 선택/);
 assert.match(money.paragraphs[2], /가령.*부족한 부분이 확인.*아직 한 번도 적용하지.*작은 시험/);
 for (const domain of premium.domains) {
   assert.doesNotMatch(domain.paragraphs[0].split(/[.!?]/)[0], /[\u3400-\u9fff]|편관|정관|정인|식신/,
@@ -103,7 +110,7 @@ for (const key of ["heartLine", "headLine", "lifeLine"]) {
 }
 const left = { ...right, handSide: "left" };
 const bilateral = buildPalmBilateralReading(left, parsed, "right");
-assert.match(bilateral.items[0].observation, /보정 영상/);
+assert.match(bilateral.items[0].observation, /밝기를 보완한 사진/);
 const context = buildPalmContextReading(left, parsed, "right");
 assert.ok(context.evidence.some(item => item.id === "right.headLine.sourceVariant" && item.value === "enhanced"));
 const individual = buildPalmReadingSections(right.onnxLines, right.secondaryLines, { handSide: "right", handShape: right.handShape });
@@ -126,10 +133,13 @@ if (process.env.TEST_BASE_URL) {
   const result = await response.json();
   assert.equal(result.rightPalmFacts.onnxLines.headLine.sourceVariant, "enhanced");
   assert.equal(result.rightPalmFacts.onnxLines.headLine.rawDetected, false);
-  assert.match(result.bilateralReading.items[0].observation, /보정 영상/);
+  assert.match(result.bilateralReading.items[0].observation, /밝기를 보완한 사진/);
   assert.match(result.tripleCompare[0].text, /보정 영상.*두뇌선 검출 구간/);
-  assert.ok(result.annualReport.palmConnections.some(item => item.evidence?.some(entry => entry.id === "right.headLine.sourceVariant" && entry.value === "enhanced")));
-  const annual = await fetch(`${base}/api/premium-report`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  assert.equal(result.annualReport, undefined, "free palm endpoint cannot bypass trial eligibility");
+  const participation = await fetch(`${base}/api/premium-report`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, trialAction: "participate", participation: "clipboard" }) });
+  assert.equal(participation.status, 200);
+  const { trialReceipt } = await participation.json();
+  const annual = await fetch(`${base}/api/premium-report`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, trialReceipt }) });
   assert.equal(annual.status, 200);
   const annualBody = await annual.json();
   assert.ok(annualBody.report.palmConnections.some(item => item.evidence?.some(entry => entry.id === "right.headLine.rawDetected" && entry.value === false)));

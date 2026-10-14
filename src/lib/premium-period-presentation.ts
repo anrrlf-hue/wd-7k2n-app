@@ -56,12 +56,27 @@ export function buildPremiumPeriodPresentation(report: PremiumReport): Map<Premi
   const seenDaeun = new Set<string>();
   const result = new Map<PremiumPeriod, PremiumPeriodPresentation>();
   for (const period of [...highlights, ...report.periods.filter(p => !highlights.includes(p))]) {
-    if (["distinct-reading-2026-10-v9", "decision-reading-2026-10-v10"].includes(report.version)) {
+    if (["connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13"].includes(report.version)) {
+      // Each month owns a coherent relationship, scene and resolution. New
+      // editions no longer rely on deleting repeated sentences to seem distinct.
+      result.set(period, { paragraphs: period.interpretation?.passages.map(p => p.text) ?? [period.reading], shared: [], daeun: null });
+      continue;
+    }
+    if (["distinct-reading-2026-10-v9", "decision-reading-2026-10-v10", "lived-reading-2026-10-v11"].includes(report.version)) {
       const paragraphs: string[] = [], shared: PremiumPeriod[] = [];
       for (const passage of period.interpretation?.passages ?? []) {
-        const prior = firstOccurrence.get(passage.text);
-        if (prior) { if (!shared.includes(prior)) shared.push(prior); }
-        else { firstOccurrence.set(passage.text, period); paragraphs.push(passage.text); }
+        // New editions can share one sentence inside different monthly scenes.
+        // Keep each scene's new meaning together and link the reused sentence.
+        // Earlier saved editions retain their existing presentation.
+        const units = report.version === "lived-reading-2026-10-v11"
+          ? passage.text.split(/(?<=\.)\s+/) : [passage.text];
+        const unique: string[] = [];
+        for (const unit of units) {
+          const prior = firstOccurrence.get(unit);
+          if (prior) { if (prior !== period && !shared.includes(prior)) shared.push(prior); }
+          else { firstOccurrence.set(unit, period); unique.push(unit); }
+        }
+        if (unique.length) paragraphs.push(unique.join(" "));
       }
       // The exact month symbols make the first passage unique. Still keep a
       // readable pointer if a future pair really shares every explanation.

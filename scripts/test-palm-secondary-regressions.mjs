@@ -284,7 +284,7 @@ if (!bilateralReading.items.find(item => item.title.startsWith("두뇌선"))?.te
 // summary, without turning the life line into a health or lifespan claim.
 for (const name of ["감정선", "생명선"]) {
   const item = bilateralReading.items.find(item => item.title.startsWith(name));
-  if (!item?.text || !/검출 구간/.test(item.text)) throw new Error(`${name} must retain its limited segment reading`);
+  if (!item?.text || item.text.length < 100 || !item.observation) throw new Error(`${name} must retain a substantial personal reading and separate observed basis`);
   if (/수명을? (?:예측|판정)|건강을? (?:진단|예측)/.test(item.text)) throw new Error(`${name} overstates health or lifespan`);
 }
 const interpretations = bilateralReading.items.map(item => item.text).filter(Boolean);

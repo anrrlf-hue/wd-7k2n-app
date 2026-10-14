@@ -4,6 +4,7 @@ import type { DominantHand } from "@/lib/palm-bilateral";
 import { validateReadingPlan, type ReadingEvidence, type ReadingPlan } from "@/lib/reading-plan";
 import { buildPremiumEditorialPlan, type PremiumEditorialPlan } from "@/lib/premium-editorial-plan";
 import { buildPalmContextReading } from "@/lib/palm-context-reading";
+import { palmLineObservation, secondaryObservationState } from "@/lib/palm-customer-reading";
 
 type Area = "overall" | "love_relationship" | "money" | "work";
 type LineKey = "headLine" | "heartLine";
@@ -38,7 +39,7 @@ export function buildIntegratedPalmReading(facts: SajuFacts, left: PalmFacts, ri
   evidence.push({ id: "dominant", kind: "observed", source: "user.dominantHand", value: dominant });
   const counts = COUNT_FIELDS.map(field => `saju.${field}`);
   const curved = (line: OnnxLineDetail | undefined) => line?.curve === "완만한 곡선";
-  const readable = (line: OnnxLineDetail | undefined) => Boolean(line?.detected && line.curve && line.depthStrength !== "약함");
+  const readable = (line: OnnxLineDetail | undefined) => Boolean(line?.detected && line.curve && line.attributeSupport?.curve !== "not_supported" && line.depthStrength !== "약함");
   function pair(key: LineKey) {
     const refs: string[] = [];
     for (const hand of ["left", "right"] as const) {
@@ -53,7 +54,7 @@ export function buildIntegratedPalmReading(facts: SajuFacts, left: PalmFacts, ri
     }
     const a = hands[dominant].onnxLines?.[key], b = hands[other].onnxLines?.[key];
     const l = left.onnxLines?.[key], r = right.onnxLines?.[key];
-    const describe = (line: OnnxLineDetail | undefined) => !line?.detected ? "판독하지 못함" : [line.sourceVariant === "enhanced" ? "보정 영상" : line.sourceVariant === "raw" ? "원본 사진" : "사진", line.length && `검출 구간 ${line.length}`, line.curve && `구간 방향 ${line.curve}`, line.depthStrength && `검출 신호 ${line.depthStrength}`].filter(Boolean).join(" · ") || "세부 모양 미확인";
+    const describe = palmLineObservation;
     const lineReading = palmPlan.passages.find(p => p.id === `${key}-reading`)?.text ?? "";
     const summary = `${describe(l) === describe(r) ? `양손 ${NAMES[key]}은 ${describe(l)}으로 읽혔습니다.` : `${NAMES[key]}은 왼손에서 ${describe(l)}, 오른손에서 ${describe(r)}으로 읽혔습니다.`} ${lineReading}`.trim();
     const note = ["left", "right"].flatMap(hand => {
@@ -107,9 +108,9 @@ export function buildIntegratedPalmReading(facts: SajuFacts, left: PalmFacts, ri
   const secondary: Array<{ hand: DominantHand; key: "fate" | "sun" | "wealth"; name: string; ref: string }> = [];
   for (const hand of ["left", "right"] as const) for (const [key, name] of [["fate", "운명선"], ["sun", "태양선"], ["wealth", "재물선"]] as const) {
     const signal = hands[hand].secondaryLines?.[key];
-    if (signal?.status !== "clear" || (key === "fate" && !signal.corroborated)) continue;
+    if (secondaryObservationState(key, signal) !== "observed" || signal?.status !== "clear" || (key === "fate" && (!signal.corroborated || !signal.candidateObservation))) continue;
     const ref = `${hand}.secondary.${key}`;
-    evidence.push({ id: ref, kind: "observed", source: `${hand}PalmFacts.secondaryLines.${key}`, value: `${signal.status};corroborated=${signal.corroborated ?? false}` });
+    evidence.push({ id: ref, kind: "observed", source: `${hand}PalmFacts.secondaryLines.${key}`, value: JSON.stringify({ status: signal.status, corroborated: signal.corroborated ?? false, candidateObservation: signal.candidateObservation ?? null }) });
     secondary.push({ hand, key, name, ref });
   }
   if (secondary.length) {

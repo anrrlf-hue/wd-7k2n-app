@@ -53,7 +53,7 @@ for (const [i, birth] of births.entries()) {
   assert.doesNotMatch(readerBody, /반드시|확정된 미래|실제 수입이 늘어납니다/);
   // The exact monthly symbols are now visible so adjacent months with the
   // same five-group theme can still explain their 정/편 and position changes.
-  assert.ok(report.periods.every(p => p.symbols && p.reading.includes(p.symbols.month.ganzhi)));
+  assert.ok(report.periods.every(p => p.symbols && p.basis.includes(p.symbols.month.ganzhi) && html.includes(p.symbols.month.ganzhi)));
   assert.ok(html.includes("1년의 주요 구간"));
   assert.equal(html.split(report.note).length - 1, 1, "uncertainty notice in one place");
   assert.ok(!html.includes("<table"), "annual content cannot be just a stage table");

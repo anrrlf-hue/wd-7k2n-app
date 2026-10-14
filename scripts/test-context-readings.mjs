@@ -50,7 +50,8 @@ for (const [i, birth] of births.entries()) {
   assert.deepEqual(buildPremiumReport(input), after, "same evidence and period must give stable prose");
   assert.deepEqual(after.periods.flatMap(p => p.months), after.annual.months.map(m => m.label));
   const selectedPeriods = after.periods.filter(p => after.annualHighlights.includes(p.months[0]));
-  assert.deepEqual(after.annualIntroduction.match(/\d{4}년 \d{1,2}월(?: ~ \d{4}년 \d{1,2}월)?/g), selectedPeriods.map(p => p.label), "the introduction names exactly the periods shown in the main report");
+  assert.equal(selectedPeriods.length, after.annualHighlights.length, "each highlighted month resolves to an actual calculated period");
+  assert.doesNotMatch(after.annualIntroduction, /공통 기준|맥락으로 삼|선택한.*구간|대표 구간/);
   assert.doesNotMatch(JSON.stringify(after), /(?:감각|힘)[’']?를|태도과|(?:경계|달)[’']?으로|(?:신강|신약|태약)[’']?를|일지 [甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]/);
   for (const p of after.periods) validateReadingPlan(p.interpretation);
   assert.ok(after.palmConnections.length > 0, "no self-response is required for independent palm/saju reading");
@@ -78,9 +79,8 @@ for (const [i, birth] of births.entries()) {
     for (const text of item.paragraphs) assert.equal(decode.split(text).length - 1, 1, "displayed monthly prose, including recaps, appears exactly once in the actual report HTML");
   }
   if (after.annualBackground) assert.equal(decode.split(after.annualBackground).length - 1, 1);
-  for (const text of new Set(after.periods.flatMap(p => p.interpretation.passages.filter(s => s.kind === "traditional" && s.id !== "daeun-context").map(s => s.text)))) {
-    assert.equal(decode.split(text).length - 1, 1, "each shared annual passage is rendered once with navigable references");
-  }
+  const displayedSentences = presentation.flatMap(item => item.paragraphs.flatMap(text => text.split(/(?<=\.)\s+/)));
+  assert.equal(new Set(displayedSentences).size, displayedSentences.length, "each shared monthly sentence appears once with references");
   if (!facts.dayStrengthReliable) {
     assert.equal(after.annualBackground, null);
     assert.ok(after.periods.every(p => !p.interpretation.passages.some(s => s.id === "strength-context" || s.id === "daeun-context")));
@@ -96,8 +96,8 @@ assert.equal(samples[5].after.profileRule, "agency-value-understanding");
 assert.doesNotMatch(samples[5].after.domains.find(d => d.key === "work").paragraphs.join(" "), /자신의 생각을 보여주는 힘과 맡은 역할을 지키려는 마음이 비슷/);
 const feb1 = samples[0].after.periods.find(p => p.months.includes("2027년 2월"));
 const feb2 = samples[1].after.periods.find(p => p.months.includes("2027년 2월"));
-assert.match(feb1.headline, /반복 가능한 결과.*새로운 쓰임/);
-assert.match(feb2.headline, /고친 설명.*지속할 조건/);
+assert.match(feb1.headline, /익숙한 즐거움.*누군가에게 닿을 때/);
+assert.match(feb2.headline, /작은 수정.*내 하루/);
 assert.notEqual(feb1.reading, feb2.reading);
 const december4 = samples[3].after.periods.find(p => p.months.includes("2026년 12월"));
 assert.ok(buildContextualMonthReading(samples[3].facts, samples[3].after.annual.months.find(m => m.label === "2026년 12월")).passages.some(p => p.id === "duty-to-return"), "the original broad-group rule is retained as evidence");
@@ -114,12 +114,13 @@ for (const sample of samples.slice(0, 2)) {
     assert.notEqual(first.symbols.month.stemTenGod, second.symbols.month.stemTenGod);
     assert.notEqual(first.symbols.month.branchTenGod, second.symbols.month.branchTenGod);
     assert.notEqual(first.reading, second.reading);
-    assert.ok(second.interpretation.passages.some(p => p.id === "month-decision-shift"));
+    assert.ok(second.interpretation.passages.some(p => p.evidenceIds.includes("year-branch")), "use the actual annual context in the new monthly conclusion");
   }
 }
 for (const sample of [samples[3], samples[4]]) {
   const april = sample.presentation.find(p => p.months.includes("2027년 4월"));
-  assert.ok(april.paragraphs.some(text => text.includes("월운")));
+  assert.match(sample.after.periods.find(p => p.months.includes("2027년 4월")).basis, /월운/);
+  assert.ok(april.paragraphs.some(text => text.length > 30));
 }
 for (const field of ["peerStarCount", "officerStarCount", "resourceStarCount"]) {
   const counterfactual = { ...samples[1].facts, [field]: 4 };
@@ -152,16 +153,16 @@ for (const [name, hand] of [["same", right], ["different", structuredClone(right
 assert.notEqual(palmCases[0].report.summary, palmCases[1].report.summary);
 assert.ok(!palmCases[0].plan.passages.some(p => p.id.endsWith("bilateral-difference")));
 assert.ok(palmCases[1].plan.passages.some(p => p.id.endsWith("bilateral-difference")));
-assert.match(palmCases[2].report.items[0].text, /보류/);
-assert.match(palmCases[2].report.note, /수명·건강/, "partial readings retain the non-diagnostic limit");
+assert.match(palmCases[2].report.items[0].text, /왼손 사진을 기준/);
+assert.match(palmCases[2].report.note, /건강·수명|수명·건강/, "partial readings retain the non-diagnostic limit");
 assert.ok(!palmCases[2].plan.passages.some(p => p.id === "head-heart-composition"));
-assert.match(palmCases[2].report.items[1].text, /감정선으로 부르는 자리.*검출 구간/, "partial medium-length lines may use the observed segment without inventing the missing combination");
+assert.match(palmCases[2].report.items[1].text, /가까운 사람.*감정/, "partial medium-length lines may use the observed segment without inventing the missing combination");
 assert.equal(palmCases[0].report.summary, palmCases[3].report.summary, "photo contrast is not strength of personality");
 assert.doesNotMatch(JSON.stringify(palmCases), /37~41|운명이 바뀌었|보통 범위여서/);
 const compare = buildTripleCompare(first.facts, right.onnxLines, null);
 const compareHtml = renderToStaticMarkup(createElement(TripleCompareSection, { items: compare, withSelf: false }));
 assert.ok(compareHtml.includes("사주와 손금을 함께 읽으면"));
-assert.ok(compareHtml.includes("기준은 지키면서 방법은 유연하게"));
+assert.match(compareHtml, /가령.*도움|가령.*추천/);
 assert.equal(buildPremiumReport({ facts: first.facts, referenceDate: date }).palmConnections.length, 0);
 console.log("PASS 6 calculated synthetic charts; unchanged calculation; context-sensitive periods; immutable v2; evidence validation; major-year sections; no-self palm comparison; same/different/missing/faint observations");
 if (process.env.CONTEXT_SAMPLE_OUTPUT) {

@@ -1,0 +1,83 @@
+// Limited synthetic year-only contrasts. No photos, model, browser or service.
+import './register-test-typescript.mjs';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { birthFixture } from './fixtures/palm-analysis.mjs';
+import { leftReadingFixture as left, rightReadingFixture as right } from './fixtures/palm-reading.mjs';
+const { computeSajuFacts } = await import('../src/lib/saju-facts.ts');
+const { enrichSajuFacts } = await import('../src/lib/oh-my-saju-adapter.ts');
+const { buildPremiumMonthNarrative } = await import('../src/lib/premium-month-narrative.ts');
+const { buildPremiumReport } = await import('../src/lib/premium-report.ts');
+const { buildPremiumYearNarrative } = await import('../src/lib/premium-year-narrative.ts');
+const { composeMonthStory } = await import('../src/lib/premium-month-story.ts');
+const { isStoredPremiumReport, isCurrentPremiumReport } = await import('../src/lib/premium-report-validation.ts');
+const facts = enrichSajuFacts(computeSajuFacts(birthFixture), birthFixture);
+const hands = { leftPalm: left, rightPalm: right, dominantHand: 'right' };
+const input = { facts, ...hands, referenceDate: new Date('2026-10-13T00:00:00Z') };
+const report = buildPremiumReport(input);
+const passage = (r, id) => r.plan.passages.find(p => p.id === id);
+const final = r => passage(r, 'month-lived-resolution').text;
+const contrast = [];
+for (const label of ['2026년 10월', '2027년 2월', '2027년 3월']) {
+  const month = report.annual.months.find(m => m.label === label);
+  const base = buildPremiumMonthNarrative(facts, month, null, hands);
+  // A five-year step really keeps the monthly pillar unchanged. Only the
+  // annual pillar differs; the chart, palm facts and prior-month input stay fixed.
+  const other = buildPremiumMonthNarrative(facts, { ...month, year: month.year + 5 }, null, hands);
+  assert.deepEqual(base.symbols.month, other.symbols.month, 'hold the complete exact monthly pillar constant');
+  assert.notDeepEqual(base.symbols.year, other.symbols.year);
+  assert.equal(passage(base, 'month-relation').text, passage(other, 'month-relation').text);
+  assert.notEqual(passage(base, 'month-lived-scene').text, passage(other, 'month-lived-scene').text, 'annual stem changes the reason for discomfort within the same scene');
+  assert.notEqual(final(base), final(other), 'annual branch changes the choice/consequence, not just the label or evidence');
+  assert.notEqual(final(base).split(/(?<=\.)\s+/).at(-1), final(other).split(/(?<=\.)\s+/).at(-1));
+  assert.deepEqual(passage(base, 'month-lived-scene').evidenceIds.filter(id => id.startsWith('year-')), ['year-stem']);
+  assert.deepEqual(passage(base, 'month-lived-resolution').evidenceIds.filter(id => id.startsWith('year-')), ['year-branch']);
+  for (const result of [base, other]) {
+    const used = new Set(result.plan.passages.flatMap(p => p.evidenceIds));
+    assert.ok(result.plan.evidence.every(e => used.has(e.id)), 'no unused evidence is presented as having shaped this reading');
+    assert.doesNotMatch(result.plan.passages.map(p => p.text).join(' '), /교환 조건|담당 범위|권한|공통 기준|맥락으로 삼/);
+  }
+  if (label.endsWith('10월')) for (const r of [base, other]) assert.doesNotMatch(r.plan.passages.map(p => p.text).join(' '), /업무|같은 속도로 익혀|배운 방법/);
+  if (label.endsWith('3월')) {
+    assert.match(passage(base, 'month-relation').text, /바꾸고 싶은 뜻.*지키고 싶은 마음/);
+    assert.match(passage(base, 'month-lived-scene').text, /덜 바꾼 모습.*원래 편했던 부분/);
+    assert.match(final(base), /이미 편해진 부분을 설명.*막힌 한 곳에만 도움/);
+    assert.match(final(other), /원했던 뜻을 상대도 알아볼/);
+    assert.doesNotMatch(final(base), /다시 손이 가|조용한 애착|자주 쓰며 편/);
+  }
+  contrast.push({ synthetic: true, label, baseCalendarYear: month.year, otherCalendarYear: month.year + 5, fixedMonthlySymbols: base.symbols.month, base, other });
+}
+const march = contrast[2].base;
+const actualYear = buildPremiumYearNarrative(march.symbols.year);
+const fixed = { year: actualYear, observedStory: composeMonthStory('상관', '정재', 'hour', '상관'), mode: 'fate-pair' };
+const current = composeMonthStory('상관', '정재', 'hour', '상관', fixed);
+// These two mocks isolate computed ten-god components; they are not calendar charts.
+const stemOnly = composeMonthStory('상관', '정재', 'hour', '상관', { ...fixed, year: buildPremiumYearNarrative({ ...march.symbols.year, stemTenGod: '편관' }) });
+const branchOnly = composeMonthStory('상관', '정재', 'hour', '상관', { ...fixed, year: buildPremiumYearNarrative({ ...march.symbols.year, branchTenGod: '편인' }) });
+assert.notEqual(current.scene, stemOnly.scene); assert.equal(current.meaning, stemOnly.meaning);
+assert.equal(current.scene, branchOnly.scene); assert.notEqual(current.meaning, branchOnly.meaning);
+const unknown = buildPremiumYearNarrative({ ...march.symbols.year, branchTenGod: null });
+assert.equal(unknown, null);
+assert.deepEqual(composeMonthStory('상관', '정재', 'hour', '상관', { year: unknown }), composeMonthStory('상관', '정재', 'hour', '상관'));
+for (const p of report.periods) {
+  assert.ok(p.interpretation.passages.some(x => x.evidenceIds.includes('year-stem')));
+  assert.ok(p.interpretation.passages.some(x => x.evidenceIds.includes('year-branch')));
+  const used = new Set(p.interpretation.passages.flatMap(x => x.evidenceIds));
+  assert.ok(p.interpretation.evidence.every(e => used.has(e.id)));
+  assert.match(p.basis, /해의 천간:.*해의 지지:/);
+}
+const summaries = [...new Map(report.periods.map(p => [p.symbols.year.ganzhi, p.symbols.year])).values()].map(buildPremiumYearNarrative);
+assert.ok(summaries.every(y => report.annualIntroduction.includes(y.summary)), 'the same actual annual frame used in months appears once in the annual introduction');
+assert.equal(new Set(summaries.map(y => y.summary)).size, 2);
+assert.equal(report.version, 'year-connected-reading-2026-10-v13');
+assert.ok(isCurrentPremiumReport(report));
+if (process.env.YEAR_READING_BEFORE) {
+  const old = JSON.parse(fs.readFileSync(process.env.YEAR_READING_BEFORE, 'utf8'));
+  const before = old.samples[0].premium;
+  assert.equal(before.version, 'connected-reading-2026-10-v12');
+  assert.ok(isStoredPremiumReport(before) && !isCurrentPremiumReport(before));
+  for (const key of ['summary', 'overall', 'domains', 'closing', 'palmConnections', 'annual']) assert.deepEqual(report[key], before[key], `retain 095948c ${key}`);
+  assert.deepEqual(report.periods.map(p => p.symbols), before.periods.map(p => p.symbols), 'do not change actual calculation');
+}
+if (process.env.YEAR_READING_OUTPUT) fs.writeFileSync(process.env.YEAR_READING_OUTPUT, JSON.stringify({ synthetic: true, fixedChart: facts, report, contrast, componentContrast: { syntheticComputedSymbols: true, current, stemOnly, branchOnly } }, null, 2));
+console.log('PASS 3 year-only contrasts with identical exact month/chart/palms; actual annual frame; distinct stem/branch influence; March new conflict/choice/consequence; no unused claimed evidence; v12 preserved');

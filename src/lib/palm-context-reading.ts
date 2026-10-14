@@ -2,6 +2,7 @@ import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
 import { normalizePalmFactsObservation } from "@/lib/palm-facts";
 import type { DominantHand } from "@/lib/palm-bilateral";
 import { validateReadingPlan, type ReadingPlan } from "@/lib/reading-plan";
+import { palmPersonalLineReading } from "@/lib/palm-customer-reading";
 
 const LINES = { headLine: "두뇌선", heartLine: "감정선", lifeLine: "생명선" } as const;
 type LineKey = keyof typeof LINES;
@@ -13,28 +14,8 @@ function describe(line: OnnxLineDetail | undefined): string {
   return [source, segmentLength, line.curve, signal].filter(Boolean).join(" · ") || "선 후보만 확인";
 }
 
-const LINE_LOCATIONS = {
-  headLine: "손바닥 중앙을 가로지르는 두뇌선으로 부르는 자리",
-  heartLine: "손가락 아래쪽을 가로지르는 감정선으로 부르는 자리",
-  lifeLine: "엄지 밑을 감싸 손목 쪽으로 내려가는 생명선으로 부르는 자리",
-} as const;
-
-function sourcePhrase(line: OnnxLineDetail): string {
-  return line.sourceVariant === "enhanced" ? "보정 영상의" : line.sourceVariant === "raw" ? "원본 사진의" : "사진의";
-}
-
 function lineNarrative(key: LineKey, line: OnnxLineDetail): string {
-  const curve = line.curve && line.attributeSupport?.curve !== "not_supported" ? line.curve : null;
-  const shape = curve
-    ? `${curve === "직선에 가까움" ? "직선에 가까운" : "완만한 곡선의"} 검출 구간`
-    : "확인된 검출 구간";
-  if (key === "heartLine") {
-    return `${sourcePhrase(line)} ${LINE_LOCATIONS[key]}에서 ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 마음을 표현하고 관계의 기대를 주고받는 방식과 연결해 봅니다. 예를 들어 상대가 기쁜 소식을 전했을 때 축하를 먼저 말하고 내 반응도 짧게 덧붙이는 장면으로 옮겨볼 수 있습니다.`;
-  }
-  if (key === "headLine") {
-    return `${sourcePhrase(line)} ${LINE_LOCATIONS[key]}에서 ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생각을 정리하고 선택 조건을 세우는 방식과 연결해 봅니다. 예를 들어 목적은 유지한 채 비교할 조건을 먼저 정하고, 그 조건 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다.`;
-  }
-  return `${sourcePhrase(line)} ${LINE_LOCATIONS[key]}에서 ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생활 기반과 활동 리듬을 살펴보는 자리로 연결해 봅니다. 예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다.`;
+  return palmPersonalLineReading(key, line) ?? "";
 }
 
 /** One composition from observed features, with traceable interpretation rules.
@@ -63,18 +44,18 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
     }
   }
   const refs = (key: LineKey) => (["left", "right"] as const).flatMap(hand => ["detected", "length", "curve", "depthStrength", "sourceVariant", "rawDetected", "enhancedDetected", "endpointEvidence", "pathCompleteness", "attributeSupport"].map(field => `${hand}.${key}.${field}`));
-  const usableHead = head?.detected && head.curve;
-  const usableHeart = heart?.detected && heart.curve;
+  const usableHead = palmPersonalLineReading("headLine", head);
+  const usableHeart = palmPersonalLineReading("heartLine", heart);
   const curvedHead = head?.curve === "완만한 곡선";
   const curvedHeart = heart?.curve === "완만한 곡선";
   if (usableHead && usableHeart) {
     const text = curvedHead && curvedHeart
-      ? "생각을 여러 방향으로 펼쳐보고, 사람과 주고받는 과정에서 그 생각이 더 선명해지는 모습으로 읽어볼 수 있습니다. 주로 쓰는 손의 두뇌선과 감정선이 모두 완만하게 휘어 있어, 사고의 유연함과 마음을 표현하는 방식을 함께 연결한 해석입니다. 예를 들어 혼자 완성한 답을 전달하기보다 대화 중 나온 반응에서 새로운 방향을 찾는 장면에 가깝습니다. 반응을 받아들이는 유연함이 장점이 되는 한편, 반응에 맞춰 방법을 바꾸는 동안 처음 중요하게 여겼던 기준까지 흐려질 수 있다는 긴장도 함께 봅니다."
+      ? "주손의 두뇌선과 감정선에서 함께 확인한 곡선 구간은, 대화하면서 생각의 윤곽을 찾고 그 대화의 온도에도 마음이 움직이는 조합으로 읽어볼 수 있습니다. 가령 혼자서는 막연했던 계획이 누군가에게 말하는 동안 구체적인 모습이 될 수 있습니다. 이때 상대의 질문은 생각을 발전시키는 데 도움이 되지만, 좋은 소식을 전했는데 짧은 답이 돌아오면 내용에 대한 평가와 마음을 함께 기뻐해 주는 반응이 다르다는 것을 느낄 수도 있습니다. 더 잘 설명하면 풀릴 문제인지, 잠깐 함께 기뻐해 주기를 바랐던 것인지 나누어 말해보면 대화 뒤에 남는 서운함의 이유를 살피기 쉽습니다."
       : !curvedHead && !curvedHeart
-        ? "생각을 정리하는 방식과 마음을 전하는 방식 모두 일관된 기준을 중시하는 쪽으로 읽어볼 수 있습니다. 주손의 두뇌선과 감정선이 함께 직선에 가까워, 판단에서는 이유를 분명히 하고 관계에서는 말보다 행동의 일치를 살피는 이야기로 연결했습니다. 약속한 일을 꾸준히 해주는 모습은 신뢰가 되지만, 상대에게는 그 행동에 담긴 마음이 설명되지 않아 무심하게 느껴질 여지도 있습니다."
+        ? "주손의 두뇌선과 감정선에서 함께 확인한 직선에 가까운 구간은, 이유가 분명한 선택과 꾸준한 행동을 이어 놓는 조합으로 읽어볼 수 있습니다. 가령 가까운 사람이 곤란해할 때 필요한 것을 찾아 해결해 주고 나면, 이미 마음도 충분히 전했다고 느끼는 장면을 떠올릴 수 있습니다. 그런데 상대가 원한 것이 해결책에 앞서 자신의 속상함을 들어주는 시간이었으면, 도움이 되었는데도 두 사람의 대화는 끝나지 않을 수 있습니다. 해결할 일을 알아본 마음과 그 일을 겪는 사람에게 머문 마음은 함께 갈 수 있습니다. 무엇을 해줄지 묻기 전에 그 순간이 어땠는지 한 번 듣는 선택은 행동에 담긴 애정을 상대가 알아볼 통로를 더합니다."
         : curvedHead
-          ? "생각에서는 여러 가능성을 열어두지만, 마음을 표현할 때는 한층 절제된 모습으로 읽어볼 수 있습니다. 곡선형 두뇌선과 직선에 가까운 감정선의 조합을 그렇게 해석했습니다. 새로운 이야기를 활발하게 나누면서도 정작 자신의 감정에 대해서는 말을 아끼는 장면을 떠올릴 수 있습니다. 상대는 대화가 잘 통한다고 느끼면서도 무엇을 원하는지는 몰라 답답할 수 있다는 양면을 함께 봅니다."
-          : "판단할 때는 기준을 분명히 세우고, 사람을 대할 때는 표정과 말로 반응하는 모습으로 읽어볼 수 있습니다. 직선에 가까운 두뇌선과 곡선형 감정선의 차이를 함께 읽은 것입니다. 관계를 따뜻하게 이어가고 싶으면서도 의견을 정할 때에는 논리와 일관성을 요구하는 장면이 가능합니다. 상대에게 공감하는 일과 상대의 의견에 동의하는 일이 서로 다를 수 있다는 점이 이 조합의 핵심입니다.";
+          ? "곡선 구간의 두뇌선과 직선에 가까운 감정선은, 이야기를 넓혀 가는 생각과 조용히 남겨 두는 마음을 함께 읽게 합니다. 가령 여행 이야기는 여러 갈래로 즐겁게 나누면서도 정작 자신이 함께 가고 싶은 이유는 말하지 않는 장면을 떠올릴 수 있습니다. 상대는 아이디어가 많다는 것은 알아도 자신과 보내는 시간을 바라는 마음까지는 듣지 못할 수 있습니다. 제안을 더 늘리기보다 ‘너와 그 시간을 보내고 싶다’는 뜻을 덧붙이는 선택은 좋은 계획이 개인적인 초대가 되는 차이를 만듭니다. 생각을 나누는 말과 애정을 전하는 말이 서로 다른 마음을 남길 수 있습니다."
+          : "직선에 가까운 두뇌선과 곡선 구간의 감정선은, 판단의 이유를 정리하는 과정과 사람의 마음에 반응하는 과정이 함께 놓인 조합으로 읽어볼 수 있습니다. 가령 친구의 선택이 걱정돼 다른 방법을 권하면서도 그 친구가 왜 기대했는지는 따뜻하게 들어주는 장면입니다. 상대가 그 따뜻함을 찬성으로 받아들이면, 나중에 다른 의견을 들었을 때 갑자기 마음이 바뀌었다고 느낄 여지가 있습니다. 마음을 이해한다는 말에 내 의견도 짧게 보태면, 동의하지 않아도 곁에 있고 싶다는 뜻이 더 선명해질 수 있습니다. 공감하는 말과 자신의 판단을 전하는 말은 서로 다른 마음을 함께 남길 수 있습니다.";
     plan.headline = curvedHead && curvedHeart ? "대화 속에서 생각과 마음이 함께 움직이는 모습" : !curvedHead && !curvedHeart ? "기준과 행동의 일치를 소중히 여기는 모습" : "생각하는 방식과 마음을 전하는 방식의 차이";
     plan.passages.push({ id: "head-heart-composition", kind: "traditional", text, evidenceIds: [...refs("headLine"), ...refs("heartLine")] });
   }
@@ -88,13 +69,12 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
       plan.passages.push({ id: `${key}-unread`, kind: "observation", text: `${label}의 ${LINES[key]}을 충분히 읽지 못해 이 선의 해석은 보류합니다.`, evidenceIds: refs(key) });
       continue;
     }
-    if (line?.detected) {
-      plan.passages.push({ id: `${key}-reading`, kind: "traditional", text: lineNarrative(key, line), evidenceIds: refs(key) });
-    }
-    if (l?.detected && r?.detected && l.curve === r.curve) {
-      plan.passages.push({ id: `${key}-bilateral-common`, kind: "observation", text: `${LINES[key]}은 두 사진의 검출 구간에서 같은 방향(${l.curve ?? "확인 안 됨"})으로 관찰됩니다. 두 사진에서 공통으로 보이는 참고점으로 사용합니다.`, evidenceIds: refs(key) });
-    } else if (l?.detected && r?.detected && l.curve !== r.curve) {
-      plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}의 두 검출 구간은 서로 다른 방향으로 분류됐습니다. 사진 각도·조명·보정 차이의 영향도 있어, 이번 비교에서는 두 관측의 차이로만 남깁니다.`, evidenceIds: refs(key) });
+    const reading = lineNarrative(key, line);
+    if (reading) plan.passages.push({ id: `${key}-reading`, kind: "traditional", text: reading, evidenceIds: refs(key) });
+    if (palmPersonalLineReading(key, l) && palmPersonalLineReading(key, r) && l?.curve === r?.curve) {
+      plan.passages.push({ id: `${key}-bilateral-common`, kind: "observation", text: `${LINES[key]}은 두 사진에서 같은 방향(${l?.curve ?? "확인 안 됨"})으로 보입니다. 두 손에서 공통으로 읽힌 특징입니다.`, evidenceIds: refs(key) });
+    } else if (palmPersonalLineReading(key, l) && palmPersonalLineReading(key, r) && l?.curve !== r?.curve) {
+      plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}은 두 사진에서 서로 다른 방향으로 보입니다. 사진 각도와 조명의 영향도 있어 실제로 변했다는 뜻으로 해석하지 않습니다.`, evidenceIds: refs(key) });
     }
   }
   const detected = (Object.keys(LINES) as LineKey[]).filter(key => primary.onnxLines?.[key].detected);
