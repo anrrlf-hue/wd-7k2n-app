@@ -321,8 +321,8 @@ export function premiumOverallEvidence(plan: PremiumEditorialPlan): string {
 
 export function composePremiumOverallStory(plan: PremiumEditorialPlan): string {
   const daeunKey = (plan.daeunGroups ?? []).slice().sort().join("|");
-  if (daeunKey === "관성|식상") return "지켜야 할 약속 안에서도 자기 생각을 결과로 보여 주고 싶은 마음이 함께 읽힙니다. 맡은 기준을 따르기만 하면 답답하고, 자기 방법만 앞세우면 함께 정한 목적이 흐려질 수 있어 지킬 목표와 바꿔 볼 절차를 나누는 일이 이 흐름의 중심입니다. 가까운 관계에서는 기대한 마음을 설명하고, 재물에서는 추가 결과의 조건을 확인하며, 일에서는 작은 개선을 보여 주는 식으로 같은 긴장이 서로 다른 장면에 나타날 수 있습니다.";
-  if (daeunKey === "관성|비겁") return "지켜 온 책임 안에서도 내가 직접 고를 몫을 잃고 싶지 않은 마음이 함께 읽힙니다. 도움을 받는 일과 결정을 넘기는 일은 같지 않고, 함께한 결과와 개인의 조건도 따로 살필 필요가 있어 약속과 선택의 경계를 나누는 일이 이 흐름의 중심입니다. 가까운 관계에서는 함께 정할 시간과 내 시간을 나누고, 재물에서는 각자의 비용과 보상을 확인하며, 일에서는 공통 기준과 내 결정권을 구별하는 장면으로 이어집니다.";
+  if (plan.id === "creation-exchange-supported" && daeunKey === "관성|식상") return "지켜야 할 약속 안에서도 자기 생각을 결과로 보여 주고 싶은 마음이 함께 읽힙니다. 맡은 기준을 따르기만 하면 답답하고, 자기 방법만 앞세우면 함께 정한 목적이 흐려질 수 있어 지킬 목표와 바꿔 볼 절차를 나누는 일이 이 흐름의 중심입니다. 가까운 관계에서는 기대한 마음을 설명하고, 재물에서는 추가 결과의 조건을 확인하며, 일에서는 작은 개선을 보여 주는 식으로 같은 긴장이 서로 다른 장면에 나타날 수 있습니다.";
+  if (plan.id === "creation-exchange-supported" && daeunKey === "관성|비겁") return "지켜 온 책임 안에서도 내가 직접 고를 몫을 잃고 싶지 않은 마음이 함께 읽힙니다. 도움을 받는 일과 결정을 넘기는 일은 같지 않고, 함께한 결과와 개인의 조건도 따로 살필 필요가 있어 약속과 선택의 경계를 나누는 일이 이 흐름의 중심입니다. 가까운 관계에서는 함께 정할 시간과 내 시간을 나누고, 재물에서는 각자의 비용과 보상을 확인하며, 일에서는 공통 기준과 내 결정권을 구별하는 장면으로 이어집니다.";
   return OVERALL[plan.id];
 }
 
@@ -376,7 +376,9 @@ const positionName = { year: "연", month: "월", day: "일", hour: "시" } as c
 export function composePremiumDomainStory(area: Domain, plan: PremiumEditorialPlan,
   hands: ObservedHands | null): string {
   const daeunKey = (plan.daeunGroups ?? []).slice().sort().join("|");
-  const story = DAEUN_STORIES[daeunKey]?.[area] ?? STORIES[plan.id][area];
+  const story = plan.id === "creation-exchange-supported"
+    ? DAEUN_STORIES[daeunKey]?.[area] ?? STORIES[plan.id][area]
+    : STORIES[plan.id][area];
   const money = area === "money" ? buildSajuMoneyMeaning(plan) : null;
   const integrated = area === "work" ? integrateWorkStory(plan, hands) : area === "money" ? integrateMoneyStory(plan, hands) : integrateLoveStory(plan, hands);
   const main = integrated ?? [story.ground, area === "money" ? `획득에서는 ${story.tension}` : story.tension,

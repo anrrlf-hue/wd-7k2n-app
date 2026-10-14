@@ -36,6 +36,8 @@ for (const result of results) {
   assert.ok(domains.money.includes("대가") || domains.money.includes("재물") || domains.money.includes("비용"));
   assert.ok(domains.work.includes("일") || domains.work.includes("업무") || domains.work.includes("결과"));
   assert.ok(new Set(result.premium.periods.map(period => period.reading)).size >= 10, `${result.id}: month bodies remain materially distinct`);
+  assert.ok(result.premium.overall.basis.includes(result.facts.currentDaeun.ganzhi), `${result.id}: overall basis names calculated current daeun`);
+  assert.ok(result.premium.domains.every(domain => domain.basis.includes(result.facts.currentDaeun.ganzhi)), `${result.id}: domain basis names calculated current daeun`);
 }
 
 const male = results[0], female = results[1];
@@ -45,6 +47,18 @@ const maleFeb = male.premium.periods.find(period => period.months.includes("2027
 const femaleFeb = female.premium.periods.find(period => period.months.includes("2027년 2월"));
 assert.ok(maleFeb && femaleFeb, "E pair includes February 2027");
 assert.notEqual(maleFeb.reading, femaleFeb.reading, "E male/female February has different month meaning");
+const natalContrast = results.find(result => result.id === "식상0-재물");
+const officerContrast = results.find(result => result.id === "관성우세-관계");
+assert.notEqual(male.premium.overall.paragraphs.join(" "), natalContrast.premium.overall.paragraphs.join(" "), "same daeun group does not erase a different natal arc");
+for (const key of ["love_relationship", "money", "work"]) {
+  assert.notEqual(domainText(male)[key], domainText(natalContrast)[key], `E male vs 식상0 ${key} keeps natal arc`);
+  assert.notEqual(domainText(female)[key], domainText(officerContrast)[key], `E female vs 관성우세 ${key} keeps natal arc`);
+}
+const maleMar = male.premium.periods.find(period => period.months.includes("2027년 3월"));
+const femaleMar = female.premium.periods.find(period => period.months.includes("2027년 3월"));
+assert.ok(maleMar && femaleMar, "E pair includes March 2027");
+assert.notEqual(maleFeb.reading, maleMar.reading, "E male February/March changes with the calculated monthly ten-god pair");
+assert.notEqual(femaleFeb.reading, femaleMar.reading, "E female February/March changes with the calculated monthly ten-god pair");
 
 const zeroOutput = results.find(result => result.id === "식상0-재물");
 assert.equal(zeroOutput.facts.outputStarCount, 0, "1964 case confirms 식상 0 from calculation");
@@ -68,6 +82,8 @@ const metrics = {
   checks: {
     integratedDomains: true,
     currentDaeunChangesE: true,
+    natalArcSurvivesDaeun: true,
+    monthPairChangesMeaning: true,
     twelveMonths: true,
     calculatedEvidencePerMonth: true,
     zeroOutputMoneyGuard: true,

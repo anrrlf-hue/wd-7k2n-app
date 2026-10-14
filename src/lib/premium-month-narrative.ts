@@ -33,12 +33,24 @@ function daeunMonthInteraction(facts: SajuFacts, stem: string, branch: string, a
   const monthGroups = new Set([TEN_GOD_GROUP[stem], TEN_GOD_GROUP[branch]].filter(Boolean));
   const setting = area === "day" ? "가까운 사람과 함께 정할 자리에서" : area === "month" ? "함께 일하는 자리에서" : area === "hour" ? "혼자 준비한 일을 마무리하는 자리에서" : "익숙한 사람들과 정할 자리에서";
   if (background.has("관성") && background.has("식상") && monthGroups.has("관성") && monthGroups.has("인성")) {
+    if (stem === "편관" && branch === "편인") {
+      return {
+        scene: `${setting} 익숙한 기준을 지키려 할수록 낯선 기대를 모두 이해해야 한다는 부담이 커지는 장면입니다.`,
+        meaning: "상대의 이유를 더 모으기 전에 내가 실제로 겪으며 알게 된 불편을 한 가지 말해 보면, 잘해야 한다는 긴장과 새로 배울 부분을 나누어 볼 수 있습니다. 이미 지킨 약속을 부정하지 않고도 이번에는 다른 방법을 시험할 여지가 생깁니다.",
+      };
+    }
     return {
       scene: `${setting} 방식을 조금 바꾸고 싶은데 익숙한 순서를 지키자는 답을 듣는 장면입니다.`,
       meaning: "바꾸고 싶은 이유를 충분히 들어 주면, 자신의 뜻을 설명하는 일이 약속을 거스르는 행동처럼 느껴지지 않을 수 있습니다. 서로 지킬 뜻을 알아본 뒤에도 나다운 표현을 남길 수 있다는 경험이 부담을 덜어 줍니다.",
     };
   }
   if (background.has("비겁") && background.has("관성") && monthGroups.has("관성") && monthGroups.has("인성")) {
+    if (stem === "편관" && branch === "편인") {
+      return {
+        scene: `${setting} 낯선 기대를 이해하려고 설명을 많이 모으는 동안에도, 내가 직접 정하고 싶은 시간은 따로 남아 있는 장면입니다.`,
+        meaning: "도움을 받을 이유와 내가 고를 조건을 나누어 말하면, 상대의 기준을 존중하면서도 내 선택을 뒤로 미루지 않을 수 있습니다. 모두에게 맞는 답을 찾기보다 함께 정할 부분과 내가 정할 부분을 구별하는 데서 가까움이 이어집니다.",
+      };
+    }
     return {
       scene: `${setting} 일정을 대신 정해 주겠다는 제안을 들을 때, 고마우면서도 내가 고른 시간이 사라지는 듯한 아쉬움이 함께 남는 장면입니다.`,
       meaning: "함께 정할 부분을 이야기하고 자신이 고르고 싶은 한 가지를 남기면, 도움은 내가 선택한 시간을 편하게 이어 주는 손길이 됩니다. 기대어도 자기 뜻을 잃지 않고 자기 뜻을 말해도 약속이 흔들리지 않는 경험에서 가까움이 자랍니다.",

@@ -134,8 +134,11 @@ export function buildPremiumReport(input: {
   const hasPalms = input.leftPalm && input.rightPalm && input.dominantHand
     && isPalmFactsUsable(input.leftPalm) && isPalmFactsUsable(input.rightPalm);
   const integration = hasPalms ? buildIntegratedPalmReading(facts, input.leftPalm!, input.rightPalm!, input.dominantHand!, editorial) : {};
+  const currentDaeunBasis = facts.currentDaeun
+    ? ` 현재 대운 ${facts.currentDaeun.ganzhi}(${facts.currentDaeun.stemTenGod}/${facts.currentDaeun.branchTenGod})을 함께 읽었습니다.`
+    : " 현재 대운은 계산되지 않았습니다.";
   overall.paragraphs = [composePremiumOverallStory(editorial), ...customer.overall.slice(1)];
-  overall.basis = customer.frame.evidence.self;
+  overall.basis = customer.frame.evidence.self + currentDaeunBasis;
   const overallEvidence = premiumOverallEvidence(editorial);
   if (overallEvidence) overall.basis += ` ${overallEvidence}`;
   overall.headline = "자기 중심과 마음속의 다른 바람";
@@ -154,7 +157,7 @@ export function buildPremiumReport(input: {
     reading.headline = area === "money" ? "얻은 가치와 생활에 남기는 조건" : area === "work" ? "실력이 쓰이는 환경과 끝내는 방식" : "가까움에서 서로의 선택이 남는 방식";
     reading.opportunity = ""; reading.caution = ""; reading.tip = "";
     reading.observationNote = null;
-    reading.basis = customer.frame.evidence[area === "love_relationship" ? "relationship" : area];
+    reading.basis = customer.frame.evidence[area === "love_relationship" ? "relationship" : area] + currentDaeunBasis;
     if (connection) reading.basis += ` 함께 읽은 주요선: ${describeReadingEvidence(connection.plan.evidence)}.`;
   }
   const priorSignals = hasPalms ? buildTripleCompare(facts, (input.dominantHand === "left" ? input.leftPalm! : input.rightPalm!).onnxLines, null) : [];
