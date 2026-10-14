@@ -1,5 +1,6 @@
 import { TEN_GOD_GROUP, type SajuFacts, type TenGodGroup } from "@/lib/saju-facts";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
+import { gwaWa } from "@/lib/korean-particle";
 
 type Theme = "self" | "relationship" | "money" | "work" | "life";
 type God = keyof typeof GOD;
@@ -247,7 +248,7 @@ export function buildCustomerFreeNarrative(facts: SajuFacts): Omit<FreeSajuRepor
     const period = next ? facts.nextDaeun : facts.currentDaeun;
     if (!facts.hasTimeInput || !period) return { text: "출생시간이 확인되지 않아 큰 운의 세밀한 시기는 남겨 두었습니다. 지금 읽은 관계와 일, 돈의 성향을 자신의 경험과 대조하며 참고할 수 있습니다.", evidence: "출생시간 또는 대운 미확인; 시기 해석 미사용" };
     const a = isGod(period.stemTenGod) ? GOD[period.stemTenGod] : "새로운 생활의 주제", b = isGod(period.branchTenGod) ? GOD[period.branchTenGod] : "생활의 다른 바람";
-    const paired = a === b ? `${a}이 두 자리에서 겹쳐, 한 가지 마음이 이 시기의 앞뒤를 함께 이끕니다.` : `${a}${a.endsWith("가치") ? "와" : "과"} ${b}을 함께 읽습니다.`;
+    const paired = a === b ? `${a}이 두 자리에서 겹쳐, 한 가지 마음이 이 시기의 앞뒤를 함께 이끕니다.` : `${a}${gwaWa(a)} ${b}을 함께 읽습니다.`;
     const flavor = period.stemTenGod === "편재" && TEN_GOD_GROUP[period.branchTenGod] === "비겁" ? "새로운 사람과 쓰임을 만나도 마지막 선택은 자신의 몫으로 남기는 시기입니다. 함께 움직인 결과에서 내가 다시 하고 싶은 부분을 골라야 마음이 붙습니다."
       : period.stemTenGod === "정재" && TEN_GOD_GROUP[period.branchTenGod] === "비겁" ? "이미 쌓아 온 가치와 자기 몫을 생활에 안정적으로 남기는 시기입니다. 함께 만든 결과라도 오래 이어 갈 방식과 내려놓을 부분을 구별할 때 힘이 덜 새어 나갑니다."
       : period.stemTenGod === "편인" && TEN_GOD_GROUP[period.branchTenGod] === "인성" ? "익숙한 설명 밖의 이유를 파고들며 자기 방식으로 다시 이해하는 시기입니다. 새 정보를 모으는 일과 실제로 시험해 보는 일을 나눌 때 배움이 경험으로 남습니다."

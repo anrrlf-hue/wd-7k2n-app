@@ -32,8 +32,8 @@ assert.match(reviewed[1].premium.domains.find(domain => domain.key === "love_rel
 assert.match(reviewed[0].premium.domains.find(domain => domain.key === "love_relationship").basis, /일주 庚辰; 일지 辰\/편인.*인성 2.*비겁 2/, "A relationship basis must expose the selected counts and correct day labels");
 assert.doesNotMatch(reviewed[0].premium.domains.find(domain => domain.key === "love_relationship").basis, /일지 庚辰/, "day stem must not be mislabeled as day branch");
 const aMoney = reviewed[0].premium.domains.find(domain => domain.key === "money").paragraphs;
-assert.match(aMoney[1], /상대의 쓰임|무엇을 제공했는지|현실적인 보상/, "A palm money connection must add a distinct observed meaning");
-assert.doesNotMatch(aMoney[1], /수고의 가치를 작게/, "A palm money connection must not repeat the natal acquisition conclusion");
+assert.match(aMoney.join(" "), /대가|시간|추가 작업/, "A money section must state its own exchange scene");
+assert.doesNotMatch(aMoney.join(" "), /수고의 가치를 작게/, "A money connection must not repeat the natal acquisition conclusion");
 assert.match(reviewed[0].premium.overall.paragraphs[1], /관계 밖|아무 평가 없이|혼자 편안/, "A overall life reading must leave room outside work coaching");
 assert.match(reviewed[1].premium.overall.paragraphs[1], /혼자 있을 때|아무 목적 없이|취향/, "B overall life reading must use its own composition");
 assert.notEqual(reviewed[0].free.nextMove.text, reviewed[0].free.timingShift.text, "A current/next daeun conclusions must differ");

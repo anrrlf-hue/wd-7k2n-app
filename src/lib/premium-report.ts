@@ -15,7 +15,7 @@ import { isPalmFactsUsable, normalizePalmFactsObservation } from "@/lib/palm-fac
 import { READING_GUIDE } from "@/lib/reading-guide";
 import { buildIntegratedPalmReading } from "@/lib/integrated-palm-reading";
 import { buildPremiumEditorialPlan } from "@/lib/premium-editorial-plan";
-import { premiumAnnualThread, premiumClosing } from "@/lib/premium-domain-story";
+import { composePremiumDomainStory, composePremiumOverallStory, premiumAnnualThread, premiumClosing, premiumOverallEvidence } from "@/lib/premium-domain-story";
 import { buildCustomerPremiumNarrative } from "@/lib/saju-customer-narrative";
 import { validateReadingPlan } from "@/lib/reading-plan";
 import { describeReadingEvidence } from "@/lib/reading-evidence-display";
@@ -134,8 +134,10 @@ export function buildPremiumReport(input: {
   const hasPalms = input.leftPalm && input.rightPalm && input.dominantHand
     && isPalmFactsUsable(input.leftPalm) && isPalmFactsUsable(input.rightPalm);
   const integration = hasPalms ? buildIntegratedPalmReading(facts, input.leftPalm!, input.rightPalm!, input.dominantHand!, editorial) : {};
-  overall.paragraphs = customer.overall;
+  overall.paragraphs = [composePremiumOverallStory(editorial), ...customer.overall.slice(1)];
   overall.basis = customer.frame.evidence.self;
+  const overallEvidence = premiumOverallEvidence(editorial);
+  if (overallEvidence) overall.basis += ` ${overallEvidence}`;
   overall.headline = "자기 중심과 마음속의 다른 바람";
   overall.opportunity = "";
   overall.caution = "";
@@ -143,12 +145,13 @@ export function buildPremiumReport(input: {
     const area = reading.key;
     if (area === "wellbeing") continue;
     const connection = integration[area];
-    const natalParagraphs = area === "love_relationship" ? customer.love : area === "money" ? customer.money : customer.work;
-    const joint = connection?.plan.passages.filter(p => p.kind === "traditional").map(p => p.text) ?? [];
-    // Each paragraph has a separate meaning: natal depth, observed interaction,
-    // and (money only) preserving/spending. No connection copies this body.
-    reading.paragraphs = area === "money" ? [natalParagraphs[0], ...joint, ...natalParagraphs.slice(1)] : [...natalParagraphs, ...joint];
-    reading.headline = area === "money" ? "얻은 가치와 생활에 남기는 만족" : area === "work" ? "실력이 자라는 환경과 일에 남는 애착" : "가까워지는 마음과 서로 편한 거리";
+    const hands = hasPalms ? { left: input.leftPalm!, right: input.rightPalm!, dominant: input.dominantHand! } : null;
+    const editorialStory = composePremiumDomainStory(area, editorial, hands);
+    // One editorial arc owns the three domain scenes. This keeps the report a
+    // single connected reading while making love, money and work add distinct
+    // consequences instead of projecting the same natal paragraph three times.
+    reading.paragraphs = editorialStory.split(/\n\n+/).filter(Boolean);
+    reading.headline = area === "money" ? "얻은 가치와 생활에 남기는 조건" : area === "work" ? "실력이 쓰이는 환경과 끝내는 방식" : "가까움에서 서로의 선택이 남는 방식";
     reading.opportunity = ""; reading.caution = ""; reading.tip = "";
     reading.observationNote = null;
     reading.basis = customer.frame.evidence[area === "love_relationship" ? "relationship" : area];
