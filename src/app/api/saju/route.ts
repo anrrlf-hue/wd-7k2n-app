@@ -13,6 +13,10 @@ import { classifyWealthType } from "@/lib/wealth-type";
 import { getMoneyTendency } from "@/lib/money-tendency";
 import { SAJU_FOCUS_VALUES, parseSajuFocus } from "@/lib/saju-focus";
 import { buildFocusedSajuReport } from "@/lib/free-saju-focus-report";
+import { validateFreeSajuReport } from "@/lib/free-report-schema";
+import { cookies } from "next/headers";
+import { claimReferralReward } from "@/lib/referral-store";
+import { isReferralSession, REFERRAL_SESSION_COOKIE, createAnonymousSessionId, REFERRAL_MAX_AGE_SECONDS } from "@/lib/referral";
 
 // 실제 진단 화면(/diagnosis)이 호출하는 유일한 엔드포인트.
 // 요청 1회로 (1) 얕은 사주팔자+money-tendency(fallback/게이지 근거로 항상 유지)
@@ -31,6 +35,7 @@ const bodySchema = z.object({
   /** 성향 스텝은 완전히 선택 사항 — 안 보내면 undefined */
   personalityAnswers: z.record(z.string(), z.number().min(1).max(5)).optional(),
   mbti: z.enum(MBTI_TYPES).optional(),
+  referralToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/).optional(),
 });
 
 export async function POST(request: Request) {
@@ -43,6 +48,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  const { referralToken, ...sajuInput } = parsed.data;
 
   let shallow;
   try {
@@ -132,7 +138,7 @@ export async function POST(request: Request) {
     deep,
     freeReport,
     focusedReport,
-    birthInput: parsed.data,
+    birthInput: sajuInput,
     personalityInput: {
       personalityAnswers: parsed.data.personalityAnswers ?? null,
       mbti: parsed.data.mbti ?? null,
@@ -142,5 +148,21 @@ export async function POST(request: Request) {
     myeongsik,
     wealthType,
   };
-  return NextResponse.json(payload);
+  // Claim only after this endpoint has produced the complete free result.
+  // Client analytics/completed flags are never used as evidence.
+  const cookieStore = await cookies();
+  const existingSession = cookieStore.get(REFERRAL_SESSION_COOKIE)?.value;
+  const validExisting = isReferralSession(existingSession);
+  const sessionId = validExisting ? existingSession : createAnonymousSessionId();
+  const qualifiesForReferral = Boolean(
+    freeReport?.report && validateFreeSajuReport(freeReport.report).ok,
+  );
+  if (referralToken && qualifiesForReferral) {
+    await claimReferralReward({ token: referralToken, recipientSessionId: sessionId });
+  }
+  const response = NextResponse.json(payload);
+  if (!validExisting) response.cookies.set(REFERRAL_SESSION_COOKIE, sessionId, {
+    httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: REFERRAL_MAX_AGE_SECONDS,
+  });
+  return response;
 }
