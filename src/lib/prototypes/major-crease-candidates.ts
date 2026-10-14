@@ -26,6 +26,29 @@ export interface MajorCreaseComponent {
   responseMean: number;
 }
 
+export interface MajorCreaseNmsOptions {
+  enabled?: boolean;
+  /** Distance between the center and the two fixed-probe NMS samples, in image pixels. */
+  neighborDistancePx?: number;
+}
+
+export interface MajorCreaseNmsDiagnostics {
+  enabled: boolean;
+  neighborDistancePx: number;
+  probeOffsetsPx: number[];
+  originalForegroundMask: Uint8Array;
+  ridgeCoreMask: Uint8Array;
+  ambiguousMask: Uint8Array;
+  removedMask: Uint8Array;
+  removedReasonCounts: {
+    nmsSuppressed: number;
+    directionConflict: number;
+    invalidDirection: number;
+    truncated: number;
+  };
+  truncated: boolean;
+}
+
 export interface MajorCreaseCandidate {
   status: "candidate" | "insufficient_evidence" | "not_seen";
   coordinateSpace: "aligned-image-px";
@@ -49,6 +72,8 @@ export interface MajorCreaseCandidate {
   /** Diagnostic-only connected paths; `points` above remains the legacy path. */
   pathCandidates?: ConnectedPathCandidate[];
   pathSearch?: { searchTruncated: boolean; budget: { used: number; limit: number }; truncatedReason?: "budget" };
+  /** Diagnostic-only NMS masks; absent unless explicitly enabled. */
+  nms?: MajorCreaseNmsDiagnostics;
 }
 
 export interface MajorCreaseTrackResult {
@@ -243,6 +268,7 @@ export function trackMajorCreaseCandidates(
   rawAlignedImage: ImageData,
   landmarksInSameCropPx: MajorCreaseLandmarks[],
   optionalModelSeeds: MajorCreaseModelSeed[] = [],
+  nmsOptions: MajorCreaseNmsOptions = {},
 ): MajorCreaseTrackResult {
   const started = typeof performance !== "undefined" ? performance.now() : Date.now();
   const width = rawAlignedImage?.width ?? 0, height = rawAlignedImage?.height ?? 0;
@@ -316,7 +342,76 @@ export function trackMajorCreaseCandidates(
       return { normalAngleDeg, offsetPx: probeOffsets[offsetIndex], directionCount: probeDirections, offsetCount: probeOffsets.length };
     })() : null;
     const budget: WorkBudget = { used: width * height * 2 + probeBudget.used, max: MAX_WORK_UNITS };
-    const allComponents = components(response, foreground, width, height, budget);
+    const nmsEnabled = nmsOptions.enabled === true;
+    const requestedNeighborDistance = Number.isFinite(nmsOptions.neighborDistancePx) ? nmsOptions.neighborDistancePx! : 2;
+    const neighborDistancePx = Math.max(1, Math.round(requestedNeighborDistance));
+    let analysisForeground = foreground;
+    let nms: MajorCreaseNmsDiagnostics | undefined;
+    if (nmsEnabled) {
+      const ridgeCoreMask = new Uint8Array(foreground.length);
+      const ambiguousMask = new Uint8Array(foreground.length);
+      const removedMask = new Uint8Array(foreground.length);
+      const removedReasonCounts = { nmsSuppressed: 0, directionConflict: 0, invalidDirection: 0, truncated: 0 };
+      // NMS re-evaluates only the center's winning normal and offset. It does
+      // not compare each neighbor's independently winning probe.
+      const fixedValley = (x: number, y: number, directionIndex: number, offsetIndex: number) => {
+        const radians = Math.atan2(ny, nx) + directionIndex * Math.PI / probeDirections;
+        const normalX = Math.cos(radians), normalY = Math.sin(radians), offset = probeOffsets[offsetIndex];
+        const px = Math.max(0, Math.min(width - 1, Math.round(x + normalX * offset))), py = Math.max(0, Math.min(height - 1, Math.round(y + normalY * offset)));
+        const qx = Math.max(0, Math.min(width - 1, Math.round(x - normalX * offset))), qy = Math.max(0, Math.min(height - 1, Math.round(y - normalY * offset)));
+        return Math.min(smoothed[py * width + px], smoothed[qy * width + qx]) - smoothed[y * width + x];
+      };
+      const axisDistance = (a: number, b: number) => {
+        return Math.abs(Math.atan2(Math.sin(2 * (a - b)), Math.cos(2 * (a - b)))) / 2;
+      };
+      for (let index = 0; index < foreground.length; index++) {
+        if (!foreground[index]) continue;
+        if (!consume(budget, 3)) {
+          ambiguousMask[index] = 1;
+          removedReasonCounts.truncated++;
+          continue;
+        }
+        const directionIndex = bestProbeDirection[index], offsetIndex = bestProbeOffset[index];
+        if (directionIndex < 0 || offsetIndex < 0) {
+          ambiguousMask[index] = 1;
+          removedReasonCounts.invalidDirection++;
+          continue;
+        }
+        const x = index % width, y = Math.floor(index / width);
+        const radians = Math.atan2(ny, nx) + directionIndex * Math.PI / probeDirections;
+        const neighborX = Math.cos(radians) * neighborDistancePx, neighborY = Math.sin(radians) * neighborDistancePx;
+        // The three fixed-probe evaluations (center and two NMS neighbors) are
+        // charged above; probeOffsetsPx and neighborDistancePx are distinct
+        // image-pixel units.
+        const center = fixedValley(x, y, directionIndex, offsetIndex);
+        const before = fixedValley(x - neighborX, y - neighborY, directionIndex, offsetIndex);
+        const after = fixedValley(x + neighborX, y + neighborY, directionIndex, offsetIndex);
+        const nearbyDirections: number[] = [];
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const nxp = x + dx, nyp = y + dy;
+          if (nxp < 0 || nxp >= width || nyp < 0 || nyp >= height) continue;
+          const nearby = nyp * width + nxp;
+          if (foreground[nearby] && bestProbeDirection[nearby] >= 0) nearbyDirections.push(Math.atan2(ny, nx) + bestProbeDirection[nearby] * Math.PI / probeDirections);
+        }
+        // 2*angle makes this an unoriented 180-degree axis comparison. It is
+        // only a conflict/ambiguity score; it never adds a bridge or curve.
+        const coherence = nearbyDirections.length ? nearbyDirections.reduce((sum, angleValue) => sum + Math.cos(2 * axisDistance(angleValue, radians)), 0) / nearbyDirections.length : 1;
+        if (coherence < 0.25) {
+          ambiguousMask[index] = 1;
+          removedReasonCounts.directionConflict++;
+        } else if (center >= before && center >= after) {
+          ridgeCoreMask[index] = 1;
+        } else {
+          removedMask[index] = 1;
+          removedReasonCounts.nmsSuppressed++;
+        }
+      }
+      analysisForeground = new Uint8Array(foreground.length);
+      for (let index = 0; index < analysisForeground.length; index++) if (ridgeCoreMask[index] || ambiguousMask[index]) analysisForeground[index] = 1;
+      nms = { enabled: true, neighborDistancePx, probeOffsetsPx: [...probeOffsets], originalForegroundMask: foreground, ridgeCoreMask, ambiguousMask, removedMask, removedReasonCounts, truncated: Boolean(budget.truncatedReason) };
+    }
+    const allComponents = components(response, analysisForeground, width, height, budget);
     const tracks = allComponents.flatMap((component, componentId) => traceSkeleton(component, response, width, height, budget, componentId));
     const measurable = tracks.filter(track => track.status === "measurable").sort((a, b) => b.pathLengthPx - a.pathLengthPx);
     const ambiguousComponents = tracks.filter(track => track.status === "ambiguous").map(track => ({ componentId: track.componentId, supportPixelCount: track.supportPixelCount, responseMean: track.responseMean, points: track.points }));
@@ -342,7 +437,7 @@ export function trackMajorCreaseCandidates(
     const ambiguousSegments = ambiguousComponents.map(item => ({ componentId: item.componentId, points: item.points, pathLengthPx: pathLength(item.points), supportPixelCount: item.supportPixelCount, responseMean: item.responseMean, status: "ambiguous" as const }));
     const allSegments = [...segments, ...ambiguousSegments];
     const ridgeEvidence = new Map<string, { valleyResponse: number; probeAngleDeg: number | null }>();
-    for (let index = 0; index < foreground.length; index++) if (foreground[index]) {
+    for (let index = 0; index < analysisForeground.length; index++) if (analysisForeground[index]) {
       const x = index % width, y = Math.floor(index / width), directionIndex = bestProbeDirection[index];
       ridgeEvidence.set(`${x},${y}`, { valleyResponse: valleyResponse[index], probeAngleDeg: directionIndex >= 0 ? (Math.atan2(ny, nx) + directionIndex * Math.PI / probeDirections) * 180 / Math.PI : null });
     }
@@ -350,7 +445,7 @@ export function trackMajorCreaseCandidates(
     const thumbRegion = { xMin: Math.min(...thumbPoints.map(point => point.x)) - palmWidth * .12, xMax: Math.max(...thumbPoints.map(point => point.x)) + palmWidth * .12, yMin: Math.min(...thumbPoints.map(point => point.y)) - palmWidth * .12, yMax: Math.max(...thumbPoints.map(point => point.y)) + palmWidth * .12 };
     const pathRanking = rankConnectedCreasePaths(allSegments, componentRecords, ridgeEvidence, { axisAngleDeg: angle, thumbRegion }, { used: 0, limit: 8192 });
     const pathSearch = { searchTruncated: pathRanking.searchTruncated, budget: pathRanking.budget, truncatedReason: pathRanking.truncatedReason };
-    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, components: componentRecords, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, probe, truncated, truncatedReason, pathCandidates: pathRanking.pathCandidates, pathSearch } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", components: componentRecords, segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, probe, truncated, truncatedReason, pathCandidates: pathRanking.pathCandidates, pathSearch };
+    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, components: componentRecords, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, probe, truncated, truncatedReason, pathCandidates: pathRanking.pathCandidates, pathSearch, nms } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", components: componentRecords, segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, probe, truncated, truncatedReason, pathCandidates: pathRanking.pathCandidates, pathSearch, nms };
     // budget.used already includes probeBudget.used from the initial tracker
     // allocation; report the accumulated work exactly once.
     return finish({ status: truncated ? "truncated" : "ok", width, height, elapsedMs: 0, candidate, budget: { used: budget.used, limit: MAX_WORK_UNITS, reason: truncatedReason } });

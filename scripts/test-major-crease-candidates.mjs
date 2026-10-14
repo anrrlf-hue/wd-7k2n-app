@@ -30,8 +30,8 @@ function curve(mirror = false) {
   const source = [[42, 58], [41, 78], [40, 98], [44, 118], [54, 134], [76, 144]];
   return source.map(([x, y]) => [mirror ? width - x : x, y]);
 }
-function track(imageValue, mirror = false, seeds = []) {
-  return trackMajorCreaseCandidates(imageValue, landmarks(mirror), seeds);
+function track(imageValue, mirror = false, seeds = [], options = {}) {
+  return trackMajorCreaseCandidates(imageValue, landmarks(mirror), seeds, options);
 }
 function pathPoints(candidate) {
   return candidate.segments.flatMap(segment => segment.points);
@@ -152,4 +152,26 @@ assert.ok(["ok", "truncated"].includes(largeResult.status), "many texture compon
 const seedOverflow = track(curved, false, Array.from({ length: 1025 }, (_, i) => ({ x: i % width, y: Math.floor(i / width) })));
 assert.equal(seedOverflow.status, "truncated", "seed count limit is explicit");
 assert.equal(seedOverflow.candidate?.truncated, true, "seed truncation is explicit");
+const nmsCurve = track(thickCurved, false, [], { enabled: true, neighborDistancePx: 2 });
+const nms = nmsCurve.candidate?.nms;
+assert.equal(nms?.enabled, true, "ridge NMS is opt-in");
+assert.equal(nms?.neighborDistancePx, 2, "NMS comparison distance is explicit in pixels");
+assert.ok(nms && Math.abs(nms.probeOffsetsPx[0] - 2) < 1e-9 && Math.abs(nms.probeOffsetsPx[1] - 3.8) < 1e-9 && Math.abs(nms.probeOffsetsPx[2] - 6.08) < 1e-9, "NMS keeps probe offsets separate from its neighbor distance");
+assert.ok(nms && nms.originalForegroundMask.length === width * height && nms.ridgeCoreMask.length === width * height && nms.ambiguousMask.length === width * height, "NMS emits separate masks");
+for (let i = 0; i < width * height; i++) {
+  assert.ok(!nms?.ridgeCoreMask[i] || nms.originalForegroundMask[i], "ridge core is a subset of original foreground");
+  assert.ok(!nms?.ambiguousMask[i] || nms.originalForegroundMask[i], "ambiguous mask is a subset of original foreground");
+  assert.ok(!(nms?.ridgeCoreMask[i] && nms.ambiguousMask[i]), "core and ambiguous masks are disjoint");
+}
+assert.ok((nms?.removedReasonCounts.nmsSuppressed ?? 0) > 0, "non-maximum foreground is removed with an explicit reason");
+assert.ok((nms?.ridgeCoreMask.reduce((sum, value) => sum + value, 0) ?? 0) > 0, "a curved ridge retains core pixels");
+const plateau = image(); stroke(plateau, [[24, 92], [136, 92]], 45, 4);
+const plateauNms = track(plateau, false, [], { enabled: true }).candidate?.nms;
+assert.ok((plateauNms?.ridgeCoreMask.reduce((sum, value) => sum + value, 0) ?? 0) > 0, "plateau keeps non-strict ridge centers");
+const crossing = image(); stroke(crossing, [[30, 130], [80, 60], [130, 130]], 45, 1); stroke(crossing, [[30, 60], [80, 130], [130, 60]], 45, 1);
+const crossingNms = track(crossing, false, [], { enabled: true }).candidate?.nms;
+assert.ok((crossingNms?.ambiguousMask.reduce((sum, value) => sum + value, 0) ?? 0) > 0, "crossing/direction conflict remains ambiguous");
+const nmsShading = track(shading, false, [], { enabled: true });
+assert.notEqual(nmsShading.candidate?.status, "candidate", "NMS does not create a local-contrast-only bypass");
+assert.ok((nms?.removedReasonCounts.truncated ?? 0) === 0 && nms?.truncated === false, "NMS stays within the synthetic work budget");
 console.log("PASS major crease candidates: foreground paths, mirror, gaps, false seed, brightness, and no-line guard");
