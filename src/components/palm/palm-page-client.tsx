@@ -35,11 +35,11 @@ const ANALYSIS_PHASES = {
   decode: "사진을 불러오고 있어요",
   landmarks: "사진에서 손 위치를 확인하고 있어요",
   quality: "사진 품질과 손바닥 영역을 확인하고 있어요",
-  lines: "기본 손금선을 분석하고 있어요. 처음에는 분석 파일을 불러오는 시간이 필요합니다",
+  lines: "두뇌선·감정선·생명선의 모양을 읽고 있어요",
   enhanced: "흐린 선을 보정한 사진과 비교하고 있어요",
-  secondary: "보조선 결과를 확인하고 있어요",
-  request: "촬영 정보로 리포트를 요청했어요. 서버 응답을 기다리고 있습니다",
-  body: "서버에 연결됐어요. 리포트 본문을 받고 있어요",
+  secondary: "운명선 후보를 확인하고 있어요",
+  request: "읽힌 손금과 입력한 정보로 풀이를 준비하고 있어요",
+  body: "완성된 풀이를 받고 있어요",
 } as const;
 type AnalysisPhase = keyof typeof ANALYSIS_PHASES;
 interface PalmReportResponse {
@@ -97,10 +97,10 @@ interface PalmResumeState {
 }
 
 const HAND_SHAPE_KO: Record<PalmFacts["handShape"], string> = {
-  square: "사각형 손바닥 · 짧은 손가락",
-  rectangular: "사각형 손바닥 · 긴 손가락",
-  elongated: "길쭉한 손바닥 · 짧은 손가락",
-  slender: "길쭉한 손바닥 · 긴 손가락",
+  square: "넓은 시작점 간격 · 짧은 중지 비율",
+  rectangular: "넓은 시작점 간격 · 긴 중지 비율",
+  elongated: "좁은 시작점 간격 · 짧은 중지 비율",
+  slender: "좁은 시작점 간격 · 긴 중지 비율",
   unknown: "확인 안 됨",
 };
 
@@ -209,6 +209,7 @@ export function PalmPageClient({
   const [analysisPhase, setAnalysisPhase] = useState<AnalysisPhase>("decode");
   const [retryMode, setRetryMode] = useState<"report" | "photo" | null>(null);
   const [analysisElapsed, setAnalysisElapsed] = useState(0);
+  const [reportIncludesPalm, setReportIncludesPalm] = useState(false);
   const tasks = useRef(new PalmTaskSlot());
   const analyzer = useRef(new PalmWorkerClient());
   const analysisStarted = useRef(0);
@@ -236,28 +237,39 @@ export function PalmPageClient({
       if (cancelled) return;
       restoredKey.current = resumeKey;
       if (!saved || !["result", "saju_only", "upload", "error"].includes(saved.stage)) return;
-      setStage(saved.stage);
+      const usable = (value: PalmFacts | null | undefined) => {
+        const normalized = value ? normalizePalmFactsObservation(value) : null;
+        return normalized && isPalmFactsUsable(normalized) ? normalized : null;
+      };
+      const left = usable(saved.leftPalmFacts), right = usable(saved.rightPalmFacts);
+      const primary = usable(saved.palmFacts) ?? (saved.dominantHand === "left" ? left ?? right : right ?? left);
+      const invalidResult = saved.stage === "result" && !primary;
+      setStage(invalidResult ? "error" : saved.stage);
       setCaptureHand(saved.captureHand ?? (saved.rightPalmFacts ? "left" : "right"));
-      retryReport.current = saved.retryReport ?? null;
+      retryReport.current = invalidResult ? null : saved.retryReport ?? null;
+      if (invalidResult) {
+        setRetryMode(null);
+        setErrorMsg("저장된 사진에서 개인 풀이에 쓸 특징을 확인하지 못했어요. 손바닥을 펴고 밝은 곳에서 다시 촬영해주세요.");
+      }
       if (saved.stage === "error") {
         setRetryMode(saved.retryReport ? "report" : null);
-        setErrorMsg("완료된 손 분석을 불러왔어요. 사진 원본은 저장하지 않으며, 리포트 요청을 다시 할 수 있습니다.");
+        setErrorMsg(left || right ? "완료된 손 분석을 불러왔어요. 사진을 다시 촬영하지 않고 풀이를 요청할 수 있습니다." : "이전 풀이 요청을 완료하지 못했어요. 입력한 생년월일로 다시 요청할 수 있습니다.");
       }
-      if ((saved.personalityKey ?? "null") !== personalityKey && saved.stage !== "upload") {
-        retryReport.current = { primary: saved.stage === "saju_only" ? null : saved.palmFacts, left: saved.stage === "saju_only" ? null : saved.leftPalmFacts ?? null, right: saved.stage === "saju_only" ? null : saved.rightPalmFacts ?? null };
+      if (!invalidResult && (saved.personalityKey ?? "null") !== personalityKey && saved.stage !== "upload") {
+        retryReport.current = { primary: saved.stage === "saju_only" ? null : primary, left: saved.stage === "saju_only" ? null : left, right: saved.stage === "saju_only" ? null : right };
         setStage("error");
         setRetryMode("report");
         setErrorMsg("입력한 성향 정보가 달라졌어요. 촬영 정보는 유지하고 현재 입력으로 리포트를 다시 받아주세요.");
       }
-      setPalmFacts(saved.palmFacts ? normalizePalmFactsObservation(saved.palmFacts) : null);
-      setLeftPalmFacts(saved.leftPalmFacts ? normalizePalmFactsObservation(saved.leftPalmFacts) : null);
-      setRightPalmFacts(saved.rightPalmFacts ? normalizePalmFactsObservation(saved.rightPalmFacts) : null);
+      setPalmFacts(primary);
+      setLeftPalmFacts(left);
+      setRightPalmFacts(right);
       setDominantHand(saved.dominantHand ?? null);
-      setBilateralReading(isStoredPalmReading(saved.bilateralReading) ? saved.bilateralReading : null);
+      setBilateralReading(left && right && isStoredPalmReading(saved.bilateralReading) ? saved.bilateralReading : null);
       setPreviousBilateralReading(isStoredPalmReading(saved.previousBilateralReading) ? saved.previousBilateralReading : null);
       setFinalReport(saved.finalReport ?? null);
-      setTripleCompare(saved.tripleCompare ?? []);
-      setVerdict(saved.verdict ?? null);
+      setTripleCompare(invalidResult || (saved.stage === "result" && (!left || !right)) ? [] : saved.tripleCompare ?? []);
+      setVerdict(invalidResult || (saved.stage === "result" && (!left || !right)) ? null : saved.verdict ?? null);
     });
     return () => {
       cancelled = true;
@@ -441,6 +453,7 @@ export function PalmPageClient({
   ) {
     if (!birthInput) throw new Error("생년월일 정보를 찾을 수 없어요. 사주 결과 화면에서 다시 들어와주세요.");
     retryReport.current = { primary: facts, left: leftFacts, right: rightFacts };
+    setReportIncludesPalm(Boolean(facts));
     operationStarted.current = performance.now();
     setAnalysisElapsed(0);
     setStage("loading");
@@ -475,8 +488,8 @@ export function PalmPageClient({
     setBilateralReading(data.bilateralReading ?? null);
     setPreviousBilateralReading(null);
     setFinalReport(data.freeReport?.report ?? null);
-    setTripleCompare(data.tripleCompare ?? []);
-    setVerdict(data.verdict ?? null);
+    setTripleCompare(facts && (!leftFacts || !rightFacts) ? [] : data.tripleCompare ?? []);
+    setVerdict(facts && (!leftFacts || !rightFacts) ? null : data.verdict ?? null);
     track("free_report_completed", { palmSkipped: Boolean(data.palmSkipped), bilateral: Boolean(leftFacts && rightFacts) });
     console.info("[palm-analysis]", { run: runNumber.current, phase: "complete", elapsedMs: Math.round(performance.now() - analysisStarted.current) });
     setStage(data.palmSkipped ? "saju_only" : "result");
@@ -486,7 +499,11 @@ export function PalmPageClient({
     if (!tasks.current.isCurrent(task)) return;
     track(err instanceof Error && err.name === "TimeoutError" ? "analysis_timeout" : "analysis_failed", { flow: "palm" });
     console.info("[palm-analysis]", { run: runNumber.current, phase: "failed", elapsedMs: Math.round(performance.now() - analysisStarted.current) });
-    setErrorMsg(err instanceof Error ? err.message : "분석 중 문제가 발생했어요. 다시 시도해주세요.");
+    console.warn("[palm-analysis] operation failed", err);
+    const preserved = leftPalmFacts || rightPalmFacts ? "완료된 손 분석은 유지되며 다시 시도할 수 있습니다." : retryReport.current ? "입력한 생년월일을 유지한 채 다시 요청할 수 있습니다." : "이 화면에서 사진을 다시 선택하거나 촬영해 시도할 수 있습니다.";
+    setErrorMsg(err instanceof Error && err.name === "TimeoutError"
+      ? `${retryReport.current ? "리포트 받기가 30초" : "사진 읽기가 60초"}를 넘어 중단했어요. ${preserved}`
+      : retryReport.current?.primary === null ? `사주 풀이를 받지 못했어요. ${preserved}` : `분석을 끝내지 못했어요. ${preserved}`);
     setRetryMode(retryReport.current ? "report" : capturedCanvas.current ? "photo" : null);
     setStage("error");
   }
@@ -496,7 +513,7 @@ export function PalmPageClient({
     tasks.current.cancel();
     analyzer.current.dispose();
     setRetryMode(retryReport.current ? "report" : capturedCanvas.current ? "photo" : null);
-    setErrorMsg("분석을 취소했어요. 촬영한 사진과 완료된 손 분석은 이 화면에서 유지됩니다.");
+    setErrorMsg("분석을 취소했어요. 입력한 정보와 완료된 손 분석이 있다면 그대로 유지됩니다.");
     setStage("error");
   }
 
@@ -639,6 +656,19 @@ export function PalmPageClient({
     finally { tasks.current.finish(task); }
   }
 
+  async function viewConfirmedHand() {
+    const left = leftPalmFacts && isPalmFactsUsable(leftPalmFacts) ? leftPalmFacts : null;
+    const right = rightPalmFacts && isPalmFactsUsable(rightPalmFacts) ? rightPalmFacts : null;
+    const primary = dominantHand === "left" ? left ?? right : right ?? left;
+    if (!primary) return;
+    stopLiveCamera();
+    setPalmFacts(primary);
+    const task = beginTask();
+    try { await fetchReport(task, primary, left, right); }
+    catch (err) { showFailure(task, err); }
+    finally { tasks.current.finish(task); }
+  }
+
   function retryCurrentHand() {
     tasks.current.cancel();
     analyzer.current.dispose();
@@ -652,7 +682,6 @@ export function PalmPageClient({
     else { setLeftPalmFacts(null); setLeftPreviewUrl(null); }
     stopLiveCamera();
     setErrorMsg(null);
-    setRetakeAttempts(0);
     setPalmFacts(null);
     replacePreview(null);
     setStage("upload");
@@ -686,9 +715,9 @@ export function PalmPageClient({
       <JourneyHeader annualJourney chapter={stage === "result" || stage === "saju_only" ? 3 : 2} />
       <div>
       <CompanionHeading showCompanion={stage !== "upload"} state={stage === "upload" ? "palm-guide" : "palm-observing"} presence={stage === "upload" ? "transition" : "quiet"}>
-      <p className="section-eyebrow">{stage === "result" ? "나의 통합 풀이" : "두 번째 분석 · 손금"}</p>
+      <p className="section-eyebrow">{stage === "saju_only" || (stage === "loading" && !reportIncludesPalm) ? "나의 사주 풀이" : stage === "result" ? "나의 손금 풀이" : "손금 촬영과 풀이"}</p>
       <h1 className="mt-2 text-xl leading-snug font-semibold tracking-tight">
-        {stage === "result" ? "사주와 양손을 함께 읽는 나의 이야기" : stage === "saju_only" ? "사주 풀이를 연간 흐름으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
+        {stage === "result" ? leftPalmFacts && rightPalmFacts ? "양손에서 읽는 나의 이야기" : "읽힌 손에서 보는 나의 이야기" : stage === "saju_only" || (stage === "loading" && !reportIncludesPalm) ? "사주 풀이를 연간 흐름으로 이어보기" : <>손금에서는<br />어떤 내가 보일까요?</>}
       </h1>
       </CompanionHeading>
       </div>
@@ -862,12 +891,13 @@ export function PalmPageClient({
             }}
           />
 
+          {(leftPalmFacts || rightPalmFacts) && <Button variant="outline" onClick={viewConfirmedHand} className="mt-5 min-h-12 rounded-full">먼저 읽힌 {rightPalmFacts ? "오른손" : "왼손"} 풀이 보기</Button>}
           <button
             type="button"
             onClick={handleSkipPalm}
             className="mt-auto pt-8 text-center text-sm text-muted-foreground"
           >
-            손금 없이 계속 볼게요
+            손금은 나중에 추가하고, 먼저 사주 결과 보기
           </button>
         </div>
       )}
@@ -881,9 +911,9 @@ export function PalmPageClient({
             </div>
           )}
           <p className="mt-5 text-lg font-semibold">
-            {stage === "detecting" ? "손금선을 읽고 있습니다" : "양손과 사주를 함께 정리하고 있습니다"}
+            {stage === "detecting" ? "손금과 손의 특징을 읽고 있습니다" : !reportIncludesPalm ? "사주 풀이를 정리하고 있습니다" : "읽힌 손금과 사주를 정리하고 있습니다"}
           </p>
-          <p role="status" className="mt-2 min-h-12 max-w-sm text-sm leading-6 text-muted-foreground">{ANALYSIS_PHASES[analysisPhase]}</p>
+          <p role="status" className="mt-2 min-h-12 max-w-sm text-sm leading-6 text-muted-foreground">{stage === "loading" && !reportIncludesPalm && analysisPhase === "request" ? "입력한 생년월일로 사주 풀이를 준비하고 있어요" : ANALYSIS_PHASES[analysisPhase]}</p>
           <p className="mt-2 text-xs tabular-nums text-muted-foreground">이 단계 경과 {analysisElapsed}초 · {stage === "loading" ? "리포트 요청은 최대 30초" : "사진 분석은 최대 60초"}</p>
           {analysisElapsed >= 10 && <p className="mt-4 text-sm text-muted-foreground">예상보다 오래 걸리고 있어요. 취소한 뒤 다시 시도할 수 있습니다.</p>}
           <Button variant="outline" onClick={cancelAnalysis} className="mt-6 rounded-full">분석 취소</Button>
@@ -911,11 +941,8 @@ export function PalmPageClient({
               <RotateCcw className="size-4" />
               {captureHand === "right" ? "오른손 다시 촬영하기" : "왼손 다시 촬영하기"}
             </Button>
-            {retakeAttempts >= 2 && (
-              <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">
-                손금 없이 계속 보기
-              </button>
-            )}
+            {(leftPalmFacts || rightPalmFacts) && <Button variant="outline" onClick={viewConfirmedHand} className="min-h-12 rounded-full">먼저 읽힌 {rightPalmFacts ? "오른손" : "왼손"} 풀이 보기</Button>}
+            <button type="button" onClick={handleSkipPalm} className="text-center text-sm leading-6 text-muted-foreground">손금은 나중에 추가하고, 먼저 사주 결과 보기</button>
           </div>
         </div>
       )}
@@ -939,7 +966,8 @@ export function PalmPageClient({
             <Button size="lg" variant="outline" onClick={retryCurrentHand} className="h-13 w-full rounded-full text-base">
               {captureHand === "right" ? "오른손 사진 다시 선택·촬영" : "왼손 사진 다시 선택·촬영"}
             </Button>
-            <button type="button" onClick={handleSkipPalm} className="text-center text-sm text-muted-foreground">손금 없이 계속 보기</button>
+            {(leftPalmFacts || rightPalmFacts) && retryMode !== "report" && <Button variant="outline" onClick={viewConfirmedHand}>먼저 읽힌 {rightPalmFacts ? "오른손" : "왼손"} 풀이 보기</Button>}
+            <button type="button" onClick={handleSkipPalm} className="text-center text-sm leading-6 text-muted-foreground">손금은 나중에 추가하고, 먼저 사주 결과 보기</button>
           </div>
         </div>
       )}
@@ -956,11 +984,11 @@ export function PalmPageClient({
           >
             {leftPalmFacts && rightPalmFacts && innatePalmFacts && currentPalmFacts ? (
               <>
-                <p className="section-eyebrow">양손 분석 완료</p>
+                <p className="section-eyebrow">양손에서 읽힌 손금 풀이</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   두 손의 같은 선을 나란히 보고, 읽힌 특징만 해석에 사용합니다.
                 </p>
-                <details className="mt-3" open={!annualPalmConnectionsVisible}>
+                <details className="mt-3">
                 <summary className="cursor-pointer text-sm">촬영한 양손 확인</summary>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-accent p-3">
@@ -994,8 +1022,7 @@ export function PalmPageClient({
             )}
           </motion.div>
 
-          <details className="mt-5" open={!annualPalmConnectionsVisible}>
-            <summary className="cursor-pointer text-sm">손금 관측과 개별 풀이 자세히 보기</summary>
+          <section className="mt-5" aria-label="읽힌 손금의 개인 풀이">
           <div className="mt-3">
             {rightPalmFacts && leftPalmFacts ? (
               <>
@@ -1017,7 +1044,9 @@ export function PalmPageClient({
             )}
             {(!annualPalmConnectionsVisible || personalityInput?.personalityAnswers) && <TripleCompareSection items={tripleCompare} withSelf={Boolean(personalityInput?.personalityAnswers)} />}
           </div>
-          </details>
+          </section>
+
+          {(!leftPalmFacts || !rightPalmFacts) && <div className="mt-5 rounded-2xl border border-border p-4"><p className="text-sm leading-7">{palmFacts.handSide === "left" ? "왼손" : "오른손"}에서 확인된 특징만 읽었습니다. 다른 손의 결과를 대신 채우지 않았어요.</p><Button variant="outline" className="mt-3 min-h-12" onClick={() => { setCaptureHand(leftPalmFacts ? "right" : "left"); setStage("upload"); }}>다른 손도 촬영해 함께 보기</Button></div>}
 
           {verdict && !annualPalmConnectionsVisible && <VerdictCard verdict={verdict} />}
         </div>
@@ -1027,9 +1056,10 @@ export function PalmPageClient({
         <div className="mt-6 flex flex-1 flex-col">
           <AnalyticsView event="result_viewed" />
           <div className="mystic-card p-4 text-sm text-muted-foreground">
-            이번 결과는 사주와 입력한 정보를 중심으로 봤어요.
+            먼저 사주와 입력한 정보로 풀이를 봅니다. 손금은 나중에 촬영해 추가할 수 있어요.
           </div>
-          <TripleCompareSection items={tripleCompare} withPalm={false} />
+          <Button variant="outline" className="mt-3 min-h-12" onClick={() => { setCaptureHand(rightPalmFacts ? "left" : "right"); setStage("upload"); }}>손금 촬영해 추가하기</Button>
+          <TripleCompareSection items={tripleCompare} withPalm={false} withSelf={Boolean(personalityInput?.personalityAnswers)} />
           <FinalReportSections report={finalReport} />
           {verdict && <VerdictCard verdict={verdict} />}
         </div>
@@ -1041,8 +1071,8 @@ export function PalmPageClient({
           birthInput={birthInput}
           personalityInput={personalityInput}
           palmFacts={palmFacts}
-          leftPalmFacts={leftPalmFacts}
-          rightPalmFacts={rightPalmFacts}
+          leftPalmFacts={stage === "saju_only" ? null : leftPalmFacts}
+          rightPalmFacts={stage === "saju_only" ? null : rightPalmFacts}
           dominantHand={dominantHand}
           initialReport={initialAnnualReport?.identity === `${resumeKey}:${personalityKey}` ? initialAnnualReport.report : null}
           onPalmConnectionsVisibleChange={setAnnualPalmConnectionsVisible}

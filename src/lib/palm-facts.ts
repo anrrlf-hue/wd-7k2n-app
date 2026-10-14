@@ -89,6 +89,7 @@ export interface OnnxPalmLines {
 export type SecondaryLineStatus = "clear" | "faint" | "not_seen";
 
 export interface SecondaryPalmLineSignal {
+  assessment?: "observed" | "not_observed" | "error" | "unsupported" | "unconfirmed";
   status: SecondaryLineStatus;
   strength: number;
   span: number;
@@ -120,6 +121,8 @@ export interface PalmPipelineDiagnostics {
   fateModelConfidence?: number | null;
   fateModelVerticalSpan?: number | null;
   fateModelCorroborated?: boolean;
+  fateModelStatus?: "ok" | "no_detections" | "error" | "skipped";
+  fateModelSkipped?: boolean;
   threeLineElapsedMs?: number;
   fateModelElapsedMs?: number;
   totalModelElapsedMs?: number;
@@ -131,6 +134,7 @@ export interface PalmPipelineDiagnostics {
 }
 
 export interface PalmFacts {
+  handGeometry?: import("@/lib/palm-hand-geometry").PalmHandGeometry;
   handSide: HandSide;
   imageQuality: ImageQuality;
   handShape: HandShape;
@@ -194,17 +198,18 @@ export function onnxDetectedLineCount(facts: PalmFacts): number {
   return [heartLine, headLine, lifeLine].filter((l) => l.detected).length;
 }
 
-/** 해석 단계로 넘어가도 되는지 판단하는 기준. 성공 판정은 오직 실제 ONNX
- * 결과로만 한다. 한 선이라도 실제 모델이 읽었다면 그 선부터 보여주고,
+/** 해석 단계로 넘어가도 되는지 판단하는 기준. 실제 ONNX 선, 자세 검사를
+ * 통과한 손 비율 또는 교차 확인된 운명선이 필요하다. 한 선이라도 실제 모델이 읽었다면 그 선부터 보여주고,
  * 못 읽은 선 때문에 확인된 결과까지 버리지 않는다. Sobel 휴리스틱
  * (lineFeatures/confidence)은 촬영 품질 보조/디버그 신호로만 유지한다. */
 export function isPalmFactsUsable(facts: PalmFacts): boolean {
   if (facts.imageQuality !== "good") return false;
-  if (!facts.onnxLines || !facts.onnxLines.modelExecuted) return false;
   // 한 선이라도 실제 모델이 확인했다면 확인된 내용부터 보여준다.
   // 나머지 선이 안 보인다는 이유로 전체 손금 결과를 버리지 않는다.
-  if (onnxDetectedLineCount(facts) < 1) return false;
-  return true;
+  if (facts.onnxLines?.modelExecuted && onnxDetectedLineCount(facts) > 0) return true;
+  const geometry = facts.handGeometry;
+  if (geometry?.status === "observed" && geometry.palmWidthToLength && Object.keys(geometry.fingerToPalm).length >= 3 && (facts.handShape !== "unknown" || geometry.indexRing)) return true;
+  return facts.secondaryLines?.fate.assessment === "observed" && facts.secondaryLines.fate.status === "clear" && Boolean(facts.secondaryLines.fate.corroborated);
 }
 
 /** 재촬영 화면에 보여줄, 실패 원인별 짧은 안내. attempt(1부터)가 올라갈수록

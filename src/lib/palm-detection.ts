@@ -12,6 +12,7 @@ import { analyzeEdgeBand, analyzeVerticalCreaseBand } from "@/lib/palm-line-feat
 import { runPalmLineOnnx, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
 import { runPalmFourLineOnnx } from "@/lib/palm-4line-onnx";
 import { fuseFateSignal } from "@/lib/palm-fate-fusion";
+import { measurePalmHandGeometry } from "@/lib/palm-hand-geometry";
 import type {
   HandShape,
   HandSide,
@@ -842,7 +843,8 @@ export async function analyzePalmFromCanvas(
         : "unknown";
   const detectionConfidence = handednessCategory?.score ?? 0.5;
 
-  const handShape = classifyHandShape(landmarksPx);
+  const handGeometry = measurePalmHandGeometry(result.landmarks[0], canvas.width, canvas.height);
+  const handShape = handGeometry.status === "observed" && handGeometry.fingerToPalm.middle != null ? classifyHandShape(landmarksPx) : "unknown";
   const lineFeatures = extractLineFeatures(imageData, landmarksPx);
 
   // 1차는 upstream과 같은 fixed 100px crop을 그대로 둔다.
@@ -855,18 +857,10 @@ export async function analyzePalmFromCanvas(
   const palmCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left", adaptiveMargin);
   const secondaryLinesBase = detectSecondaryPalmLines(adaptivePalmCrop, enhancedPalmCrop, palmCropLandmarks);
 
-  // 3선 모델과 운명선 보조 모델은 서로 독립이므로 동시에 시작한다.
-  // 4선 모델의 네트워크 로드/초기화가 3선 추론 뒤에 직렬로 붙어 대기시간을
-  // 늘리지 않도록 하되, 기존 3선 판정 우선순위는 그대로 유지한다.
+  // Both models use the same single-threaded WASM runtime. Finish all three-line
+  // inference before initializing/running the pose session to avoid overlap.
   const totalModelStartedAt = performance.now();
   const skipSecondaryPoseModel = shouldSkipSecondaryPoseModel();
-  const fateModelStartedAt = performance.now();
-  const fourLinePromise = skipSecondaryPoseModel
-    ? Promise.resolve({ result: null, elapsedMs: 0 })
-    : runPalmFourLineOnnx(enhancedPalmCrop, 0.08).then((result) => ({
-        result,
-        elapsedMs: performance.now() - fateModelStartedAt,
-      }));
 
   onPhase("lines");
   const threeLineStartedAt = performance.now();
@@ -921,15 +915,24 @@ export async function analyzePalmFromCanvas(
     : null;
 
   onPhase("secondary");
-  const fourLineTimed = await fourLinePromise;
-  const fourLine = fourLineTimed.result;
-  const fateModelElapsedMs = fourLineTimed.elapsedMs;
+  const fateModelStartedAt = performance.now();
+  const fourLine = skipSecondaryPoseModel ? null : await runPalmFourLineOnnx(enhancedPalmCrop, 0.08);
+  const fateModelElapsedMs = skipSecondaryPoseModel ? 0 : performance.now() - fateModelStartedAt;
   const totalModelElapsedMs = performance.now() - totalModelStartedAt;
   const fateModel = fourLine?.fate ?? null;
+  const fusedFate = secondaryLinesBase ? fuseFateSignal(secondaryLinesBase.fate, fateModel) : null;
   const secondaryLines = secondaryLinesBase
     ? {
         ...secondaryLinesBase,
-        fate: fuseFateSignal(secondaryLinesBase.fate, fateModel),
+        fate: {
+          ...fusedFate!,
+          assessment: fourLine?.status === "error" ? "error" as const
+            : !fourLine ? "unconfirmed" as const
+              : fateModel && fusedFate?.corroborated && fusedFate.status === "clear" ? "observed" as const
+                : fateModel ? "unconfirmed" as const : "not_observed" as const,
+        },
+        sun: { ...secondaryLinesBase.sun, assessment: "unsupported" as const },
+        wealth: { ...secondaryLinesBase.wealth, assessment: "unsupported" as const },
       }
     : undefined;
 
@@ -962,6 +965,7 @@ export async function analyzePalmFromCanvas(
       lifeLine: pixelCount(onnxEnhanced, "life_line"),
     },
     fateModelSkipped: skipSecondaryPoseModel,
+    fateModelStatus: fourLine?.status ?? "skipped" as const,
     fateModelConfidence: fateModel?.confidence ?? null,
     fateModelVerticalSpan: fateModel?.verticalSpan ?? null,
     fateModelCorroborated: secondaryLines?.fate.corroborated ?? false,
@@ -1002,6 +1006,7 @@ export async function analyzePalmFromCanvas(
   }
 
   return {
+    handGeometry,
     handSide,
     imageQuality,
     handShape,

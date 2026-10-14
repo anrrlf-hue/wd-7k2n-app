@@ -57,9 +57,10 @@ async function open({ blockedStorage = false, width = 390 } = {}) {
   }, { stubUrl, palmEntryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture) });
   const page = await context.newPage(); page.setDefaultTimeout(15000);
   page.on("pageerror", e => errors.push(e.message));
+  page.on("console", m => { if (m.type() === "warning" && m.text().includes("[premium-report]")) fs.appendFileSync(`${evidence}/request-errors.txt`, m.text() + "\n"); });
   await page.goto(url);
   assert.equal(await page.getByRole("region", { name: "무료 사주 링크 공유" }).count(), 0);
-  await page.getByRole("button", { name: "손금 없이 계속 볼게요", exact: true }).click();
+  await page.getByRole("button", { name: "손금은 나중에 추가하고, 먼저 사주 결과 보기", exact: true }).click();
   try { await page.getByRole("button", { name: "프리미엄 보기", exact: true }).waitFor(); }
   catch (error) { fs.writeFileSync(`${evidence}/premium-entry-failure.txt`, JSON.stringify({ body: await page.locator("body").innerText(), errors, unexpected }, null, 2)); throw error; }
   if (blockedStorage) await page.evaluate(() => {
@@ -92,19 +93,19 @@ try {
     const count = requests.length;
     await p.getByRole("button", { name: "프리미엄 접기", exact: true }).click();
     await p.getByRole("button", { name: "프리미엄 다시 보기", exact: true }).click(); await result(s);
-    await p.reload(); await result(s);
+    await p.reload(); await p.getByRole("button", { name: "프리미엄 다시 보기", exact: true }).click(); await result(s);
     assert.equal(requests.length, count, "reopen/reload must not regenerate same input and month");
     // A different person's input must not restore the previous report.
     await p.evaluate(({ key, entry }) => sessionStorage.setItem(key, entry), { key: PALM_ENTRY_KEY, entry: palmEntry({ ...birthFixture, day: 16 }) });
     await p.goto(url);
-    await p.getByRole("button", { name: "손금 없이 계속 볼게요", exact: true }).click();
+    await p.getByRole("button", { name: "손금은 나중에 추가하고, 먼저 사주 결과 보기", exact: true }).click();
     assert.equal(await p.locator("#premium-report").count(), 0);
     await s.context.close();
   }
   console.log("PASS integrated desktop/mobile: all fields + 12 months, share after result, no selection/payment, reopen/reload without requests, other birth isolated");
 
   mode = "delayed"; let s = await open(); await start(s);
-  await s.page.getByRole("status").filter({ hasText: "응답을 기다리고" }).waitFor();
+  await s.page.getByRole("status").filter({ hasText: "깊은풀이를 준비" }).waitFor();
   assert.equal(await s.page.getByRole("region", { name: "무료 사주 링크 공유" }).count(), 0);
   const stale = requests.at(-1).id;
   await s.page.getByRole("button", { name: "리포트 요청 취소", exact: true }).click();
@@ -117,10 +118,16 @@ try {
 
   for (mode of ["hang", "body-hang"]) {
     s = await open(); await s.page.clock.install(); await start(s);
-    await s.page.getByRole("status").filter({ hasText: mode === "hang" ? "응답을 기다리고" : "리포트 본문" }).waitFor();
+    await s.page.getByRole("status").filter({ hasText: mode === "hang" ? "깊은풀이를 준비" : "깊은풀이를 받고" }).waitFor();
     const id = requests.at(-1).id;
     await s.page.clock.fastForward(31_000);
-    await s.page.getByRole("alert").filter({ hasText: "30초" }).waitFor();
+    try { await s.page.getByRole("alert").filter({ hasText: "30초" }).waitFor(); } catch (e) { fs.writeFileSync(`${evidence}/deadline-failure.txt`, await s.page.locator("body").innerText()); throw e; }
+    const timeoutText = await s.page.getByRole("alert").filter({ hasText: "30초" }).innerText();
+    assert.match(timeoutText, /입력한 생년월일은 유지/);
+    assert.doesNotMatch(timeoutText, /완료된 손 분석|Error|left|right/);
+    assert.equal(await s.page.locator("#premium-report").count(), 0, "timed-out response cannot render a partial report");
+    assert.equal(await s.page.evaluate(() => sessionStorage.getItem("saju-app:integrated-premium:v1")), null, "timed-out response cannot replace the saved result");
+    await s.page.screenshot({ path: `${evidence}/premium-${mode}-timeout.png` });
     await s.page.waitForTimeout(100);
     assert.ok(disconnected.includes(id));
     const input = requests.at(-1).body;
@@ -131,7 +138,7 @@ try {
   console.log("PASS premium header/body deadlines + stream abort + input preserved (virtual clock)");
 
   mode = "body-hang"; s = await open(); await start(s);
-  await s.page.getByRole("status").filter({ hasText: "리포트 본문" }).waitFor();
+  await s.page.getByRole("status").filter({ hasText: "깊은풀이를 받고" }).waitFor();
   const leaving = requests.at(-1).id;
   await s.page.getByRole("link", { name: "개인정보처리방침", exact: true }).click();
   await s.page.waitForURL(BASE + "/privacy");
@@ -144,19 +151,23 @@ try {
   console.log("PASS premium navigation abort, no stale cache, back retry");
 
   mode = "body-hang"; s = await open(); await start(s);
-  await s.page.getByRole("status").filter({ hasText: "리포트 본문" }).waitFor();
+  await s.page.getByRole("status").filter({ hasText: "깊은풀이를 받고" }).waitFor();
   await s.page.evaluate(() => { dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true })); dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })); });
   await s.page.getByRole("alert").filter({ hasText: "화면을 떠나" }).waitFor();
   mode = "normal"; await start(s); await result(s); await s.context.close();
   console.log("PASS premium pagehide/pageshow recovery (simulated BFCache)");
 
   mode = "invalid-shape"; s = await open(); await start(s);
-  await s.page.getByRole("alert").filter({ hasText: "리포트 내용을 확인하지 못했어요" }).waitFor();
+  await s.page.getByRole("alert").filter({ hasText: "리포트를 불러오지 못했어요" }).waitFor();
+  assert.equal(await s.page.locator("#premium-report").count(), 0);
+  assert.equal(await s.page.evaluate(() => sessionStorage.getItem("saju-app:integrated-premium:v1")), null);
   mode = "normal"; await start(s); await result(s); await s.context.close();
   console.log("PASS incomplete report rejected before render/cache, input retained for retry");
 
   mode = "invalid"; s = await open({ blockedStorage: true }); await start(s);
-  await s.page.getByRole("alert").filter({ hasText: "리포트 본문을 읽지 못했어요" }).waitFor();
+  await s.page.getByRole("alert").filter({ hasText: "리포트를 불러오지 못했어요" }).waitFor();
+  assert.equal(await s.page.locator("#premium-report").count(), 0);
+  assert.doesNotMatch(await s.page.getByRole("alert").filter({ hasText: "리포트를 불러오지 못했어요" }).innerText(), /Error|SyntaxError|JSON/);
   mode = "normal"; await start(s); await result(s); await s.context.close();
   console.log("PASS malformed response retry and unavailable browser storage");
   assert.deepEqual(errors, []); assert.deepEqual(unexpected, [], "analytics must remain off; no other API calls");

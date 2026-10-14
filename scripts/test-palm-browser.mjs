@@ -96,9 +96,12 @@ async function twoHands(session) {
   assert.equal(requests.length, before + 1);
 }
 async function result(session) {
-  await session.page.getByText("양손 분석 완료", { exact: true }).waitFor({ timeout: 10000 });
+  await session.page.getByText("양손에서 읽힌 손금 풀이", { exact: true }).waitFor({ timeout: 10000 });
+  const open = session.page.getByRole("button", { name: /프리미엄 (다시 )?보기/, exact: true });
+  await open.waitFor();
+  assert.equal(await session.page.locator("#premium-report").count(), 0, "personal palm reading appears first");
+  await open.click();
   await session.page.getByRole("heading", { name: "프리미엄 통합 연간 리포트", exact: true }).waitFor();
-  assert.equal(await session.page.getByRole("button", { name: "프리미엄 보기", exact: true }).count(), 0, "both hands open the full annual report without another request or purchase");
 }
 try {
   let s = await open();
@@ -142,7 +145,7 @@ try {
     const started = Date.now();
     await twoHands(s);
     const id = requests.at(-1)?.id;
-    await s.page.getByRole("status").filter({ hasText: mode === "hang" ? "서버 응답" : "리포트 본문" }).waitFor();
+    await s.page.getByRole("status").filter({ hasText: mode === "hang" ? "풀이를 준비" : "풀이를 받고" }).waitFor();
     await s.page.getByRole("alert").filter({ hasText: "30초" }).waitFor({ timeout: 35000 });
     const elapsed = Date.now() - started;
     assert.ok(elapsed >= 29000 && elapsed < 35000, `deadline: ${elapsed}`);
@@ -159,7 +162,7 @@ try {
   }
 
   mode = "delayed"; s = await open(); await twoHands(s);
-  await s.page.getByRole("status").filter({ hasText: "서버 응답" }).waitFor();
+  await s.page.getByRole("status").filter({ hasText: "풀이를 준비" }).waitFor();
   await s.page.getByText(/이 단계 경과 [1-9]초/).waitFor();
   assert.ok(!(await s.page.locator("body").innerText()).includes("94%"));
   await s.page.screenshot({ path: evidence + "/palm-slow-request.png" });
@@ -169,7 +172,7 @@ try {
   await s.context.close();
 
   mode = "delayed"; s = await open(); await twoHands(s);
-  await s.page.getByRole("status").filter({ hasText: "서버 응답" }).waitFor();
+  await s.page.getByRole("status").filter({ hasText: "풀이를 준비" }).waitFor();
   const staleId = requests.at(-1).id;
   await s.page.getByRole("button", { name: "분석 취소", exact: true }).click();
   await s.page.getByRole("alert").filter({ hasText: "분석을 취소" }).waitFor();
@@ -203,7 +206,7 @@ try {
   await s.page.getByText("이제 왼손을 찍어주세요", { exact: true }).waitFor();
   await s.page.evaluate(() => { window.__palmTest.mode = "hang"; });
   await hand(s);
-  await s.page.getByRole("status").filter({ hasText: "기본 손금선" }).waitFor();
+  await s.page.getByRole("status").filter({ hasText: "두뇌선·감정선·생명선" }).waitFor();
   await s.page.clock.fastForward(61_000);
   await s.page.getByRole("alert").filter({ hasText: "60초" }).waitFor();
   assert.ok(await s.page.evaluate(() => window.__palmTest.terminated > 0));
@@ -215,7 +218,7 @@ try {
   await s.context.close();
 
   mode = "body-hang"; s = await open(); await twoHands(s);
-  await s.page.getByRole("status").filter({ hasText: "리포트 본문" }).waitFor();
+  await s.page.getByRole("status").filter({ hasText: "풀이를 받고" }).waitFor();
   const leavingId = requests.at(-1).id;
   await s.page.getByRole("link", { name: "개인정보처리방침", exact: true }).click();
   await s.page.waitForURL(BASE + "/privacy");
@@ -234,7 +237,7 @@ try {
   await s.context.close();
 
   mode = "body-hang"; s = await open(); await twoHands(s);
-  await s.page.getByRole("status").filter({ hasText: "리포트 본문" }).waitFor();
+  await s.page.getByRole("status").filter({ hasText: "풀이를 받고" }).waitFor();
   await s.page.evaluate(() => {
     dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
     dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));

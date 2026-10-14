@@ -2,6 +2,7 @@ import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
 import { normalizePalmFactsObservation } from "@/lib/palm-facts";
 import type { DominantHand } from "@/lib/palm-bilateral";
 import { validateReadingPlan, type ReadingPlan } from "@/lib/reading-plan";
+import { palmPersonalLineReading } from "@/lib/palm-customer-reading";
 
 const LINES = { headLine: "두뇌선", heartLine: "감정선", lifeLine: "생명선" } as const;
 type LineKey = keyof typeof LINES;
@@ -13,28 +14,8 @@ function describe(line: OnnxLineDetail | undefined): string {
   return [source, segmentLength, line.curve, signal].filter(Boolean).join(" · ") || "선 후보만 확인";
 }
 
-const LINE_LOCATIONS = {
-  headLine: "손바닥 중앙을 가로지르는 두뇌선으로 부르는 자리",
-  heartLine: "손가락 아래쪽을 가로지르는 감정선으로 부르는 자리",
-  lifeLine: "엄지 밑을 감싸 손목 쪽으로 내려가는 생명선으로 부르는 자리",
-} as const;
-
-function sourcePhrase(line: OnnxLineDetail): string {
-  return line.sourceVariant === "enhanced" ? "보정 영상의" : line.sourceVariant === "raw" ? "원본 사진의" : "사진의";
-}
-
 function lineNarrative(key: LineKey, line: OnnxLineDetail): string {
-  const curve = line.curve && line.attributeSupport?.curve !== "not_supported" ? line.curve : null;
-  const shape = curve
-    ? `${curve === "직선에 가까움" ? "직선에 가까운" : "완만한 곡선의"} 검출 구간`
-    : "확인된 검출 구간";
-  if (key === "heartLine") {
-    return `${sourcePhrase(line)} ${LINE_LOCATIONS[key]}에서 ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 마음을 표현하고 관계의 기대를 주고받는 방식과 연결해 봅니다. 예를 들어 상대가 기쁜 소식을 전했을 때 축하를 먼저 말하고 내 반응도 짧게 덧붙이는 장면으로 옮겨볼 수 있습니다.`;
-  }
-  if (key === "headLine") {
-    return `${sourcePhrase(line)} ${LINE_LOCATIONS[key]}에서 ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생각을 정리하고 선택 조건을 세우는 방식과 연결해 봅니다. 예를 들어 목적은 유지한 채 비교할 조건을 먼저 정하고, 그 조건 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다.`;
-  }
-  return `${sourcePhrase(line)} ${LINE_LOCATIONS[key]}에서 ${shape}이 확인됩니다. 전통 손금에서는 이 위치를 생활 기반과 활동 리듬을 살펴보는 자리로 연결해 봅니다. 예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다.`;
+  return palmPersonalLineReading(key, line) ?? "";
 }
 
 /** One composition from observed features, with traceable interpretation rules.
@@ -63,8 +44,8 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
     }
   }
   const refs = (key: LineKey) => (["left", "right"] as const).flatMap(hand => ["detected", "length", "curve", "depthStrength", "sourceVariant", "rawDetected", "enhancedDetected", "endpointEvidence", "pathCompleteness", "attributeSupport"].map(field => `${hand}.${key}.${field}`));
-  const usableHead = head?.detected && head.curve;
-  const usableHeart = heart?.detected && heart.curve;
+  const usableHead = palmPersonalLineReading("headLine", head);
+  const usableHeart = palmPersonalLineReading("heartLine", heart);
   const curvedHead = head?.curve === "완만한 곡선";
   const curvedHeart = heart?.curve === "완만한 곡선";
   if (usableHead && usableHeart) {
@@ -88,13 +69,12 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
       plan.passages.push({ id: `${key}-unread`, kind: "observation", text: `${label}의 ${LINES[key]}을 충분히 읽지 못해 이 선의 해석은 보류합니다.`, evidenceIds: refs(key) });
       continue;
     }
-    if (line?.detected) {
-      plan.passages.push({ id: `${key}-reading`, kind: "traditional", text: lineNarrative(key, line), evidenceIds: refs(key) });
-    }
-    if (l?.detected && r?.detected && l.curve === r.curve) {
-      plan.passages.push({ id: `${key}-bilateral-common`, kind: "observation", text: `${LINES[key]}은 두 사진의 검출 구간에서 같은 방향(${l.curve ?? "확인 안 됨"})으로 관찰됩니다. 두 사진에서 공통으로 보이는 참고점으로 사용합니다.`, evidenceIds: refs(key) });
-    } else if (l?.detected && r?.detected && l.curve !== r.curve) {
-      plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}의 두 검출 구간은 서로 다른 방향으로 분류됐습니다. 사진 각도·조명·보정 차이의 영향도 있어, 이번 비교에서는 두 관측의 차이로만 남깁니다.`, evidenceIds: refs(key) });
+    const reading = lineNarrative(key, line);
+    if (reading) plan.passages.push({ id: `${key}-reading`, kind: "traditional", text: reading, evidenceIds: refs(key) });
+    if (palmPersonalLineReading(key, l) && palmPersonalLineReading(key, r) && l?.curve === r?.curve) {
+      plan.passages.push({ id: `${key}-bilateral-common`, kind: "observation", text: `${LINES[key]}은 두 사진에서 같은 방향(${l?.curve ?? "확인 안 됨"})으로 보입니다. 두 손에서 공통으로 읽힌 특징입니다.`, evidenceIds: refs(key) });
+    } else if (palmPersonalLineReading(key, l) && palmPersonalLineReading(key, r) && l?.curve !== r?.curve) {
+      plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}은 두 사진에서 서로 다른 방향으로 보입니다. 사진 각도와 조명의 영향도 있어 실제로 변했다는 뜻으로 해석하지 않습니다.`, evidenceIds: refs(key) });
     }
   }
   const detected = (Object.keys(LINES) as LineKey[]).filter(key => primary.onnxLines?.[key].detected);

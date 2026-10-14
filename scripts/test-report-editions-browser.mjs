@@ -61,7 +61,11 @@ try {
   const saved = () => page.evaluate(key => JSON.parse(sessionStorage.getItem(key)), KEY);
   const url = BASE + "/diagnosis/palm";
   const revealEditions = async () => {
-    const summary = page.getByText("저장된 리포트와 다른 풀이판", { exact: true });
+    await page.waitForFunction(() => document.querySelector("#premium-report")
+      || Array.from(document.querySelectorAll("button")).some(button => button.textContent?.trim() === "프리미엄 다시 보기"));
+    const ready = page.getByRole("button", { name: "프리미엄 다시 보기", exact: true });
+    if (await ready.isVisible()) await ready.click();
+    const summary = page.getByText("저장해둔 풀이 다시 보기", { exact: true });
     await summary.waitFor();
     if (!(await summary.evaluate(el => el.parentElement.open))) await summary.click();
   };
@@ -75,12 +79,12 @@ try {
   assert.deepEqual((await saved()).report, legacy);
   assert.equal(requests.length, 0, "even an older reference month never silently regenerates");
   await upgrade().click();
-  await page.getByRole("alert").filter({ hasText: "검증용 일시 오류" }).waitFor();
+  await page.getByRole("alert").filter({ hasText: "리포트를 불러오지 못했어요" }).waitFor();
   assert.deepEqual((await saved()).report, legacy, "failed update cannot replace saved text");
   mode = "normal";
   await page.getByRole("button", { name: "새 리포트 다시 요청", exact: true }).click();
   await revealEditions();
-  await page.getByText("근거 연결 개정판 · 저장된 원문", { exact: true }).waitFor();
+  await page.getByText("지금 보고 있는 풀이", { exact: true }).waitFor();
   assert.equal(requests.length, 2, "retry after failed explicit update actually requests the new edition");
   assert.deepEqual((await saved()).report, current.report);
   assert.deepEqual((await saved()).previousReport, legacy);
@@ -90,7 +94,7 @@ try {
   await page.reload(); await revealEditions(); await upgrade().waitFor();
   assert.deepEqual((await saved()).report, legacy);
   mode = "hold"; await upgrade().click();
-  await page.getByRole("status").filter({ hasText: "응답을 기다리고" }).waitFor();
+  await page.getByRole("status").filter({ hasText: "깊은풀이를 준비" }).waitFor();
   await waitForHeld;
   await page.getByRole("button", { name: "리포트 요청 취소", exact: true }).click();
   await page.getByRole("button", { name: "프리미엄 다시 보기", exact: true }).click();
@@ -100,8 +104,8 @@ try {
   if (held) await held.fulfill({ json: current }).catch(() => {});
   await page.getByRole("button", { name: "다른 저장본 보기", exact: true }).click();
   await revealEditions();
-  await page.getByText("근거 연결 개정판 · 저장된 원문", { exact: true }).waitFor();
-  await page.reload(); await revealEditions(); await page.getByText("근거 연결 개정판 · 저장된 원문", { exact: true }).waitFor();
+  await page.getByText("지금 보고 있는 풀이", { exact: true }).waitFor();
+  await page.reload(); await revealEditions(); await page.getByText("지금 보고 있는 풀이", { exact: true }).waitFor();
   assert.deepEqual((await saved()).report, current.report);
   assert.equal(requests.length, 3);
   for (const width of [390, 1440]) {
@@ -119,7 +123,7 @@ try {
   }
   await page.evaluate(({ key, entry }) => sessionStorage.setItem(key, entry), { key: PALM_ENTRY_KEY, entry: palmEntry({ ...birthFixture, day: 16 }) });
   await page.goto(url);
-  await page.getByRole("button", { name: "손금 없이 계속 볼게요", exact: true }).waitFor();
+  await page.getByRole("button", { name: "손금은 나중에 추가하고, 먼저 사주 결과 보기", exact: true }).waitFor();
   assert.equal(await page.locator("#premium-report").count(), 0);
   assert.deepEqual(errors, []); assert.deepEqual(unexpected, []);
   fs.writeFileSync(`${evidence}/report-editions-browser-${previousRevision}.json`, JSON.stringify({ synthetic: true, previousRevision, restoredLegacyWithoutRequest: true, explicitUpgradeFailureRetry: true, canceledUpgradePreservesOriginal: true, bothSnapshotsSurviveReload: true, originalPeriod: legacy.annual.startLabel, currentPeriod: current.report.annual.startLabel, requests: requests.map(r => r.mode), errors, unexpected }, null, 2));

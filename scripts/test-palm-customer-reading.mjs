@@ -1,0 +1,62 @@
+import "./register-test-typescript.mjs";
+import assert from "node:assert/strict";
+import { palmFixture } from "./fixtures/palm-analysis.mjs";
+const { measurePalmHandGeometry } = await import("../src/lib/palm-hand-geometry.ts");
+const { buildPalmCustomerPassages, palmCustomerLimits, secondaryObservationState } = await import("../src/lib/palm-customer-reading.ts");
+const { isPalmFactsUsable } = await import("../src/lib/palm-facts.ts");
+const { palmFactsSchema } = await import("../src/lib/palm-input-schema.ts");
+const { buildPalmBilateralReading } = await import("../src/lib/palm-bilateral.ts");
+const { customerReadingBasis, describeReadingEvidence } = await import("../src/lib/reading-evidence-display.ts");
+
+const pixels = Array.from({ length: 21 }, () => ({ x: 250, y: 500, z: 0 }));
+pixels[0] = { x: 250, y: 680, z: 0 };
+for (const [ids, start, end] of [
+  [[1, 2, 3, 4], [160, 600], [70, 450]], [[5, 6, 7, 8], [170, 430], [160, 130]],
+  [[9, 10, 11, 12], [240, 400], [240, 100]], [[13, 14, 15, 16], [310, 430], [310, 150]],
+  [[17, 18, 19, 20], [370, 480], [370, 250]],
+]) ids.forEach((id, i) => { pixels[id] = { x: start[0] + (end[0] - start[0]) * i / 3, y: start[1] + (end[1] - start[1]) * i / 3, z: 0 }; });
+const normalize = (points, w, h) => points.map(p => ({ x: p.x / w, y: p.y / h, z: p.z / w }));
+const geometry = measurePalmHandGeometry(normalize(pixels, 500, 800), 500, 800);
+assert.equal(geometry.status, "observed");
+assert.equal(geometry.indexRing, "index_longer");
+const enlarged = pixels.map(p => ({ x: p.x * 2, y: p.y * 2, z: p.z * 2 }));
+assert.deepEqual(measurePalmHandGeometry(normalize(enlarged, 1000, 1600), 1000, 1600), geometry, "pixel aspect and uniform image scaling preserve proportions");
+const bent = structuredClone(pixels); bent[6].x = 350; bent[7].x = 100;
+const bentResult = measurePalmHandGeometry(normalize(bent, 500, 800), 500, 800);
+assert.equal(bentResult.fingerToPalm.index, undefined); assert.equal(bentResult.indexRing, null);
+assert.ok(bentResult.reasons.includes("bent"));
+const overlap = structuredClone(pixels); overlap[8] = { ...overlap[12] };
+assert.ok(measurePalmHandGeometry(normalize(overlap, 500, 800), 500, 800).reasons.includes("overlap"));
+const tilted = structuredClone(pixels); tilted[9].z = 300;
+assert.equal(measurePalmHandGeometry(normalize(tilted, 500, 800), 500, 800).status, "not_usable");
+const cropped = structuredClone(pixels); cropped[4].x = 0;
+assert.ok(measurePalmHandGeometry(normalize(cropped, 500, 800), 500, 800).reasons.includes("cropped"));
+assert.equal(measurePalmHandGeometry([], 500, 800).status, "not_usable");
+const failed = { ...structuredClone(palmFixture), handShape: "unknown", onnxLines: null };
+assert.equal(isPalmFactsUsable(failed), false);
+assert.deepEqual(buildPalmCustomerPassages(failed), []);
+assert.equal(buildPalmBilateralReading(failed, failed, "right").items.length, 0);
+const geometryOnly = { ...failed, handGeometry: geometry, handShape: "slender" };
+assert.equal(isPalmFactsUsable(geometryOnly), true);
+assert.ok(buildPalmCustomerPassages(geometryOnly).some(p => p.key === "fingers"));
+assert.ok(!buildPalmCustomerPassages(geometryOnly).some(p => /Line$/.test(p.key)));
+assert.equal(palmFactsSchema.safeParse({ ...geometryOnly, handGeometry: { ...geometry, fingerToPalm: {} } }).success, false);
+const partial = structuredClone(palmFixture); partial.onnxLines.headLine.detected = false;
+assert.ok(!buildPalmCustomerPassages(partial).some(p => p.key === "headLine"));
+assert.ok(buildPalmCustomerPassages(partial).filter(p => /Line$/.test(p.key)).every(p => p.text.length > 100));
+const signal = { status: "clear", strength: 0.8, span: 0.8, note: "", corroborated: true };
+for (const key of ["sun", "wealth"]) assert.equal(secondaryObservationState(key, { ...signal, assessment: "observed" }), "unsupported");
+assert.equal(secondaryObservationState("fate", { ...signal, assessment: "error" }), "error");
+assert.equal(secondaryObservationState("fate", { ...signal, assessment: "not_observed" }), "not_observed");
+assert.equal(secondaryObservationState("fate", { ...signal, assessment: "observed", corroborated: false }), "unconfirmed");
+assert.equal(secondaryObservationState("fate", { ...signal, assessment: "observed" }), "observed");
+const observedFate = { ...geometryOnly, secondaryLines: { fate: { ...signal, assessment: "observed" }, sun: signal, wealth: signal } };
+assert.ok(buildPalmCustomerPassages(observedFate).some(p => p.key === "fate"));
+assert.ok(!buildPalmCustomerPassages(observedFate).some(p => ["sun", "wealth"].includes(p.key)));
+assert.match(palmCustomerLimits(partial).join(" "), /선이 없다는 뜻은 아닙니다/);
+const evidence = [{ id: "left.headLine.curve", kind: "observed", source: "leftPalmFacts", value: "완만한 곡선" }, { id: "dominant", kind: "observed", source: "input", value: "right" }, { id: "month-stem", kind: "calculated", source: "month", value: "丙:식신" }];
+const friendly = describeReadingEvidence(evidence);
+assert.match(friendly, /왼손 두뇌선/); assert.match(friendly, /주로 쓰는 손: 오른손/); assert.match(friendly, /이 달 천간/);
+assert.doesNotMatch(customerReadingBasis('left.headLine.attributeSupport={"curve":"segment_only"}', evidence), /left|right|[{}]|segment_only/);
+console.log("PASS customer reading: real-only passages, no generic failure fallback, rich partial readings, separate fate states, unsupported-line abstention, readable evidence");
+console.log("PASS geometry: pixel aspect/scale invariance, bent/overlapping/cropped/perspective guards, geometry-only reading and schema validation");

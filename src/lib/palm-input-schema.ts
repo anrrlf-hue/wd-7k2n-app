@@ -31,6 +31,7 @@ const onnxPalmLinesSchema = z.object({
 });
 
 const secondaryLineSignalSchema = z.object({
+  assessment: z.enum(["observed", "not_observed", "error", "unsupported", "unconfirmed"]).optional(),
   status: z.enum(["clear", "faint", "not_seen"]),
   strength: z.number().min(0).max(1),
   span: z.number().min(0).max(1),
@@ -49,11 +50,20 @@ const pipelineDiagnosticsSchema = z.object({
   rawPixelCount: linePixelCountsSchema, enhancedPixelCount: linePixelCountsSchema,
   fateModelConfidence: z.number().nullable().optional(), fateModelVerticalSpan: z.number().nullable().optional(),
   fateModelCorroborated: z.boolean().optional(), threeLineElapsedMs: z.number().optional(),
+  fateModelStatus: z.enum(["ok", "no_detections", "error", "skipped"]).optional(),
+  fateModelSkipped: z.boolean().optional(),
   fateModelElapsedMs: z.number().optional(), totalModelElapsedMs: z.number().optional(),
   chosenVariant: z.object({ heartLine: z.enum(["raw", "enhanced"]), headLine: z.enum(["raw", "enhanced"]), lifeLine: z.enum(["raw", "enhanced"]) }),
 });
 
 export const palmFactsSchema = z.object({
+  handGeometry: z.object({
+    version: z.literal("landmark-geometry-v1"), status: z.enum(["observed", "not_usable"]),
+    reasons: z.array(z.enum(["cropped", "perspective", "overlap", "bent", "missing_points"])),
+    palmWidthToLength: z.number().finite().positive().nullable(),
+    fingerToPalm: z.object({ thumb: z.number().finite().positive().optional(), index: z.number().finite().positive().optional(), middle: z.number().finite().positive().optional(), ring: z.number().finite().positive().optional(), pinky: z.number().finite().positive().optional() }),
+    indexRing: z.enum(["index_longer", "ring_longer", "similar"]).nullable(),
+  }).refine(value => value.status !== "observed" || (value.palmWidthToLength !== null && Object.keys(value.fingerToPalm).length >= 3), "확인된 손 형태의 관찰값이 부족합니다.").optional(),
   handSide: z.enum(["left", "right", "unknown"]),
   imageQuality: z.enum(["good", "no_hand_detected", "too_dark", "too_blurry", "overexposed", "hand_cropped"]),
   handShape: z.enum(["square", "rectangular", "elongated", "slender", "unknown"]),

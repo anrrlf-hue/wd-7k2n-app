@@ -16,6 +16,7 @@ import { buildIntegratedPalmReading } from "@/lib/integrated-palm-reading";
 import { buildPremiumEditorialPlan } from "@/lib/premium-editorial-plan";
 import { composePremiumDomainStory, composePremiumOverallStory } from "@/lib/premium-domain-story";
 import { validateReadingPlan } from "@/lib/reading-plan";
+import { describeReadingEvidence } from "@/lib/reading-evidence-display";
 
 export const PREMIUM_REPORT_VERSION = "decision-reading-2026-10-v10" as const;
 export interface PremiumReading {
@@ -86,7 +87,7 @@ export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts)
     periods.push({
       label: month.label, months: [month.label], headline: interpretation.headline,
       reading: (narrative.length ? narrative : interpretation.passages).map(p => p.text).join(" "),
-      basis: `해석에 사용한 근거: ${interpreted.map(e => `${e.id} ${e.value ?? "미확인"}`).join(" / ")}. 계산 참고(월별 본문에 사용하지 않음): ${month.comparisons[0].basis}.`,
+      basis: `월운 ${symbols.month.ganzhi}. ${describeReadingEvidence(interpreted)}. 이 상징의 전통적 의미를 이 달의 이야기로 읽었습니다.`,
       domains: [], interpretation, symbols,
     });
     previousSignature = signature;
@@ -154,7 +155,7 @@ export function buildPremiumReport(input: {
     reading.caution = "";
     reading.tip = "";
     reading.observationNote = connection?.observationNote;
-    if (connection) reading.basis += ` 손금 연결 근거: ${connection.plan.evidence.map(e => `${e.id}=${e.value ?? "미확인"}`).join(" / ")}.`;
+    if (connection) reading.basis += ` 사진에서 함께 본 특징: ${describeReadingEvidence(connection.plan.evidence)}.`;
   }
   const priorSignals = hasPalms ? buildTripleCompare(facts, (input.dominantHand === "left" ? input.leftPalm! : input.rightPalm!).onnxLines, null) : [];
   const palmConnections: CompareItem[] = Object.entries(integration).filter(([area]) => area !== "overall").map(([area, item]) => ({

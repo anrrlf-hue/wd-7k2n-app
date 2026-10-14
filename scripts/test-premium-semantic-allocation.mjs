@@ -59,7 +59,7 @@ for (const day of [1, 7]) {
     assert.match(period.basis, new RegExp(period.symbols.month.ganzhi));
     assert.match(period.basis, new RegExp(period.symbols.year.ganzhi));
     assert.ok(period.interpretation.passages.every(p => p.evidenceIds.every(id => period.interpretation.evidence.some(e => e.id === id))));
-    assert.match(period.basis, /해석에 사용한 근거:.*계산 참고\(월별 본문에 사용하지 않음\):/);
+    assert.match(period.basis, /이 달 천간:.*이 달 지지:/);
     assert.doesNotMatch(displayed[index], /정재이|편재이|문제과|결과으로|결과을|설명를|부분로/);
     if (period.symbols.month.stemTenGod === period.symbols.month.branchTenGod) {
       assert.ok(!period.headline.includes(' · '), 'one exact symbol must have one topic, not a doubled heading');

@@ -2,8 +2,10 @@
 import { CalendarDays, Crown } from "lucide-react";
 import type { PremiumPeriod, PremiumReading, PremiumReport } from "@/lib/premium-report";
 import { buildPremiumPeriodPresentation } from "@/lib/premium-period-presentation";
+import { customerReadingBasis } from "@/lib/reading-evidence-display";
+import type { ReadingEvidence } from "@/lib/reading-plan";
 
-function ReadingContent({ reading, showTip = true }: { reading: PremiumReading; showTip?: boolean }) {
+function ReadingContent({ reading, showTip = true, evidence }: { reading: PremiumReading; showTip?: boolean; evidence?: ReadingEvidence[] }) {
   return <>
     <h3 className="mt-2 text-xl leading-8 font-semibold">{reading.headline}</h3>
     {reading.paragraphs.map(text => <p key={text} className="mt-3 text-base leading-8 text-muted-foreground">{text}</p>)}
@@ -15,7 +17,7 @@ function ReadingContent({ reading, showTip = true }: { reading: PremiumReading; 
     {reading.caution && <p className="mt-4 text-sm leading-7 text-muted-foreground"><strong className="text-foreground">마음에 둘 점 · </strong>{reading.caution}</p>}
     <details className="mt-4 border-t border-border pt-4">
       <summary className="cursor-pointer text-sm font-medium">{showTip ? "풀이 근거와 짧은 참고" : "풀이 근거"}</summary>
-      <p className="mt-3 text-sm leading-7 text-muted-foreground">{reading.basis}</p>
+      <p className="mt-3 text-sm leading-7 text-muted-foreground">{customerReadingBasis(reading.basis, evidence)}</p>
       {showTip && reading.tip && <p className="mt-3 text-sm leading-7">{reading.tip}</p>}
     </details>
   </>;
@@ -52,7 +54,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
       <p className="section-eyebrow">총운</p><ReadingContent reading={report.overall} showTip={!report.closing} />
     </section>
     {report.domains.map(domain => <section id={`premium-domain-${domain.key}`} key={domain.key} className="scroll-mt-5 rounded-3xl border border-border bg-card p-5">
-      <p className="section-eyebrow">{domain.label}</p><ReadingContent reading={domain} showTip={!report.closing} />
+      <p className="section-eyebrow">{domain.label}</p><ReadingContent reading={domain} showTip={!report.closing} evidence={report.palmConnections?.find(item => item.text === domain.paragraphs.join("\n\n"))?.evidence} />
     </section>)}
     {!!report.palmConnections?.length && !currentLayout && <section className="rounded-3xl border border-border bg-card p-5" aria-label="손금과 사주를 연결해 읽기">
       <p className="section-eyebrow">손금과 함께 보면</p>
@@ -74,7 +76,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
           <h4 className="mt-2 text-lg leading-7 font-semibold">{period.headline}</h4>
           {narrative(period)}
           {narratives.get(period)?.daeun && <p className="mt-3 text-base leading-8 text-muted-foreground">{narratives.get(period)!.daeun}</p>}
-          <details className="mt-3"><summary className="cursor-pointer text-sm">이 구간을 읽은 근거</summary><p className="mt-2 text-sm leading-7 text-muted-foreground">{period.basis}</p></details>
+          <details className="mt-3"><summary className="cursor-pointer text-sm">이 구간을 읽은 근거</summary><p className="mt-2 text-sm leading-7 text-muted-foreground">{customerReadingBasis(period.basis, period.interpretation?.evidence)}</p></details>
         </article>)}
       </div>}
       <details open={!highlights} className="mt-5 border-t border-border pt-4">
@@ -88,7 +90,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
             : narrative(period)}
           <details className="mt-3 border-t border-border pt-3">
             <summary className="cursor-pointer text-sm font-medium">이 시기로 읽은 이유 · 관계·재물·일</summary>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">{period.basis}</p>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">{customerReadingBasis(period.basis, period.interpretation?.evidence)}</p>
             {period.domains.map(domain => <p key={domain.key} className="mt-3 text-sm leading-7"><strong>{domain.label} · </strong>{domain.text}</p>)}
           </details>
         </li>)}
@@ -102,7 +104,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
       <p className="mt-3 text-base leading-8 text-muted-foreground">{report.closing.question}</p>
       <details className="mt-4 border-t border-border pt-4">
         <summary className="cursor-pointer text-sm font-medium">이 참고를 고른 근거</summary>
-        <p className="mt-3 text-sm leading-7 text-muted-foreground">{report.closing.basis}</p>
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">{customerReadingBasis(report.closing.basis)}</p>
       </details>
     </section>}
     {currentLayout && <p className="px-2 text-xs leading-6 text-muted-foreground" aria-label="풀이 이용 안내">{report.note}</p>}

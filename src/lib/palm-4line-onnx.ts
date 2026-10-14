@@ -27,6 +27,8 @@ export interface FourLinePoseObservation {
 }
 
 export interface FourLinePoseResult {
+  status: "ok" | "no_detections" | "error";
+  errorCode?: "model_runtime";
   observations: FourLinePoseObservation[];
   fate: FourLinePoseObservation | null;
 }
@@ -38,7 +40,7 @@ function getSession(): Promise<ort.InferenceSession> {
     sessionPromise = ort.InferenceSession.create("/models/palm_4line_pose.onnx", {
       executionProviders: ["wasm"],
       graphOptimizationLevel: "all",
-    });
+    }).catch(error => { sessionPromise = null; throw error; });
   }
   return sessionPromise;
 }
@@ -101,7 +103,7 @@ function normalizedPoint(
 export async function runPalmFourLineOnnx(
   source: PalmCanvas,
   minConfidence = 0.08,
-): Promise<FourLinePoseResult | null> {
+): Promise<FourLinePoseResult> {
   try {
     const session = await getSession();
     const { tensor, scale, padX, padY } = preprocess(source);
@@ -159,9 +161,9 @@ export async function runPalmFourLineOnnx(
 
     observations.sort((a, b) => b.confidence - a.confidence);
     const fate = observations.find((o) => o.class === "fate") ?? null;
-    return { observations, fate };
+    return { status: observations.length ? "ok" : "no_detections", observations, fate };
   } catch (err) {
     console.error("palm 4-line ONNX inference failed:", err);
-    return null;
+    return { status: "error", errorCode: "model_runtime", observations: [], fate: null };
   }
 }

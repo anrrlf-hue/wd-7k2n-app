@@ -103,7 +103,7 @@ for (const key of ["heartLine", "headLine", "lifeLine"]) {
 }
 const left = { ...right, handSide: "left" };
 const bilateral = buildPalmBilateralReading(left, parsed, "right");
-assert.match(bilateral.items[0].observation, /보정 영상/);
+assert.match(bilateral.items[0].observation, /밝기를 보완한 사진/);
 const context = buildPalmContextReading(left, parsed, "right");
 assert.ok(context.evidence.some(item => item.id === "right.headLine.sourceVariant" && item.value === "enhanced"));
 const individual = buildPalmReadingSections(right.onnxLines, right.secondaryLines, { handSide: "right", handShape: right.handShape });
@@ -126,7 +126,7 @@ if (process.env.TEST_BASE_URL) {
   const result = await response.json();
   assert.equal(result.rightPalmFacts.onnxLines.headLine.sourceVariant, "enhanced");
   assert.equal(result.rightPalmFacts.onnxLines.headLine.rawDetected, false);
-  assert.match(result.bilateralReading.items[0].observation, /보정 영상/);
+  assert.match(result.bilateralReading.items[0].observation, /밝기를 보완한 사진/);
   assert.match(result.tripleCompare[0].text, /보정 영상.*두뇌선 검출 구간/);
   assert.ok(result.annualReport.palmConnections.some(item => item.evidence?.some(entry => entry.id === "right.headLine.sourceVariant" && entry.value === "enhanced")));
   const annual = await fetch(`${base}/api/premium-report`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });

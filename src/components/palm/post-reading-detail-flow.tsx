@@ -61,13 +61,12 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
         }
       } catch { /* Storage may be unavailable; the report still works. */ }
       if (isCurrentPremiumReport(initialReport)) {
-        // A fresh two-hand submission opens its complete report. Restoring a
-        // saved session never requests a new edition in the background.
+        // Prepare the annual reading while keeping the palm reading first.
         previous = prior && JSON.stringify(prior) !== JSON.stringify(initialReport) ? prior : previous;
-        setPremiumReport(initialReport); setPreviousReport(previous); setStage("premium");
+        setPremiumReport(initialReport); setPreviousReport(previous);
         try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ identity, report: initialReport, previousReport: previous })); } catch { /* Optional storage. */ }
       } else if (prior) {
-        setPremiumReport(prior); setPreviousReport(previous); setStage("premium");
+        setPremiumReport(prior); setPreviousReport(previous);
       }
     });
     let interrupted = false;
@@ -111,35 +110,37 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
       track("analysis_result_viewed", { mode: "premium_annual" });
     } catch (err) {
       if (!tasks.current.isCurrent(task)) return;
-      setError(err instanceof Error ? err.message : "리포트를 불러오지 못했어요."); setStage("ready");
+      console.warn("[premium-report] request failed", err);
+      const preserved = leftPalmFacts || rightPalmFacts ? "입력과 완료된 손 분석은 유지되며 다시 시도할 수 있습니다." : "입력한 생년월일은 유지되며 다시 시도할 수 있습니다.";
+      setError(`${err instanceof Error && err.name === "TimeoutError" ? "리포트 받기가 30초를 넘어 중단했어요." : "리포트를 불러오지 못했어요."} ${preserved}`); setStage("ready");
     } finally { tasks.current.finish(task); }
   }
   function cancel() {
-    tasks.current.cancel(); setRefreshRequested(false); setStage("ready"); setError("요청을 취소했어요. 사주와 손금 결과는 그대로 남아 있습니다.");
+    tasks.current.cancel(); setRefreshRequested(false); setStage("ready"); setError("요청을 취소했어요. 입력한 정보와 이미 받은 풀이는 그대로 남아 있습니다.");
   }
 
   return <section className="mt-8 border-t border-border pt-8">
     {stage === "premium" && <AnalyticsView event="premium_report_viewed" />}
     {stage === "ready" && <section className="rounded-3xl border border-(--gold-soft) bg-card p-5">
       <div className="flex items-center gap-2 text-(--gold)"><Crown className="size-4" /><p className="section-eyebrow">프리미엄</p></div>
-      <h2 className="mt-2 text-xl leading-8 font-semibold">총운부터 연애·재물·직장까지, 한 번에</h2>
-      <p className="mt-2 text-sm leading-7 text-muted-foreground">내 성향이 관계와 돈, 일에서 어떻게 드러나는지, 앞으로 12개월에는 어떤 흐름으로 읽히는지 함께 살펴보세요.</p>
+      <h2 className="mt-2 text-xl leading-8 font-semibold">프리미엄 깊은풀이 · 나의 12개월</h2>
+      <p className="mt-2 text-sm leading-7 text-muted-foreground">무료 요약에서 더 나아가, 관계·재물·직장에서 같은 기질이 다르게 드러나는 장면과 구체적인 보완 방법을 읽습니다. 12개월의 흐름을 비교하고, 양손에서 실제로 읽힌 특징이 있으면 사주와 함께 살펴봅니다.</p>
       <Button size="lg" onClick={() => void loadPremium()} className="mt-4 h-14 w-full rounded-full text-base">{refreshRequested ? "새 리포트 다시 요청" : premiumReport ? "프리미엄 다시 보기" : "프리미엄 보기"}</Button>
       {refreshRequested && premiumReport && <Button variant="outline" className="mt-3 min-h-11 w-full" onClick={() => { setRefreshRequested(false); setError(null); setStage("premium"); }}>저장된 리포트 보기</Button>}
-      <p className="mt-2 text-center text-xs leading-6 text-muted-foreground">현재 베타 기간에는 무료로 바로 볼 수 있습니다.</p>
-      <p className="mt-1 text-center text-xs leading-6 text-muted-foreground">같은 탭의 세션 저장소에서 다시 열 수 있어요. 브라우저가 탭을 복원하면 다시 나타날 수 있습니다.</p>
+      <p className="mt-2 text-center text-xs leading-6 text-muted-foreground">향후 유료로 제공할 깊은풀이를 현재 공유 이벤트 기간에는 무료로 열어두었습니다. 지금은 공유 확인이나 결제 없이 볼 수 있어요.</p>
+      <p className="mt-1 text-center text-xs leading-6 text-muted-foreground">이 탭에서 다시 열 수 있어요. 사진 원본은 저장하지 않습니다.</p>
       {error && <p role="alert" className="mt-4 text-sm leading-6 text-destructive">{error}</p>}
     </section>}
     {stage === "loading" && <div className="rounded-3xl border border-(--gold-soft) bg-card p-7 text-center">
-      <p role="status" className="font-semibold">{receiving ? "연결됐어요. 리포트 본문을 받고 있어요" : "통합 연간 리포트를 요청했어요. 응답을 기다리고 있습니다"}</p>
+      <p role="status" className="font-semibold">{receiving ? "깊은풀이를 받고 있어요" : "나의 연간 깊은풀이를 준비하고 있어요"}</p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">총운·연애·재물·직장과 12개월 흐름을 함께 불러옵니다.</p>
       <Button variant="outline" onClick={cancel} className="mt-4">리포트 요청 취소</Button>
     </div>}
     {stage === "premium" && premiumReport && <>
       {isRenderablePremiumReport(premiumReport) ? <PremiumReportView report={premiumReport} /> : <LegacyPremiumReportView report={premiumReport} />}
       <details className="mt-5 rounded-2xl border border-border p-4 text-sm leading-7">
-        <summary className="cursor-pointer">저장된 리포트와 다른 풀이판</summary>
-        <p>{isCurrentPremiumReport(premiumReport) ? "근거 연결 개정판 · 저장된 원문" : "이전 풀이판 · 저장된 원문"}</p>
+        <summary className="cursor-pointer">저장해둔 풀이 다시 보기</summary>
+        <p>지금 보고 있는 풀이</p>
         <p className="text-muted-foreground">{premiumReport.annual.startLabel} ~ {premiumReport.annual.endLabel}의 보고서입니다. 다시 열어도 문장과 기간은 그대로 유지됩니다.</p>
         {(!isCurrentPremiumReport(premiumReport) || premiumReport.annual.startLabel !== currentMonth) && <Button variant="outline" onClick={() => void loadPremium(true)} className="mt-3 min-h-11">{isCurrentPremiumReport(premiumReport) ? "이번 달부터 새 리포트 만들기" : "새 풀이판으로 리포트 만들기"}</Button>}
         {previousReport && <button type="button" onClick={() => {
