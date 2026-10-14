@@ -44,8 +44,10 @@ export interface MajorCreaseNmsDiagnostics {
     nmsSuppressed: number;
     directionConflict: number;
     invalidDirection: number;
+    invalidEvaluation: number;
     truncated: number;
   };
+  finiteComparisonCount: number;
   truncated: boolean;
 }
 
@@ -351,15 +353,27 @@ export function trackMajorCreaseCandidates(
       const ridgeCoreMask = new Uint8Array(foreground.length);
       const ambiguousMask = new Uint8Array(foreground.length);
       const removedMask = new Uint8Array(foreground.length);
-      const removedReasonCounts = { nmsSuppressed: 0, directionConflict: 0, invalidDirection: 0, truncated: 0 };
+      const removedReasonCounts = { nmsSuppressed: 0, directionConflict: 0, invalidDirection: 0, invalidEvaluation: 0, truncated: 0 };
+      let finiteComparisonCount = 0;
       // NMS re-evaluates only the center's winning normal and offset. It does
       // not compare each neighbor's independently winning probe.
-      const fixedValley = (x: number, y: number, directionIndex: number, offsetIndex: number) => {
+      const sampleSmoothed = (x: number, y: number): number | null => {
+        if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > width - 1 || y > height - 1) return null;
+        const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(width - 1, x0 + 1), y1 = Math.min(height - 1, y0 + 1);
+        const tx = x - x0, ty = y - y0;
+        const top = smoothed[y0 * width + x0] * (1 - tx) + smoothed[y0 * width + x1] * tx;
+        const bottom = smoothed[y1 * width + x0] * (1 - tx) + smoothed[y1 * width + x1] * tx;
+        const value = top * (1 - ty) + bottom * ty;
+        return Number.isFinite(value) ? value : null;
+      };
+      const fixedValley = (x: number, y: number, directionIndex: number, offsetIndex: number): number | null => {
         const radians = Math.atan2(ny, nx) + directionIndex * Math.PI / probeDirections;
         const normalX = Math.cos(radians), normalY = Math.sin(radians), offset = probeOffsets[offsetIndex];
-        const px = Math.max(0, Math.min(width - 1, Math.round(x + normalX * offset))), py = Math.max(0, Math.min(height - 1, Math.round(y + normalY * offset)));
-        const qx = Math.max(0, Math.min(width - 1, Math.round(x - normalX * offset))), qy = Math.max(0, Math.min(height - 1, Math.round(y - normalY * offset)));
-        return Math.min(smoothed[py * width + px], smoothed[qy * width + qx]) - smoothed[y * width + x];
+        const plus = sampleSmoothed(x + normalX * offset, y + normalY * offset);
+        const minus = sampleSmoothed(x - normalX * offset, y - normalY * offset);
+        const center = sampleSmoothed(x, y);
+        if (plus === null || minus === null || center === null) return null;
+        return Math.min(plus, minus) - center;
       };
       const axisDistance = (a: number, b: number) => {
         return Math.abs(Math.atan2(Math.sin(2 * (a - b)), Math.cos(2 * (a - b)))) / 2;
@@ -386,6 +400,12 @@ export function trackMajorCreaseCandidates(
         const center = fixedValley(x, y, directionIndex, offsetIndex);
         const before = fixedValley(x - neighborX, y - neighborY, directionIndex, offsetIndex);
         const after = fixedValley(x + neighborX, y + neighborY, directionIndex, offsetIndex);
+        if (center === null || before === null || after === null || !Number.isFinite(center) || !Number.isFinite(before) || !Number.isFinite(after)) {
+          ambiguousMask[index] = 1;
+          removedReasonCounts.invalidEvaluation++;
+          continue;
+        }
+        finiteComparisonCount += 3;
         const nearbyDirections: number[] = [];
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
           if (!dx && !dy) continue;
@@ -409,7 +429,7 @@ export function trackMajorCreaseCandidates(
       }
       analysisForeground = new Uint8Array(foreground.length);
       for (let index = 0; index < analysisForeground.length; index++) if (ridgeCoreMask[index] || ambiguousMask[index]) analysisForeground[index] = 1;
-      nms = { enabled: true, neighborDistancePx, probeOffsetsPx: [...probeOffsets], originalForegroundMask: foreground, ridgeCoreMask, ambiguousMask, removedMask, removedReasonCounts, truncated: Boolean(budget.truncatedReason) };
+      nms = { enabled: true, neighborDistancePx, probeOffsetsPx: [...probeOffsets], originalForegroundMask: foreground, ridgeCoreMask, ambiguousMask, removedMask, removedReasonCounts, finiteComparisonCount, truncated: Boolean(budget.truncatedReason) };
     }
     const allComponents = components(response, analysisForeground, width, height, budget);
     const tracks = allComponents.flatMap((component, componentId) => traceSkeleton(component, response, width, height, budget, componentId));

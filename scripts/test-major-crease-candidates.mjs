@@ -174,4 +174,14 @@ assert.ok((crossingNms?.ambiguousMask.reduce((sum, value) => sum + value, 0) ?? 
 const nmsShading = track(shading, false, [], { enabled: true });
 assert.notEqual(nmsShading.candidate?.status, "candidate", "NMS does not create a local-contrast-only bypass");
 assert.ok((nms?.removedReasonCounts.truncated ?? 0) === 0 && nms?.truncated === false, "NMS stays within the synthetic work budget");
+assert.equal(nms?.removedReasonCounts.invalidEvaluation, 0, "finite synthetic probes never enter the invalid-evaluation branch");
+for (const degrees of [15, 30, 45]) {
+  const directional = image();
+  const radians = degrees * Math.PI / 180, cx = 58, cy = 100;
+  stroke(directional, [[cx - Math.cos(radians) * 35, cy - Math.sin(radians) * 35], [cx + Math.cos(radians) * 35, cy + Math.sin(radians) * 35]], 45, 2);
+  const directionalNms = track(directional, false, [], { enabled: true, neighborDistancePx: 2 }).candidate?.nms;
+  assert.ok((directionalNms?.finiteComparisonCount ?? 0) > 0, `${degrees}° fixed-normal comparisons stay finite`);
+  assert.equal(directionalNms?.removedReasonCounts.invalidEvaluation, 0, `${degrees}° finite ridge is not removed as unevaluable`);
+  assert.ok((directionalNms?.ridgeCoreMask.reduce((sum, value) => sum + value, 0) ?? 0) > 2, `${degrees}° known centerline retains multiple core pixels`);
+}
 console.log("PASS major crease candidates: foreground paths, mirror, gaps, false seed, brightness, and no-line guard");
