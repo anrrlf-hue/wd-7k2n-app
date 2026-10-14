@@ -43,3 +43,15 @@ This does not prove a real Supabase referral store, real cross-browser completio
 - Main merge and Production deployment (intentionally not performed)
 
 See [`summary.json`](./summary.json) for the machine-readable capture summary. Selected before/after screenshots are retained alongside it.
+
+## Referral integration follow-up
+
+- Integrated source: `416087725a3fda3a208d7c17a34d02e99c7dce25` (`feat/saju-referral-evidence-20261015`)
+- Integration merge: `b34a83b`
+- Latest test-flow commit: `c93c2a3`
+- Production build: `next build --webpack` passed; routes included `/api/referrals`, `/api/referrals/session`, `/api/saju`, and `/api/premium-report`.
+- Real Next browser test: `node scripts/test-referral-two-browser.mjs` passed using two isolated Chromium contexts and an isolated local Supabase HTTP adapter.
+- Existing result regression: `TEST_BASE_URL=http://127.0.0.1:3104 TEST_EVIDENCE_DIR=/tmp/integration-palm-referral-regression node scripts/test-palm-customer-browser.mjs` passed.
+- Referral test server: ephemeral Next port `3197`; the regression server used port `3104`.
+
+The referral test replaces only the Supabase REST/RPC boundary with an in-memory adapter. It does not verify an operating Supabase project, remote migration, or production credentials. No production database or deployment was changed.
