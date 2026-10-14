@@ -81,3 +81,16 @@ Summary: 신금의 작은 차이를 알아보고 자기에게 맞는 아름다�
 
 창작과 설명의 능력이 살아나려면 수정에도 이유가 있어야 합니다. 누구에게 어떻게 닿았는지 알 수 있는 반응은 다음 표현을 키우지만, 취향이 다른 말만 계속 돌아오면 자신의 색깔을 어디에 남겨야 할지 헷갈립니다. 반응을 모두 따르는 대신 잘 전달된 부분과 새로 표현할 부분을 알아보는 과정에서 자기 작업에 대한 애착이 깊어집니다.
 
+## Final narrative addendum
+
+The following customer-facing narrative changes supersede the earlier capture above and were generated from final code SHA `6cb52b3c0881942066ec1c8e2a40fb669e518e4f` with the same inputs and reference date.
+
+- A summary: 스스로 납득한 기준을 지키면서도 현실에서 통하는 결과로 다듬고 싶은 마음을 함께 읽습니다.
+- A overall second paragraph: 배운 기준을 현실에서 시험할 때는 설명을 더 모으는 것보다, 이미 아는 원칙이 어느 결과에서 살아났는지를 확인하게 됩니다. 단단함이 준비만 오래 하는 방식으로 굳지 않으려면 작은 시도에서 무엇을 지키고 무엇을 다듬을지 나누는 일이 중요합니다.
+- A work now has three distinct paragraphs: the pressure after a successful result, the environment where responsibility and completion criteria are agreed, and the tension between others calling work sufficient and the person's own completion standard.
+- B summary: 자기 취향을 정교하게 다듬은 것을 실제 쓰임과 연결하고 싶은 마음을 함께 읽습니다.
+- B overall second paragraph: 배운 이유를 자기 표현으로 바꾸어 실제 쓰임을 확인하려는 마음이 함께 있습니다. 잘 다듬은 결과가 누군가에게 유용해지는 순간에도 처음 좋아했던 차이를 남겨야 자기 것이라는 느낌이 이어집니다.
+- B work now separates feedback-rich environment, response versus usefulness, and preserving personal color while revising.
+
+The final code also removes customer-facing internal signal strength, full-line length claims, and repeated palm combination filler. Automatic curve/segment classification remains explicitly unresolved as an image-recognition limitation.
+
