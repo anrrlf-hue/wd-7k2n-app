@@ -29,6 +29,13 @@ assert.notEqual(reviewed[0].premium.overall.paragraphs[1], reviewed[1].premium.o
 assert.match(reviewed[0].premium.overall.paragraphs[1], /배움|표현|쉬며|회복/, "A overall must include a chart-grounded life-outside-work lens");
 assert.match(reviewed[0].premium.domains.find(domain => domain.key === "love_relationship").paragraphs.join(" "), /조언|약속|신뢰/, "A relationship must use trust/care combination");
 assert.match(reviewed[1].premium.domains.find(domain => domain.key === "love_relationship").paragraphs.join(" "), /공간|생활|표현/, "B relationship must use space/expression combination");
+assert.notEqual(reviewed[0].free.nextMove.text, reviewed[0].free.timingShift.text, "A current/next daeun conclusions must differ");
+assert.notEqual(reviewed[1].free.nextMove.text, reviewed[1].free.timingShift.text, "B current/next daeun conclusions must differ");
+for (const { free } of reviewed) {
+  for (const paragraph of [free.nextMove.text, free.timingShift.text]) {
+    assert.doesNotMatch(paragraph, /(.+?)과 \1을 함께 읽습니다/, "daeun prose must not repeat the same ten-god phrase");
+  }
+}
 
 assert.notEqual(reviewed[0].free.leakPattern.text, reviewed[1].free.leakPattern.text, "A/B leak pattern must not leak");
 assert.notEqual(reviewed[0].free.soloStrength.text, reviewed[1].free.soloStrength.text, "A/B solo strength must not leak");

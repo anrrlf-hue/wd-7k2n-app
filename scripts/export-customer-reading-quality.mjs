@@ -17,17 +17,37 @@ const leftPalm = { ...structuredClone(palmFixture), handSide: "left" };
 const rightPalm = structuredClone(palmFixture);
 
 function renderFree(free) {
-  return Object.entries(free).filter(([, value]) => value && typeof value === "object" && "text" in value)
-    .map(([key, value]) => `- ${key}: ${value.text}\n  - 근거: ${value.evidence}`).join("\n");
+  const out = [];
+  for (const [key, value] of Object.entries(free)) {
+    if (value && typeof value === "object" && "text" in value) out.push(`- ${key}: ${value.text}\n  - 근거: ${value.evidence}`);
+    else if (Array.isArray(value)) out.push(`- ${key}:\n${value.map(item => `  - ${item.title}: ${item.detail}\n    - 근거: ${item.evidence}`).join("\n")}`);
+    else if (value !== null && value !== undefined) out.push(`- ${key}: ${String(value)}`);
+  }
+  return out.join("\n");
 }
 function renderPremium(premium) {
-  const out = [`요약: ${premium.summary}`, `총운: ${premium.overall.paragraphs.join(" ")}`, `총운 근거: ${premium.overall.basis}`];
+  const out = [
+    `버전: ${premium.version}`,
+    `제목: ${premium.title}`,
+    `요약: ${premium.summary}`,
+    `총운: ${premium.overall.paragraphs.join(" ")}`,
+    `총운 기회: ${premium.overall.opportunity || "없음"}`,
+    `총운 주의: ${premium.overall.caution || "없음"}`,
+    `총운 팁: ${premium.overall.tip || "없음"}`,
+    `총운 근거: ${premium.overall.basis}`,
+  ];
   for (const domain of premium.domains) {
-    if (domain.key === "wellbeing") continue;
-    out.push(`${domain.label}: ${domain.paragraphs.join(" ")}`, `${domain.label} 근거: ${domain.basis}`);
+    out.push(`${domain.label} (${domain.key}): ${domain.paragraphs.join(" ")}`, `${domain.label} 기회: ${domain.opportunity || "없음"}`, `${domain.label} 주의: ${domain.caution || "없음"}`, `${domain.label} 팁: ${domain.tip || "없음"}`, `${domain.label} 근거: ${domain.basis}`);
   }
+  out.push(`연간 소개: ${premium.annualIntroduction}`, `연간 배경: ${premium.annualBackground ?? "없음"}`, `연간 주요 구간: ${(premium.annualHighlights ?? []).join(", ") || "없음"}`, `연간 방법: ${premium.annualMethod ?? "없음"}`);
   out.push("월별:");
-  for (const period of premium.periods) out.push(`- ${period.label}: ${period.reading}\n  - 근거: ${period.basis}`);
+  for (const period of premium.periods) {
+    out.push(`- ${period.label}: ${period.reading}\n  - 근거: ${period.basis}`);
+    for (const domain of period.domains) out.push(`  - ${domain.label} (${domain.key}): ${domain.text}`);
+  }
+  out.push(`주의 안내: ${premium.note}`);
+  if (premium.closing) out.push(`마무리 기억할 점: ${premium.closing.remember}`, `마무리 질문: ${premium.closing.question}`, `마무리 근거: ${premium.closing.basis}`);
+  if (premium.palmConnections?.length) for (const connection of premium.palmConnections) out.push(`손금 연결 ${connection.kind} / ${connection.topic}: ${connection.text}`, `손금 연결 근거: ${connection.evidence.map(e => e.label ?? e.id ?? String(e)).join(", ")}`);
   return out.join("\n");
 }
 

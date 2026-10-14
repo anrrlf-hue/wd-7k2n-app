@@ -213,12 +213,17 @@ export function buildCustomerFreeNarrative(facts: SajuFacts): Omit<FreeSajuRepor
     const period = next ? facts.nextDaeun : facts.currentDaeun;
     if (!facts.hasTimeInput || !period) return { text: "출생시간이 확인되지 않아 큰 운의 세밀한 시기는 남겨 두었습니다. 지금 읽은 관계와 일, 돈의 성향을 자신의 경험과 대조하며 참고할 수 있습니다.", evidence: "출생시간 또는 대운 미확인; 시기 해석 미사용" };
     const a = isGod(period.stemTenGod) ? GOD[period.stemTenGod] : "새로운 생활의 주제", b = isGod(period.branchTenGod) ? GOD[period.branchTenGod] : "생활의 다른 바람";
-    const flavor = TEN_GOD_GROUP[period.branchTenGod] === "비겁" ? "남의 기대와 함께 움직이면서도 자신이 고른 이유를 남기는 일이 주제입니다. 익숙하게 잘하던 일과 앞으로도 하고 싶은 일이 다를 때 자기 목소리를 알아보게 됩니다."
+    const paired = a === b ? `${a}이 두 자리에서 겹쳐, 한 가지 마음이 이 시기의 앞뒤를 함께 이끕니다.` : `${a}${a.endsWith("가치") ? "와" : "과"} ${b}을 함께 읽습니다.`;
+    const flavor = period.stemTenGod === "편재" && TEN_GOD_GROUP[period.branchTenGod] === "비겁" ? "새로운 사람과 쓰임을 만나도 마지막 선택은 자신의 몫으로 남기는 시기입니다. 함께 움직인 결과에서 내가 다시 하고 싶은 부분을 골라야 마음이 붙습니다."
+      : period.stemTenGod === "정재" && TEN_GOD_GROUP[period.branchTenGod] === "비겁" ? "이미 쌓아 온 가치와 자기 몫을 생활에 안정적으로 남기는 시기입니다. 함께 만든 결과라도 오래 이어 갈 방식과 내려놓을 부분을 구별할 때 힘이 덜 새어 나갑니다."
+      : period.stemTenGod === "편인" && TEN_GOD_GROUP[period.branchTenGod] === "인성" ? "익숙한 설명 밖의 이유를 파고들며 자기 방식으로 다시 이해하는 시기입니다. 새 정보를 모으는 일과 실제로 시험해 보는 일을 나눌 때 배움이 경험으로 남습니다."
+      : period.stemTenGod === "정인" && TEN_GOD_GROUP[period.branchTenGod] === "인성" ? "믿을 만한 바탕을 다시 확인하고 배운 것을 생활에 정착시키는 시기입니다. 도움받은 내용을 그대로 따르기보다 자신의 말과 행동으로 옮긴 부분을 남길 때 안심이 깊어집니다."
+      : TEN_GOD_GROUP[period.branchTenGod] === "비겁" ? "남의 기대와 함께 움직이면서도 자신이 고른 이유를 남기는 일이 주제입니다. 익숙하게 잘하던 일과 앞으로도 하고 싶은 일이 다를 때 자기 목소리를 알아보게 됩니다."
       : TEN_GOD_GROUP[period.branchTenGod] === "인성" ? "밖에 보여 주는 성과 곁에 혼자 깊이 익히고 싶은 마음이 놓입니다. 새로운 설명을 더 모으는 일과 이미 알고 있는 것을 직접 경험으로 만드는 일이 다른 만족을 줍니다."
         : TEN_GOD_GROUP[period.branchTenGod] === "재성" ? "좋아하는 것이 일상에 오래 남는 모습이 주제입니다. 새로 얻는 기쁨 옆에 자주 쓰며 편해진 경험을 살피게 됩니다."
           : TEN_GOD_GROUP[period.branchTenGod] === "식상" ? "알고 있던 것을 자신의 표현으로 꺼내는 주제입니다. 큰 반응보다 자기 경험을 알아주는 한 사람의 답이 다른 기쁨을 줄 수 있습니다."
             : "꾸준히 이어 온 믿음의 의미를 읽는 주제입니다. 맡은 것을 잘 지킨 마음 안에도 이제는 기대고 싶은 바람이 남아 있을 수 있습니다.";
-    return { text: `${next ? "다음" : "현재"} 큰 운은 계산상 ${period.ageRange}세 전후에 시작하는 ${period.ganzhi} 구간입니다. ${a}과 ${b}을 함께 읽습니다. ${flavor}`, evidence: `${next ? "nextDaeun" : "currentDaeun"}: ${period.ganzhi}/${period.stemTenGod}/${period.branchTenGod}, 시작 나이 ${period.ageRange}; 사건 발생이나 수입을 예고하지 않음` };
+    return { text: `${next ? "다음" : "현재"} 큰 운은 계산상 ${period.ageRange}세 전후에 시작하는 ${period.ganzhi} 구간입니다. ${paired} ${flavor}`, evidence: `${next ? "nextDaeun" : "currentDaeun"}: ${period.ganzhi}/${period.stemTenGod}/${period.branchTenGod}, 시작 나이 ${period.ageRange}; 사건 발생이나 수입을 예고하지 않음` };
   };
   return { snapshot: paragraph("self", center(f)), temperament: paragraph("self", disposition(f)),
     relationshipStyle: paragraph("relationship", relationship?.social ?? close.social), loveStyle: paragraph("relationship", relationship?.intimate ?? close.intimate),
