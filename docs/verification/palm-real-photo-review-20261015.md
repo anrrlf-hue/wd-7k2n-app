@@ -18,6 +18,10 @@ Two fresh worker runs were made, one per existing Library photo. Source-frame ov
 
 The saved raw class-3 masks were also checked without re-inference: photo A had one 8-connected class-3 component (630 pixels), and photo B had one (1,233 pixels). The selected component was therefore the only available class-3 component in each case; there was no discarded larger life-line component. This is an argmax segmentation limitation, not a largest-component selector bug. Because all three raw lines were detected, the existing sequence correctly skipped the enhanced fallback; changing that order would be a separate model-validation change.
 
+## Narrow enhanced-fallback experiment
+
+In a non-production local run, the same existing enhanced preprocessing/model was allowed once when raw life-line geometry was unconfirmed. Photo A changed from 630 to 918 mask pixels (normalized segment length 0.311 to 0.472); photo B changed from 1,233 to 1,248 pixels (0.483 to 0.512). Source-frame overlays still showed the same central vertical crease, and both remained `짧음`/not anatomically supported. No real life-line candidate was found, so the experiment was reverted; the default raw-three-lines shortcut remains unchanged and does not add routine latency.
+
 ## Code change
 
 The bilateral result path previously rendered only `PalmBilateralSection`, so the single-hand `handOverview` passage was omitted. It now renders each usable hand's existing `handOverview` passage once under `손별로 확인한 형태`, labelled `왼손 입력 사진` / `오른손 입력 사진`. It does not expose raw ratios, diagnostic numbers, or personality assertions, and it does not alter life-line gating.
