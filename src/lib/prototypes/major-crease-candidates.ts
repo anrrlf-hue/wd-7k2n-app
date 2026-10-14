@@ -5,6 +5,7 @@
  * class, claim an anatomical life line, or connect across unsupported gaps.
  * Every returned point is a pixel in the supplied aligned image.
  */
+import { rankConnectedCreasePaths, type ConnectedPathCandidate } from "@/lib/prototypes/connected-crease-paths";
 
 export interface MajorCreasePixelPoint { x: number; y: number }
 export interface MajorCreaseLandmarks { x: number; y: number }
@@ -45,6 +46,8 @@ export interface MajorCreaseCandidate {
   probe: { normalAngleDeg: number; offsetPx: number; directionCount: number; offsetCount: number } | null;
   truncated: boolean;
   truncatedReason?: "work_limit" | "component_limit" | "thinning_limit" | "seed_limit";
+  /** Diagnostic-only connected paths; `points` above remains the legacy path. */
+  pathCandidates?: ConnectedPathCandidate[];
 }
 
 export interface MajorCreaseTrackResult {
@@ -337,7 +340,15 @@ export function trackMajorCreaseCandidates(
     const truncated = Boolean(truncatedReason);
     const ambiguousSegments = ambiguousComponents.map(item => ({ componentId: item.componentId, points: item.points, pathLengthPx: pathLength(item.points), supportPixelCount: item.supportPixelCount, responseMean: item.responseMean, status: "ambiguous" as const }));
     const allSegments = [...segments, ...ambiguousSegments];
-    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, components: componentRecords, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, probe, truncated, truncatedReason } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", components: componentRecords, segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, probe, truncated, truncatedReason };
+    const ridgeEvidence = new Map<string, { valleyResponse: number; probeAngleDeg: number | null }>();
+    for (let index = 0; index < foreground.length; index++) if (foreground[index]) {
+      const x = index % width, y = Math.floor(index / width), directionIndex = bestProbeDirection[index];
+      ridgeEvidence.set(`${x},${y}`, { valleyResponse: valleyResponse[index], probeAngleDeg: directionIndex >= 0 ? (Math.atan2(ny, nx) + directionIndex * Math.PI / probeDirections) * 180 / Math.PI : null });
+    }
+    const thumbPoints = [p[1], p[2], p[3]];
+    const thumbRegion = { xMin: Math.min(...thumbPoints.map(point => point.x)) - palmWidth * .12, xMax: Math.max(...thumbPoints.map(point => point.x)) + palmWidth * .12, yMin: Math.min(...thumbPoints.map(point => point.y)) - palmWidth * .12, yMax: Math.max(...thumbPoints.map(point => point.y)) + palmWidth * .12 };
+    const pathRanking = rankConnectedCreasePaths(allSegments, componentRecords, ridgeEvidence, { axisAngleDeg: angle, thumbRegion }, { used: 0, limit: 8192 });
+    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, components: componentRecords, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, probe, truncated, truncatedReason, pathCandidates: pathRanking.pathCandidates } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", components: componentRecords, segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, probe, truncated, truncatedReason, pathCandidates: pathRanking.pathCandidates };
     // budget.used already includes probeBudget.used from the initial tracker
     // allocation; report the accumulated work exactly once.
     return finish({ status: truncated ? "truncated" : "ok", width, height, elapsedMs: 0, candidate, budget: { used: budget.used, limit: MAX_WORK_UNITS, reason: truncatedReason } });
