@@ -217,7 +217,8 @@ export function trackAdditionalVerticalCreases(image: ImageData, landmarks: Norm
   if (poseDeviation > 30) return { ...base, status: "unsupported_pose", errorCode: "unsupported_pose", elapsedMs: performance.now() - started };
   const poseDeviationRadians = (poseAngle + 90) * Math.PI / 180;
   const trackingDeviationRadians = Math.abs(poseDeviationRadians) >= 12 * Math.PI / 180 ? poseDeviationRadians : 0;
-  const normalX = Math.cos(trackingDeviationRadians), normalY = -Math.sin(trackingDeviationRadians);
+  // Pixel y increases downward, so the rotated wrist→middle normal keeps the +sin y sign.
+  const normalX = Math.cos(trackingDeviationRadians), normalY = Math.sin(trackingDeviationRadians);
   const palmTop = (p[5].y + p[9].y + p[13].y + p[17].y) / 4;
   const palmHeight = Math.max(20, p[0].y - palmTop), palmWidth = Math.max(12, Math.abs(p[5].x - p[17].x));
   const lowerY = Math.min(image.height - 1, p[0].y - palmHeight * .08);
