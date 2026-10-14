@@ -1,0 +1,293 @@
+/**
+ * Pixel-only major-crease candidate tracker.
+ *
+ * This module is intentionally diagnostic-only. It does not rename a model
+ * class, claim an anatomical life line, or connect across unsupported gaps.
+ * Every returned point is a pixel in the supplied aligned image.
+ */
+
+export interface MajorCreasePixelPoint { x: number; y: number }
+export interface MajorCreaseLandmarks { x: number; y: number }
+export interface MajorCreaseModelSeed { x: number; y: number; classIndex?: number }
+
+export interface MajorCreaseSegment {
+  componentId: number;
+  points: MajorCreasePixelPoint[];
+  pathLengthPx: number;
+  supportPixelCount: number;
+  responseMean: number;
+  status: "measurable" | "ambiguous";
+}
+
+export interface MajorCreaseCandidate {
+  status: "candidate" | "insufficient_evidence" | "not_seen";
+  coordinateSpace: "aligned-image-px";
+  imageSize: { width: number; height: number };
+  points: MajorCreasePixelPoint[];
+  segments: MajorCreaseSegment[];
+  rawSupport: {
+    pixelCount: number;
+    responseMean: number;
+    threshold: number;
+    coverage: number;
+    modelSeedSupport: number;
+  };
+  gaps: Array<{ afterSegment: number; pixelDistancePx: number; relation: "unknown" }>;
+  competingCandidates: Array<{ supportPixelCount: number; responseMean: number; points: MajorCreasePixelPoint[] }>;
+  direction: { axisAngleDeg: number; thumbSide: "left" | "right" };
+  truncated: boolean;
+}
+
+export interface MajorCreaseTrackResult {
+  status: "ok" | "invalid_input" | "work_limit" | "truncated" | "runtime";
+  width: number;
+  height: number;
+  elapsedMs: number;
+  candidate: MajorCreaseCandidate | null;
+  errorCode?: "invalid_image" | "invalid_landmarks" | "work_limit" | "runtime";
+}
+
+const MAX_IMAGE_PIXELS = 6_000_000;
+const MAX_IMAGE_DIMENSION = 3_000;
+const MAX_WORK_UNITS = 30_000_000;
+const MIN_COMPONENT_PIXELS = 18;
+const MAX_COMPONENTS = 96;
+const MAX_THINNING_ITERATIONS = 24;
+interface WorkBudget { used: number; max: number; }
+function consume(budget: WorkBudget, units = 1): boolean { budget.used += units; return budget.used <= budget.max; }
+
+function gray(data: Uint8ClampedArray, width: number, height: number): Float32Array {
+  const out = new Float32Array(width * height);
+  for (let i = 0; i < out.length; i++) {
+    const p = i * 4;
+    out[i] = .299 * data[p] + .587 * data[p + 1] + .114 * data[p + 2];
+  }
+  return out;
+}
+
+function blur(input: Float32Array, width: number, height: number, radius: number): Float32Array {
+  const horizontal = new Float32Array(input.length), out = new Float32Array(input.length);
+  const row = new Float64Array(width + 1);
+  for (let y = 0; y < height; y++) {
+    row[0] = 0;
+    for (let x = 0; x < width; x++) row[x + 1] = row[x] + input[y * width + x];
+    for (let x = 0; x < width; x++) {
+      const lo = Math.max(0, x - radius), hi = Math.min(width - 1, x + radius);
+      horizontal[y * width + x] = (row[hi + 1] - row[lo]) / (hi - lo + 1);
+    }
+  }
+  const column = new Float64Array(height + 1);
+  for (let x = 0; x < width; x++) {
+    column[0] = 0;
+    for (let y = 0; y < height; y++) column[y + 1] = column[y] + horizontal[y * width + x];
+    for (let y = 0; y < height; y++) {
+      const lo = Math.max(0, y - radius), hi = Math.min(height - 1, y + radius);
+      out[y * width + x] = (column[hi + 1] - column[lo]) / (hi - lo + 1);
+    }
+  }
+  return out;
+}
+
+function pathLength(points: MajorCreasePixelPoint[]): number {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) total += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  return total;
+}
+
+function emptyCandidate(width: number, height: number, axisAngleDeg: number, thumbSide: "left" | "right"): MajorCreaseCandidate {
+  return { status: "not_seen", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: [], segments: [], rawSupport: { pixelCount: 0, responseMean: 0, threshold: 0, coverage: 0, modelSeedSupport: 0 }, gaps: [], competingCandidates: [], direction: { axisAngleDeg, thumbSide }, truncated: false };
+}
+
+function traceSkeleton(component: number[], response: Float32Array, width: number, height: number, budget: WorkBudget, componentId: number): MajorCreaseSegment[] {
+  const minX = Math.min(...component.map(index => index % width)), maxX = Math.max(...component.map(index => index % width));
+  const minY = Math.min(...component.map(index => Math.floor(index / width))), maxY = Math.max(...component.map(index => Math.floor(index / width)));
+  const localWidth = maxX - minX + 1, localHeight = maxY - minY + 1;
+  const binary = new Uint8Array(localWidth * localHeight);
+  for (const index of component) { if (!consume(budget)) return []; binary[(Math.floor(index / width) - minY) * localWidth + index % width - minX] = 1; }
+  const bounds = component.map(index => ({ x: index % width, y: Math.floor(index / width) }));
+  const componentWidth = Math.max(...bounds.map(point => point.x)) - Math.min(...bounds.map(point => point.x)) + 1;
+  const componentHeight = Math.max(...bounds.map(point => point.y)) - Math.min(...bounds.map(point => point.y)) + 1;
+  const alreadyThin = componentWidth <= 2 || componentHeight <= 2 || component.length / (componentWidth * componentHeight) < .2;
+  const adjacent = (x: number, y: number) => {
+    const at = (dx: number, dy: number) => x + dx < 0 || x + dx >= localWidth || y + dy < 0 || y + dy >= localHeight ? 0 : binary[(y + dy) * localWidth + x + dx];
+    // Zhang-Suen order: N, NE, E, SE, S, SW, W, NW.
+    return [at(0, -1), at(1, -1), at(1, 0), at(1, 1), at(0, 1), at(-1, 1), at(-1, 0), at(-1, -1)];
+  };
+  const transitions = (values: number[]) => values.reduce((sum, value, i) => sum + (value === 0 && values[(i + 1) % values.length] === 1 ? 1 : 0), 0);
+  let changed = true, thinningIterations = 0;
+  while (changed) {
+    if (++thinningIterations > MAX_THINNING_ITERATIONS || !consume(budget, localWidth * localHeight)) return [];
+    changed = false;
+    for (const phase of [0, 1]) {
+      const remove: number[] = [];
+      for (let y = 1; y < localHeight - 1; y++) for (let x = 1; x < localWidth - 1; x++) {
+        if (!binary[y * localWidth + x]) continue;
+        const values = adjacent(x, y), count = values.reduce((sum, value) => sum + value, 0);
+        if (alreadyThin && count === 2 || count < 2 || count > 6 || transitions(values) !== 1) continue;
+        const [p2, , p4, , p6, , p8] = values;
+        if (phase === 0 ? p2 * p4 * p6 !== 0 || p4 * p6 * p8 !== 0 : p2 * p4 * p8 !== 0 || p2 * p6 * p8 !== 0) continue;
+        remove.push(y * localWidth + x);
+      }
+      for (const index of remove) binary[index] = 0;
+      if (remove.length) changed = true;
+    }
+  }
+  const neighbours = (index: number) => {
+    const y = Math.floor(index / localWidth), x = index - y * localWidth, result: number[] = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || nx >= localWidth || ny < 0 || ny >= localHeight || !binary[ny * localWidth + nx]) continue;
+      if (Math.abs(dx) === 1 && Math.abs(dy) === 1 && (binary[y * width + x + dx] || binary[(y + dy) * width + x])) continue;
+      result.push(ny * localWidth + nx);
+    }
+    return result;
+  };
+  const skeleton = Array.from({ length: localWidth * localHeight }, (_, index) => index).filter(index => binary[index]);
+  const nodes = new Set(skeleton.filter(index => neighbours(index).length !== 2));
+  const visitedEdges = new Set<string>(), segments: MajorCreaseSegment[] = [];
+  const edgeKey = (a: number, b: number) => a < b ? `${a}:${b}` : `${b}:${a}`;
+  const addSegment = (path: number[], status: "measurable" | "ambiguous") => {
+    if (path.length < 2) return;
+    const points = path.map(index => ({ x: index % localWidth + minX, y: Math.floor(index / localWidth) + minY }));
+    const responseMean = path.reduce((sum, index) => sum + response[(Math.floor(index / localWidth) + minY) * width + index % localWidth + minX], 0) / path.length;
+    segments.push({ componentId, points, pathLengthPx: pathLength(points), supportPixelCount: path.length, responseMean, status });
+  };
+  for (const node of nodes) for (const next of neighbours(node)) {
+    const firstEdge = edgeKey(node, next);
+    if (visitedEdges.has(firstEdge)) continue;
+    visitedEdges.add(firstEdge);
+    const path = [node, next];
+    let previous = node, current = next;
+    while (!nodes.has(current)) {
+      const nextOptions = neighbours(current).filter(index => index !== previous);
+      if (nextOptions.length !== 1) break;
+      const following = nextOptions[0];
+      visitedEdges.add(edgeKey(current, following));
+      path.push(following); previous = current; current = following;
+    }
+    addSegment(path, "measurable");
+  }
+  if (!segments.length && skeleton.length > 2) {
+    // A loop has no terminal nodes. Preserve an observed foreground walk as
+    // ambiguous instead of inventing a start/end or closing a new bridge.
+    const path = [skeleton[0]]; let previous = -1, current = skeleton[0];
+    for (let count = 0; count < skeleton.length; count++) {
+      const next = neighbours(current).find(index => index !== previous && !path.includes(index));
+      if (next === undefined) break;
+      path.push(next); previous = current; current = next;
+    }
+    addSegment(path, "ambiguous");
+  }
+  if (!segments.length && component.length >= MIN_COMPONENT_PIXELS) {
+    // Preserve thick/uncertain foreground evidence even when thinning cannot
+    // yield a stable route; this is not promoted to a measurable path.
+    addSegment(component, "ambiguous");
+  }
+  return segments;
+}
+
+function components(response: Float32Array, foreground: Uint8Array, width: number, height: number, budget: WorkBudget): number[][] {
+  const seen = new Uint8Array(foreground.length), output: number[][] = [];
+  for (let seed = 0; seed < foreground.length; seed++) {
+    if (!consume(budget)) break;
+    if (!foreground[seed] || seen[seed]) continue;
+    const queue = [seed], component: number[] = []; seen[seed] = 1;
+    for (let q = 0; q < queue.length; q++) {
+      const index = queue[q]; if (!consume(budget)) return output; component.push(index);
+      const y = Math.floor(index / width), x = index - y * width;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const next = ny * width + nx;
+        if (foreground[next] && !seen[next]) { seen[next] = 1; queue.push(next); }
+      }
+    }
+    if (component.length >= MIN_COMPONENT_PIXELS) { output.push(component); if (output.length >= MAX_COMPONENTS) break; }
+  }
+  return output.sort((a, b) => b.length - a.length);
+}
+
+/** Small deterministic hook for geometry regressions; no image semantics. */
+export function traceForegroundSegments(foreground: Uint8Array, width: number, height: number): MajorCreaseSegment[] {
+  if (foreground.length !== width * height) return [];
+  const budget = { used: 0, max: MAX_WORK_UNITS };
+  return components(new Float32Array(foreground), foreground, width, height, budget).flatMap((component, componentId) => traceSkeleton(component, new Float32Array(foreground), width, height, budget, componentId));
+}
+
+export function trackMajorCreaseCandidates(
+  rawAlignedImage: ImageData,
+  landmarksInSameCropPx: MajorCreaseLandmarks[],
+  optionalModelSeeds: MajorCreaseModelSeed[] = [],
+): MajorCreaseTrackResult {
+  const started = typeof performance !== "undefined" ? performance.now() : Date.now();
+  const width = rawAlignedImage?.width ?? 0, height = rawAlignedImage?.height ?? 0;
+  const finish = (result: MajorCreaseTrackResult): MajorCreaseTrackResult => ({ ...result, elapsedMs: (typeof performance !== "undefined" ? performance.now() : Date.now()) - started });
+  if (!rawAlignedImage || !Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0 || width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION || width * height > MAX_IMAGE_PIXELS || !(rawAlignedImage.data instanceof Uint8ClampedArray) || rawAlignedImage.data.length !== width * height * 4) return finish({ status: "invalid_input", errorCode: "invalid_image", width, height, elapsedMs: 0, candidate: null });
+  if (!Array.isArray(landmarksInSameCropPx) || landmarksInSameCropPx.length !== 21 || landmarksInSameCropPx.some(point => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y))) return finish({ status: "invalid_input", errorCode: "invalid_landmarks", width, height, elapsedMs: 0, candidate: null });
+  if (width * height * 8 > MAX_WORK_UNITS) return finish({ status: "work_limit", errorCode: "work_limit", width, height, elapsedMs: 0, candidate: null });
+  try {
+    const p = landmarksInSameCropPx;
+    const axisX = p[9].x - p[0].x, axisY = p[9].y - p[0].y, axisLength = Math.hypot(axisX, axisY);
+    const palmWidth = Math.hypot(p[5].x - p[17].x, p[5].y - p[17].y);
+    if (axisLength < 2 || palmWidth < 2) return finish({ status: "invalid_input", errorCode: "invalid_landmarks", width, height, elapsedMs: 0, candidate: null });
+    const ux = axisX / axisLength, uy = axisY / axisLength;
+    const nx = -uy, ny = ux;
+    const thumbCross = axisX * (p[2].y - p[0].y) - axisY * (p[2].x - p[0].x);
+    // Screen-crop contract: x smaller than the wrist is the crop's left side.
+    // This is thumb-side metadata only, not anatomical hand-side detection.
+    const thumbSide = thumbCross <= 0 ? "left" : "right";
+    const side = thumbCross >= 0 ? 1 : -1;
+    const angle = Math.atan2(axisY, axisX) * 180 / Math.PI;
+    const source = gray(rawAlignedImage.data, width, height);
+    const smoothed = blur(source, width, height, 1), local = blur(source, width, height, Math.max(3, Math.round(Math.min(width, height) * .025)));
+    const response = new Float32Array(width * height), valleyResponse = new Float32Array(width * height), values: number[] = [];
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const rx = x - p[0].x, ry = y - p[0].y;
+      const along = rx * ux + ry * uy, across = side * (rx * nx + ry * ny);
+      const inCorridor = along >= axisLength * .04 && along <= axisLength * 1.05 && across >= -palmWidth * .12 && across <= palmWidth * .95;
+      if (!inCorridor) continue;
+      const index = y * width + x;
+      // Multiple normal offsets prevent one fixed horizontal probe from
+      // deciding the answer; all foreground still comes from raw pixels.
+      let directional = 0;
+      for (const degrees of [-22, -10, 0, 10, 22]) {
+        const radians = degrees * Math.PI / 180, tx = ux * Math.cos(radians) - nx * Math.sin(radians), ty = uy * Math.cos(radians) - ny * Math.sin(radians);
+        const normalX = -ty, normalY = tx;
+        const px = Math.max(0, Math.min(width - 1, Math.round(x + normalX * 2))), py = Math.max(0, Math.min(height - 1, Math.round(y + normalY * 2)));
+        const qx = Math.max(0, Math.min(width - 1, Math.round(x - normalX * 2))), qy = Math.max(0, Math.min(height - 1, Math.round(y - normalY * 2)));
+        directional = Math.max(directional, Math.min(smoothed[py * width + px], smoothed[qy * width + qx]) - smoothed[index]);
+      }
+      const localContrast = Math.max(0, local[index] - source[index], local[index] - smoothed[index]);
+      const v = Math.max(localContrast, directional);
+      response[index] = v; valleyResponse[index] = directional; if (v > 0) values.push(v);
+    }
+    if (!values.length) return finish({ status: "ok", width, height, elapsedMs: 0, candidate: emptyCandidate(width, height, angle, thumbSide) });
+    values.sort((a, b) => a - b);
+    const threshold = Math.max(3, values[Math.floor(values.length * .97)] * .9);
+    const foreground = new Uint8Array(response.length);
+    for (let i = 0; i < response.length; i++) if (response[i] >= threshold && valleyResponse[i] >= Math.max(3, threshold * .03)) foreground[i] = 1;
+    const budget = { used: width * height * 2, max: MAX_WORK_UNITS };
+    const allComponents = components(response, foreground, width, height, budget);
+    const tracks = allComponents.flatMap((component, componentId) => traceSkeleton(component, response, width, height, budget, componentId));
+    const measurable = tracks.filter(track => track.status === "measurable").sort((a, b) => b.pathLengthPx - a.pathLengthPx);
+    const ambiguousComponents = tracks.filter(track => track.status === "ambiguous").map(track => ({ supportPixelCount: track.supportPixelCount, responseMean: track.responseMean, points: track.points }));
+    const selected = measurable[0];
+    const segments = [...measurable].sort((a, b) => Math.min(...a.points.map(point => point.y)) - Math.min(...b.points.map(point => point.y)));
+    const gaps = segments.slice(1).filter((segment, index) => segment.componentId !== segments[index].componentId).map((segment, index) => {
+      const previous = segments[index];
+      const distance = Math.min(...previous.points.slice(-1).map(a => segment.points.slice(0, 1).map(b => Math.hypot(a.x - b.x, a.y - b.y))).flat());
+      return { afterSegment: index, pixelDistancePx: distance, relation: "unknown" as const };
+    });
+    const competingCandidates = [...measurable.filter(track => track !== selected).map(track => ({ supportPixelCount: track.supportPixelCount, responseMean: track.responseMean, points: track.points })), ...ambiguousComponents].slice(0, 8);
+    const modelSeedSupport = optionalModelSeeds.filter(seed => selected?.points.some(point => Math.hypot(point.x - seed.x, point.y - seed.y) <= Math.max(4, palmWidth * .04))).length;
+    const truncated = budget.used > budget.max;
+    const ambiguousSegments = ambiguousComponents.map(item => ({ componentId: -1, points: item.points, pathLengthPx: pathLength(item.points), supportPixelCount: item.supportPixelCount, responseMean: item.responseMean, status: "ambiguous" as const }));
+    const allSegments = [...segments, ...ambiguousSegments];
+    const candidate: MajorCreaseCandidate = selected ? { status: segments.reduce((sum, segment) => sum + segment.pathLengthPx, 0) >= axisLength * .18 && selected.responseMean >= threshold * .35 ? "candidate" : "insufficient_evidence", coordinateSpace: "aligned-image-px", imageSize: { width, height }, points: selected.points, segments: allSegments, rawSupport: { pixelCount: selected.supportPixelCount, responseMean: selected.responseMean, threshold, coverage: selected.supportPixelCount / (width * height), modelSeedSupport }, gaps, competingCandidates, direction: { axisAngleDeg: angle, thumbSide }, truncated } : { ...emptyCandidate(width, height, angle, thumbSide), status: ambiguousComponents.length ? "insufficient_evidence" : "not_seen", segments: allSegments, competingCandidates, rawSupport: { pixelCount: ambiguousComponents[0]?.supportPixelCount ?? 0, responseMean: ambiguousComponents[0]?.responseMean ?? 0, threshold, coverage: (ambiguousComponents[0]?.supportPixelCount ?? 0) / (width * height), modelSeedSupport }, truncated };
+    return finish({ status: truncated ? "truncated" : "ok", width, height, elapsedMs: 0, candidate });
+  } catch {
+    return finish({ status: "runtime", errorCode: "runtime", width, height, elapsedMs: 0, candidate: null });
+  }
+}
