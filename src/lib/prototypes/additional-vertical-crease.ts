@@ -60,10 +60,10 @@ function blur(input: Float32Array, width: number, height: number, radius: number
     for (let x = 0; x < width; x++) { const lo = Math.max(0, x - radius), hi = Math.min(width - 1, x + radius); horizontal[y * width + x] = (prefix[hi + 1] - prefix[lo]) / (hi - lo + 1); }
   }
   const verticalPrefix = new Float64Array(height + 1);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      verticalPrefix[0] = 0;
-      for (let yy = 0; yy < height; yy++) verticalPrefix[yy + 1] = verticalPrefix[yy] + horizontal[yy * width + x];
+  for (let x = 0; x < width; x++) {
+    verticalPrefix[0] = 0;
+    for (let yy = 0; yy < height; yy++) verticalPrefix[yy + 1] = verticalPrefix[yy] + horizontal[yy * width + x];
+    for (let y = 0; y < height; y++) {
       const lo = Math.max(0, y - radius), hi = Math.min(height - 1, y + radius);
       out[y * width + x] = (verticalPrefix[hi + 1] - verticalPrefix[lo]) / (hi - lo + 1);
     }
