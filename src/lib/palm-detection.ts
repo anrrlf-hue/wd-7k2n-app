@@ -10,6 +10,7 @@ import {
 } from "@mediapipe/tasks-vision";
 import { analyzeEdgeBand, analyzeVerticalCreaseBand } from "@/lib/palm-line-features";
 import { runPalmLineOnnx, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
+import { comparePalmPaths, type PalmPathAgreement } from "@/lib/palm-line-stability";
 import { runPalmFourLineOnnx } from "@/lib/palm-4line-onnx";
 import { fuseFateSignal } from "@/lib/palm-fate-fusion";
 import { measurePalmHandGeometry } from "@/lib/palm-hand-geometry";
@@ -21,6 +22,7 @@ import type {
   LineFeature,
   LineName,
   OnnxLineDetail,
+  PalmPipelineDiagnostics,
   PalmFacts,
 } from "@/lib/palm-facts";
 import { classifyLifeLineGeometry } from "@/lib/palm-life-line-geometry";
@@ -918,6 +920,23 @@ export async function analyzePalmFromCanvas(
   });
   const modelExecuted = Boolean(onnxRaw || onnxEnhanced);
 
+  const variantPathAgreement = (cls: OnnxLineClass): PalmPathAgreement | undefined => {
+    const raw = onnxRaw?.observations.find((observation) => observation.class === cls);
+    const enhanced = onnxEnhanced?.observations.find((observation) => observation.class === cls);
+    if (!raw?.pathPoints || !enhanced?.pathPoints) return undefined;
+    return comparePalmPaths(
+      raw.pathPoints,
+      { landmarks: rawCropLandmarks, cropWidth: rawPalmCrop.width, cropHeight: rawPalmCrop.height },
+      enhanced.pathPoints,
+      { landmarks: palmCropLandmarks, cropWidth: enhancedPalmCrop.width, cropHeight: enhancedPalmCrop.height },
+    );
+  };
+  const pathAgreement = {
+    heartLine: variantPathAgreement("heart_line"),
+    headLine: variantPathAgreement("head_line"),
+    lifeLine: variantPathAgreement("life_line"),
+  };
+
   const missingObservation = (cls: OnnxLineClass): OnnxLineObservation => ({
     class: cls,
     detected: false,
@@ -1014,6 +1033,7 @@ export async function analyzePalmFromCanvas(
       headLine: headChoice.variant,
       lifeLine: lifeChoice.variant,
     },
+    variantPathAgreement: Object.fromEntries(Object.entries(pathAgreement).filter(([, value]) => value)) as PalmPipelineDiagnostics["variantPathAgreement"],
   } as const;
   console.debug("[palm-pipeline]", pipelineDiagnostics);
 

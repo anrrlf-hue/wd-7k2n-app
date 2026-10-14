@@ -140,6 +140,8 @@ export interface PalmPipelineDiagnostics {
     headLine: "raw" | "enhanced";
     lifeLine: "raw" | "enhanced";
   };
+  /** Raw/enhanced foreground path agreement; diagnostic-only, never customer confidence. */
+  variantPathAgreement?: Partial<Record<"heartLine" | "headLine" | "lifeLine", import("@/lib/palm-line-stability").PalmPathAgreement>>;
 }
 
 export interface PalmFacts {
