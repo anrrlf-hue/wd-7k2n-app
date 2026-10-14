@@ -38,6 +38,7 @@ const hooks = registerHooks({
 
 const factsMod = await import(pathToFileURL(path.join(root, "src/lib/saju-facts.ts")).href);
 const reportMod = await import(pathToFileURL(path.join(root, "src/lib/free-report-mock.ts")).href);
+const consultationStyleMod = await import(pathToFileURL(path.join(root, "src/lib/free-consultation-style-v1.ts")).href);
 const schemaMod = await import(pathToFileURL(path.join(root, "src/lib/free-report-schema.ts")).href);
 const focusMod = await import(pathToFileURL(path.join(root, "src/lib/saju-focus.ts")).href);
 const focusReportMod = await import(pathToFileURL(path.join(root, "src/lib/free-saju-focus-report.ts")).href);
@@ -128,9 +129,11 @@ assert(
   "ASTRA-T4: provisional noon strength leaked into unknown-time decision style",
 );
 assert(
-  /출생시간|확정하지|단정하지/.test(unknownText),
-  "ASTRA-T5: unknown-time uncertainty is not preserved in customer copy",
+  /출생시간|확정하지|단정하지/.test(consultationStyleMod.buildFreeConsultationSections(unknownReport).flatMap((section) => section.paragraphs).join("\n")),
+  "ASTRA-T5: unknown-time uncertainty is not preserved in displayed customer sections",
 );
+const knownDisplayedText = consultationStyleMod.buildFreeConsultationSections(report).flatMap((section) => section.paragraphs).join("\n");
+assert(!/출생시간이 확인되지 않아 큰 운의 세밀한 시기는 남겨 두었습니다/.test(knownDisplayedText), "ASTRA-T5b: unknown-time notice leaked into known-time displayed sections");
 assert(
   !/대운 중 재성 겹침 0회/.test(unknownReport.bigMoneyAffinity.evidence),
   "ASTRA-T6: unknown Daeun opportunity count exposed as zero",
