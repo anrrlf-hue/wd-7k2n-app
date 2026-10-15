@@ -3,7 +3,7 @@ import { getSupabasePublicConfig } from "@/lib/supabase/config";
 import { getReferralRealm, isReferralEnabled, REFERRAL_CAMPAIGN, hashReferralValue } from "@/lib/referral";
 
 type ReferralStoreClient = SupabaseClient;
-type ReferralQueryResponse = { data: unknown; error: { status?: unknown; code?: unknown } | null };
+type ReferralQueryResponse = { status?: unknown; data: unknown; error: { code?: unknown } | null };
 
 export type ReferralRewardStatus =
   | { kind: "claimed"; rewardId: string }
@@ -29,6 +29,7 @@ const SAFE_POSTGREST_ERROR_CODES = new Set([
   "42501",
   "42883",
 ]);
+const SAFE_EXCEPTION_NAMES = new Set(["AbortError", "TimeoutError", "TypeError", "Error"]);
 
 type ReferralStoreFailureCode =
   | "disabled"
@@ -50,18 +51,23 @@ function referralConfigFlags() {
 }
 
 function safeStatus(value: unknown): number | null {
-  return typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599 ? value : null;
+  return typeof value === "number" && Number.isInteger(value) && (value === 0 || (value >= 100 && value <= 599)) ? value : null;
 }
 
 function safePostgrestCode(value: unknown): string | null {
   return typeof value === "string" && SAFE_POSTGREST_ERROR_CODES.has(value) ? value : null;
 }
 
-function logReferralStoreFailure(code: ReferralStoreFailureCode, details: { status?: unknown; errorCode?: unknown; timedOut?: boolean } = {}) {
+function safeExceptionName(value: unknown): string | null {
+  return typeof value === "string" && SAFE_EXCEPTION_NAMES.has(value) ? value : null;
+}
+
+function logReferralStoreFailure(code: ReferralStoreFailureCode, details: { status?: unknown; errorCode?: unknown; exceptionName?: unknown; timedOut?: boolean } = {}) {
   console.error("[referral-store-unavailable]", JSON.stringify({
     code,
     status: safeStatus(details.status),
     errorCode: safePostgrestCode(details.errorCode),
+    exceptionName: safeExceptionName(details.exceptionName),
     timedOut: details.timedOut === true,
     ...referralConfigFlags(),
   }));
@@ -192,7 +198,7 @@ export async function validateReferralInvite(input: { token: string; inviterSess
   const store = createReferralStore();
   if (!store) return "unavailable";
   try {
-    const { result: { data, error }, timedOut } = await withReferralDeadline<ReferralQueryResponse>(signal => store
+    const { result, timedOut } = await withReferralDeadline<ReferralQueryResponse>(signal => store
       .from("referral_invites")
       .select("id")
       .eq("realm", realm)
@@ -204,9 +210,10 @@ export async function validateReferralInvite(input: { token: string; inviterSess
       .abortSignal(signal)
       .retry(false)
       .maybeSingle());
+    const { data, error } = result;
     if (error) {
       logReferralStoreFailure(timedOut ? "timeout" : "query_error", {
-        status: error.status,
+        status: result.status,
         errorCode: error.code,
         timedOut,
       });
@@ -216,6 +223,7 @@ export async function validateReferralInvite(input: { token: string; inviterSess
   } catch (error) {
     // Do not replace AbortError: Supabase uses it to stop retrying aborted GETs.
     logReferralStoreFailure("query_error", {
+      exceptionName: error instanceof Error ? error.name : null,
       timedOut: error instanceof Error && error.name === "AbortError",
     });
     return "unavailable";
