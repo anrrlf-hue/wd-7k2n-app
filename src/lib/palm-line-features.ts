@@ -23,6 +23,8 @@ export interface VerticalCreaseSignal extends EdgeBandSignal {
   widthSpan: number;
   /** 0~1. 연결 성분의 평균 명암 대비. 확률/정확도가 아니다. */
   contrast: number;
+  /** Center samples of the selected connected foreground component. */
+  pathPoints?: Array<{ x: number; y: number }>;
 }
 
 function toGrayscale(data: Uint8ClampedArray, width: number, height: number): Float32Array {
@@ -177,6 +179,7 @@ export function analyzeVerticalCreaseBand(
   let bestCount = 0;
   let bestContrast = 0;
   let componentBounds: VerticalCreaseSignal["componentBounds"];
+  let bestComponentPoints: Array<{ x: number; y: number }> | undefined;
 
   for (let start = 0; start < candidate.length; start++) {
     if (!candidate[start] || seen[start]) continue;
@@ -188,6 +191,7 @@ export function analyzeVerticalCreaseBand(
     let maxX = -1;
     let count = 0;
     let contrastSum = 0;
+    const componentPoints: Array<{ x: number; y: number }> = [];
 
     while (stack.length) {
       const i = stack.pop()!;
@@ -199,6 +203,7 @@ export function analyzeVerticalCreaseBand(
       maxX = Math.max(maxX, x);
       count++;
       contrastSum += contrast[i];
+      componentPoints.push({ x: x0 + x, y: y0 + y });
 
       for (let dy = -1; dy <= 1; dy++) {
         const ny = y + dy;
@@ -224,6 +229,7 @@ export function analyzeVerticalCreaseBand(
       bestCount = count;
       bestContrast = count ? contrastSum / count : 0;
       componentBounds = { x: x0 + minX, y: y0 + minY, width: cols, height: rows };
+      bestComponentPoints = componentPoints;
     }
   }
 
@@ -231,6 +237,12 @@ export function analyzeVerticalCreaseBand(
   const widthSpan = bestCols / w;
   const density = bestCount / (w * h);
   const contrastScore = Math.min(1, bestContrast / 40);
+  const pathPoints = bestComponentPoints?.length
+    ? Array.from(new Set(bestComponentPoints.map(point => point.y))).sort((a, b) => a - b).map(y => {
+      const xs = bestComponentPoints!.filter(point => point.y === y).map(point => point.x).sort((a, b) => a - b);
+      return { x: xs[Math.floor(xs.length / 2)], y };
+    })
+    : undefined;
   return {
     density: Math.min(1, density * 30),
     span: continuity,
@@ -239,6 +251,7 @@ export function analyzeVerticalCreaseBand(
     widthSpan,
     contrast: contrastScore,
     componentBounds,
+    pathPoints: pathPoints && pathPoints.length >= 5 ? pathPoints : undefined,
   };
 }
 

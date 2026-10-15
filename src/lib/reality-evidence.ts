@@ -54,9 +54,7 @@ function personalityEvidence(
 function palmLineDetail(line: OnnxPalmLines["heartLine"]): string {
   const parts: string[] = [];
   if (line.curve) parts.push(line.curve);
-  if (line.length) parts.push(`길이 ${line.length}`);
-  if (line.depthStrength) parts.push(`선명도 ${line.depthStrength}`);
-  return parts.length > 0 ? parts.join(" · ") : "선 위치만 확인";
+  return parts.length > 0 ? `자동 분류 ${parts.join(" · ")}` : "선 위치만 확인";
 }
 
 function addPalmLine(
@@ -81,7 +79,7 @@ function secondaryLineText(
   const signal = hand.secondaryLines?.[key];
   if (!signal) return "미확인";
   const status =
-    signal.status === "clear" ? "선명" : signal.status === "faint" ? "희미" : "확인 안 됨";
+    signal.status === "clear" ? "보조 신호 확인" : signal.status === "faint" ? "보조 신호 약함" : "확인 안 됨";
   if (key === "fate" && signal.corroborated) return `${status}·교차확인`;
   return status;
 }

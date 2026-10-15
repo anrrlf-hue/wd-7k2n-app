@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold">처리하는 정보</h2>
             <p className="mt-2 text-muted-foreground">
-              사주 계산을 위해 생년월일, 성별, 선택 입력인 출생시간과 MBTI를 사용합니다. 관계 비교를 이용하면 상대방의 생년월일, 성별, 선택 입력인 출생시간과 호칭을 추가로 사용합니다.
+              사주 계산을 위해 생년월일, 성별, 선택 입력인 출생시간을 사용합니다. 관계 비교를 이용하면 상대방의 생년월일, 성별, 선택 입력인 출생시간과 호칭을 추가로 사용합니다.
             </p>
           </section>
           <section className="rounded-2xl border border-border bg-card p-5">
@@ -30,7 +30,7 @@ export default function PrivacyPage() {
             <p className="mt-2 text-muted-foreground">
               진행 중인 사주 입력, 손금 화면으로 이어갈 입력, 완료된 손금 특징, 풀이와 이전 리포트는 같은 탭의 세션 저장소에 보관합니다. 탭을 닫아도 브라우저의 탭 복원 기능에 따라 다시 나타날 수 있습니다. 사주 분석 후 내 출생정보(생년월일·성별·입력한 출생시간)는 로컬 저장소에도 자동 저장되며, 저장된 비교할 사람의 정보와 관리 기록도 다음 방문까지 남습니다.
             </p>
-            <p className="mt-2 text-muted-foreground">무료 사주·질문은 기본적으로 서비스 내부의 계산·문장 규칙을 사용합니다. 운영자가 외부 해석을 명시적으로 켠 경우에만 Anthropic에 계산된 사주 정보와 입력한 MBTI·질문 등을 전달할 수 있습니다. 통합 연간 풀이와 손금 해석은 외부 해석 설정과 관계없이 내부 규칙으로 만듭니다. 손 사진 원본은 외부 요청에 포함하지 않습니다.</p>
+            <p className="mt-2 text-muted-foreground">무료 사주·질문은 기본적으로 서비스 내부의 계산·문장 규칙을 사용합니다. 운영자가 외부 해석을 명시적으로 켠 경우에만 Anthropic에 계산된 사주 정보와 질문 등을 전달할 수 있습니다. 통합 연간 풀이와 손금 해석은 외부 해석 설정과 관계없이 내부 규칙으로 만듭니다. 손 사진 원본은 외부 요청에 포함하지 않습니다.</p>
             <p className="mt-2 text-muted-foreground">이용 통계가 켜진 경우 임의로 만든 세션 식별자와 완료·공유·질문 같은 제품 이용 이벤트를 기록합니다. 해당 이벤트에는 생년월일·질문 본문·손 사진·풀이 원문을 넣지 않습니다. 결제카드 정보는 현재 수집하지 않습니다.</p>
           </section>
           <section className="rounded-2xl border border-border bg-card p-5">
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold">이용자의 선택</h2>
             <p className="mt-2 text-muted-foreground">
-              출생시간과 MBTI는 선택할 수 있습니다. 아래 기능은 이 탭에서 접근 가능한 사주 서비스의 세션·로컬 저장소 기록을 지웁니다. 방문 기록의 URL, 다른 기기와 서버의 이용 통계는 지우지 않습니다. 다른 탭이 열려 있다면 진행 내용을 다시 저장할 수 있습니다.
+              출생시간은 선택할 수 있습니다. 아래 기능은 이 탭에서 접근 가능한 사주 서비스의 세션·로컬 저장소 기록을 지웁니다. 방문 기록의 URL, 다른 기기와 서버의 이용 통계는 지우지 않습니다. 다른 탭이 열려 있다면 진행 내용을 다시 저장할 수 있습니다.
             </p>
             <ReadingStorageControls />
           </section>

@@ -1,7 +1,6 @@
 import type { PremiumEditorialPlan } from "@/lib/premium-editorial-plan";
 import { normalizePalmFactsObservation, type PalmFacts, type OnnxLineDetail } from "@/lib/palm-facts";
 import type { DominantHand } from "@/lib/palm-bilateral";
-import { secondaryObservationState } from "@/lib/palm-customer-reading";
 
 export type ObservedHands = { left: PalmFacts; right: PalmFacts; dominant: DominantHand };
 export function observedDomainLine(hands: ObservedHands | null, key: "headLine" | "heartLine") {
@@ -88,22 +87,8 @@ export function integrateLoveStory(plan: PremiumEditorialPlan, hands: ObservedHa
   return observation.different ? `${body} 반대 손의 다른 표현까지 함께 읽으면, 말을 기다리는 순간과 작은 행동만으로 편했던 순간을 한 방식으로 고정하지 않아도 됩니다.` : body;
 }
 
-export function integrateMoneyStory(plan: PremiumEditorialPlan, hands: ObservedHands | null): string | null {
-  if (!hands) return null;
-  const observations = (["left", "right"] as const).flatMap(hand => {
-    const facts = normalizePalmFactsObservation(hands[hand]), signal = facts.secondaryLines?.fate;
-    return facts.imageQuality === "good" && secondaryObservationState("fate", signal) === "observed" && signal?.candidateObservation
-      ? [{ hand, position: signal.candidateObservation.position }] : [];
-  });
-  const life = observations.find(f => f.position === "thumb_side"), response = observations.find(f => f.position === "pinky_side");
-  if (life && response) {
-    const f = family(plan);
-    if (plan.id === "creation-exchange-supported") return `배워서 직접 만든 것이 누군가에게 쓰일 때 보람을 대가로 받아들일 여지가 있습니다. 가령 익힌 방법을 조금 바꾸어 만든 것을 다음에도 부탁받았다면, 아직 더 배워야 한다는 마음 때문에 이미 도움이 된 부분까지 가볍게 여길 수 있습니다. ${life.hand === "left" ? "왼손" : "오른손"}의 생활 쪽 운명선 후보와 ${response.hand === "left" ? "왼손" : "오른손"}의 반응 쪽 후보를 함께 놓으면, 인정받아 더 보여 주고 싶은 마음 안에서도 배움과 일상이 남을 시간이 필요할 수 있습니다. 획득에서는 새로운 것을 전부 더 익혀서 제공하는 선택과 이미 도움이 된 한 부분을 다시 제공하는 선택이 다른 의미를 남깁니다. 지금 할 수 있는 부분에 대가를 받고 아직 배우고 싶은 시간을 따로 남길 때, 칭찬받은 결과가 끝없이 준비해야 하는 부담보다 다시 만들어 보고 싶은 경험으로 이어질 여지가 있습니다.`;
-    const what = f === "expression" ? "즐겁게 만든 것을 누군가 써 보고 다음에도 원한" : "부탁받아 정성껏 해 준 것을 누군가 알아보고 다음에도 원한";
-    return `돈을 얻는 기쁨에는 인정받은 마음과 앞으로도 편하게 이어 갈 하루가 함께 놓입니다. 가령 ${what} 장면이라면, 내 수고를 알아봐 준 사람에게 더 잘해 주고 싶은 마음이 생길 수 있습니다. ${life.hand === "left" ? "왼손" : "오른손"}의 생활 쪽 운명선 후보와 ${response.hand === "left" ? "왼손" : "오른손"}의 반응 쪽 후보를 함께 읽으면, 그 기쁨 속에서도 익숙한 하루를 남기고 싶은 바람이 같이 보입니다. 큰 대가를 받는 대신 자주 시간을 비우는 선택과 작게 제공하며 생활의 리듬을 남기는 선택은 같은 만족으로 이어지지 않을 수 있습니다. 획득에서는 금액만으로 고르기보다, 알아봐 준 사람과 계속하는 기쁨 뒤에도 내 하루가 편안하게 남는 모습을 함께 떠올릴 수 있습니다. 한 번의 칭찬을 무한히 해 줘야 할 마음으로 넓히지 않을 때 보람과 대가를 오래 받아들일 여지가 있습니다.`;
-  }
-  if (life) return `획득에서는 일에서 돌아올 대가와 그 일을 하는 하루의 편안함을 함께 읽습니다. ${life.hand === "left" ? "왼손" : "오른손"}의 생활 쪽 운명선 후보가 함께 있어, 가령 마음에 드는 제안도 매번 익숙한 시간을 크게 바꿔야 한다면 처음의 기대와 지속할 때의 만족이 달라질 수 있습니다. 같은 대가라도 짧게 모아 제공하는 선택과 자주 시간을 비우는 선택은 하루에 다른 흔적을 남깁니다. 잘해 낼 수 있다는 마음만큼 어떤 하루로 이어 가고 싶은지가 돈을 얻는 경험의 의미를 바꿀 여지가 있습니다.`;
-  if (response) return `획득에서는 수고를 알아봐 준 반응과 실제로 제공한 가치가 함께 읽힙니다. ${response.hand === "left" ? "왼손" : "오른손"}의 반응 쪽 운명선 후보를 함께 놓으면, 가령 좋은 반응을 얻은 일을 다시 부탁받았을 때 그 기쁨 때문에 더 해 주고 싶은 장면이 떠오릅니다. 칭찬을 더 듣기 위해 제공하는 내용이 계속 늘면, 대가를 받아도 자신의 정성이 가볍게 남은 듯 느낄 수 있습니다. 상대가 실제로 편해진 한 부분을 듣고 그 부분을 제공하는 모습으로 남기는 선택은, 더 많이 해 주는 만족과 쓰임을 알아준 만족을 다르게 느끼게 할 여지가 있습니다.`;
-  if (observations.length) return "획득에서는 스스로 해낸 보람과 앞으로도 같은 일에 시간을 쓰고 싶은 마음을 함께 읽습니다. 가운데 쪽 운명선 후보가 함께 있어, 가령 능숙하게 해 준 일이 좋은 대가로 돌아와도 그 일이 자신에게 재미있었는지는 따로 남을 수 있습니다. 같은 일을 더 많이 제공하는 선택과 익힌 것 중 다른 사람에게 도움이 된 한 부분만 남기는 선택은 다음에도 하고 싶은 마음을 다르게 만듭니다. 잘한다는 평가와 다시 하고 싶은 경험이 만나는 곳에서 보람을 실제 대가로 받아들이는 의미를 찾을 여지가 있습니다.";
+export function integrateMoneyStory(_plan: PremiumEditorialPlan, _hands: ObservedHands | null): string | null {
+  // Secondary-line candidates are observation-only and never a money basis.
+  void _plan; void _hands;
   return null;
 }

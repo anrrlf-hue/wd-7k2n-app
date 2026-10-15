@@ -1,10 +1,10 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { getReferralRealm } from "@/lib/referral";
 
-export type TrialParticipation = "native_share" | "clipboard";
 const CAMPAIGN = "premium-share-trial-v1";
-type Receipt = { campaign: string; scope: string; participation: TrialParticipation; completedAt: number };
+type Receipt = { campaign: string; realm: "test" | "live"; scope: string; completedAt: number };
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
@@ -18,8 +18,8 @@ export function premiumTrialScope(input: unknown): string {
 }
 
 function signingKey(): Buffer {
-  // Reuse the framework's existing server-only build key with domain separation.
-  // No new credential, database, login or environment setting is introduced.
+  // Reuse the framework's existing server-only build key; no new signing
+  // credential is introduced by the referral flow.
   try {
     const manifest = JSON.parse(readFileSync(join(process.cwd(), ".next/server/server-reference-manifest.json"), "utf8"));
     const key = Buffer.from(manifest.encryptionKey, "base64");
@@ -28,16 +28,16 @@ function signingKey(): Buffer {
   } catch { throw new Error("Premium trial signing key unavailable"); }
 }
 
-export function issuePremiumTrial(input: unknown, participation: TrialParticipation): string {
-  if (participation !== "native_share" && participation !== "clipboard") throw new Error("Invalid participation");
-  const receipt: Receipt = { campaign: CAMPAIGN, scope: premiumTrialScope(input), participation, completedAt: Date.now() };
+export function issuePremiumTrial(input: unknown): string {
+  const realm = getReferralRealm();
+  if (!realm) throw new Error("Premium trial realm unavailable");
+  const receipt: Receipt = { campaign: CAMPAIGN, realm, scope: premiumTrialScope(input), completedAt: Date.now() };
   const body = Buffer.from(JSON.stringify(receipt)).toString("base64url");
   return `${body}.${createHmac("sha256", signingKey()).update(body).digest("base64url")}`;
 }
 
-/** Browser success is the campaign condition, not proof of delivery/acquisition.
- * A signed receipt proves registration and binds that participation to one input.
- * It stays in this browser session; campaign/key changes invalidate old receipts. */
+/** A receipt is issued only after the server observes a persisted referral reward.
+ * It contains no birth, photo, report, or referral token data. */
 export function verifyPremiumTrial(input: unknown, token: unknown): Receipt | null {
   if (typeof token !== "string" || token.length > 1024) return null;
   const parts = token.split(".");
@@ -47,8 +47,7 @@ export function verifyPremiumTrial(input: unknown, token: unknown): Receipt | nu
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return null;
   try {
     const receipt = JSON.parse(Buffer.from(parts[0], "base64url").toString("utf8")) as Receipt;
-    return receipt.campaign === CAMPAIGN && receipt.scope === premiumTrialScope(input)
-      && ["native_share", "clipboard"].includes(receipt.participation)
+    return receipt.campaign === CAMPAIGN && receipt.realm === getReferralRealm() && receipt.scope === premiumTrialScope(input)
       && Number.isSafeInteger(receipt.completedAt) && receipt.completedAt <= Date.now()
       ? receipt : null;
   } catch { return null; }

@@ -29,7 +29,8 @@ import { buildPalmBilateralReading, isStoredPalmReading, PALM_READING_VERSION, t
 import { PalmTaskSlot, requestPalmReport, runWithDeadline } from "@/lib/palm-analysis-task";
 import { PalmWorkerClient } from "@/lib/palm-worker-client";
 import { palmShapeLabel } from "@/lib/palm-customer-reading";
-import type { PalmAnalysisPhase } from "@/lib/palm-detection";
+import type { PalmAnalysisDebugSnapshot, PalmAnalysisPhase } from "@/lib/palm-detection";
+import { shouldCapturePalmDebug } from "@/lib/palm-debug-gate";
 
 const ANALYSIS_PHASES = {
   decode: "사진을 불러오고 있어요",
@@ -491,7 +492,7 @@ export function PalmPageClient({
     console.warn("[palm-analysis] operation failed", err);
     const preserved = leftPalmFacts || rightPalmFacts ? "완료된 손 분석은 유지되며 다시 시도할 수 있습니다." : retryReport.current ? "입력한 생년월일을 유지한 채 다시 요청할 수 있습니다." : "이 화면에서 사진을 다시 선택하거나 촬영해 시도할 수 있습니다.";
     setErrorMsg(err instanceof Error && err.name === "TimeoutError"
-      ? `${retryReport.current ? "리포트 받기가 30초" : "사진 읽기가 60초"}를 넘어 중단했어요. ${preserved}`
+      ? `${err.message.includes("모델") ? "사진 모델 분석이 45초" : retryReport.current ? "리포트 받기가 30초" : "사진 읽기가 60초"}를 넘어 중단했어요. ${preserved}`
       : retryReport.current?.primary === null ? `사주 풀이를 받지 못했어요. ${preserved}` : `분석을 끝내지 못했어요. ${preserved}`);
     setRetryMode(retryReport.current ? "report" : capturedCanvas.current ? "photo" : null);
     setStage("error");
@@ -572,7 +573,14 @@ export function PalmPageClient({
           const preview = existingPreview ?? canvas.toDataURL("image/jpeg", 0.9);
           capturedCanvas.current = { canvas, preview };
           replacePreview(preview);
-          return analyzer.current.analyze(canvas, signal, (phase: PalmAnalysisPhase) => markPhase(task, phase));
+          // Deliberately compile out of production: this hook is only for local
+          // review of the crop/model boundary and must never expose raw pixels,
+          // landmarks, or masks through a customer-visible event.
+          const debugCapture = shouldCapturePalmDebug(new URLSearchParams(window.location.search).get("palmDebug") === "1");
+          return analyzer.current.analyze(canvas, signal, (phase: PalmAnalysisPhase) => markPhase(task, phase), {
+            debug: debugCapture,
+            onDebug: debugCapture ? (snapshot: PalmAnalysisDebugSnapshot) => window.dispatchEvent(new CustomEvent("palm-debug", { detail: snapshot })) : undefined,
+          });
         });
       if (!tasks.current.isCurrent(task)) return;
       const preview = capturedCanvas.current!.preview;
@@ -1015,9 +1023,9 @@ export function PalmPageClient({
           <div className="mt-3">
             {rightPalmFacts && leftPalmFacts ? (
               <>
-                {bilateralReading?.version === PALM_READING_VERSION ? <PalmBilateralSection reading={bilateralReading} /> : <div className="rounded-2xl border border-border p-4">
+                {bilateralReading?.version === PALM_READING_VERSION ? <PalmBilateralSection reading={bilateralReading} handObservations={[{ label: "왼손 입력 사진", facts: leftPalmFacts }, { label: "오른손 입력 사진", facts: rightPalmFacts }]} /> : <div className="rounded-2xl border border-border p-4">
                   <p className="text-sm leading-7">이전 형식으로 저장된 손금 풀이입니다. 저장된 문장은 그대로 두고, 원할 때 현재 형식으로 다시 정리할 수 있어요.</p>
-                  {bilateralReading && <details className="mt-3"><summary className="cursor-pointer text-sm">저장 당시 손금 문장 보기</summary><PalmBilateralSection reading={bilateralReading} /></details>}
+                  {bilateralReading && <details className="mt-3"><summary className="cursor-pointer text-sm">저장 당시 손금 문장 보기</summary><PalmBilateralSection reading={bilateralReading} handObservations={[{ label: "왼손 입력 사진", facts: leftPalmFacts }, { label: "오른손 입력 사진", facts: rightPalmFacts }]} /></details>}
                   <Button variant="outline" className="mt-3 min-h-11" onClick={() => {
                     if (!dominantHand) return;
                     setPreviousBilateralReading(bilateralReading);

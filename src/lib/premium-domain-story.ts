@@ -7,6 +7,49 @@ type Domain = "love_relationship" | "money" | "work";
 type Story = { ground: string; tension: string; example: string; alternative: string };
 type DomainStories = Record<Domain, Story>;
 
+const DAEUN_STORIES: Record<string, Partial<DomainStories>> = {
+  "관성|식상": {
+    love_relationship: {
+      ground: "현재 흐름에서는 약속을 지키는 마음과 자기 생각을 말해 이해받고 싶은 마음이 가까움 안에서 함께 움직입니다.",
+      tension: "가령 상대가 정한 순서를 따르면서도 다른 방법을 제안하고 싶을 때, 내 생각을 말하는 일이 이미 한 약속을 흔드는 것처럼 느껴질 수 있습니다.",
+      example: "상대가 지키고 싶은 목적과 내가 바꾸고 싶은 방법을 나누어 들으면, 서로의 뜻을 한쪽의 포기로 만들지 않을 수 있습니다.",
+      alternative: "약속은 지키되 표현할 방법 하나를 함께 고르는 장면에서 책임과 자기 목소리가 같은 관계 안에 남습니다.",
+    },
+    money: {
+      ground: "현재 흐름에서는 맡은 몫을 지키는 신뢰와 결과를 밖에 보여 주어 조건을 확인하는 일이 재물의 연결로 읽힙니다.",
+      tension: "가령 맡은 일을 더 잘 다듬어 추가 결과를 만들었는데 처음 대가에 그 시간이 포함됐다고 여겨지면, 성실함과 정당한 보상이 어긋날 수 있습니다.",
+      example: "처음 합의한 결과와 새로 더한 결과를 나누어 설명하면, 잘해 낸 마음과 새 조건을 말하는 일이 서로 다른 대화가 됩니다.",
+      alternative: "추가 결과의 쓰임과 필요한 시간을 함께 확인하는 선택이 신뢰를 대가로 이어갈 기준을 만듭니다.",
+    },
+    work: {
+      ground: "현재 흐름에서는 정해진 책임을 지키면서도 더 나은 방법을 결과로 보여 주고 싶은 마음이 일의 장면에 놓입니다.",
+      tension: "가령 완료 기준은 분명하지만 순서까지 정해져 있을 때, 더 편한 방식을 제안하면 맡은 역할을 가볍게 여긴다는 오해가 걱정될 수 있습니다.",
+      example: "목표는 그대로 두고 바꾸려는 절차 한 부분을 작은 결과로 보여 주면, 제안이 불만이 아니라 책임을 더 잘 끝내려는 방법으로 전해질 수 있습니다.",
+      alternative: "지킬 기준과 시험해 볼 방법을 나누어 합의하는 환경에서 책임감과 표현력이 함께 전문성으로 남습니다.",
+    },
+  },
+  "관성|비겁": {
+    love_relationship: {
+      ground: "현재 흐름에서는 약속을 지키는 마음과 함께해도 내 선택을 남기고 싶은 마음이 가까움 안에서 만납니다.",
+      tension: "가령 상대가 편하도록 일정을 맡겨 두었는데 어느 순간 내 시간을 정할 수 없게 느껴지면, 고마움과 답답함이 함께 생길 수 있습니다.",
+      example: "서로 지킬 약속과 내가 직접 고를 시간을 나누어 말하면, 도움을 받는 일과 자기 뜻을 포기하는 일이 달라집니다.",
+      alternative: "함께 정할 부분과 각자 정할 부분을 남기는 관계에서 책임과 동등함이 동시에 편안해질 수 있습니다.",
+    },
+    money: {
+      ground: "현재 흐름에서는 함께 만든 결과를 지키는 책임과 그 안에서 자신의 몫과 조건을 정하는 감각이 재물의 연결로 읽힙니다.",
+      tension: "가령 함께한 일이 잘되어도 수고한 사람마다 필요한 보상이 다른데 모두 같은 몫으로 넘기면, 좋은 뜻이 불공평한 조건으로 남을 수 있습니다.",
+      example: "공동의 목표와 각자가 맡은 시간·비용을 따로 적으면, 함께 얻은 결과 안에서 내 몫을 말하는 일이 관계를 깨는 요구가 아님을 확인할 수 있습니다.",
+      alternative: "다음에도 이어갈 조건을 각자 확인하는 선택이 함께한 성과와 개인의 생활을 동시에 지킵니다.",
+    },
+    work: {
+      ground: "현재 흐름에서는 맡은 책임을 지키면서도 동료와 다른 방법을 선택할 여지를 남기는 일이 일의 장면에 놓입니다.",
+      tension: "가령 팀의 약속을 지키려다 내 판단까지 모두 넘기면, 결과는 함께 남아도 어떤 부분을 내가 결정했는지 흐려질 수 있습니다.",
+      example: "공통으로 지킬 기준과 내가 맡아 판단할 부분을 나누어 말하면, 협업이 자기 방식의 소멸로 이어지지 않습니다.",
+      alternative: "역할과 결정권을 함께 정하는 환경에서 책임감은 순응이 아니라 공동의 결과를 만드는 힘으로 남습니다.",
+    },
+  },
+};
+
 /** Each arc is chosen from calculated natal evidence, never from a person's
  * name, birthday, biography, or an unverified line. One scene develops its
  * tension once; it is not an appended copy of the natal and palm passages. */
@@ -277,6 +320,9 @@ export function premiumOverallEvidence(plan: PremiumEditorialPlan): string {
 }
 
 export function composePremiumOverallStory(plan: PremiumEditorialPlan): string {
+  const daeunKey = (plan.daeunGroups ?? []).slice().sort().join("|");
+  if (plan.id === "creation-exchange-supported" && daeunKey === "관성|식상") return "지켜야 할 약속 안에서도 자기 생각을 결과로 보여 주고 싶은 마음이 함께 읽힙니다. 맡은 기준을 따르기만 하면 답답하고, 자기 방법만 앞세우면 함께 정한 목적이 흐려질 수 있어 지킬 목표와 바꿔 볼 절차를 나누는 일이 이 흐름의 중심입니다. 가까운 관계에서는 기대한 마음을 설명하고, 재물에서는 추가 결과의 조건을 확인하며, 일에서는 작은 개선을 보여 주는 식으로 같은 긴장이 서로 다른 장면에 나타날 수 있습니다.";
+  if (plan.id === "creation-exchange-supported" && daeunKey === "관성|비겁") return "지켜 온 책임 안에서도 내가 직접 고를 몫을 잃고 싶지 않은 마음이 함께 읽힙니다. 도움을 받는 일과 결정을 넘기는 일은 같지 않고, 함께한 결과와 개인의 조건도 따로 살필 필요가 있어 약속과 선택의 경계를 나누는 일이 이 흐름의 중심입니다. 가까운 관계에서는 함께 정할 시간과 내 시간을 나누고, 재물에서는 각자의 비용과 보상을 확인하며, 일에서는 공통 기준과 내 결정권을 구별하는 장면으로 이어집니다.";
   return OVERALL[plan.id];
 }
 
@@ -307,10 +353,10 @@ const ANNUAL: Record<EditorialArcId, string> = {
   "agency-expression": "먼저 보여 준 것에 질문이 돌아오면 처음의 자신감과 다른 마음이 생길 수 있습니다. 예상하지 못한 쓰임을 알아본 기쁨과 내 뜻을 더 잘 전하고 싶은 바람을 함께 남기면, 반응을 듣는 시간이 시작한 용기를 지우지 않을 여지가 있습니다.",
   balanced: "함께 즐거웠던 시간 뒤에 혼자 편안히 있고 싶은 마음이 남아도 같은 사람 안의 경험일 수 있습니다. 새로운 것을 처음 누릴 때와 익숙하게 이어 갈 때 좋은 이유가 달라지듯, 관계와 돈과 일에서 만족을 느끼는 순간도 한 모습으로 고정되지 않을 여지가 있습니다.",
 };
-export function premiumAnnualThread(plan: PremiumEditorialPlan, years: PremiumYearNarrative[] = []): string {
+export function premiumAnnualThread(plan: PremiumEditorialPlan, years: PremiumYearNarrative[] = [], yearLabels: string[] = []): string {
   if (!years.length) return ANNUAL[plan.id];
   const natal = ANNUAL[plan.id].split(/(?<=\.)\s+/)[0];
-  return [natal, ...years.map((year, index) => `${index === 0 ? "처음 읽는 세운에는" : "이어지는 세운에는"} ${year.summary}`)].join(" ");
+  return [natal, ...years.map((year, index) => `${yearLabels[index] ?? `${index + 1}번째 세운`}에는 ${year.summary}`)].join(" ");
 }
 const CLOSING: Partial<Record<EditorialArcId, [string, string]>> = {
   "agency-duty": ["서로 이해한 선택 안에서도 개인적으로 좋아하는 시간을 남길 수 있습니다.", "누군가에게 잘 설명하지 않아도 다시 하고 싶은 한 순간은 무엇이었나요?"],
@@ -329,10 +375,13 @@ const positionName = { year: "연", month: "월", day: "일", hour: "시" } as c
  * a person's income, account balance, or actual spending. */
 export function composePremiumDomainStory(area: Domain, plan: PremiumEditorialPlan,
   hands: ObservedHands | null): string {
-  const story = STORIES[plan.id][area];
+  const daeunKey = (plan.daeunGroups ?? []).slice().sort().join("|");
+  const story = plan.id === "creation-exchange-supported"
+    ? DAEUN_STORIES[daeunKey]?.[area] ?? STORIES[plan.id][area]
+    : STORIES[plan.id][area];
   const money = area === "money" ? buildSajuMoneyMeaning(plan) : null;
   const integrated = area === "work" ? integrateWorkStory(plan, hands) : area === "money" ? integrateMoneyStory(plan, hands) : integrateLoveStory(plan, hands);
   const main = integrated ?? [story.ground, area === "money" ? `획득에서는 ${story.tension}` : story.tension,
-    story.example, story.alternative].filter(Boolean).join(" ");
+    story.example, story.alternative].filter(Boolean).join("\n\n");
   return [main, money?.premiumManagement, money?.premiumSpending].filter(Boolean).join("\n\n");
 }

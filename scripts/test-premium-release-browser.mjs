@@ -1,3 +1,4 @@
+import "./register-test-typescript.mjs";
 // Local browser integration: actual deterministic API responses + controlled
 // slow streams. Recognition is not exercised here. No external/model calls.
 import assert from "node:assert/strict";
@@ -7,6 +8,9 @@ import { createRequire } from "node:module";
 import { birthFixture } from "./fixtures/palm-analysis.mjs";
 import { PALM_ENTRY_KEY, palmEntry } from "./fixtures/palm-entry.mjs";
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || "playwright-core");
+const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
+const { enrichSajuFacts } = await import("../src/lib/oh-my-saju-adapter.ts");
+const { buildPremiumReport } = await import("../src/lib/premium-report.ts");
 const BASE = process.env.TEST_BASE_URL || "http://127.0.0.1:3027";
 assert.match(BASE, /^http:\/\/(localhost|127\.0\.0\.1):\d+$/);
 const evidence = process.env.TEST_EVIDENCE_DIR || "/tmp/saju-report-polish";
@@ -18,8 +22,16 @@ async function api(path, body) {
 }
 const free = await api("/api/palm/interpret", { ...birthFixture, palmFacts: null });
 const inputBody = { ...birthFixture, mbti: null, leftPalmFacts: null, rightPalmFacts: null, dominantHand: null };
-const { trialReceipt } = await api("/api/premium-report", { ...inputBody, trialAction: "participate", participation: "clipboard" });
-const premium = await api("/api/premium-report", { ...inputBody, trialReceipt });
+// The current server contract deliberately rejects client participation
+// strings (400) and requires a persisted referral reward before issuing a
+// receipt (503 when local storage is absent). Keep that gate covered by
+// test-premium-trial-browser.mjs; this script tests the result UI using the
+// same deterministic report builder as the app, with no synthetic server
+// authorization path.
+const shallowFacts = computeSajuFacts(birthFixture);
+const facts = enrichSajuFacts(shallowFacts, birthFixture);
+const premium = { report: buildPremiumReport({ facts, referenceDate: new Date("2026-10-13T00:00:00Z") }) };
+const trialReceipt = "local-ui-harness-receipt";
 let mode = "normal", number = 0;
 const requests = [], disconnected = [], delayed = [];
 const server = http.createServer(async (req, res) => {
@@ -27,7 +39,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") return res.end();
   const chunks = []; for await (const chunk of req) chunks.push(chunk);
   const rawBody = JSON.parse(Buffer.concat(chunks).toString());
-  if (rawBody.trialAction === "verify") { res.setHeader("content-type", "application/json"); return res.end(JSON.stringify({ eligible: true })); }
+  if (rawBody.trialAction === "verify") { res.setHeader("content-type", "application/json"); return res.end(JSON.stringify({ eligible: true, trialReceipt })); }
   assert.equal(rawBody.trialReceipt, trialReceipt, "each generation retains scope-bound eligibility");
   const request = { id: ++number, mode, body: rawBody };
   requests.push(request);
@@ -52,6 +64,13 @@ async function open({ blockedStorage = false, width = 390 } = {}) {
     if (u.origin === new URL(stubUrl).origin) return route.continue();
     if (u.origin !== BASE) return route.abort();
     if (u.pathname === "/api/palm/interpret") return route.fulfill({ json: free });
+    if (u.pathname === "/api/referrals/session") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+    if (u.pathname === "/api/referrals") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ url: new URL("/share/free?ref=local-ui-harness", BASE).toString() }) });
+    if (u.pathname === "/api/premium-report") {
+      const body = JSON.parse(route.request().postData() || "{}");
+      if (body.trialAction === "verify") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ eligible: true, trialReceipt }) });
+      return route.fulfill({ json: premium });
+    }
     if (u.pathname.startsWith("/api/")) { unexpected.push(u.pathname); return route.abort(); }
     return route.continue();
   });

@@ -37,6 +37,9 @@ export interface PremiumEditorialPlan {
   moneyScene: string;
   workConnection: string;
   workScene: string;
+  /** Calculated current daeun groups keep the same natal arc contextualized to
+   * the person's present symbolic background. */
+  daeunGroups?: TenGodGroup[];
   /** Chosen along with the domain scenes; month's real theme selects a lens. */
   month: { preparation: string; expression: string; exchange: string; duty: string; agency: string };
 }
@@ -237,7 +240,10 @@ export function buildPremiumEditorialPlan(facts: SajuFacts, profileRule = buildP
             : profileRule === "agency-value-understanding" ? "agency-value"
               : profileRule === "understanding-duty" ? "understanding-duty"
                 : profileRule === "agency-expression" ? "agency-expression" : "balanced";
-  return { id, natalEvidence: buildNatalEditorialEvidence(facts), ...PLANS[id] };
+  const daeunGroups = facts.currentDaeun
+    ? [...new Set([TEN_GOD_GROUP[facts.currentDaeun.stemTenGod], TEN_GOD_GROUP[facts.currentDaeun.branchTenGod]].filter(Boolean))] as TenGodGroup[]
+    : [];
+  return { id, natalEvidence: buildNatalEditorialEvidence(facts), daeunGroups, ...PLANS[id] };
 }
 
 /** The calendar supplies the actual month groups. The already selected

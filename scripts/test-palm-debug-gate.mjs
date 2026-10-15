@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import "./register-test-typescript.mjs";
+const { shouldCapturePalmDebug } = await import("../src/lib/palm-debug-gate.ts");
+const original = process.env.NODE_ENV;
+process.env.NODE_ENV = "test";
+assert.equal(shouldCapturePalmDebug(true), true);
+process.env.NODE_ENV = "production";
+assert.equal(shouldCapturePalmDebug(true), false, "worker must reject direct debug:true in production");
+assert.equal(shouldCapturePalmDebug(false), false);
+if (original === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = original;
+console.log("PASS palm debug gate blocks direct production debug requests");

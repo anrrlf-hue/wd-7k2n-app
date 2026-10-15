@@ -2,6 +2,9 @@ import { z } from "zod";
 
 const onnxLineDetailSchema = z.object({
   detected: z.boolean(),
+  // Optional for backward compatibility with stored pre-geometry-status data.
+  // New observations preserve whether segmentation was measurable or ambiguous.
+  geometryStatus: z.enum(["not_detected", "measurable", "ambiguous"]).optional(),
   length: z.enum(["짧음", "보통", "김"]).nullable(),
   curve: z.enum(["완만한 곡선", "직선에 가까움"]).nullable(),
   depthStrength: z.enum(["약함", "보통", "강함"]).nullable(),
@@ -18,6 +21,9 @@ const onnxLineDetailSchema = z.object({
     curve: z.enum(["segment_only", "not_supported"]),
     depth: z.enum(["mask_signal_only", "not_supported"]),
   }).optional(),
+  anatomicalStatus: z.enum(["supported", "rejected", "unconfirmed"]).optional(),
+  anatomicalReason: z.enum(["thumb_side_segment", "central_vertical_segment", "short_or_missing_geometry", "ambiguous_geometry"]).optional(),
+  pathPoints: z.array(z.object({ x: z.number(), y: z.number() })).optional(),
 });
 
 const onnxPalmLinesSchema = z.object({
@@ -31,8 +37,10 @@ const onnxPalmLinesSchema = z.object({
 });
 
 const secondaryLineSignalSchema = z.object({
-  creaseObservation: z.object({ bounds: z.object({ x0: z.number().min(0).max(1), y0: z.number().min(0).max(1), x1: z.number().min(0).max(1), y1: z.number().min(0).max(1) }), continuity: z.number().min(0).max(1), sourceVariant: z.enum(["raw", "enhanced"]) }).optional(),
-  candidateObservation: z.object({ version: z.literal("fate-candidate-v1"), position: z.enum(["middle", "thumb_side", "pinky_side"]), visibleVerticalSpan: z.number().finite().positive().max(2), creaseContinuity: z.number().min(0).max(1) }).optional(),
+  creaseObservation: z.object({ bounds: z.object({ x0: z.number().min(0).max(1), y0: z.number().min(0).max(1), x1: z.number().min(0).max(1), y1: z.number().min(0).max(1) }), continuity: z.number().min(0).max(1), sourceVariant: z.enum(["raw", "enhanced"]), pathPoints: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).min(5).optional() }).optional(),
+  // Legacy candidate observations remain readable, but new runtime candidates
+  // include pathPoints and the observer requires them before promotion.
+  candidateObservation: z.object({ version: z.literal("fate-candidate-v1"), position: z.enum(["middle", "thumb_side", "pinky_side"]), visibleVerticalSpan: z.number().finite().positive().max(2), creaseContinuity: z.number().min(0).max(1), pathPoints: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).min(5).optional() }).optional(),
   assessment: z.enum(["observed", "not_observed", "error", "unsupported", "unconfirmed"]).optional(),
   status: z.enum(["clear", "faint", "not_seen"]),
   strength: z.number().min(0).max(1),

@@ -9,7 +9,8 @@ registerHooks({
   resolve(specifier, context, next) {
     if (specifier.startsWith("@/")) {
       const target = path.join(root, "src", specifier.slice(2));
-      return next(pathToFileURL(target + (fs.existsSync(target + ".ts") ? ".ts" : ".tsx")).href, context);
+      const resolved = fs.existsSync(target) ? target : target + (fs.existsSync(target + ".ts") ? ".ts" : ".tsx");
+      return next(pathToFileURL(resolved).href, context);
     }
     return next(specifier, context);
   },
