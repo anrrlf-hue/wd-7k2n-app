@@ -11,6 +11,7 @@
     "test:referral-evidence": "node scripts/test-referral-evidence.mjs",
     "test:referral-deadline": "node scripts/test-referral-deadline.mjs",
     "test:referral-diagnostic-status": "node scripts/test-referral-diagnostic-status.mjs",
+    "test:referral-fetch-diagnostics": "node scripts/test-referral-fetch-diagnostics.mjs",
     "deploy:prod": "npx -y vercel@59.23.2 --prod --yes",
     "test:reality-answer-regressions": "node scripts/test-reality-answer-regressions.mjs"
   },

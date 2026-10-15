@@ -29,6 +29,8 @@ assert.deepEqual(diagnostic, {
   status: null,
   errorCode: null,
   exceptionName: null,
+  fetchCategory: null,
+  causeCode: null,
   timedOut: false,
   enabled: true,
   realmConfigured: true,
