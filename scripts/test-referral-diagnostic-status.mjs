@@ -19,7 +19,17 @@ const server = http.createServer((request, response) => {
 await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 process.env.NEXT_PUBLIC_SUPABASE_URL = `http://127.0.0.1:${server.address().port}`;
 
-const { validateReferralInvite } = await import("../src/lib/referral-store.ts");
+const { parseSafeFetchDiagnostic, validateReferralInvite } = await import("../src/lib/referral-store.ts");
+assert.deepEqual(parseSafeFetchDiagnostic("TypeError: Cannot convert argument to a ByteString because the character at index 0 has a value greater than 255"), {
+  exceptionName: "TypeError",
+  category: "invalid-header-bytestring",
+  causeCode: null,
+});
+assert.deepEqual(parseSafeFetchDiagnostic("TypeError: Invalid header value"), {
+  exceptionName: "TypeError",
+  category: "invalid-header-value",
+  causeCode: null,
+});
 const originalError = console.error;
 const originalFetch = globalThis.fetch;
 const logs = [];

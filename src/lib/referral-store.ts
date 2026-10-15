@@ -89,11 +89,17 @@ function classifyFetchFailure(error: unknown): { exceptionName: string; category
   return { exceptionName, category, causeCode };
 }
 
-function parseSafeFetchDiagnostic(message: unknown): { exceptionName: string | null; category: string | null; causeCode: string | null } {
+export function parseSafeFetchDiagnostic(message: unknown): { exceptionName: string | null; category: string | null; causeCode: string | null } {
   if (typeof message !== "string") return { exceptionName: null, category: null, causeCode: null };
-  const match = /^(AbortError|TimeoutError|TypeError|Error): (invalid-header-bytestring|invalid-header-value|invalid-header|invalid-url|fetch-failed)(?::([A-Z0-9_]+))?$/.exec(message);
+  const match = /^(AbortError|TimeoutError|TypeError|Error):\s*([\s\S]*)$/.exec(message);
   if (!match) return { exceptionName: null, category: null, causeCode: null };
-  return { exceptionName: safeExceptionName(match[1]), category: safeFetchCategory(match[2]), causeCode: safeFetchCauseCode(match[3]) };
+  const body = match[2];
+  const safeCategory = /^(invalid-header-bytestring|invalid-header-value|invalid-header|invalid-url|fetch-failed)(?::([A-Z0-9_]+))?$/.exec(body);
+  if (safeCategory) {
+    return { exceptionName: safeExceptionName(match[1]), category: safeFetchCategory(safeCategory[1]), causeCode: safeFetchCauseCode(safeCategory[2]) };
+  }
+  const classified = classifyFetchFailure({ name: match[1], message: body });
+  return { exceptionName: classified.exceptionName, category: classified.category, causeCode: classified.causeCode };
 }
 
 function logReferralStoreFailure(code: ReferralStoreFailureCode, details: { status?: unknown; errorCode?: unknown; exceptionName?: unknown; fetchCategory?: unknown; causeCode?: unknown; timedOut?: boolean } = {}) {
