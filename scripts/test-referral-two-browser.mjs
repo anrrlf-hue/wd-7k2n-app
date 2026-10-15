@@ -50,16 +50,19 @@ const supabase = http.createServer(async (req, res) => {
 });
 await new Promise(resolve => supabase.listen(0, "127.0.0.1", resolve));
 const supabaseUrl = `http://127.0.0.1:${supabase.address().port}`;
-const next = spawn("./node_modules/.bin/next", ["start", "-p", String(nextPort)], {
+const nextCommand = process.platform === "win32" ? process.execPath : "./node_modules/.bin/next";
+const nextArgs = process.platform === "win32" ? [`${process.cwd()}/node_modules/next/dist/bin/next`, "start", "-H", "127.0.0.1", "-p", String(nextPort)] : ["start", "-p", String(nextPort)];
+const next = spawn(nextCommand, nextArgs, {
   cwd: process.cwd(),
   env: { ...process.env, NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: supabaseUrl, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "test-publishable-key", SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key", SAJU_REFERRAL_ENABLED: "true", SAJU_REFERRAL_REALM: "test", SAJU_REFERRAL_PUBLIC_ORIGIN: nextBase },
+  shell: false,
   stdio: ["ignore", "pipe", "pipe"],
 });
 let nextOutput = "";
 next.stdout.on("data", chunk => { nextOutput += chunk.toString(); }); next.stderr.on("data", chunk => { nextOutput += chunk.toString(); });
 async function waitForNext() { for (let i = 0; i < 60; i++) { try { if ((await fetch(nextBase)).ok) return; } catch { /* starting */ } await new Promise(resolve => setTimeout(resolve, 500)); } throw new Error(`Next production server did not start:\n${nextOutput}`); }
 await waitForNext();
-const browser = await chromium.launch({ executablePath: "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ executablePath: process.env.BROWSER_EXECUTABLE_PATH || "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
 try {
   const inviterContext = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"] });
   const recipientContext = await browser.newContext();
@@ -70,6 +73,8 @@ try {
   recipient.on("request", request => { if (request.url().endsWith("/api/saju") && request.method() === "POST") sajuRequests.push(request.postDataJSON()); });
   recipient.on("response", async response => { if (response.url().endsWith("/api/saju")) { const body = await response.json().catch(() => null); const { validateFreeSajuReport } = await import("../src/lib/free-report-schema.ts"); const validation = body?.freeReport?.report ? validateFreeSajuReport(body.freeReport.report) : null; sajuResponseSummary = { status: response.status(), hasFreeReport: Boolean(body?.freeReport?.report), freeKeys: body?.freeReport?.report ? Object.keys(body.freeReport.report) : [], validFreeReport: validation?.ok ?? false, violations: validation?.violations ?? [] }; } });
   await inviter.goto(`${nextBase}/diagnosis/palm`);
+  await inviter.evaluate(({ key, entry }) => sessionStorage.setItem(key, entry), { key: PALM_ENTRY_KEY, entry: palmEntry(birthFixture) });
+  await inviter.reload();
   await inviter.getByRole("button", { name: "손금은 나중에 추가하고, 먼저 사주 결과 보기", exact: true }).click();
   const share = inviter.getByRole("region", { name: "무료 사주 링크 공유" });
   await share.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true }).waitFor();
