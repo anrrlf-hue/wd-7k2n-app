@@ -260,7 +260,10 @@ export function buildCustomerFreeNarrative(facts: SajuFacts): Omit<FreeSajuRepor
             : "꾸준히 이어 온 믿음의 의미를 읽는 주제입니다. 맡은 것을 잘 지킨 마음 안에도 이제는 기대고 싶은 바람이 남아 있을 수 있습니다.";
     return { text: `${next ? "다음" : "현재"} 큰 운은 계산상 ${period.ageRange}세 전후에 시작하는 ${period.ganzhi} 구간입니다. ${paired} ${flavor}`, evidence: `${next ? "nextDaeun" : "currentDaeun"}: ${period.ganzhi}/${period.stemTenGod}/${period.branchTenGod}, 시작 나이 ${period.ageRange}; 사건 발생이나 수입을 예고하지 않음` };
   };
-  return { snapshot: paragraph("self", center(f)), temperament: paragraph("self", disposition(f)),
+  const timeNote = !facts.hasTimeInput
+    ? " 출생시간이 확인되지 않아 시간에 따라 달라질 수 있는 강약과 시기는 확정하지 않고 읽었습니다."
+    : "";
+  return { snapshot: paragraph("self", center(f) + timeNote), temperament: paragraph("self", disposition(f)),
     relationshipStyle: paragraph("relationship", relationship?.social ?? close.social), loveStyle: paragraph("relationship", relationship?.intimate ?? close.intimate),
     lifeRhythm: paragraph("life", c.식상 > 0 && c.식상 === c.인성 ? "생활에는 혼자 이해하며 마음을 놓는 시간과 밖으로 표현하며 활기를 얻는 시간이 함께 있습니다. 충분히 알고 시작했어도 직접 하는 동안 다른 즐거움이 생깁니다. 사람을 만난 뒤 조용히 머물고 싶은 날과 혼자 있다가 나누고 싶은 날이 달라도 자기 리듬의 한 모습으로 읽습니다." : c.식상 > c.인성 ? "생활에서는 머릿속에 있던 것을 밖으로 꺼낼 때 활기가 생기는 쪽입니다. 새로 해 본 날의 즐거움과 익숙한 곳에 돌아와 쉬는 안도감이 함께 필요합니다. 하루를 알차게 채웠어도 좋아하는 순간이 없었다면 바쁜 정도와 만족의 이유는 달랐을 수 있습니다." : "생활에서는 조용히 생각을 모으고 익숙한 시간을 되찾을 때 마음이 정돈되는 쪽입니다. 사람을 만난 날에도 혼자 머물며 자기 느낌을 알아볼 시간이 소중합니다. 편한 반복 안에서 좋아하는 일이 사라졌다면 쉬는 시간의 길이보다 그 안에 남은 즐거움을 돌아보게 됩니다."),
     wealthStructure: paragraph("money", wealth), earningStyle: paragraph("money", earning), keepingStyle: paragraph("money", keeping), leakPattern: paragraph("money", spending),

@@ -27,10 +27,17 @@ export function buildIntegratedPalmReading(facts: SajuFacts, left: PalmFacts, ri
     const entries = observation.different ? ["left", "right"] as const : [observation.hand];
     return entries.flatMap(hand => {
       const line = hands[hand].onnxLines![key];
-      return [{ id: `${hand}.${key}.curve`, kind: "observed" as const, source: `${hand}PalmFacts.onnxLines.${key}.curve`, value: line.curve! },
+      return [
+        { id: `${hand}.${key}.curve`, kind: "observed" as const, source: `${hand}PalmFacts.onnxLines.${key}.curve`, value: line.curve! },
         { id: `${hand}.${key}.sourceVariant`, kind: "observed" as const, source: `${hand}PalmFacts.onnxLines.${key}.sourceVariant`, value: line.sourceVariant ?? "unknown" },
+        { id: `${hand}.${key}.rawDetected`, kind: "observed" as const, source: `${hand}PalmFacts.onnxLines.${key}.rawDetected`, value: line.rawDetected ?? null },
+        { id: `${hand}.${key}.enhancedDetected`, kind: "observed" as const, source: `${hand}PalmFacts.onnxLines.${key}.enhancedDetected`, value: line.enhancedDetected ?? null },
+        { id: `${hand}.${key}.endpointEvidence`, kind: "observed" as const, source: `${hand}PalmFacts.onnxLines.${key}.endpointEvidence`, value: line.endpointEvidence ?? null },
+        { id: `${hand}.${key}.pathCompleteness`, kind: "observed" as const, source: `${hand}PalmFacts.onnxLines.${key}.pathCompleteness`, value: line.pathCompleteness ?? null },
+        { id: `${hand}.${key}.attributeSupport`, kind: "observed" as const, source: `${hand}PalmFacts.onnxLines.${key}.attributeSupport`, value: line.attributeSupport ? JSON.stringify(line.attributeSupport) : null },
         { id: `${hand}.${key}.observation`, kind: "observed" as const, source: `${hand}PalmFacts.onnxLines.${key}`, value: JSON.stringify({ detected: line.detected,
-          imageQuality: hands[hand].imageQuality, modelExecuted: hands[hand].onnxLines!.modelExecuted, depthStrength: line.depthStrength, attributeSupport: line.attributeSupport }) }];
+          imageQuality: hands[hand].imageQuality, modelExecuted: hands[hand].onnxLines!.modelExecuted, depthStrength: line.depthStrength, attributeSupport: line.attributeSupport }) },
+      ];
     });
   };
   const add = (area: Area, headline: string, text: string, sources: ReadingEvidence[]) => {
