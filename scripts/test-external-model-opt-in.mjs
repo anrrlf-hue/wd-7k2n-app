@@ -155,7 +155,7 @@ try {
   const notice = renderToStaticMarkup(createElement(BirthDateStep, props));
   assert.match(notice, /출생정보를 서버에서 계산하고 기기에 저장/);
   assert.match(notice, /이 탭에.*이 기기에 자동 저장/);
-  assert.match(notice, /운영자가 외부 해석을 켜면.*MBTI·질문.*Anthropic/);
+  assert.match(notice, /운영자가 외부 해석을 켜면.*계산된 사주 정보와 질문.*Anthropic/);
   assert.ok(notice.includes('href="/privacy"'));
   assert.match(notice, /<button[^>]*disabled[^>]*>다음/);
   assert.equal((notice.match(/<input\b/g) ?? []).length, 2, "no new personal input fields");
