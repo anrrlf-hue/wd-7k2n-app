@@ -26,6 +26,9 @@ const diagnostic = JSON.parse(logs[0].replace("[referral-store-unavailable] ", "
 assert.equal(diagnostic.code, "config_missing");
 assert.deepEqual(diagnostic, {
   code: "config_missing",
+  status: null,
+  errorCode: null,
+  timedOut: false,
   enabled: true,
   realmConfigured: true,
   realmValid: true,

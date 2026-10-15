@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:finance-regressions": "node scripts/test-finance-regressions.mjs",
     "test:referral-evidence": "node scripts/test-referral-evidence.mjs",
+    "test:referral-deadline": "node scripts/test-referral-deadline.mjs",
     "deploy:prod": "npx -y vercel@59.23.2 --prod --yes",
     "test:reality-answer-regressions": "node scripts/test-reality-answer-regressions.mjs"
   },
