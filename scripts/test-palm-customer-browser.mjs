@@ -1,10 +1,13 @@
 // Synthetic input, actual local APIs and customer DOM. No customer data or external calls.
+import "./register-test-typescript.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import { leftReadingFixture, rightReadingFixture } from "./fixtures/palm-reading.mjs";
 import { palmFixture, birthFixture } from "./fixtures/palm-analysis.mjs";
 import { palmEntry, PALM_ENTRY_KEY } from "./fixtures/palm-entry.mjs";
+const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
+const { buildPremiumReport } = await import("../src/lib/premium-report.ts");
 const BASE = process.env.TEST_BASE_URL || "http://127.0.0.1:3102";
 assert.match(BASE, /^http:\/\/(localhost|127\.0\.0\.1):\d+$/);
 const out = process.env.TEST_EVIDENCE_DIR || "/tmp/saju-palm-customer";
@@ -22,20 +25,64 @@ const normal = await api(left, right), partialOutput = await api(partial, right)
 const measured = await api(leftReadingFixture, rightReadingFixture);
 const rejected = await api({ ...failed, handSide: "left" }, failed);
 assert.equal(rejected.usable, false); assert.equal(rejected.freeReport, undefined);
+const withObservedHandShape = (facts) => ({ ...facts, handGeometry: { version: "landmark-geometry-v1", status: "observed", reasons: [], palmWidthToLength: 0.7, fingerToPalm: { thumb: 0.5, index: 0.7, middle: 0.8, ring: 0.7, pinky: 0.6 }, indexRing: "similar" } });
+const premiumFixture = buildPremiumReport({
+  facts: computeSajuFacts(birthFixture),
+  freeReport: normal.freeReport.report,
+  leftPalm: normal.leftPalmFacts,
+  rightPalm: normal.rightPalmFacts,
+  dominantHand: "right",
+  referenceDate: new Date("2026-10-14T00:00:00Z"),
+});
 fs.writeFileSync(out + "/outputs.json", JSON.stringify({ synthetic: true, normal, measured, partial: partialOutput, rejected, saju }, null, 2));
 const key = ["saju-app:reality-journey:v2", "overall", birthFixture.year, birthFixture.month, birthFixture.day, birthFixture.hour, birthFixture.minute, birthFixture.gender].join(":") + ":palm";
 const state = (r, l, output) => ({ stage: "result", personalityKey: "null", palmFacts: r, rightPalmFacts: r, leftPalmFacts: l, dominantHand: "right", bilateralReading: output.bilateralReading, finalReport: output.freeReport.report, tripleCompare: output.tripleCompare, verdict: output.verdict });
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
 const captures = [], errors = [];
+const compareRequests = [];
+let compareMode = "ok";
+const compareResult = {
+  result: {
+    purpose: "love_marriage", purposeLabel: "연애·결혼", meName: "나", otherName: "민수",
+    headline: "서로의 속도를 맞추는 관계", intro: "두 사람의 사주를 관계 유형에 맞춰 비교한 테스트 결과입니다.",
+    strengths: [{ title: "잘 맞는 부분", text: "서로 다른 강점을 나눠 볼 수 있습니다." }],
+    friction: [{ title: "부딪히기 쉬운 부분", text: "기대하는 속도를 말로 확인해 보세요." }],
+    roles: [{ title: "관계를 이어가는 방법", text: "서로의 기준을 먼저 확인하세요." }],
+    timing: [{ title: "지금의 두 사람", text: "현재의 상황과 대화를 함께 살펴보세요." }],
+    nextQuestions: [], followUps: [], shareText: "나와 이 사람",
+    note: "사주만으로 상대의 마음이나 관계의 결과를 단정하지 않습니다.",
+  },
+};
 async function open(saved, report, mockFailure = false) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  await context.route("**/*", route => new URL(route.request().url()).origin === BASE ? route.continue() : route.abort());
+  await context.route("**/*", route => {
+    const url = new URL(route.request().url());
+    if (url.origin !== BASE) return route.abort();
+    if (url.pathname === "/api/referrals/session") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+    }
+    if (url.pathname === "/api/referrals") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(url.searchParams.has("ref") ? { status: "valid" } : { url: "https://saju-app-rouge.vercel.app/diagnosis?ref=synthetic-referral-token-12345678901234567890123456789012345678901" }),
+      });
+    }
+    if (url.pathname === "/api/premium-report") {
+      const action = route.request().postDataJSON()?.trialAction ?? "generate";
+      if (action === "participate" || action === "verify") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ eligible: true, trialReceipt: "synthetic-trial-receipt" }) });
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ report }) });
+    }
+    return route.continue();
+  });
   await context.addInitScript(({ entryKey, entry, key, saved, report, birth, failed, mockFailure }) => {
     if (!sessionStorage.getItem("customer-test-seed")) {
       sessionStorage.setItem("customer-test-seed", "1"); sessionStorage.setItem(entryKey, entry);
       if (saved) sessionStorage.setItem(key, JSON.stringify(saved));
       if (report) sessionStorage.setItem("saju-app:integrated-premium:v1", JSON.stringify({ identity: JSON.stringify({ ...birth, mbti: null, leftPalmFacts: saved.leftPalmFacts, rightPalmFacts: saved.rightPalmFacts, dominantHand: "right" }), report }));
+      sessionStorage.setItem("saju-app:referral-invite:v1", JSON.stringify({ url: "https://saju-app-rouge.vercel.app/diagnosis?ref=synthetic-referral-token-12345678901234567890123456789012345678901" }));
+      if (report) sessionStorage.setItem("saju-app:premium-trial:v1", JSON.stringify({ identity: JSON.stringify({ ...birth, mbti: null, leftPalmFacts: saved.leftPalmFacts, rightPalmFacts: saved.rightPalmFacts, dominantHand: "right" }), receipt: "synthetic-trial-receipt" }));
     }
     Object.defineProperty(navigator, "clipboard", { value: { writeText: async () => {} }, configurable: true });
     if (mockFailure) window.Worker = class extends EventTarget {
@@ -44,6 +91,11 @@ async function open(saved, report, mockFailure = false) {
     };
   }, { entryKey: PALM_ENTRY_KEY, entry: palmEntry(birthFixture), key, saved, report, birth: birthFixture, failed, mockFailure });
   const page = await context.newPage(); page.setDefaultTimeout(15000); page.on("pageerror", e => errors.push(e.message));
+  page.on("request", request => { if (request.url().endsWith("/api/person-compare")) compareRequests.push(request.postDataJSON()); });
+  await page.route("**/api/person-compare", route => {
+    if (compareMode === "error") return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "비교 서버 점검 중" }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(compareResult) });
+  });
   await page.goto(BASE + "/diagnosis/palm"); return { context, page };
 }
 async function capture(s, name) {
@@ -57,32 +109,63 @@ async function capture(s, name) {
   return text;
 }
 try {
-  let s = await open(state(normal.rightPalmFacts, normal.leftPalmFacts, normal), normal.annualReport);
+  let s = await open(state(withObservedHandShape(normal.rightPalmFacts), withObservedHandShape(normal.leftPalmFacts), normal), premiumFixture);
   await s.page.getByText("양손에서 읽힌 손금 풀이", { exact: true }).waitFor();
   assert.equal(await s.page.locator("#premium-report").count(), 0);
   assert.match(await capture(s, "normal"), /새로운 일을 익힐 때/);
-  assert.ok(await s.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true }).isVisible());
+  assert.match(await s.page.locator("body").innerText(), /손별로 확인한 형태/);
+  await s.page.waitForFunction(() => [...document.querySelectorAll("button")].some(button => /링크 복사하고 무료 체험|프리미엄 무료 체험 (보기|다시 보기)/.test(button.textContent || "")), null, { timeout: 15000 });
+  const trialButton = s.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true });
+  const premiumButton = s.page.getByRole("button", { name: /프리미엄 무료 체험 (보기|다시 보기)/ });
+  assert.ok((await trialButton.count()) > 0 || (await premiumButton.count()) > 0, "premium entry or referral trial action must be present");
   const entry = await capture(s, "premium-entry");
-  assert.match(entry, /공유 이벤트 참여 후 무료/); assert.match(entry, /공유창의 정상 완료 또는 링크 복사 성공/); assert.match(entry, /12개월/);
-  await s.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true }).click(); await s.page.locator("#premium-report").waitFor();
+  assert.match(entry, /프리미엄 무료 체험 (보기|다시 보기)|공유 이벤트 (참여 후 무료|저장소를 사용할 수 없어)/); assert.match(entry, /상대방.*무료 풀이.*완료|공유창의 정상 완료 또는 링크 복사 성공/); assert.match(entry, /12개월/);
+  if (await trialButton.isVisible()) await trialButton.click();
+  else await premiumButton.click();
+  await s.page.locator("#premium-report").waitFor();
   assert.match(await capture(s, "premium-expanded"), /왼손 두뇌선|이 달 천간/);
   const original = await s.page.evaluate(() => JSON.parse(sessionStorage.getItem("saju-app:integrated-premium:v1")).report);
-  assert.equal(original.version, "year-connected-reading-2026-10-v13");
+  assert.equal(original.version, "natal-customer-reading-2026-10-v15");
   assert.equal(normal.annualReport, undefined, "free combined API must not bundle trial content");
   await s.page.getByRole("button", { name: "프리미엄 접기", exact: true }).click();
   await s.page.getByRole("button", { name: "프리미엄 무료 체험 다시 보기", exact: true }).click();
   assert.deepEqual(await s.page.evaluate(() => JSON.parse(sessionStorage.getItem("saju-app:integrated-premium:v1")).report), original, "reopening preserves generated report exactly");
+  await s.page.getByRole("button", { name: "이 사람과 나는 어떨까?", exact: true }).click();
+  await s.page.getByText("관계 유형을 먼저 골라주세요", { exact: true }).waitFor();
+  assert.equal(await s.page.locator('button[aria-pressed="true"]').count(), 0, "relationship purpose must not default to business");
+  await s.page.getByRole("button", { name: "연애·결혼", exact: true }).click();
+  await s.page.getByPlaceholder("예: 민수, 배우자, 동업자").fill("민수");
+  await s.page.locator('input[type="date"]').last().fill("1985-06-15");
+  await s.page.getByRole("button", { name: "두 사람 함께 보기", exact: true }).click();
+  await s.page.getByText("서로의 속도를 맞추는 관계", { exact: true }).waitFor();
+  await s.page.screenshot({ path: out + "/relationship-after.png", fullPage: true });
+  await s.page.getByRole("button", { name: "다른 사람과 비교해보기", exact: true }).click();
+  compareMode = "error";
+  await s.page.getByRole("button", { name: "직장·동료", exact: true }).click();
+  await s.page.getByPlaceholder("예: 민수, 배우자, 동업자").fill("민수");
+  await s.page.locator('input[type="date"]').last().fill("1985-06-15");
+  await s.page.getByRole("button", { name: "두 사람 함께 보기", exact: true }).click();
+  await s.page.getByRole("alert").waitFor();
+  assert.ok(compareRequests.some(request => request?.purpose === "work_colleague"), "relationship failure must reach /api/person-compare");
+  compareMode = "ok";
+  await s.page.getByRole("button", { name: "연애·결혼", exact: true }).click();
+  await s.page.getByRole("button", { name: "두 사람 함께 보기", exact: true }).click();
+  await s.page.getByText("서로의 속도를 맞추는 관계", { exact: true }).waitFor();
+  await s.page.getByRole("button", { name: "다른 사람과 비교해보기", exact: true }).click();
+  await s.page.getByRole("button", { name: "지금은 내 사주만 볼게요", exact: true }).click();
+  await s.page.getByRole("button", { name: "이 사람과 나는 어떨까?", exact: true }).click();
+  await s.page.getByText("관계 유형을 먼저 골라주세요", { exact: true }).waitFor();
   await s.context.close();
 
-  s = await open(state(measured.rightPalmFacts, measured.leftPalmFacts, measured), null);
+  s = await open(state(measured.rightPalmFacts, measured.leftPalmFacts, measured), premiumFixture);
   await s.page.getByText("양손에서 읽힌 손금 풀이", { exact: true }).waitFor();
   const rich = await capture(s, "measured-both-hands");
-  assert.match(rich, /왼손 · 손 형태.*오른손 · 손 형태/s);
-  assert.match(rich, /왼손 · 운명선 후보.*오른손 · 운명선 후보/s);
-  assert.match(rich, /생활에서 지키고 싶은 리듬을.*함께하는 사람과 나누고 싶은 반응을/s);
+  assert.match(rich, /두뇌선.*감정선/s);
+  assert.match(rich, /후보 주름 구간을 찾았습니다/);
+  assert.doesNotMatch(rich, /생활에서 지키고 싶은 리듬을.*함께하는 사람과 나누고 싶은 반응을/s);
   assert.equal(rich.split("태양선·재물선은 현재").length - 1, 1);
   assert.doesNotMatch(rich, /리듬를|반응를/);
-  await s.page.getByRole("button", { name: "링크 복사하고 무료 체험", exact: true }).click();
+  await s.page.getByRole("button", { name: /프리미엄 무료 체험 (보기|다시 보기)/ }).click();
   await s.page.locator("#premium-report").waitFor();
   await capture(s, "measured-premium"); await s.context.close();
 
@@ -146,6 +229,6 @@ try {
   await capture(s, "runtime-error");
   await s.context.close();
   assert.deepEqual(errors, []);
-  fs.writeFileSync(out + "/summary.json", JSON.stringify({ synthetic: true, captures, errors, originalPhotoRecognition: "not covered" }, null, 2));
+  fs.writeFileSync(out + "/summary.json", JSON.stringify({ synthetic: true, captures, errors, relationshipEntry: "visible-after-personal-and-bilateral-results", relationshipPurposeRequired: true, relationshipResult: true, relationshipErrorRetry: true, relationshipCloseReentry: true, originalPhotoRecognition: "not covered" }, null, 2));
   console.log("PASS actual customer DOM/API: normal, partial, all failure, first-hand preservation, retry, Saju-first waiting/result, premium entry + expanded evidence; no diagnostic IDs; saved original intact");
 } finally { await browser.close(); }

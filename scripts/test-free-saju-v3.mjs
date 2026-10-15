@@ -38,6 +38,7 @@ const hooks = registerHooks({
 
 const factsMod = await import(pathToFileURL(path.join(root, "src/lib/saju-facts.ts")).href);
 const reportMod = await import(pathToFileURL(path.join(root, "src/lib/free-report-mock.ts")).href);
+const consultationStyleMod = await import(pathToFileURL(path.join(root, "src/lib/free-consultation-style-v1.ts")).href);
 const schemaMod = await import(pathToFileURL(path.join(root, "src/lib/free-report-schema.ts")).href);
 const focusMod = await import(pathToFileURL(path.join(root, "src/lib/saju-focus.ts")).href);
 const focusReportMod = await import(pathToFileURL(path.join(root, "src/lib/free-saju-focus-report.ts")).href);
@@ -48,11 +49,11 @@ function assert(condition, message) {
 }
 
 const facts = factsMod.computeSajuFacts({
-  year: 1990,
-  month: 5,
-  day: 15,
-  hour: 14,
-  minute: 30,
+  year: 2001,
+  month: 2,
+  day: 3,
+  hour: 10,
+  minute: 0,
   gender: "남",
 });
 
@@ -128,9 +129,11 @@ assert(
   "ASTRA-T4: provisional noon strength leaked into unknown-time decision style",
 );
 assert(
-  /출생시간|확정하지|단정하지/.test(unknownText),
-  "ASTRA-T5: unknown-time uncertainty is not preserved in customer copy",
+  /출생시간|확정하지|단정하지/.test(consultationStyleMod.buildFreeConsultationSections(unknownReport).flatMap((section) => section.paragraphs).join("\n")),
+  "ASTRA-T5: unknown-time uncertainty is not preserved in displayed customer sections",
 );
+const knownDisplayedText = consultationStyleMod.buildFreeConsultationSections(report).flatMap((section) => section.paragraphs).join("\n");
+assert(!/출생시간이 확인되지 않아 큰 운의 세밀한 시기는 남겨 두었습니다/.test(knownDisplayedText), "ASTRA-T5b: unknown-time notice leaked into known-time displayed sections");
 assert(
   !/대운 중 재성 겹침 0회/.test(unknownReport.bigMoneyAffinity.evidence),
   "ASTRA-T6: unknown Daeun opportunity count exposed as zero",
@@ -160,7 +163,7 @@ assert(resultSource.includes("관계에서는 이렇게 나타나요") || result
 assert(resultSource.includes("에너지를 쓰고 회복하는 방식도 보입니다") || resultSource.includes("buildFreeConsultationSections"), "life rhythm consultation section missing from free result");
 assert(!resultSource.includes("나의 재물사주"), "money-only free-result heading remains");
 assert(resultSource.includes("다음은 손금으로 이어봅니다"), "free Saju must offer palm before the integrated report");
-assert(resultSource.includes("통합 연간 리포트와 공유") && resultSource.includes("손금 없이 결과 마무리하기"), "post-Saju sequence must explain the integrated report and explicit palm skip");
+assert(resultSource.includes("양손의 선과 모양을 함께 살펴 사주 풀이에 더해 보세요") && resultSource.includes("손금은 나중에 추가하기"), "post-Saju sequence must value palm reading and preserve explicit palm skip");
 assert(!resultSource.includes("내 질문 답과 시기 보기"), "question CTA must not interrupt Saju -> palm sequence");
 
 const homeSource = fs.readFileSync(path.join(root, "src/app/page.tsx"), "utf8");
@@ -193,8 +196,12 @@ assert(!postReadingSource.includes("submitQuestion"), "post-palm repetitive ques
 assert(postReadingSource.includes("12개월"), "premium CTA must promise the one-year monthly report");
 
 const consultationSource = fs.readFileSync(path.join(root, "src/lib/free-consultation-style-v1.ts"), "utf8");
-assert(!consultationSource.match(/key: "money"[\s\S]{0,500}bigMoneyAffinity/), "broad Saju still overweights big-money content");
-assert(!consultationSource.match(/key: "money"[\s\S]{0,500}peopleAndMoney/), "broad Saju still overweights finance relationship content");
+const consultationSections = consultationStyleMod.buildFreeConsultationSections(report);
+const sectionByKey = new Map(consultationSections.map((section) => [section.key, section]));
+assert(JSON.stringify(consultationSections.map((section) => section.key)) === JSON.stringify(["self", "relationship", "work", "money", "life", "strengths", "cautions", "now", "future"]), "broad Saju displayed section contract drifted");
+assert(sectionByKey.get("relationship").paragraphs.includes(report.relationshipStyle.text) && sectionByKey.get("relationship").paragraphs.includes(report.loveStyle.text), "relationship fields are not kept in the relationship section");
+assert(sectionByKey.get("money").paragraphs.includes(report.peopleAndMoney.text), "people-and-money detail is missing from the money section");
+for (const key of ["self", "relationship", "work", "life", "strengths", "cautions", "now", "future"]) assert(!sectionByKey.get(key).paragraphs.includes(report.peopleAndMoney.text), "money relationship detail leaked into another displayed section: " + key);
 assert(!resultSource.includes("WealthTypeSection"), "broad Saju still injects a separate wealth-type card");
 
 const palmPageSource = fs.readFileSync(path.join(root, "src/components/palm/palm-page-client.tsx"), "utf8");
@@ -264,3 +271,4 @@ assert(resultSource.includes("다른 영역은 한눈에"), "focused reading sho
 
 console.log("PASS FREE SAJU: Saju-first + optional palm/explicit skip + integrated premium annual report");
 hooks.deregister?.();
+

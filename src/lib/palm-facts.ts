@@ -47,12 +47,14 @@ export interface LineFeature {
  * 측정치)은 절대 지어내지 않고 null로 둔다. */
 export interface OnnxLineDetail {
   detected: boolean;
+  /** segmentation observed vs single-path geometry measurable */
+  geometryStatus?: "not_detected" | "measurable" | "ambiguous";
   length: LineLength | null;
   curve: LineDirection | null;
   /** 마스크 픽셀 수(굵기·뚜렷함) 기반 근사치. 실제 "깊이"를 측정한 값이
    * 아니라는 걸 명시하기 위해 depthStrength로 이름 붙였다. */
   depthStrength: "약함" | "보통" | "강함" | null;
-  /** 512x512 모델 좌표계를 0~1로 정규화한 시작점/끝점(주성분 투영 극값) */
+  /** 선택된 crop 좌표를 0~1로 정규화한 시작점/끝점(중심선 투영 극값). 기존 API 범위 유지. */
   start: { x: number; y: number } | null;
   end: { x: number; y: number } | null;
   /** 이 모델은 분기(fork) 검출을 지원하지 않는다 — 항상 null. */
@@ -72,6 +74,11 @@ export interface OnnxLineDetail {
     curve: "segment_only" | "not_supported";
     depth: "mask_signal_only" | "not_supported";
   };
+  /** Conservative landmark cross-check; model class alone never supplies this. */
+  anatomicalStatus?: "supported" | "rejected" | "unconfirmed";
+  anatomicalReason?: "thumb_side_segment" | "central_vertical_segment" | "short_or_missing_geometry" | "ambiguous_geometry";
+  /** Foreground skeleton path, when the current model actually exposes it. */
+  pathPoints?: Array<{ x: number; y: number }>;
 }
 
 export interface OnnxPalmLines {
@@ -89,7 +96,7 @@ export interface OnnxPalmLines {
 export type SecondaryLineStatus = "clear" | "faint" | "not_seen";
 
 export interface SecondaryPalmLineSignal {
-  creaseObservation?: { bounds: { x0: number; y0: number; x1: number; y1: number }; continuity: number; sourceVariant: "raw" | "enhanced" };
+  creaseObservation?: { bounds: { x0: number; y0: number; x1: number; y1: number }; continuity: number; sourceVariant: "raw" | "enhanced"; pathPoints?: Array<{ x: number; y: number }> };
   candidateObservation?: import("@/lib/palm-fate-observation").FateCandidateObservation;
   assessment?: "observed" | "not_observed" | "error" | "unsupported" | "unconfirmed";
   status: SecondaryLineStatus;
@@ -133,6 +140,8 @@ export interface PalmPipelineDiagnostics {
     headLine: "raw" | "enhanced";
     lifeLine: "raw" | "enhanced";
   };
+  /** Raw/enhanced foreground path agreement; diagnostic-only, never customer confidence. */
+  variantPathAgreement?: Partial<Record<"heartLine" | "headLine" | "lifeLine", import("@/lib/palm-line-stability").PalmPathAgreement>>;
 }
 
 export interface PalmFacts {
@@ -182,6 +191,7 @@ export function normalizePalmFactsObservation(facts: PalmFacts): PalmFacts {
       : diagnostics?.enhancedAttempted === false || diagnostics?.enhancedDetectedLineCount === 0 || diagnostics?.enhancedPixelCount?.[key] === 0 ? false : undefined);
     normalized[key] = {
       ...line, sourceVariant, rawDetected, enhancedDetected,
+      ...(key === "lifeLine" && !line.anatomicalStatus ? { anatomicalStatus: "unconfirmed" as const, anatomicalReason: "short_or_missing_geometry" as const } : {}),
       endpointEvidence: line.endpointEvidence ?? (line.detected ? "segment_extrema" : "none"),
       pathCompleteness: line.pathCompleteness ?? (line.detected ? "not_verified" : "unavailable"),
       attributeSupport: line.attributeSupport ?? (line.detected

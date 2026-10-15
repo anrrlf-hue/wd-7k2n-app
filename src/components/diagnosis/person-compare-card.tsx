@@ -44,7 +44,7 @@ function dateValue(input: BirthInput): string {
 
 export function PersonCompareCard({ me }: { me: BirthInput }) {
   const [open, setOpen] = useState(false);
-  const [purpose, setPurpose] = useState<PersonComparePurpose>("business_partner");
+  const [purpose, setPurpose] = useState<PersonComparePurpose | null>(null);
   const [otherName, setOtherName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState<"남" | "여">("남");
@@ -80,6 +80,10 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
   }
 
   async function compare() {
+    if (!purpose) {
+      setError("관계 유형을 먼저 선택해주세요.");
+      return;
+    }
     if (!otherBirth) {
       setError("상대방의 생년월일을 입력해주세요.");
       return;
@@ -115,7 +119,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
   }
 
   function saveCurrentPerson() {
-    if (!otherBirth) return;
+    if (!otherBirth || !purpose) return;
     const saved = upsertSavedPerson({
       id: selectedSavedId ?? undefined,
       name: otherName.trim() || "상대",
@@ -156,7 +160,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
           onClick={() => setOpen(true)}
           className="mt-4 h-12 w-full rounded-full text-base"
         >
-          이 사람과 나 보기
+          이 사람과 나는 어떨까?
         </Button>
       </section>
     );
@@ -171,7 +175,7 @@ export function PersonCompareCard({ me }: { me: BirthInput }) {
 
       {!result ? (
         <>
-          <h3 className="mt-2 text-xl leading-8 font-semibold">어떤 관계인지 먼저 골라주세요</h3>
+          <h3 className="mt-2 text-xl leading-8 font-semibold">관계 유형을 먼저 골라주세요</h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             같은 두 사람도 연애와 동업에서 봐야 할 지점이 다릅니다.
           </p>

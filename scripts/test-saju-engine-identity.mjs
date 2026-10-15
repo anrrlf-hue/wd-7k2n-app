@@ -49,7 +49,7 @@ function runCase(label, input) {
 }
 
 const normal = runCase("normal", {
-  year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남",
+  year: 2001, month: 2, day: 3, hour: 10, minute: 0, gender: "남",
 });
 assert(normal.enriched.geukgukSource === "ziping_ditianshui", "normal case should accept matching enrichment");
 
@@ -60,7 +60,7 @@ assert(boundary.enriched.geukgukSource === "ssaju_fallback", "mismatched natal p
 assert(boundary.enriched.daeunAnalysis === null, "mismatched natal pillars must reject timing enrichment");
 
 const unknown = runCase("unknown-time", {
-  year: 1990, month: 5, day: 15, hour: null, minute: null, gender: "남",
+  year: 2003, month: 5, day: 7, hour: null, minute: null, gender: "남",
 });
 assert(unknown.enriched.geukgukSource === "ssaju_fallback", "unknown-time must not accept precise enrichment");
 assert(unknown.enriched.yongsin.length === 0, "unknown-time must not expose yongsin");
@@ -70,3 +70,4 @@ assert(unknown.enriched.daeunList.length === 0, "unknown-time must not expose da
 
 console.log("PASS saju engine identity 3/3");
 hooks.deregister?.();
+

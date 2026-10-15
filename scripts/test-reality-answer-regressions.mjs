@@ -49,11 +49,11 @@ function assert(condition, message) {
 }
 
 const facts = factsMod.computeSajuFacts({
-  year: 1990,
-  month: 5,
-  day: 15,
-  hour: 14,
-  minute: 30,
+  year: 2001,
+  month: 2,
+  day: 3,
+  hour: 10,
+  minute: 0,
   gender: "남",
 });
 
@@ -363,7 +363,7 @@ const managementAnswer = builderMod.buildRealityAnswerFallback({
 });
 
 const saved = managementMod.saveRealityAnswer({
-  birthInput: { year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남" },
+  birthInput: { year: 2001, month: 2, day: 3, hour: 10, minute: 0, gender: "남" },
   answer: managementAnswer,
 });
 assert(managementMod.loadRealityManagement().records.length === 1, "M01: answer was not saved");
@@ -381,3 +381,4 @@ assert(managementMod.loadRealityManagement().records.length === 1, "M05: duplica
 console.log("PASS M01-M05 answer-centered management persistence");
 
 hooks.deregister?.();
+

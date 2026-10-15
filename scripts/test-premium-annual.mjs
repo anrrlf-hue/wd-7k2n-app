@@ -20,8 +20,8 @@ async function previous(path) {
 const { buildPremiumReport: oldPremium } = await previous("src/lib/premium-report.ts");
 const { buildSajuAnnualOutlook: oldAnnual } = await previous("src/lib/saju-timing.ts");
 const births = [
-  { year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남" },
-  { year: 1988, month: 12, day: 2, hour: 6, minute: 15, gender: "여" },
+  { year: 2001, month: 2, day: 3, hour: 10, minute: 0, gender: "남" },
+  { year: 2002, month: 4, day: 6, hour: 8, minute: 30, gender: "여" },
   { year: 2001, month: 2, day: 3, hour: null, minute: null, gender: "여" },
 ];
 const referenceDate = new Date("2026-10-13T00:00:00Z");
@@ -60,14 +60,14 @@ for (const [i, birth] of births.entries()) {
   for (const period of report.periods) assert.ok(html.includes(period.basis));
   for (const d of report.domains) {
     if (d.tip) assert.ok(html.indexOf(d.paragraphs[0]) < html.indexOf(d.tip));
-    assert.equal(d.paragraphs.length, d.key === "money" ? 3 : 1,
-      "money separates earning, management and spending; other domains keep one scene");
+    assert.equal(d.paragraphs.length, d.key === "money" ? 3 : d.key === "work" ? 3 : 1,
+      "money separates earning, retention and spending; work separates environment, teamwork, solo standards and the personal tension");
     assert.equal(new Set(d.paragraphs).size, d.paragraphs.length, "each passage contributes a distinct explanation");
     for (const text of d.paragraphs) assert.equal(html.split(text).length - 1, 1, "every passage is rendered once");
     if (d.key === "money") {
       assert.match(d.paragraphs[0], /획득에서는/);
-      assert.match(d.paragraphs[1], /관리에서는.*가령/);
-      assert.match(d.paragraphs[2], /지출에서는.*가령/);
+      assert.match(d.paragraphs[1], /유지에서는/);
+      assert.match(d.paragraphs[2], /지출에서는/);
     }
     assert.equal(d.opportunity, "", "the same example is not repeated in a second card");
     assert.equal(d.caution, "", "the already explained caution is not repeated below");
@@ -91,3 +91,4 @@ assert.notDeepEqual(reports[0].domains, reports[1].domains);
 assert.notDeepEqual(reports[0].periods, reports[1].periods, "different natal composition and background must survive the monthly layer");
 assert.notDeepEqual(reports[1].periods, reports[2].periods);
 if (process.env.PREMIUM_SAMPLE_OUTPUT) fs.writeFileSync(process.env.PREMIUM_SAMPLE_OUTPUT, out.join("\n\n") + "\n");
+

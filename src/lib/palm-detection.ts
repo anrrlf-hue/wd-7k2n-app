@@ -9,7 +9,8 @@ import {
   type NormalizedLandmark,
 } from "@mediapipe/tasks-vision";
 import { analyzeEdgeBand, analyzeVerticalCreaseBand } from "@/lib/palm-line-features";
-import { runPalmLineOnnx, type OnnxLineClass, type OnnxLineObservation } from "@/lib/palm-line-onnx";
+import { runPalmLineOnnx, type OnnxLineClass, type OnnxLineObservation, type OnnxPalmLineResult } from "@/lib/palm-line-onnx";
+import { comparePalmPaths, type PalmPathAgreement } from "@/lib/palm-line-stability";
 import { runPalmFourLineOnnx } from "@/lib/palm-4line-onnx";
 import { fuseFateSignal } from "@/lib/palm-fate-fusion";
 import { measurePalmHandGeometry } from "@/lib/palm-hand-geometry";
@@ -21,8 +22,10 @@ import type {
   LineFeature,
   LineName,
   OnnxLineDetail,
+  PalmPipelineDiagnostics,
   PalmFacts,
 } from "@/lib/palm-facts";
+import { classifyLifeLineGeometry } from "@/lib/palm-life-line-geometry";
 
 import { createPalmCanvas, type PalmCanvas, type PalmContext } from "@/lib/palm-canvas";
 
@@ -441,7 +444,7 @@ function bestSecondaryLineSignal(
     status,
     strength,
     span: best.continuity,
-    creaseObservation: bounds ? { bounds: { x0: bounds.x / rawImage.width, y0: bounds.y / rawImage.height, x1: (bounds.x + bounds.width) / rawImage.width, y1: (bounds.y + bounds.height) / rawImage.height }, continuity: best.continuity, sourceVariant: best === raw ? "raw" : "enhanced" } : undefined,
+    creaseObservation: bounds ? { bounds: { x0: bounds.x / rawImage.width, y0: bounds.y / rawImage.height, x1: (bounds.x + bounds.width) / rawImage.width, y1: (bounds.y + bounds.height) / rawImage.height }, continuity: best.continuity, sourceVariant: best === raw ? "raw" : "enhanced", pathPoints: best.pathPoints?.map(point => ({ x: point.x / rawImage.width, y: point.y / rawImage.height })) } : undefined,
     note:
       status === "clear"
         ? `${label} 후보가 원본과 보정 신호에서 함께 이어집니다.`
@@ -536,6 +539,7 @@ function mapOnnxObservation(
   if (!obs.detected) {
     return {
       detected: false,
+      geometryStatus: "not_detected",
       length: null,
       curve: null,
       depthStrength: null,
@@ -548,17 +552,37 @@ function mapOnnxObservation(
       attributeSupport: { length: "not_supported", curve: "not_supported", depth: "not_supported" },
     };
   }
-  const length = obs.lineLength < 150 ? "짧음" : obs.lineLength < 320 ? "보통" : "김";
+  if (obs.geometryStatus === "ambiguous") {
+    return {
+      detected: true,
+      geometryStatus: "ambiguous",
+      length: null,
+      curve: null,
+      depthStrength: null,
+      start: null,
+      end: null,
+      branchDetected: null,
+      ...provenance,
+      endpointEvidence: "none",
+      pathCompleteness: "unavailable",
+      attributeSupport: { length: "not_supported", curve: "not_supported", depth: "not_supported" },
+    };
+  }
+  // Labels use the centerline length normalized by the same crop's
+  // wrist-to-middle-MCP reference span; model input remains 512x512.
+  const length = obs.normalizedLineLength < 0.55 ? "짧음" : obs.normalizedLineLength < 1 ? "보통" : "김";
   const curve = obs.curveScore > 0.35 ? "완만한 곡선" : "직선에 가까움";
   const depthStrength = obs.avgThickness < 2.2 ? "약함" : obs.avgThickness < 4 ? "보통" : "강함";
-  const norm = (p: { x: number; y: number } | null) => (p ? { x: p.x / 512, y: p.y / 512 } : null);
+  const norm = (p: { x: number; y: number } | null) => (p ? { x: p.x, y: p.y } : null);
   return {
     detected: true,
+    geometryStatus: "measurable",
     length,
     curve,
     depthStrength,
     start: norm(obs.start),
     end: norm(obs.end),
+    pathPoints: obs.pathPoints?.map(point => ({ x: point.x, y: point.y })),
     branchDetected: null,
     ...provenance,
     endpointEvidence: "segment_extrema",
@@ -743,6 +767,53 @@ export interface PalmAnalysisSource {
   canvas: PalmCanvas;
 }
 
+export interface PalmCropDebugTransform {
+  margin: number;
+  angle: number;
+  center: { x: number; y: number };
+  min: { x: number; y: number };
+  width: number;
+  height: number;
+  mirrored: boolean;
+}
+
+export interface PalmAnalysisDebugVariant {
+  width: number;
+  height: number;
+  maskWidth: number;
+  maskHeight: number;
+  mask: Uint8Array | null;
+  observations: OnnxLineObservation[];
+}
+
+export interface PalmAnalysisDebugSnapshot {
+  source: { width: number; height: number; landmarks: { x: number; y: number }[] };
+  raw: { transform: PalmCropDebugTransform; result: PalmAnalysisDebugVariant | null };
+  enhanced: { transform: PalmCropDebugTransform; result: PalmAnalysisDebugVariant | null };
+}
+
+function debugCropTransform(landmarksPx: { x: number; y: number }[], isLeftHanded: boolean, margin: number): PalmCropDebugTransform {
+  const wrist = landmarksPx[0];
+  const middleMcp = landmarksPx[9];
+  const v = { x: middleMcp.x - wrist.x, y: middleMcp.y - wrist.y };
+  const angle = Math.atan2(-v.x, -v.y);
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const center = {
+    x: landmarksPx.reduce((sum, p) => sum + p.x, 0) / landmarksPx.length,
+    y: landmarksPx.reduce((sum, p) => sum + p.y, 0) / landmarksPx.length,
+  };
+  const rotated = landmarksPx.map((p) => ({ x: (p.x - center.x) * cos - (p.y - center.y) * sin, y: (p.x - center.x) * sin + (p.y - center.y) * cos }));
+  const minX = Math.min(...rotated.map((p) => p.x)) - margin;
+  const minY = Math.min(...rotated.map((p) => p.y)) - margin;
+  const maxX = Math.max(...rotated.map((p) => p.x)) + margin;
+  const maxY = Math.max(...rotated.map((p) => p.y)) + margin;
+  return { margin, angle, center, min: { x: minX, y: minY }, width: Math.max(1, Math.round(maxX - minX)), height: Math.max(1, Math.round(maxY - minY)), mirrored: !isLeftHanded };
+}
+
+function debugVariant(result: OnnxPalmLineResult | null, width: number, height: number): PalmAnalysisDebugVariant | null {
+  return result ? { width, height, maskWidth: result.maskWidth, maskHeight: result.maskHeight, mask: result.mask ?? null, observations: result.observations } : null;
+}
+
 /**
  * 이미지(캔버스에 이미 그려진 상태)를 분석해 PalmFacts를 만든다.
  * 손 미검출/저조도/손 잘림 중 하나라도 걸리면 선 분석 없이 바로 재촬영
@@ -751,6 +822,7 @@ export interface PalmAnalysisSource {
 export async function analyzePalmFromCanvas(
   canvas: PalmCanvas,
   onPhase: (phase: PalmAnalysisPhase) => void = () => {},
+  onDebug?: (snapshot: PalmAnalysisDebugSnapshot) => void,
 ): Promise<PalmFacts> {
   onPhase("landmarks");
   const ctx = canvas.getContext("2d");
@@ -857,7 +929,11 @@ export async function analyzePalmFromCanvas(
   const adaptiveMargin = adaptivePalmMargin(landmarksPx);
   const adaptivePalmCrop = cropAndRotatePalm(canvas, landmarksPx, handSide === "left", adaptiveMargin);
   const enhancedPalmCrop = enhancePalmContrast(adaptivePalmCrop);
+  // Keep each variant's crop geometry paired with its own landmarks. The raw
+  // fixed-margin crop and enhanced adaptive crop do not share pixel origins.
+  const rawCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left", 100);
   const palmCropLandmarks = landmarksInPalmCrop(landmarksPx, handSide === "left", adaptiveMargin);
+  const referenceSpan = (points: { x: number; y: number }[]) => Math.max(1, Math.hypot(points[9].x - points[0].x, points[9].y - points[0].y));
   const secondaryLinesBase = detectSecondaryPalmLines(adaptivePalmCrop, enhancedPalmCrop, palmCropLandmarks);
 
   // Both models use the same single-threaded WASM runtime. Finish all three-line
@@ -867,11 +943,16 @@ export async function analyzePalmFromCanvas(
 
   onPhase("lines");
   const threeLineStartedAt = performance.now();
-  const onnxRaw = await runPalmLineOnnx(rawPalmCrop);
+  const onnxRaw = await runPalmLineOnnx(rawPalmCrop, { cropWidth: rawPalmCrop.width, cropHeight: rawPalmCrop.height, referenceSpan: referenceSpan(rawCropLandmarks) });
   const rawDetectedBeforeFallback = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
   const enhancedAttempted = rawDetectedBeforeFallback < 3;
   if (enhancedAttempted) onPhase("enhanced");
-  const onnxEnhanced = enhancedAttempted ? await runPalmLineOnnx(enhancedPalmCrop) : null;
+  const onnxEnhanced = enhancedAttempted ? await runPalmLineOnnx(enhancedPalmCrop, { cropWidth: enhancedPalmCrop.width, cropHeight: enhancedPalmCrop.height, referenceSpan: referenceSpan(palmCropLandmarks) }) : null;
+  onDebug?.({
+    source: { width: canvas.width, height: canvas.height, landmarks: landmarksPx },
+    raw: { transform: debugCropTransform(landmarksPx, handSide === "left", 100), result: debugVariant(onnxRaw, rawPalmCrop.width, rawPalmCrop.height) },
+    enhanced: { transform: debugCropTransform(landmarksPx, handSide === "left", adaptiveMargin), result: debugVariant(onnxEnhanced, enhancedPalmCrop.width, enhancedPalmCrop.height) },
+  });
   const threeLineElapsedMs = performance.now() - threeLineStartedAt;
 
   const chooseObservation = (cls: OnnxLineClass): { observation: OnnxLineObservation | null; variant: "raw" | "enhanced" } => {
@@ -892,9 +973,27 @@ export async function analyzePalmFromCanvas(
   });
   const modelExecuted = Boolean(onnxRaw || onnxEnhanced);
 
+  const variantPathAgreement = (cls: OnnxLineClass): PalmPathAgreement | undefined => {
+    const raw = onnxRaw?.observations.find((observation) => observation.class === cls);
+    const enhanced = onnxEnhanced?.observations.find((observation) => observation.class === cls);
+    if (!raw?.pathPoints || !enhanced?.pathPoints) return undefined;
+    return comparePalmPaths(
+      raw.pathPoints,
+      { landmarks: rawCropLandmarks, cropWidth: rawPalmCrop.width, cropHeight: rawPalmCrop.height },
+      enhanced.pathPoints,
+      { landmarks: palmCropLandmarks, cropWidth: enhancedPalmCrop.width, cropHeight: enhancedPalmCrop.height },
+    );
+  };
+  const pathAgreement = {
+    heartLine: variantPathAgreement("heart_line"),
+    headLine: variantPathAgreement("head_line"),
+    lifeLine: variantPathAgreement("life_line"),
+  };
+
   const missingObservation = (cls: OnnxLineClass): OnnxLineObservation => ({
     class: cls,
     detected: false,
+    geometryStatus: "not_detected",
     pixelCount: 0,
     coverage: 0,
     boundingBox: null,
@@ -902,6 +1001,7 @@ export async function analyzePalmFromCanvas(
     end: null,
     curveScore: 0,
     lineLength: 0,
+    normalizedLineLength: 0,
     avgThickness: 0,
   });
 
@@ -910,7 +1010,11 @@ export async function analyzePalmFromCanvas(
         modelExecuted: true,
         heartLine: mapOnnxObservation(heartChoice.observation ?? missingObservation("heart_line"), provenanceFor(heartChoice)),
         headLine: mapOnnxObservation(headChoice.observation ?? missingObservation("head_line"), provenanceFor(headChoice)),
-        lifeLine: mapOnnxObservation(lifeChoice.observation ?? missingObservation("life_line"), provenanceFor(lifeChoice)),
+        lifeLine: (() => {
+          const observation = mapOnnxObservation(lifeChoice.observation ?? missingObservation("life_line"), provenanceFor(lifeChoice));
+          const geometry = classifyLifeLineGeometry(observation, lifeChoice.variant === "raw" ? rawCropLandmarks : palmCropLandmarks, lifeChoice.variant === "raw" ? rawPalmCrop.width : enhancedPalmCrop.width, lifeChoice.variant === "raw" ? rawPalmCrop.height : enhancedPalmCrop.height);
+          return { ...observation, anatomicalStatus: geometry.status, anatomicalReason: geometry.reason };
+        })(),
         fateLine: { presence: "unknown", note: "주요 3선 모델과 별도로 운명선 전용 보조 모델을 교차확인합니다." },
         mounts: "unknown",
         marks: "unknown",
@@ -982,6 +1086,7 @@ export async function analyzePalmFromCanvas(
       headLine: headChoice.variant,
       lifeLine: lifeChoice.variant,
     },
+    variantPathAgreement: Object.fromEntries(Object.entries(pathAgreement).filter(([, value]) => value)) as PalmPipelineDiagnostics["variantPathAgreement"],
   } as const;
   console.debug("[palm-pipeline]", pipelineDiagnostics);
 

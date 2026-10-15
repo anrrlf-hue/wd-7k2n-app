@@ -154,11 +154,11 @@ for (const key of ["saju.officer_stars", "saju.wealth_stars", "palm.fate", "palm
 }
 
 const facts = factsMod.computeSajuFacts({
-  year: 1990,
-  month: 5,
-  day: 15,
-  hour: 14,
-  minute: 30,
+  year: 2001,
+  month: 2,
+  day: 3,
+  hour: 10,
+  minute: 0,
   gender: "남",
 });
 const line = (curve = "직선에 가까움", length = "김", depthStrength = "강함") => ({
@@ -281,3 +281,4 @@ assert(funnelSource.includes("buildRealityPalmContext"), "UI06: bilateral palm c
 
 console.log("PASS QUESTION ENGINE V0: 50/50 questions + Astra continuity cases + mixed-domain centering + signal plan + bilateral palm evidence + follow-up UI");
 hooks.deregister?.();
+

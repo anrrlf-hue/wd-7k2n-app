@@ -56,7 +56,7 @@ export function buildPremiumPeriodPresentation(report: PremiumReport): Map<Premi
   const seenDaeun = new Set<string>();
   const result = new Map<PremiumPeriod, PremiumPeriodPresentation>();
   for (const period of [...highlights, ...report.periods.filter(p => !highlights.includes(p))]) {
-    if (["connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13"].includes(report.version)) {
+    if (["connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13", "natal-customer-reading-2026-10-v14", "natal-customer-reading-2026-10-v15"].includes(report.version)) {
       // Each month owns a coherent relationship, scene and resolution. New
       // editions no longer rely on deleting repeated sentences to seem distinct.
       result.set(period, { paragraphs: period.interpretation?.passages.map(p => p.text) ?? [period.reading], shared: [], daeun: null });

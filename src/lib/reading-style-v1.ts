@@ -97,49 +97,12 @@ function secondaryLineStory(
   if (domain === "career" || domain === "work_business") {
     if (!work) return null;
 
-    const rightFateClear = /오른손 운명선 선명/.test(work);
-    const leftFateClear = /왼손 운명선 선명/.test(work);
-    const sunClear = /태양선 선명/.test(work);
-    const wealthClear = /재물선 선명/.test(work);
-
-    const parts: string[] = [];
-    if (rightFateClear !== leftFateClear) {
-      parts.push(
-        rightFateClear
-          ? "오른손에서 일의 방향을 나타내는 세로 흐름이 왼손보다 더 또렷하게 잡혀, 지금 생활에서 스스로 방향을 정하려는 모습이 더 강하게 드러나는 편입니다."
-          : "왼손에서 일의 방향을 나타내는 세로 흐름이 오른손보다 더 또렷하게 잡혀, 기본적으로 가지고 있던 일의 기준을 현재 생활에서 어떻게 꺼내 쓰느냐가 중요한 편입니다.",
-      );
-    } else if (rightFateClear && leftFateClear) {
-      parts.push("양손에서 일의 방향을 나타내는 세로 흐름이 함께 확인돼, 일과 역할의 방향을 오래 붙드는 힘이 비교적 일관되게 보입니다.");
-    }
-    if (sunClear) {
-      parts.push("성과가 밖으로 드러나고 평가받는 방식도 같이 보여, 혼자 준비하는 것만큼 결과를 밖으로 보여주는 과정이 중요할 수 있습니다.");
-    }
-    if (wealthClear && domain === "work_business") {
-      parts.push("재물선 후보도 함께 보여, 일의 방향과 보상·거래 문제를 따로 떼기보다 함께 움직이는 흐름으로 보는 편이 자연스럽습니다.");
-    }
-
-    return parts.length ? parts.join(" ") : null;
+    return work ? "보조선 후보 신호는 일·성과를 생각할 때 참고할 수 있지만, 전체 경로·깊이·시기나 실제 역할 변화를 확인한 근거는 아닙니다. 주요선과 현재 업무 조건을 따로 살펴봅니다." : null;
   }
 
   if (domain === "money") {
     if (!wealth) return null;
-    const rightWealth = /오른손 재물선 선명/.test(wealth);
-    const leftWealth = /왼손 재물선 선명/.test(wealth);
-    const fateClear = /운명선 선명/.test(wealth);
-
-    const parts: string[] = [];
-    if (rightWealth || leftWealth) {
-      parts.push(
-        rightWealth && leftWealth
-          ? "양손에서 재물선 후보가 비교적 또렷하게 보여, 돈을 우연한 행운보다 기회·거래·보상으로 연결하는 방식에 관심이 가는 손으로 읽을 수 있습니다."
-          : "한쪽 손에서 재물선 후보가 더 또렷하게 보여, 돈을 다루는 방식이 타고난 성향과 현재 생활에서 조금 다르게 나타날 수 있습니다.",
-      );
-    }
-    if (fateClear) {
-      parts.push("운명선 흐름도 같이 보여, 돈 문제는 일의 방향이나 역할 변화와 연결해서 볼 때 더 자연스럽습니다.");
-    }
-    return parts.length ? parts.join(" ") : null;
+    return wealth ? "재물선·운명선 후보는 보조 신호로만 확인됩니다. 실제 재물 판단은 주요선에서 읽은 선택 방식과 소득·지출·계약 조건을 따로 확인합니다." : null;
   }
 
   return null;
@@ -174,8 +137,6 @@ function lineCurveText(
   if (!line?.detected) return null;
   const parts = [
     line.curve,
-    line.length ? `길이 ${line.length}` : null,
-    line.depthStrength ? `선명도 ${line.depthStrength}` : null,
   ].filter(Boolean);
   return parts.join(" · ");
 }

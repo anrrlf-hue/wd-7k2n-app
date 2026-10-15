@@ -48,11 +48,11 @@ function assert(condition, message) {
 }
 
 const facts = factsMod.computeSajuFacts({
-  year: 1990,
-  month: 5,
-  day: 15,
-  hour: 14,
-  minute: 30,
+  year: 2001,
+  month: 2,
+  day: 3,
+  hour: 10,
+  minute: 0,
   gender: "남",
 });
 
@@ -234,3 +234,4 @@ assert(
 
 console.log("PASS READING STYLE V1: direct answer + observed-hand fidelity + timing wording + caution + next question");
 hooks.deregister?.();
+

@@ -92,6 +92,9 @@ export class PalmLineSegmenter {
   preprocess(source) {
     const s = this.size;
     // Plain resize to s x s (no letterbox) — matches training's A.Resize.
+    // The canvas is reused across calls. Clear it before drawing so a
+    // transparent/partial source cannot inherit pixels from the previous hand.
+    this._ctx.clearRect(0, 0, s, s);
     this._ctx.drawImage(source, 0, 0, s, s);
     const { data } = this._ctx.getImageData(0, 0, s, s); // RGBA, row-major, uint8
 

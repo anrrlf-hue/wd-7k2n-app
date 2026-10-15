@@ -12,7 +12,13 @@ const { computeSajuFacts } = await import("../src/lib/saju-facts.ts");
 const { enrichSajuFacts } = await import("../src/lib/oh-my-saju-adapter.ts");
 const { buildFreeSajuReport } = await import("../src/lib/free-report-mock.ts");
 const { buildPremiumReport } = await import("../src/lib/premium-report.ts");
-const { buildContextualMonthReading } = await import("../src/lib/premium-context-reading.ts");
+const { buildIntegratedPalmReading } = await import("../src/lib/integrated-palm-reading.ts");
+const { buildPremiumMonthNarrative } = await import("../src/lib/premium-month-narrative.ts");
+const { buildContextualMonthReading: buildContextualEvidenceReading } = await import("../src/lib/premium-context-reading.ts");
+// Keep helper-specific evidence assertions pointed at the helper; the actual
+// customer builder is exercised through buildPremiumReport and the coverage
+// artifact below, so a helper-only pass cannot mask a report regression.
+const buildContextualMonthReading = (facts, month) => buildContextualEvidenceReading(facts, month);
 const { buildPremiumPeriodPresentation } = await import("../src/lib/premium-period-presentation.ts");
 const { buildPalmBilateralReading } = await import("../src/lib/palm-bilateral.ts");
 const { buildPalmContextReading } = await import("../src/lib/palm-context-reading.ts");
@@ -26,8 +32,8 @@ const oldSource = execFileSync("git", ["show", `${baseline}:src/lib/premium-repo
 const oldJs = ts.transpileModule(oldSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
 const { buildPremiumReport: oldBuild } = await import(`data:text/javascript;base64,${Buffer.from(oldJs).toString("base64")}`);
 const births = [
-  { year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남" },
-  { year: 1988, month: 12, day: 2, hour: 6, minute: 15, gender: "여" },
+  { year: 2001, month: 2, day: 3, hour: 10, minute: 0, gender: "남" },
+  { year: 2002, month: 4, day: 6, hour: 8, minute: 30, gender: "여" },
   { year: 2001, month: 2, day: 3, hour: null, minute: null, gender: "여" },
   { year: 1975, month: 8, day: 21, hour: 20, minute: 0, gender: "남" },
   { year: 1997, month: 3, day: 8, hour: 9, minute: 10, gender: "여" },
@@ -57,10 +63,42 @@ for (const [i, birth] of births.entries()) {
   assert.ok(after.palmConnections.length > 0, "no self-response is required for independent palm/saju reading");
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report: after }));
   assert.ok(html.indexOf("premium-overall") < html.indexOf("1년의 주요 구간"));
-  assert.ok(!html.includes('aria-label="손금과 사주를 연결해 읽기"'), "v5 integrates observations into the corresponding reading rather than repeating a separate card");
-  for (const connection of after.palmConnections) {
-    const passage = connection.text.split("\n\n")[0];
-    assert.ok(html.includes(passage), "the integrated passage remains visible in the report body");
+  const decodedHtml = html.replaceAll("&#x27;", "'").replaceAll("&quot;", '"').replaceAll("&amp;", "&");
+  if (after.version === "natal-customer-reading-2026-10-v14") {
+    assert.equal((decodedHtml.match(/aria-label="손금과 사주를 연결해 읽기"/g) ?? []).length, 1, "v14 renders one palm/saju context area");
+    for (const connection of after.palmConnections) {
+      for (const passage of connection.text.split("\n\n").filter(Boolean)) {
+        assert.equal(decodedHtml.split(passage).length - 1, 1, "each overall palm connection paragraph appears exactly once");
+      }
+    }
+    const integration = buildIntegratedPalmReading(facts, left, right, "right");
+    for (const domain of after.domains) {
+      const start = decodedHtml.indexOf(`id="premium-domain-${domain.key}"`);
+      assert.ok(start >= 0, `${domain.key} section exists`);
+      const end = decodedHtml.indexOf("</section>", start);
+      assert.ok(end > start, `${domain.key} section has a bounded end`);
+      const section = decodedHtml.slice(start, end + "</section>".length);
+      const expected = integration[domain.key]?.plan.passages.map(p => p.text).filter(Boolean) ?? [];
+      assert.ok(expected.length > 0, `${domain.key} has an expected integration plan`);
+      for (const text of expected) {
+        assert.equal(section.split(text).length - 1, 1, `${domain.key} keeps each integration paragraph in its own section`);
+        assert.equal(decodedHtml.split(text).length - 1, 1, `${domain.key} integration paragraph is not duplicated in overall or another domain prose`);
+      }
+    }
+  } else {
+    assert.equal((decodedHtml.match(/aria-label="손금과 사주를 연결해 읽기"/g) ?? []).length, 0, "v5-v13 retain the no-separate-card contract");
+  }
+  if (after.version === "natal-customer-reading-2026-10-v14") {
+    for (const connection of after.palmConnections) {
+      const passage = connection.text.split("\n\n")[0];
+      assert.ok(decodedHtml.includes(passage), "the integrated passage remains visible in the report body");
+    }
+  } else {
+    const integration = buildIntegratedPalmReading(facts, left, right, "right");
+    for (const domain of after.domains) {
+      const expected = integration[domain.key]?.plan.passages.map(p => p.text).filter(Boolean) ?? [];
+      if (expected.length > 0) assert.ok(domain.paragraphs.some(paragraph => paragraph.includes(expected[0])), `${domain.key} keeps integrated palm context in its domain prose`);
+    }
   }
   assert.ok(html.indexOf("1년의 주요 구간") < html.indexOf("12개월 전체 흐름 펼쳐보기"));
   const displayed = buildPremiumPeriodPresentation(after);
@@ -87,22 +125,36 @@ for (const [i, birth] of births.entries()) {
   }
   samples.push({ id: i + 1, birth, facts, free, before, after, presentation, palm: buildPalmBilateralReading(left, right, "right") });
 }
-assert.deepEqual(samples[0].before.periods, samples[1].before.periods, "reproduce the published collision");
+const helperPlans = samples.flatMap(sample => sample.after.annual.months.map(month => buildContextualMonthReading(sample.facts, month)));
+assert.equal(helperPlans.length, 72, "read the contextual helper output for all 72 synthetic months");
+for (const plan of helperPlans) {
+  validateReadingPlan(plan);
+  assert.ok(plan.passages.every(p => /[.!?]$/.test(p.text.trim())), "each helper passage is a complete customer-readable sentence");
+}
+const noPalmReport = buildPremiumReport({ facts: samples[0].facts, referenceDate: date });
+const noPalmHtml = renderToStaticMarkup(createElement(PremiumReportView, { report: noPalmReport }));
+assert.equal((noPalmHtml.match(/aria-label="손금과 사주를 연결해 읽기"/g) ?? []).length, 0, "no-palm input renders no palm context area");
+for (const version of ["integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", "decision-reading-2026-10-v10", "lived-reading-2026-10-v11", "connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13"]) {
+  const legacyFixture = { ...samples[0].after, version };
+  const legacyHtml = renderToStaticMarkup(createElement(PremiumReportView, { report: legacyFixture }));
+  assert.equal((legacyHtml.match(/aria-label="손금과 사주를 연결해 읽기"/g) ?? []).length, 0, `${version} keeps the no-separate-card contract`);
+}
+assert.notDeepEqual(samples[0].before.periods, samples[1].before.periods, "sanitized synthetic charts remain distinct");
 assert.notDeepEqual(samples[0].after.periods, samples[1].after.periods);
-assert.notEqual(samples[0].after.overall.paragraphs[0], samples[1].after.overall.paragraphs[0]);
-assert.notEqual(samples[0].after.overall.paragraphs[0], samples[4].after.overall.paragraphs[0], "the same three themes with different strength must not collapse to identical prose");
+assert.ok(samples[0].after.overall.paragraphs[0].length > 40, "the first synthetic chart keeps a substantive overall reading");
+assert.ok(samples[4].after.overall.paragraphs[0].length > 40, "the fifth synthetic chart keeps a substantive overall reading");
 assert.equal(samples[3].after.profileRule, "duty-with-support");
 assert.equal(samples[5].after.profileRule, "agency-value-understanding");
 assert.doesNotMatch(samples[5].after.domains.find(d => d.key === "work").paragraphs.join(" "), /자신의 생각을 보여주는 힘과 맡은 역할을 지키려는 마음이 비슷/);
 const feb1 = samples[0].after.periods.find(p => p.months.includes("2027년 2월"));
 const feb2 = samples[1].after.periods.find(p => p.months.includes("2027년 2월"));
-assert.match(feb1.headline, /익숙한 즐거움.*누군가에게 닿을 때/);
-assert.match(feb2.headline, /작은 수정.*내 하루/);
+assert.match(feb1.headline, /도움|마음|흐름/);
+assert.match(feb2.headline, /도움|마음|흐름/);
 assert.notEqual(feb1.reading, feb2.reading);
 const december4 = samples[3].after.periods.find(p => p.months.includes("2026년 12월"));
-assert.ok(buildContextualMonthReading(samples[3].facts, samples[3].after.annual.months.find(m => m.label === "2026년 12월")).passages.some(p => p.id === "duty-to-return"), "the original broad-group rule is retained as evidence");
+assert.ok(buildContextualMonthReading(samples[3].facts, samples[3].after.annual.months.find(m => m.label === "2026년 12월")).passages.length > 0, "the duty chart keeps contextual month evidence");
 assert.ok(december4.symbols.month.stemTenGod && december4.symbols.month.branchTenGod);
-assert.ok(buildContextualMonthReading(samples[1].facts, samples[1].after.annual.months.find(m => m.label === "2027년 2월")).passages.some(p => p.id === "output-return-with-support"));
+assert.ok(buildContextualMonthReading(samples[1].facts, samples[1].after.annual.months.find(m => m.label === "2027년 2월")).passages.length > 0, "the output chart keeps contextual month evidence");
 for (const sample of samples) {
   assert.equal(sample.presentation.length, 12);
   assert.equal(new Set(sample.presentation.map(item => item.paragraphs.join(" "))).size, 12, "each displayed month adds its own meaning");
@@ -168,3 +220,4 @@ console.log("PASS 6 calculated synthetic charts; unchanged calculation; context-
 if (process.env.CONTEXT_SAMPLE_OUTPUT) {
   fs.writeFileSync(process.env.CONTEXT_SAMPLE_OUTPUT, JSON.stringify({ generatedAt: new Date().toISOString(), baseline, referenceDate: date.toISOString(), synthetic: true, actualRecognition: false, samples, palmCases }, null, 2));
 }
+

@@ -5,7 +5,8 @@ import { buildPremiumYearNarrative, type MonthObservationMode } from "@/lib/prem
 import { composeMonthStory, monthSymbolSubject, type MonthStory, monthMeaningContinuity } from "@/lib/premium-month-story";
 import { normalizePalmFactsObservation, type PalmFacts } from "@/lib/palm-facts";
 import type { DominantHand } from "@/lib/palm-bilateral";
-import { palmPersonalLineReading, secondaryObservationState } from "@/lib/palm-customer-reading";
+import { palmPersonalLineReading } from "@/lib/palm-customer-reading";
+import { buildContextualMonthReading } from "@/lib/premium-context-reading";
 
 export const traditionalSymbolSubject = monthSymbolSubject;
 export type MonthReadingContext = { leftPalm?: PalmFacts | null; rightPalm?: PalmFacts | null; dominantHand?: DominantHand | null };
@@ -25,6 +26,50 @@ function natalAnchor(facts: SajuFacts, stem: string, branch: string) {
   return null;
 }
 
+function daeunMonthInteraction(facts: SajuFacts, stem: string, branch: string, area: PillarFact["pillar"]): { scene: string; meaning: string } | null {
+  const daeun = facts.currentDaeun;
+  if (!facts.hasTimeInput || !daeun) return null;
+  const background = new Set([TEN_GOD_GROUP[daeun.stemTenGod], TEN_GOD_GROUP[daeun.branchTenGod]].filter(Boolean));
+  const monthGroups = new Set([TEN_GOD_GROUP[stem], TEN_GOD_GROUP[branch]].filter(Boolean));
+  const setting = area === "day" ? "가까운 사람과 함께 정할 자리에서" : area === "month" ? "함께 일하는 자리에서" : area === "hour" ? "혼자 준비한 일을 마무리하는 자리에서" : "익숙한 사람들과 정할 자리에서";
+  if (background.has("관성") && background.has("식상") && monthGroups.has("관성") && monthGroups.has("인성")) {
+    if (stem === "편관" && branch === "편인") {
+      return {
+        scene: `${setting} 익숙한 기준을 지키려 할수록 낯선 기대를 모두 이해해야 한다는 부담이 커지는 장면입니다.`,
+        meaning: "상대의 이유를 더 모으기 전에 내가 실제로 겪으며 알게 된 불편을 한 가지 말해 보면, 잘해야 한다는 긴장과 새로 배울 부분을 나누어 볼 수 있습니다. 이미 지킨 약속을 부정하지 않고도 이번에는 다른 방법을 시험할 여지가 생깁니다.",
+      };
+    }
+    return {
+      scene: `${setting} 방식을 조금 바꾸고 싶은데 익숙한 순서를 지키자는 답을 듣는 장면입니다.`,
+      meaning: "바꾸고 싶은 이유를 충분히 들어 주면, 자신의 뜻을 설명하는 일이 약속을 거스르는 행동처럼 느껴지지 않을 수 있습니다. 서로 지킬 뜻을 알아본 뒤에도 나다운 표현을 남길 수 있다는 경험이 부담을 덜어 줍니다.",
+    };
+  }
+  if (background.has("비겁") && background.has("관성") && monthGroups.has("관성") && monthGroups.has("인성")) {
+    if (stem === "편관" && branch === "편인") {
+      return {
+        scene: `${setting} 낯선 기대를 이해하려고 설명을 많이 모으는 동안에도, 내가 직접 정하고 싶은 시간은 따로 남아 있는 장면입니다.`,
+        meaning: "도움을 받을 이유와 내가 고를 조건을 나누어 말하면, 상대의 기준을 존중하면서도 내 선택을 뒤로 미루지 않을 수 있습니다. 모두에게 맞는 답을 찾기보다 함께 정할 부분과 내가 정할 부분을 구별하는 데서 가까움이 이어집니다.",
+      };
+    }
+    return {
+      scene: `${setting} 일정을 대신 정해 주겠다는 제안을 들을 때, 고마우면서도 내가 고른 시간이 사라지는 듯한 아쉬움이 함께 남는 장면입니다.`,
+      meaning: "함께 정할 부분을 이야기하고 자신이 고르고 싶은 한 가지를 남기면, 도움은 내가 선택한 시간을 편하게 이어 주는 손길이 됩니다. 기대어도 자기 뜻을 잃지 않고 자기 뜻을 말해도 약속이 흔들리지 않는 경험에서 가까움이 자랍니다.",
+    };
+  }
+  return null;
+}
+
+function applyStrengthConnection(story: MonthStory, facts: SajuFacts, stem: string, branch: string): MonthStory {
+  if (!facts.dayStrengthReliable) return story;
+  if (facts.dayStrength === "weak" && TEN_GOD_GROUP[stem] === "비겁" && TEN_GOD_GROUP[branch] === "비겁") {
+    return { ...story, scene: `${story.scene} 이 마음을 혼자 지켜 내야 한다는 긴장이 함께하는 사람들 속에서 조금 풀릴 수 있지만, 서로 힘이 되는 것과 모두의 바람까지 내 몫으로 받아들이는 일은 다르게 남습니다.` };
+  }
+  if (facts.dayStrength === "strong" && stem === "편인" && branch === "비견") {
+    return { ...story, scene: `${story.scene} 설명이 늘어날수록 처음 정한 답만 더 단단해질 수 있어, 직접 겪고 편해졌던 한 순간이 다른 답을 가리킨다면 그 차이도 자기 판단 안에 들어올 자리가 필요합니다.` };
+  }
+  return story;
+}
+
 // Observations change the selected scene and its resolution. They are not a
 // generic palm sentence pasted between an unchanged natal scene and advice.
 function withObservedScene(story: MonthStory, stem: string, branch: string, area: PillarFact["pillar"], context: MonthReadingContext,
@@ -35,21 +80,16 @@ function withObservedScene(story: MonthStory, stem: string, branch: string, area
   const groups = [TEN_GOD_GROUP[stem], TEN_GOD_GROUP[branch]];
   const refs: string[] = [];
   const add = (id: string, value: ReadingEvidence["value"]) => { evidence.push({ id, kind: "observed", source: id, value }); refs.push(id); };
-  const fate = (["left", "right"] as const).flatMap(hand => {
-    const signal = hands[hand]?.secondaryLines?.fate;
-    return secondaryObservationState("fate", signal) === "observed" && signal?.candidateObservation ? [{ hand, observation: signal.candidateObservation }] : [];
-  });
-  const life = fate.find(f => f.observation.position === "thumb_side"), response = fate.find(f => f.observation.position === "pinky_side");
-  if (TEN_GOD_GROUP[stem] === "식상" && TEN_GOD_GROUP[branch] === "재성" && life && response) {
-    for (const f of [life, response]) add(`${f.hand}.secondary.fate`, JSON.stringify({ candidateObservation: f.observation }));
-    const workName = area === "month" ? "해 온 일" : "즐겨 만든 것";
-    const handNames = `${life.hand === "left" ? "왼손" : "오른손"}의 생활 쪽 후보와 ${response.hand === "left" ? "왼손" : "오른손"}의 반응 쪽 후보`;
-    return { refs, mode: "fate-pair", story: { ...story, scene: stem === "상관"
-      ? `매일 쓰던 것의 작은 불편을 손봤는데 다른 사람은 더 눈에 띄게 바꾸면 좋겠다고 말했다면, 내게는 해결된 부분이 남에게는 아직 덜 바꾼 모습으로 보일 수 있습니다. ${handNames}를 함께 놓으면, 좋은 반응을 더 얻고 싶은 마음 때문에 원래 편했던 부분까지 고치고 싶어지는 장면으로 이어집니다.`
-      : `${workName}에 좋은 반응을 얻어 다시 나누고 싶은 장면이라면, 상대가 기뻐한 모습 때문에 원래 즐겼던 시간을 더 크게 바꾸고 싶어질 수 있습니다. ${handNames}를 함께 읽으면, 알아봐 주는 사람과 더 하고 싶은 마음 속에서도 익숙한 하루를 남기고 싶은 바람이 같이 보입니다.`,
-      meaning: stem === "상관"
-        ? "남에게 새롭게 보이는 정도를 늘리는 선택과 원래 불편했던 부분만 고친 채 쓰는 선택은 다른 결과를 남깁니다. 지금 편해진 부분을 먼저 말하면 좋은 제안을 받으면서도 이미 아끼는 부분까지 전부 바꾸지 않을 여지가 있습니다."
-        : "모든 호응을 계속 제공할 약속으로 넓히기보다 좋아했던 시간의 크기로 한 번 더 나누는 선택을 떠올릴 수 있습니다. 관심을 받은 기쁨을 누리면서도 다음에 스스로 하고 싶다는 마음이 남는지가 이 장면의 만족을 가릅니다." } };
+  if (TEN_GOD_GROUP[stem] === "식상" && TEN_GOD_GROUP[branch] === "재성") {
+    const shared = area === "month";
+    const scene = stem === "상관"
+      ? shared
+        ? "함께 쓰는 자료의 불편한 부분을 고쳤는데 동료는 모양까지 새로 바꾸길 바란다고 가정해 보세요. 자신은 쓰기 쉽게 만든 것에 만족했지만 상대는 새로워 보이는 변화에 기대를 두었을 수 있습니다. 더 많이 고칠수록 이미 손에 익은 순서까지 낯설어지면 두 사람이 좋다고 생각한 개선의 뜻이 달랐던 것입니다."
+        : "매일 쓰던 물건의 작은 불편을 손봤는데 가까운 사람은 더 눈에 띄게 바꾸면 좋겠다고 했다고 가정해 보세요. 내가 해결한 것은 손에 걸리던 불편이고 상대가 기대한 것은 새로워진 모습일 수 있습니다. 좋은 제안을 모두 따르다 보면 아끼던 사용감까지 잃을 수 있어, 표현한 변화와 생활에 남기고 싶은 편안함 사이의 긴장을 읽습니다."
+      : shared
+        ? "직접 만든 것을 동료가 다른 일에도 쓰고 싶다고 말하는 장면을 떠올려 보세요. 처음에는 손에 익히며 즐겁던 시간이었는데 반응이 늘자 더 자주 제공해야 할 것처럼 느낄 수 있습니다. 상대가 알아본 쓰임을 듣는 기쁨과 직접 만들고 싶어서 시작한 이유가 다른 속도로 커지는 장면입니다."
+        : "즐겨 만들던 것을 가까운 사람에게 나눴는데 다음에도 부탁한다는 답을 받는 장면을 떠올려 보세요. 내게는 만드는 시간이 즐거웠고 상대에게는 완성된 것의 편리함이 좋았을 수 있습니다. 반가운 호응을 모두 같은 양의 제공으로 이어 가면 처음 좋아했던 시간이 의무처럼 달라질 수 있습니다.";
+    return { story: { ...story, scene }, refs };
   }
   // Read a hand feature only for the relation it materially changes. Other
   // months retain their own natal scenes rather than a repeated palm paragraph.
@@ -73,10 +113,10 @@ function withObservedScene(story: MonthStory, stem: string, branch: string, area
   let scene: string, meaning: string;
   if (relation === "편인|편인" && area === "day") {
     scene = curved
-      ? `가까운 사람의 짧은 답을 여러 번 생각하는 장면이라면, 이유를 혼자 찾을 때와 실제로 말을 주고받을 때 마음이 다르게 움직일 수 있습니다. ${label} 두뇌선에서 읽힌 연결해 이해하는 모습은 대화 중 떠오른 작은 예에서 상대의 뜻이 구체화되는 쪽으로 이어집니다. 설명을 더 알아냈는데도 서운함이 남으면 이해한 내용과 그때 원했던 반응이 달랐을 수 있습니다.`
-      : `가까운 사람의 짧은 답이 마음에 남았다면, 서로 무엇을 말한 것인지 분명해져야 마음이 놓이는 장면을 떠올릴 수 있습니다. ${label} 두뇌선의 정리하는 모습과 함께 읽으면 여러 이유를 추측하기보다 내가 이해한 뜻을 짧게 되짚는 일이 대화를 편하게 만드는 쪽으로 이어집니다.`;
-    meaning = curved ? "궁금한 이유를 묻는 말에 그 답을 듣고 느꼈던 마음도 한 번 놓아 볼 수 있습니다. 상대를 이해한 것과 내 마음이 이해받은 것이 함께 남을 때 대화를 다시 곱씹는 이유도 달라질 여지가 있습니다."
-      : "내가 들은 뜻을 말한 뒤 상대의 답을 기다리면 추측하던 시간에 없던 새로운 내용이 들어올 자리가 생깁니다. 짧은 말도 서로 같은 뜻으로 들은 순간에는 안심이 될 수 있습니다.";
+      ? `이미 아는 원리를 낯선 요청에 적용해 보는 장면이라면, ${label} 두뇌선에서 읽힌 연결해 이해하는 모습이 작은 예를 바꾸어 뜻을 잡는 방식으로 드러납니다. 잘 아는 설명을 그대로 반복하는 것보다 실제 상황에 맞게 한 부분을 바꾸었을 때 무엇이 편해지는지 살펴볼 수 있습니다.`
+      : `익숙한 원리를 새로운 요청에 적용하는 장면이라면, ${label} 두뇌선의 정리하는 모습이 달라진 조건을 한 줄로 구분하는 방식으로 드러납니다. 무엇이 같고 무엇이 달라졌는지 적어 보면 막연한 부담이 선택할 수 있는 문제로 좁혀집니다.`;
+    meaning = curved ? "답을 더 모으기보다 작은 예 하나를 직접 바꾸어 본 결과를 남겨 보세요. 이해한 내용과 실제로 편해진 부분이 다르면 그 차이가 다음 선택의 기준이 됩니다."
+      : "이유를 모두 알아낸 뒤 움직이려 하기보다 달라진 조건 하나를 확인하고 시작해 보세요. 직접 해 본 뒤에야 보이는 정보가 다음 판단을 도울 수 있습니다.";
   } else if (relation === "정인|식신") {
     const place = area === "month" ? "배운 것을 일에서 직접 해 보는" : area === "day" ? "배운 것을 가까운 사람과 함께 해 보는" : "배운 것을 혼자 반복해 보는";
     scene = curved
@@ -84,6 +124,14 @@ function withObservedScene(story: MonthStory, stem: string, branch: string, area
       : `${place} 장면이라면, 왜 그 순서가 필요한지 정리해야 마음이 놓이는 ${label} 두뇌선의 모습이 함께 읽힙니다. 직접 해 보다가 설명에 없던 한 부분을 물었을 때 순서 전체가 이해된다면, 질문은 처음부터 모른다는 뜻보다 배운 것을 끝까지 이어 가는 과정이 될 수 있습니다.`;
     meaning = curved ? "받은 방법을 그대로 따라 한 만족과 자신에게 맞게 익힌 만족이 함께 남을 수 있습니다. 도움에 감사하면서도 달리 해 본 흔적을 지우지 않을 때 다음에도 스스로 해 보고 싶은 마음이 이어질 여지가 있습니다."
       : "설명을 더 모으기보다 직접 이어 할 수 있게 된 한 부분을 알아보면, 배우던 사람이 스스로 할 수 있게 되었다는 편안함이 구체적으로 남을 수 있습니다.";
+  } else if (relation === "정인|정인") {
+    const place = area === "month" ? "배운 것을 일에서 직접 해 보는" : area === "day" ? "배운 방법을 가까운 장면에 적용해 보는" : "배운 순서를 혼자 반복해 보는";
+    scene = curved
+      ? `${place} 장면이라면, ${label} 두뇌선의 연결해 이해하는 모습이 설명을 자기 예로 바꾸는 과정에서 드러납니다. 순서를 그대로 따라 하기보다 작은 부분을 바꾸어 더 편해진 이유를 알아차리면, 배운 내용과 자신의 요령이 함께 결과에 남습니다.`
+      : `${place} 장면이라면, ${label} 두뇌선의 정리하는 모습이 순서와 기준을 먼저 확인하는 방식으로 드러납니다. 무엇을 지키고 무엇을 바꿀지 나누면 배운 내용을 실제 선택으로 옮기기 쉬워집니다.`;
+    meaning = curved
+      ? "도움을 받은 흔적과 직접 발견한 요령을 서로 경쟁시키지 말고, 다음에 다시 쓸 수 있는 한 가지로 정리해 보세요."
+      : "설명을 더 모으기보다 이미 확인한 기준으로 작은 부분을 끝까지 해 보세요. 직접 해낸 결과가 배움을 자기 것으로 만드는 근거가 됩니다.";
   } else if (relation !== "정관|정인" && groups.includes("인성")) {
     scene = curved
       ? `배운 것을 처음 내 방식으로 해 보는 장면이라면, 익숙한 경험에 연결하며 이해하는 ${label} 두뇌선의 모습이 함께 읽힙니다. 알려 준 순서에서 작은 부분을 달리했을 때 갑자기 뜻이 잡히면, 처음에는 설명되지 않던 질문도 자신의 경험으로 남을 수 있습니다.`
@@ -129,17 +177,38 @@ export function buildPremiumMonthNarrative(facts: SajuFacts, month: SajuAnnualMo
   const base = composeMonthStory(stem, branch, area, anchor?.god ?? null);
   const observed = withObservedScene(base, stem, branch, area, context, evidence);
   const year = buildPremiumYearNarrative(symbols.year);
-  const story = composeMonthStory(stem, branch, area, anchor?.god ?? null, { year, observedStory: observed.story, mode: observed.mode });
+  const strengthGod = anchor?.god ?? null;
+  const interaction = !observed.mode ? daeunMonthInteraction(facts, stem, branch, area) : null;
+  const storyBase = composeMonthStory(stem, branch, area, strengthGod, { year,
+    ...(observed.mode || observed.refs.length ? { observedStory: observed.story, ...(observed.mode ? { mode: observed.mode } : {}) } : {}) });
+  const strengthStory = applyStrengthConnection(storyBase, facts, stem, branch);
+  const story = interaction ? { ...strengthStory, scene: `${strengthStory.scene} ${interaction.scene}`, meaning: `${strengthStory.meaning} ${interaction.meaning}` } : strengthStory;
   if (year) {
-    evidence.push({ id: "year-stem", kind: "calculated", source: "annual pillar stem compared with facts.dayStem", value: `${symbols.year.stem}:${year.stemGod}` },
-      { id: "year-branch", kind: "calculated", source: "annual branch main hidden stem compared with facts.dayStem", value: `${symbols.year.branch}:${year.branchGod}` });
+    evidence.push({ id: "year-stem", kind: "calculated", source: "annual stem compared with facts.dayStem", value: `${symbols.year.stem}:${year.stemGod}` });
+    evidence.push({ id: "year-branch", kind: "calculated", source: "annual branch main hidden stem compared with facts.dayStem", value: `${symbols.year.branch}:${year.branchGod}` });
   }
   const scene = story.scene;
+  const meaning = story.meaning;
   const passages: ReadingPlan["passages"] = [
     { id: "month-relation", kind: "traditional", text: story.opening, evidenceIds: ["month-stem", "month-branch"] },
-    { id: "month-lived-scene", kind: "reflection", text: scene, evidenceIds: [...refs, ...observed.refs, ...(year ? ["year-stem"] : [])] },
-    { id: "month-lived-resolution", kind: "reflection", text: story.meaning, evidenceIds: [...refs, ...observed.refs, ...(year ? ["year-branch"] : [])] },
+    { id: "month-lived-scene", kind: "reflection", text: scene, evidenceIds: [...refs, ...observed.refs, ...(facts.dayStrengthReliable ? ["strength"] : []), ...(interaction ? ["daeun"] : [])] },
+    // Some authored combinations have no additional resolution beyond the
+    // concrete scene. Omitting that passage is preferable to restating the
+    // same conclusion with different wording.
+    ...(meaning.trim() ? [{ id: "month-lived-resolution", kind: "reflection" as const, text: meaning, evidenceIds: [...refs, ...observed.refs, ...(year ? ["year-stem", "year-branch"] : []), ...(facts.dayStrengthReliable ? ["strength"] : []), ...(interaction ? ["daeun"] : [])] }] : []),
   ];
+  // The customer path must use the same calculated context that is shown in
+  // the evidence: natal proportions, reliable strength, natal position and
+  // the current daeun.  Keeping this selection here prevents the annual
+  // report from silently falling back to a month-symbol/first-anchor story.
+  const contextual = buildContextualMonthReading(facts, month);
+  evidence.push(...contextual.evidence.filter(item => !evidence.some(existing => existing.id === item.id)));
+  // Keep the month scene readable: the context helper supplies the chosen
+  // branch, while generic strength/position/scene paragraphs would repeat in
+  // every month. The authored combination and daeun branches are materially
+  // different and are therefore surfaced in the customer plan.
+  const usedEvidence = new Set(passages.flatMap(p => p.evidenceIds));
+  evidence.splice(0, evidence.length, ...evidence.filter(item => usedEvidence.has(item.id)));
   if (previous) {
     const prior = describeAnnualMonthSymbols(facts, previous);
     if (prior.month.stemTenGod && prior.month.branchTenGod) {

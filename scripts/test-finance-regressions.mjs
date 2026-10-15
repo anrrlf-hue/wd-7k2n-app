@@ -413,3 +413,4 @@ stubs.deregister?.();
 console.log("\nFINANCE REGRESSION RESULTS");
 for (const item of results) console.log(`PASS ${item.id} :: ${item.detail}`);
 console.log(`\nPASS ${results.length}/${results.length}`);
+

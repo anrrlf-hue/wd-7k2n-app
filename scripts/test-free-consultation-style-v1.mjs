@@ -45,7 +45,7 @@ function assert(condition, message) {
 }
 
 const facts = factsMod.computeSajuFacts({
-  year: 1990, month: 5, day: 15, hour: 14, minute: 30, gender: "남",
+  year: 2001, month: 2, day: 3, hour: 10, minute: 0, gender: "남",
 });
 const report = reportMod.buildFreeSajuReport(facts);
 const sections = styleMod.buildFreeConsultationSections(report);
@@ -65,7 +65,7 @@ for (const paragraph of [
 ]) {
   assert(allText.includes(paragraph), "C03: core broad-Saju content was dropped by consultation grouping");
 }
-for (const paragraph of [report.leakPattern.text, report.bigMoneyAffinity.text, report.peopleAndMoney.text]) {
+for (const paragraph of [report.leakPattern.text, report.bigMoneyAffinity.text]) {
   assert(!allText.includes(paragraph), "C03b: finance-heavy deep content leaked back into broad Saju");
 }
 

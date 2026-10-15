@@ -297,11 +297,11 @@ export function ResultStep({
           사주 전체를 봤다면<br />양손에서 지금의 모습도 확인해보세요
         </h2>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          손금은 선택사항입니다. 양손을 함께 보거나, 사주만으로 통합 연간 리포트와 공유로 이어갈 수 있습니다.
+          양손의 선과 모양을 함께 살펴 사주 풀이에 더해 보세요. 손금을 나중에 추가해도 사주 결과에서 이어서 볼 수 있습니다.
         </p>
         <div className="mt-4">
           <PalmEntryCard birthInput={diagnosis.birthInput} personalityInput={personalityInput} focus="overall" />
-          <Button variant="outline" onClick={() => setSkipPalm(true)} className="mt-3 min-h-12 w-full rounded-full">손금 없이 결과 마무리하기</Button>
+          <Button variant="outline" onClick={() => setSkipPalm(true)} className="mt-3 min-h-12 w-full rounded-full">손금은 나중에 추가하기</Button>
         </div>
       </section>}
     </div>

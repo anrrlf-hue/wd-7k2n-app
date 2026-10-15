@@ -11,21 +11,13 @@ import type {
 
 const LINE_LABEL = { heartLine: "감정선", headLine: "두뇌선", lifeLine: "생명선" } as const;
 const CURVE = { "완만한 곡선": "완만한 곡선을 이루는", "직선에 가까움": "직선에 가까운" } as const;
-const COMMON_SCOPE_NOTE = "사진에서 추정한 선의 모양을 전통적 상징으로 읽는 참고 풀이이며, 실제 성격·적성·건강·수명·미래를 판정하지 않습니다. 검출 구간의 양끝은 모델이 잡은 구간 끝점일 뿐, 손금 전체 경로와 실제 끝점·전체 길이는 확인하지 않았습니다.";
+const COMMON_SCOPE_NOTE = "사진에서 추정한 검출 구간의 모양을 전통적 상징으로 읽는 참고 풀이입니다. 곡률·구간 길이 분류는 자동 검출 참고값이라 독립 육안으로 확정하지 않았고, 실제 성격·적성·건강·수명·미래를 판정하지 않습니다. 검출 구간의 양끝도 손금 전체 경로와 실제 끝점·전체 길이를 뜻하지 않습니다.";
 
 function observation(label: string, d: OnnxLineDetail): string {
   if (!d.detected) return `${label}은 이번 사진에서 뚜렷하게 확인되지 않았습니다.`;
   const source = d.sourceVariant === "enhanced" ? "보정 영상에서" : d.sourceVariant === "raw" ? "원본 사진에서" : "사진에서";
   const curve = d.curve && d.attributeSupport?.curve !== "not_supported" ? `검출 구간은 ${CURVE[d.curve]} 모습` : "검출 구간의 세부 모양";
-  const length = d.length && d.attributeSupport?.length !== "not_supported" ? `상대 길이는 ${d.length}로 분류` : "전체 길이는 확인되지 않음";
-  return `${label}은 ${source} ${curve}이고 ${length}입니다.`;
-}
-
-function clarityReading(d: OnnxLineDetail): string | null {
-  if (!d.detected) return null;
-  if (d.depthStrength === "강함") return "검출 신호는 비교적 강했지만 실제 선의 깊이·두께·전체 경로를 측정한 값은 아닙니다.";
-  if (d.depthStrength === "약함") return "검출 신호가 약해 세부 모양은 보조적으로만 봅니다.";
-  return null;
+  return `${label}은 ${source} ${curve}으로 자동 분류됐습니다. 전체 경로와 길이는 확인되지 않았습니다.`;
 }
 
 export interface PalmReadingContext {
@@ -58,61 +50,20 @@ function handOverviewReading(context?: PalmReadingContext): string | null {
   return `${side}${shapeText[shape]}`;
 }
 
-function coreStoryReading(
-  lines: OnnxPalmLines,
-  secondaryLines?: PalmFacts["secondaryLines"],
-): string | null {
-  const parts: string[] = [];
+function coreStoryReading(lines: OnnxPalmLines): string | null {
   const head = lines.headLine;
   const heart = lines.heartLine;
   const life = lines.lifeLine;
-  const fateClear = Boolean(
-    secondaryLines?.fate.status === "clear" && secondaryLines.fate.corroborated,
-  );
-  const sunClear = secondaryLines?.sun.status === "clear";
-  const wealthClear = secondaryLines?.wealth.status === "clear";
-
-  if (head.detected) {
-    if (head.curve === "완만한 곡선") {
-      parts.push("정답 하나만 찾기보다 상황과 아이디어를 함께 보려는 두뇌선이 눈에 띕니다.");
-    } else if (head.curve === "직선에 가까움") {
-      parts.push("감보다 기준과 순서를 세워 판단하려는 두뇌선이 눈에 띕니다.");
-    }
+  const observed = [head.detected ? "두뇌선" : null, heart.detected ? "감정선" : null, life.detected ? "생명선" : null].filter(Boolean);
+  if (!observed.length) return null;
+  if (head.detected && heart.detected && head.curve && heart.curve && head.curve !== heart.curve) {
+    return "이번 사진에서 두뇌선과 감정선으로 확인한 가장 직접적인 조합은 생각을 정리하는 방식과 마음을 표현하는 방식의 차이입니다. 판단을 빨리 닫기보다 상대가 어떻게 받아들였는지 한 번 확인하는 장면에서 이 차이가 실제 선택으로 드러날 수 있습니다. 이는 일·관계·재물의 결과를 예고하는 판정이 아니라, 확인된 주요선 모양을 생활 장면에 옮긴 참고입니다.";
   }
-
-  if (heart.detected && head.detected) {
-    parts.push(
-      heart.curve === head.curve
-        ? "감정을 쓰는 방식과 판단하는 방식의 결이 비슷해서, 마음이 정해지면 행동도 한 방향으로 모이기 쉬운 조합입니다."
-        : "감정을 쓰는 방식과 판단하는 방식의 결이 달라, 사람 문제에서는 마음이 움직여도 중요한 선택에서는 다시 머리로 확인하는 모습이 함께 나타날 수 있습니다.",
-    );
+  if (head.detected && heart.detected && head.curve === heart.curve) {
+    return "이번 사진에서 두뇌선과 감정선의 방향이 비슷하게 분류된 점은 생각과 감정이 비슷한 속도로 움직이는 조합으로 읽을 수 있습니다. 마음이 정해진 뒤 행동을 한 흐름으로 이어가기 쉽지만, 중요한 선택에서는 다른 사람의 조건도 별도로 확인하는 식으로 균형을 잡을 수 있습니다.";
   }
-
-  if (life.detected) parts.push("엄지 밑을 감싸는 생명선 검출 구간은 생활 기반과 활동 리듬을 살펴보는 전통적 상징으로만 연결합니다.");
-
-  if (fateClear) {
-    parts.push(
-      "여기에 운명선이 함께 확인돼, 생각으로만 끝내기보다 결국 자기 일·진로의 방향으로 연결하려는 흐름이 더해집니다.",
-    );
-  }
-  if (sunClear) {
-    parts.push(
-      "태양선 후보까지 보이면 만든 결과를 밖으로 보여주고 평가받는 과정이 중요한 손으로 읽을 수 있습니다.",
-    );
-  }
-  if (wealthClear) {
-    parts.push(
-      "재물선 후보까지 보이면 일의 결과를 거래·보상·수입 기회로 연결하는 방식에도 관심이 실리는 손으로 봅니다.",
-    );
-  }
-
-  if (parts.length === 0) return null;
-  parts.push(
-    "전통 손금식으로 한 번에 보면, 한 선의 좋고 나쁨보다 생각·관계·생활·일의 흐름이 어떻게 연결되는지가 이 손의 핵심입니다.",
-  );
-  return parts.join(" ");
+  return `${observed.join("·")}에서 확인된 자동 검출 구간만으로는 하나의 성향으로 넓히지 않습니다. 각 선의 보조 해석은 해당 문단의 범위에 두고, 실제 생활 판단은 경험과 조건을 함께 확인해야 합니다.`;
 }
-
 export function buildRealObservationText(facts: PalmFacts): string {
   if (!facts.onnxLines) return "손바닥 전체가 밝고 선명하게 나오도록 다시 촬영해 주세요.";
   return (["heartLine", "headLine", "lifeLine"] as const)
@@ -144,8 +95,6 @@ function heartReading(d: OnnxLineDetail): string {
   parts.push("손가락 아래쪽의 감정선으로 부르는 위치에서 확인된 검출 구간을 마음을 표현하고 관계의 기대를 주고받는 방식과 연결해 봅니다.");
   if (d.curve === "완만한 곡선") parts.push("마음을 느끼는 것에서 끝나지 않고 표정이나 말로 반응해주는 편이라, 친해질수록 따뜻함이 더 잘 드러날 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("감정을 크게 드러내기보다 약속을 지키거나 필요한 일을 챙기는 방식으로 마음을 보여주는 쪽에 가깝습니다.");
-  const clarity = clarityReading(d);
-  if (clarity) parts.push(clarity);
   parts.push("예를 들어 상대가 기쁜 소식을 전했을 때 축하를 먼저 말하고 내 반응도 짧게 덧붙이는 장면으로 옮겨볼 수 있습니다.");
   return parts.join(" ");
 }
@@ -155,8 +104,6 @@ function headReading(d: OnnxLineDetail): string {
   parts.push("손바닥 중앙의 두뇌선으로 부르는 위치에서 확인된 검출 구간을 생각을 정리하고 선택 조건을 세우는 방식과 연결해 봅니다.");
   if (d.curve === "완만한 곡선") parts.push("정답 하나만 찾기보다 직감과 아이디어를 함께 쓰는 편이라 새로운 방식이나 창의적인 해결책에 강점이 생길 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("기준과 근거를 세워 판단하는 편이라 숫자, 비교, 순서를 정리하면 결정이 빨라질 수 있습니다.");
-  const clarity = clarityReading(d);
-  if (clarity) parts.push(clarity);
   parts.push("예를 들어 회의에서 선택 기준 세 가지를 먼저 적고, 그 기준 안에서 방법을 바꾸어 보는 장면으로 옮겨볼 수 있습니다.");
   return parts.join(" ");
 }
@@ -166,8 +113,6 @@ function lifeReading(d: OnnxLineDetail): string {
   parts.push("엄지 밑을 감싸 손목 쪽으로 내려가는 생명선으로 부르는 위치의 검출 구간을 생활 기반과 활동 리듬을 살펴보는 전통적 상징으로 연결해 봅니다.");
   if (d.curve === "완만한 곡선") parts.push("익숙한 환경 안에서도 활동 반경을 넓히거나 새로운 경험을 받아들이는 편으로 볼 수 있습니다.");
   if (d.curve === "직선에 가까움") parts.push("에너지를 여러 곳에 흩기보다 필요한 곳에 집중해서 쓰는 편으로 볼 수 있습니다.");
-  const clarity = clarityReading(d);
-  if (clarity) parts.push(clarity);
   parts.push("예를 들어 일정이나 역할이 바뀔 때 지키고 싶은 생활 조건 하나를 먼저 정한 뒤, 나머지 방법은 상황에 맞게 조정하는 장면으로 옮겨볼 수 있습니다.");
   return parts.join(" ");
 }
@@ -238,42 +183,18 @@ function sunReading(
 }
 
 function wealthLineReading(
-  signal: NonNullable<PalmFacts["secondaryLines"]>["wealth"],
   lines: OnnxPalmLines,
   fateClear: boolean,
 ): string {
   const parts: string[] = [];
 
-  parts.push(
-    signal.span >= 0.5
-      ? "새끼손가락 아래쪽의 재물선 후보가 비교적 길게 이어지는 모습입니다."
-      : "새끼손가락 아래쪽에서 재물선 후보가 또렷하게 이어지는 구간이 보입니다.",
-  );
-  parts.push(
-    "전통 손금에서 재물선은 돈이 저절로 들어온다는 뜻보다, 수입 기회·거래·보상을 알아보고 다루는 방식과 연결해 보는 선입니다.",
-  );
-
-  if (lines.headLine.detected) {
-    if (lines.headLine.curve === "직선에 가까움") {
-      parts.push(
-        "두뇌선이 직선에 가까워, 돈과 관련된 선택에서는 감보다 숫자·조건·비교 기준을 세울수록 강점이 살아나는 편으로 읽을 수 있습니다.",
-      );
-    } else if (lines.headLine.curve === "완만한 곡선") {
-      parts.push(
-        "두뇌선이 곡선형이라, 한 가지 고정된 방식보다 아이디어·사람·기회를 연결하면서 새로운 수입 가능성을 찾는 쪽으로 볼 수 있습니다.",
-      );
-    }
+  parts.push("새끼손가락 아래쪽에서 재물선 후보 신호가 보였지만, 전체 경로·길이·깊이를 확인한 관측은 아닙니다.");
+  parts.push("전통 손금에서는 이런 후보를 수입 기회·거래·보상을 알아보는 관심과 연결해 보기도 하지만, 실제 재물선 관측이나 수입·투자 결과의 근거로 읽지 않습니다.");
+  if (lines.headLine.detected && lines.heartLine.detected) {
+    parts.push("돈에 관한 판단은 이 후보보다 두뇌선과 감정선에서 읽은 기준·관계의 조합을 참고하되, 금액과 계약 조건은 현실 자료로 따로 확인해야 합니다.");
+  } else if (fateClear) {
+    parts.push("운명선 후보와의 동시 신호도 일·보상 주제를 생각해 보는 참고일 뿐, 진로 변화나 실제 수입을 예고하지 않습니다.");
   }
-
-  if (fateClear) {
-    parts.push(
-      "운명선도 함께 확인되면, 일이나 진로의 변화가 돈과 관련된 기회·보상 문제와 함께 움직이는 조합으로 해석할 수 있습니다.",
-    );
-  }
-
-  parts.push(
-    "재물선이 보여도 실제 수입·투자 결과를 뜻하지 않으며, 금액과 성과는 현실 조건을 따로 확인해야 합니다.",
-  );
   return parts.join(" ");
 }
 
@@ -287,16 +208,16 @@ function secondaryCombinationReading(
   if (count < 2) return null;
 
   if (fate && sun && wealth) {
-    return "운명선·태양선·재물선 후보가 함께 확인됩니다. 전통 손금에서는 일의 방향, 성과가 드러나는 방식, 돈과 관련된 기회가 따로 떨어지기보다 서로 연결되어 움직이는 성향으로 봅니다. 다만 세 선이 함께 보여도 성공이나 수입을 보장한다는 뜻은 아니며, 실제 결과는 현재의 선택과 환경에 따라 달라집니다.";
+    return "운명선·태양선·재물선 후보 신호가 같은 사진에서 함께 잡혔습니다. 이 조합은 일·성과·돈을 한 문단에서 연결해 살펴볼 참고 순서만 제시하며, 후보의 전체 경로가 확인됐거나 성공·수입이 보장됐다는 뜻은 아닙니다.";
   }
   if (fate && sun) {
-    return "운명선과 태양선 후보가 함께 확인됩니다. 전통 손금에서는 내가 잡은 일의 방향이 결과물·평판·인정으로 이어지는 방식을 중요하게 보는 조합입니다. 방향을 오래 유지하는 것만큼 결과를 밖으로 보여주는 방식도 중요할 수 있습니다.";
+    return "운명선과 태양선 후보 신호가 함께 잡혔습니다. 일의 방향과 결과를 어떻게 보여줄지 연결해 살펴볼 수 있지만, 후보의 경로·시기·평가 결과를 확정하는 근거는 아닙니다.";
   }
   if (fate && wealth) {
-    return "운명선과 재물선 후보가 함께 확인됩니다. 전통 손금에서는 일과 진로의 흐름이 돈과 관련된 기회·거래·보상 문제와 연결되기 쉬운 조합으로 봅니다. 좋은 흐름처럼 보여도 실제 금액과 계약 조건은 따로 확인해야 합니다.";
+    return "운명선과 재물선 후보 신호가 함께 잡혔습니다. 일의 방향과 보상·거래 조건을 함께 점검하는 참고가 되지만, 재물선의 전체 경로나 실제 금액을 보여주는 관측은 아닙니다.";
   }
   if (sun && wealth) {
-    return "태양선과 재물선 후보가 함께 확인됩니다. 전통 손금에서는 만든 결과가 밖에서 평가받고, 그 평가가 일거리·보상·거래 기회로 연결되는 방식을 중요하게 보는 조합입니다. 인정과 실제 수익은 같은 뜻이 아니므로 둘을 구분해서 보는 것이 좋습니다.";
+    return "태양선과 재물선 후보 신호가 함께 잡혔습니다. 만든 결과가 보이는 방식과 보상 조건을 나누어 살펴보는 참고일 뿐, 인정이 실제 수익으로 이어진다는 뜻은 아닙니다.";
   }
   return null;
 }
@@ -427,7 +348,7 @@ export function buildPalmReadingSections(
   }
 
   if (secondaryLines?.wealth.status === "clear") {
-    const text = wealthLineReading(secondaryLines.wealth, lines, fateClear);
+    const text = wealthLineReading(lines, fateClear);
     sections.push({
       key: "wealthLine",
       title: "재물선 — 돈과 기회를 다루는 방식",
@@ -438,14 +359,9 @@ export function buildPalmReadingSections(
   }
 
   if (heart.detected && head.detected) {
-    const parts = [
-      heart.curve === head.curve
-        ? "마음을 표현하는 방식과 생각을 정리하는 방식의 결이 비슷한 편입니다. 그래서 내가 느끼는 것과 실제 선택이 비교적 한 방향으로 움직일 수 있습니다."
-        : "마음을 쓰는 방식과 판단하는 방식이 서로 다른 결을 보입니다. 관계에서는 감정적으로 반응하면서도 중요한 결정에서는 냉정해지거나, 반대로 마음은 조심스럽지만 생각은 자유롭게 펼치는 모습이 함께 나타날 수 있습니다.",
-    ];
-    if (life.detected) parts.push("생명선 검출 구간은 생활 기반과 활동 리듬을 살펴보는 참고점으로만 더합니다.");
-    parts.push("강점이 한 방향으로 너무 세게 몰릴 때는 다른 시각을 한 번 더 확인하는 것이 균형을 잡는 데 도움이 됩니다.");
-    const text = parts.join(" ");
+    const text = heart.curve === head.curve
+      ? "두 선의 방향이 비슷하게 분류된 점은 마음이 정해진 뒤 생각과 행동을 한 흐름으로 이어 가는 조합으로 읽을 수 있습니다. 다만 같은 방향으로 움직일수록 주변 조건을 생략하기 쉬우므로, 중요한 약속이나 돈의 선택에서는 상대의 실제 필요를 한 번 확인하는 장면을 함께 둡니다."
+      : "두 선의 방향이 다르게 분류된 점은 감정이 움직이는 속도와 판단을 닫는 속도가 어긋날 수 있는 조합으로 읽을 수 있습니다. 관계에서는 공감한 뒤 결론을 늦추고, 일·재물에서는 조건을 정리한 뒤 마음의 반응을 다시 듣는 식으로 두 흐름을 이어 볼 수 있습니다.";
 
     sections.push({
       key: "together",
@@ -477,7 +393,7 @@ export function buildPalmReadingSections(
     }
   }
 
-  const coreStory = coreStoryReading(lines, secondaryLines);
+  const coreStory = coreStoryReading(lines);
   if (coreStory) {
     sections.push({
       key: "coreStory",

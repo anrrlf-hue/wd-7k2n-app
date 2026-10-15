@@ -8,7 +8,7 @@ assert.deepEqual(data, {
   text: "운·돈에서 내 사주를 무료로 살펴보세요. 성향·관계·일·재물의 흐름을 참고할 수 있어요.",
   url: "https://saju-app-rouge.vercel.app/diagnosis?mode=free&focus=overall&start=free&from=share",
 });
-const personal = { meName: "PRIVATE_NAME", year: 1990, month: 5, day: 15, hour: 14, minute: 30, palm: "data:image/png;base64,PRIVATE_PHOTO", headline: "PRIVATE_REPORT" };
+const personal = { meName: "PRIVATE_NAME", year: 2001, month: 2, day: 3, hour: 10, minute: 0, palm: "data:image/png;base64,PRIVATE_PHOTO", headline: "PRIVATE_REPORT" };
 assert.deepEqual(share.buildServiceShare(personal, "https://untrusted.invalid/?birth=1990"), data, "share must not accept personal inputs or current-page origins");
 assert.deepEqual(Object.keys(data).sort(), ["text", "title", "url"]);
 assert.equal(new URL(data.url).hash, "");
@@ -21,6 +21,7 @@ const card = fs.readFileSync("src/components/diagnosis/person-compare-card.tsx",
 assert.ok(card.includes("<ServiceShareCard") && card.includes("이 사람 저장하기"));
 assert.ok(!card.includes("result.shareText") && !card.includes("relationship_share_created"));
 const sharedCard = fs.readFileSync("src/components/service-share-card.tsx", "utf8");
-assert.ok(sharedCard.includes("실제 전달 여부는 선택한 앱에서 확인"));
+assert.ok(sharedCard.includes("기기 공유창에서") || sharedCard.includes("링크를 복사해"));
 assert.ok(!sharedCard.includes("공유 성공") && !sharedCard.includes("카카오톡으로 보내기"));
 console.log("PASS service invitation: fixed public URL/title, no personal payload, free recipient entry, legacy private decoder removed, no false delivery claim");
+

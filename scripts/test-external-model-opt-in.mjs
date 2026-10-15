@@ -6,9 +6,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { birthFixture } from "./fixtures/palm-analysis.mjs";
 import { registerHooks } from "node:module";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // Next's bundler resolves these extensionless exports; direct Node handlers need
@@ -16,6 +14,10 @@ import { fileURLToPath } from "node:url";
 const linkEntry = new URL("../node_modules/next/link.js", import.meta.url).href;
 registerHooks({ resolve(specifier, context, next) {
   if (specifier === "next/server") return next("next/server.js", context);
+  if (specifier === "next/headers") return {
+    shortCircuit: true,
+    url: "data:text/javascript,export async function cookies(){return {get(){return undefined}}}",
+  };
   if (specifier === "next/link") return {
     shortCircuit: true,
     url: `data:text/javascript,${encodeURIComponent(`import link from ${JSON.stringify(linkEntry)}; export default link.default ?? link;`)}`,
@@ -119,28 +121,15 @@ try {
   assert.deepEqual(captured, [1024, 2048, 1024, 2200, 2200]);
   const callCount = captured.length;
   await post(palm, { ...birthFixture, palmFacts: null });
-  // Direct route tests run before `next build` in CI. Give only this synthetic
-  // trial case a disposable build manifest; production still fails closed
-  // when its real server-only signing key is unavailable.
-  const previousCwd = process.cwd();
-  const trialRoot = mkdtempSync(join(tmpdir(), "saju-trial-test-"));
-  try {
-    process.chdir(trialRoot);
-    const participationBody = { ...birthFixture, trialAction: "participate", participation: "clipboard" };
-    const unavailable = await premium(new Request("http://localhost/test", {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(participationBody),
-    }));
-    assert.equal(unavailable.status, 503, "trial participation fails closed without a build key");
-    const manifestDir = join(trialRoot, ".next", "server");
-    mkdirSync(manifestDir, { recursive: true });
-    writeFileSync(join(manifestDir, "server-reference-manifest.json"),
-      JSON.stringify({ encryptionKey: Buffer.alloc(32, 0x42).toString("base64") }));
-    const participation = await post(premium, participationBody);
-    await post(premium, { ...birthFixture, trialReceipt: participation.trialReceipt });
-  } finally {
-    process.chdir(previousCwd);
-    rmSync(trialRoot, { recursive: true, force: true });
-  }
+  const participationBody = { ...birthFixture, trialAction: "participate", participation: "clipboard" };
+  const participation = await premium(new Request("http://localhost/test", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(participationBody),
+  }));
+  assert.equal(participation.status, 400, "client participation strings cannot issue receipts");
+  const verification = await premium(new Request("http://localhost/test", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...birthFixture, trialAction: "verify" }),
+  }));
+  assert.equal(verification.status, 503, "missing referral store fails closed");
   assert.equal(captured.length, callCount, "palm and integrated annual paths stay internal even while opt-in is ON");
   console.log("PASS ON via fetch mock: initial/standalone/question handlers use existing model route; palm and annual routes stay internal");
 
@@ -166,7 +155,7 @@ try {
   const notice = renderToStaticMarkup(createElement(BirthDateStep, props));
   assert.match(notice, /출생정보를 서버에서 계산하고 기기에 저장/);
   assert.match(notice, /이 탭에.*이 기기에 자동 저장/);
-  assert.match(notice, /운영자가 외부 해석을 켜면.*MBTI·질문.*Anthropic/);
+  assert.match(notice, /운영자가 외부 해석을 켜면.*계산된 사주 정보와 질문.*Anthropic/);
   assert.ok(notice.includes('href="/privacy"'));
   assert.match(notice, /<button[^>]*disabled[^>]*>다음/);
   assert.equal((notice.match(/<input\b/g) ?? []).length, 2, "no new personal input fields");

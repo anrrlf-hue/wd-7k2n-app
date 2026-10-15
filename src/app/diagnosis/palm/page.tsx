@@ -8,6 +8,9 @@ export default async function PalmPage({
 }) {
   // Legacy bookmarked links can contain someone else's personal fields. Never
   // let their stripped URL read a different person's same-tab entry state.
-  if (Object.keys(await searchParams).length > 0) redirect("/diagnosis/palm/old-link");
+  const params = await searchParams;
+  const isDebugParam = Object.keys(params).length === 1 && params.palmDebug === "1";
+  const nonDebugParams = Object.keys(params).filter((key) => key !== "palmDebug");
+  if (nonDebugParams.length > 0 || (Object.hasOwn(params, "palmDebug") && !isDebugParam)) redirect("/diagnosis/palm/old-link");
   return <PalmEntryGate />;
 }

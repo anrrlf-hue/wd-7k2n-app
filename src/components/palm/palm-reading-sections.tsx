@@ -20,12 +20,30 @@ export function PalmReadingSections({ facts, title = "손금에서 보이는 나
   </ReportSection>;
 }
 
-export function PalmBilateralSection({ reading }: { reading: PalmBilateralReading | null }) {
+export function PalmBilateralSection({ reading, handObservations = [] }: {
+  reading: PalmBilateralReading | null;
+  handObservations?: Array<{ label: string; facts: PalmFacts }>;
+}) {
   if (!reading) return null;
+  const overviews = handObservations.flatMap(({ label, facts }) => {
+    const normalized = normalizePalmFactsObservation(facts);
+    if (!isPalmFactsUsable(normalized)) return [];
+    const overview = buildPalmCustomerPassages(normalized).find((section) => section.key === "handOverview");
+    return overview ? [{ label, overview }] : [];
+  });
   return (
     <ReportSection title="양손에서 보이는 특징과 해석">
       <div className="rounded-2xl border border-(--gold-soft) bg-card p-5">
         <p className="text-base leading-7 text-foreground">{reading.summary}</p>
+        {overviews.length > 0 && <div className="mt-4 rounded-2xl border border-border bg-background p-4">
+          <h3 className="text-sm font-semibold text-(--gold)">손별로 확인한 형태</h3>
+          <div className="mt-3 space-y-3">
+            {overviews.map(({ label, overview }) => <div key={label}>
+              <p className="text-sm font-semibold">{label}</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{overview.text}</p>
+            </div>)}
+          </div>
+        </div>}
         <div className="mt-4 space-y-3">
           {reading.items.map((item) => (
             <div key={item.title} className="rounded-xl bg-accent p-4">

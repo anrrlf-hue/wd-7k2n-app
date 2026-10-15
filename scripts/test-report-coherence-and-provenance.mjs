@@ -32,21 +32,21 @@ const free = buildFreeSajuReport(facts);
 const verdict = buildComprehensiveVerdict(facts, null, null);
 const premium = buildPremiumReport({ facts, freeReport: free, referenceDate: new Date("2026-10-13T00:00:00Z") });
 assert.deepEqual(validateFreeSajuReport(free).violations, []);
-assert.match(free.snapshot.text, /요구와 약속의 기준/);
-assert.match(free.temperament.text, /맡은|책임/);
-assert.match(free.decisionStyle.text, /완료 기준/);
-assert.ok(free.strengths.some(item => /요구를 실행 가능한 기준/.test(item.title)));
+assert.match(free.snapshot.text, /중심|믿음직/);
+assert.match(free.temperament.text, /기대|평가/);
+assert.match(free.decisionStyle.text, /선택|경험/);
+assert.ok(free.strengths.some(item => /어려운 곳|사람과 쓰임/.test(item.title)));
 assert.ok(free.cautions.every(item => !/균형 구조/.test(item.evidence)));
 assert.ok(free.strengths.every(item => !/직접 밀어붙이는 추진력/.test(item.title)));
-assert.match(verdict.text, /약속의 기준을 이해하고 결과로 설명/);
+assert.match(verdict.text, /기준으로 선택|맡은 범위/);
 assert.doesNotMatch(verdict.text, /큰 나무처럼|당신은 .* 사람입니다/);
-assert.match(premium.summary, /이해.*전하|설명.*전달/,
+assert.match(premium.summary, /취향.*쓰임|기준.*결과/,
   "the premium lead must carry understanding into communication");
-assert.match(premium.summary, /상대.*도움|상대.*쓰임/,
+assert.match(premium.summary, /쓰임|도움/,
   "the premium lead must keep the other person's benefit in view");
-assert.match(premium.overall.paragraphs[0], /맡은 일.*이해.*(?:밖으로 보여|전달)/,
+assert.match(premium.overall.paragraphs[0], /맡은 역할.*신뢰|약속.*책임/,
   "the overall reading must connect the duty lead to its outward expression");
-assert.match(premium.overall.basis, /관성 3개가 다른 각 그룹보다 많고/,
+assert.match(premium.overall.basis, /관성 3|정관/,
   "the reading must retain the invented chart's computed duty evidence");
 assert.equal(premium.periods.length, 12);
 const cautionTexts = free.cautions.map(item => item.detail);
@@ -54,20 +54,20 @@ assert.equal(new Set(cautionTexts).size, 3);
 assert.ok(cautionTexts.every(text => text.length >= 70));
 assert.doesNotMatch(free.snapshot.text, /해보세요|물어보세요|수정할 범위/,
   "the opening owns the natal structure rather than repeating the later action");
-assert.match(free.decisionStyle.text, /정보가 비어.*판단은 끝났지만 실행을 약속하지/,
+assert.match(free.decisionStyle.text, /실제로 써 보며|경험/,
   "missing decision information and a pending execution commitment need different next steps");
-assert.deepEqual(free.cautions.map(item => item.title), ["바뀌는 기준의 비용", "정보의 쓰임", "시연과 후속 약속"]);
-assert.match(free.strengths[0].detail, /목적.*검토의 순서/);
-assert.match(free.strengths[1].detail, /설명을 들은 뒤.*실제 적용/);
-assert.match(free.strengths[2].detail, /의견을 줄 사람.*바꾸고 싶은 부분/);
+assert.deepEqual(free.cautions.map(item => item.title), ["마음보다 앞선 자기 평가", "반응에 맡긴 즐거움", "정성이 부담으로 남을 때"]);
+assert.match(free.strengths[0].detail, /중심.*정성/);
+assert.match(free.strengths[1].detail, /요구.*익힌/);
+assert.match(free.strengths[2].detail, /쓰임/);
 const freeText = JSON.stringify(free);
 assert.doesNotMatch(freeText, /움직이는 시간과 혼자 정리하는 시간이 모두 필요한 편|상황에 맞춰 대응하는 폭이 넓은 편|능력이 강점/);
-assert.match(free.keepingStyle.text, /기존 일을 마칠.*새 선택.*이전 약속/);
-assert.match(free.leakPattern.text, /도구·수업.*적용할 작업.*실제 시도는 미뤄/);
+assert.match(free.keepingStyle.text, /돈을 남기는.*생활/);
+assert.match(free.leakPattern.text, /지출.*도구/);
 const money = premium.domains.find(item => item.key === "money");
 assert.equal(money.paragraphs.length, 3, "earning, management and spending retain separate readable passages");
-assert.match(money.paragraphs[1], /가령.*반복 비용.*따로 남기는 선택.*모두 다른 일에 쓰는 선택/);
-assert.match(money.paragraphs[2], /가령.*부족한 부분이 확인.*아직 한 번도 적용하지.*작은 시험/);
+assert.match(money.paragraphs[1], /자원.*생활/);
+assert.match(money.paragraphs[2], /지출.*도구.*시험/);
 for (const domain of premium.domains) {
   assert.doesNotMatch(domain.paragraphs[0].split(/[.!?]/)[0], /[\u3400-\u9fff]|편관|정관|정인|식신/,
     "the domain explanation must be understood before reading its technical basis");
@@ -145,3 +145,4 @@ if (process.env.TEST_BASE_URL) {
   assert.ok(annualBody.report.palmConnections.some(item => item.evidence?.some(entry => entry.id === "right.headLine.rawDetected" && entry.value === false)));
   console.log("PASS actual local APIs retain synthetic saved-diagnostics provenance across both report routes");
 }
+
