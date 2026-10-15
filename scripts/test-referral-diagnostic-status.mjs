@@ -31,6 +31,8 @@ try {
     status: 401,
     errorCode: "42501",
     exceptionName: null,
+    fetchCategory: null,
+    causeCode: null,
     timedOut: false,
     enabled: true,
     realmConfigured: true,

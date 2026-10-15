@@ -3,7 +3,7 @@ import { getSupabasePublicConfig } from "@/lib/supabase/config";
 import { getReferralRealm, isReferralEnabled, REFERRAL_CAMPAIGN, hashReferralValue } from "@/lib/referral";
 
 type ReferralStoreClient = SupabaseClient;
-type ReferralQueryResponse = { status?: unknown; data: unknown; error: { code?: unknown } | null };
+type ReferralQueryResponse = { status?: unknown; data: unknown; error: { code?: unknown; message?: unknown } | null };
 
 export type ReferralRewardStatus =
   | { kind: "claimed"; rewardId: string }
@@ -30,6 +30,8 @@ const SAFE_POSTGREST_ERROR_CODES = new Set([
   "42883",
 ]);
 const SAFE_EXCEPTION_NAMES = new Set(["AbortError", "TimeoutError", "TypeError", "Error"]);
+const SAFE_FETCH_CAUSE_CODES = new Set(["ENOTFOUND", "ECONNRESET", "ETIMEDOUT", "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_HEADERS_TIMEOUT", "UND_ERR_SOCKET"]);
+const SAFE_FETCH_CATEGORIES = new Set(["invalid-header", "invalid-url", "fetch-failed"]);
 
 type ReferralStoreFailureCode =
   | "disabled"
@@ -62,16 +64,55 @@ function safeExceptionName(value: unknown): string | null {
   return typeof value === "string" && SAFE_EXCEPTION_NAMES.has(value) ? value : null;
 }
 
-function logReferralStoreFailure(code: ReferralStoreFailureCode, details: { status?: unknown; errorCode?: unknown; exceptionName?: unknown; timedOut?: boolean } = {}) {
+function safeFetchCauseCode(value: unknown): string | null {
+  return typeof value === "string" && SAFE_FETCH_CAUSE_CODES.has(value) ? value : null;
+}
+
+function safeFetchCategory(value: unknown): string | null {
+  return typeof value === "string" && SAFE_FETCH_CATEGORIES.has(value) ? value : null;
+}
+
+function classifyFetchFailure(error: unknown): { exceptionName: string; category: string; causeCode: string | null } {
+  const candidate = error as { name?: unknown; message?: unknown; code?: unknown; cause?: { code?: unknown; message?: unknown } } | null;
+  const exceptionName = safeExceptionName(candidate?.name) ?? "Error";
+  const message = typeof candidate?.message === "string" ? candidate.message : "";
+  const causeCode = safeFetchCauseCode(candidate?.cause?.code ?? candidate?.code);
+  const category = /header/i.test(message) ? "invalid-header" : /invalid.*url|url.*parse|absolute url/i.test(message) ? "invalid-url" : "fetch-failed";
+  return { exceptionName, category, causeCode };
+}
+
+function parseSafeFetchDiagnostic(message: unknown): { exceptionName: string | null; category: string | null; causeCode: string | null } {
+  if (typeof message !== "string") return { exceptionName: null, category: null, causeCode: null };
+  const match = /^(AbortError|TimeoutError|TypeError|Error): (invalid-header|invalid-url|fetch-failed)(?::([A-Z0-9_]+))?$/.exec(message);
+  if (!match) return { exceptionName: null, category: null, causeCode: null };
+  return { exceptionName: safeExceptionName(match[1]), category: safeFetchCategory(match[2]), causeCode: safeFetchCauseCode(match[3]) };
+}
+
+function logReferralStoreFailure(code: ReferralStoreFailureCode, details: { status?: unknown; errorCode?: unknown; exceptionName?: unknown; fetchCategory?: unknown; causeCode?: unknown; timedOut?: boolean } = {}) {
   console.error("[referral-store-unavailable]", JSON.stringify({
     code,
     status: safeStatus(details.status),
     errorCode: safePostgrestCode(details.errorCode),
     exceptionName: safeExceptionName(details.exceptionName),
+    fetchCategory: safeFetchCategory(details.fetchCategory),
+    causeCode: safeFetchCauseCode(details.causeCode),
     timedOut: details.timedOut === true,
     ...referralConfigFlags(),
   }));
 }
+
+const referralFetch: typeof fetch = async (input, init) => {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    // Preserve AbortError so PostgREST will not retry a cancelled operation.
+    if ((error as { name?: unknown } | null)?.name === "AbortError") throw error;
+    const diagnostic = classifyFetchFailure(error);
+    const safeError = new Error(`${diagnostic.category}${diagnostic.causeCode ? `:${diagnostic.causeCode}` : ""}`);
+    safeError.name = diagnostic.exceptionName;
+    throw safeError;
+  }
+};
 
 async function withReferralDeadline<T>(operation: (signal: AbortSignal) => PromiseLike<T>): Promise<{ result: T; timedOut: boolean }> {
   const controller = new AbortController();
@@ -97,6 +138,7 @@ function createReferralStore(): ReferralStoreClient | null {
     const { url } = getSupabasePublicConfig();
     return createClient(url, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
+      global: { fetch: referralFetch },
     });
   } catch {
     logReferralStoreFailure("client_creation");
@@ -212,9 +254,13 @@ export async function validateReferralInvite(input: { token: string; inviterSess
       .maybeSingle());
     const { data, error } = result;
     if (error) {
+      const fetchDiagnostic = parseSafeFetchDiagnostic(error.message);
       logReferralStoreFailure(timedOut ? "timeout" : "query_error", {
         status: result.status,
         errorCode: error.code,
+        exceptionName: fetchDiagnostic.exceptionName,
+        fetchCategory: fetchDiagnostic.category,
+        causeCode: fetchDiagnostic.causeCode,
         timedOut,
       });
       return "unavailable";
@@ -222,8 +268,14 @@ export async function validateReferralInvite(input: { token: string; inviterSess
     return (data as { id?: string } | null)?.id ? "valid" : "invalid";
   } catch (error) {
     // Do not replace AbortError: Supabase uses it to stop retrying aborted GETs.
+    const aborted = error instanceof Error && error.name === "AbortError";
+    const fetchDiagnostic = aborted
+      ? { exceptionName: "AbortError", category: null, causeCode: null }
+      : classifyFetchFailure(error);
     logReferralStoreFailure("query_error", {
-      exceptionName: error instanceof Error ? error.name : null,
+      exceptionName: fetchDiagnostic.exceptionName,
+      fetchCategory: fetchDiagnostic.category,
+      causeCode: fetchDiagnostic.causeCode,
       timedOut: error instanceof Error && error.name === "AbortError",
     });
     return "unavailable";
