@@ -20,6 +20,29 @@ export type ReferralLookupStatus =
 
 const STORE_TIMEOUT_MS = 1500;
 
+type ReferralStoreFailureCode =
+  | "disabled"
+  | "config_missing"
+  | "invalid_realm"
+  | "client_creation"
+  | "timeout"
+  | "query_error";
+
+function referralConfigFlags() {
+  return {
+    enabled: isReferralEnabled(),
+    realmConfigured: Boolean(process.env.SAJU_REFERRAL_REALM),
+    realmValid: Boolean(getReferralRealm()),
+    urlConfigured: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    publishableKeyConfigured: Boolean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+    serviceRoleKeyConfigured: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+  };
+}
+
+function logReferralStoreFailure(code: ReferralStoreFailureCode) {
+  console.error("[referral-store-unavailable]", JSON.stringify({ code, ...referralConfigFlags() }));
+}
+
 async function bounded<T>(operation: PromiseLike<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -34,11 +57,15 @@ async function bounded<T>(operation: PromiseLike<T>): Promise<T> {
 
 function createReferralStore(): ReferralStoreClient | null {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) return null;
+  if (!serviceRoleKey) {
+    logReferralStoreFailure("config_missing");
+    return null;
+  }
   try {
     const { url } = getSupabasePublicConfig();
     return createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
   } catch {
+    logReferralStoreFailure("client_creation");
     return null;
   }
 }
@@ -119,10 +146,21 @@ export async function getReferralRewardStatus(inviterSessionId: string): Promise
 }
 
 export async function validateReferralInvite(input: { token: string; inviterSessionId: string }): Promise<"valid" | "invalid" | "unavailable"> {
-  if (!isReferralEnabled()) return "unavailable";
-  const store = createReferralStore();
+  if (!isReferralEnabled()) {
+    logReferralStoreFailure("disabled");
+    return "unavailable";
+  }
   const realm = getReferralRealm();
-  if (!store || !realm) return "unavailable";
+  if (!realm) {
+    logReferralStoreFailure("invalid_realm");
+    return "unavailable";
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+    logReferralStoreFailure("config_missing");
+    return "unavailable";
+  }
+  const store = createReferralStore();
+  if (!store) return "unavailable";
   try {
     const { data, error } = await bounded(store
       .from("referral_invites")
@@ -134,7 +172,13 @@ export async function validateReferralInvite(input: { token: string; inviterSess
       .is("revoked_at", null)
       .gt("expires_at", new Date().toISOString())
       .maybeSingle());
-    if (error) return "unavailable";
+    if (error) {
+      logReferralStoreFailure("query_error");
+      return "unavailable";
+    }
     return data?.id ? "valid" : "invalid";
-  } catch { return "unavailable"; }
+  } catch (error) {
+    logReferralStoreFailure(error instanceof Error && error.message === "Referral store timeout" ? "timeout" : "query_error");
+    return "unavailable";
+  }
 }
