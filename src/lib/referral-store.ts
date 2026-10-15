@@ -31,7 +31,7 @@ const SAFE_POSTGREST_ERROR_CODES = new Set([
 ]);
 const SAFE_EXCEPTION_NAMES = new Set(["AbortError", "TimeoutError", "TypeError", "Error"]);
 const SAFE_FETCH_CAUSE_CODES = new Set(["ENOTFOUND", "ECONNRESET", "ETIMEDOUT", "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_HEADERS_TIMEOUT", "UND_ERR_SOCKET"]);
-const SAFE_FETCH_CATEGORIES = new Set(["invalid-header", "invalid-url", "fetch-failed"]);
+const SAFE_FETCH_CATEGORIES = new Set(["invalid-header", "invalid-header-bytestring", "invalid-header-value", "invalid-url", "fetch-failed"]);
 
 type ReferralStoreFailureCode =
   | "disabled"
@@ -77,13 +77,21 @@ function classifyFetchFailure(error: unknown): { exceptionName: string; category
   const exceptionName = safeExceptionName(candidate?.name) ?? "Error";
   const message = typeof candidate?.message === "string" ? candidate.message : "";
   const causeCode = safeFetchCauseCode(candidate?.cause?.code ?? candidate?.code);
-  const category = /header/i.test(message) ? "invalid-header" : /invalid.*url|url.*parse|absolute url/i.test(message) ? "invalid-url" : "fetch-failed";
+  const category = /bytestring/i.test(message)
+    ? "invalid-header-bytestring"
+    : /invalid\s+header\s+value/i.test(message)
+      ? "invalid-header-value"
+      : /header/i.test(message)
+        ? "invalid-header"
+        : /invalid.*url|url.*parse|absolute url/i.test(message)
+          ? "invalid-url"
+          : "fetch-failed";
   return { exceptionName, category, causeCode };
 }
 
 function parseSafeFetchDiagnostic(message: unknown): { exceptionName: string | null; category: string | null; causeCode: string | null } {
   if (typeof message !== "string") return { exceptionName: null, category: null, causeCode: null };
-  const match = /^(AbortError|TimeoutError|TypeError|Error): (invalid-header|invalid-url|fetch-failed)(?::([A-Z0-9_]+))?$/.exec(message);
+  const match = /^(AbortError|TimeoutError|TypeError|Error): (invalid-header-bytestring|invalid-header-value|invalid-header|invalid-url|fetch-failed)(?::([A-Z0-9_]+))?$/.exec(message);
   if (!match) return { exceptionName: null, category: null, causeCode: null };
   return { exceptionName: safeExceptionName(match[1]), category: safeFetchCategory(match[2]), causeCode: safeFetchCauseCode(match[3]) };
 }

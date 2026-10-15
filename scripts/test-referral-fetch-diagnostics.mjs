@@ -19,7 +19,21 @@ try {
   assert.equal(await validateReferralInvite({ token: "A".repeat(43), inviterSessionId: "session" }), "unavailable");
   assert.equal(logs.at(-1).status, 0);
   assert.equal(logs.at(-1).exceptionName, "TypeError");
-  assert.equal(logs.at(-1).fetchCategory, "invalid-header");
+  assert.equal(logs.at(-1).fetchCategory, "invalid-header-value");
+  assert.equal(logs.at(-1).causeCode, null);
+
+  globalThis.fetch = async () => {
+    throw new TypeError("ByteString conversion failed");
+  };
+  assert.equal(await validateReferralInvite({ token: "C".repeat(43), inviterSessionId: "session" }), "unavailable");
+  assert.equal(logs.at(-1).fetchCategory, "invalid-header-bytestring");
+  assert.equal(logs.at(-1).causeCode, null);
+
+  globalThis.fetch = async () => {
+    throw new TypeError("Invalid header value");
+  };
+  assert.equal(await validateReferralInvite({ token: "D".repeat(43), inviterSessionId: "session" }), "unavailable");
+  assert.equal(logs.at(-1).fetchCategory, "invalid-header-value");
   assert.equal(logs.at(-1).causeCode, null);
 
   globalThis.fetch = async () => {
