@@ -22,3 +22,9 @@ Both components touch the image sides and bottom and include similarly colored b
 ## Decision
 
 The required boundary and thumb-side line-initial region were not reliably available. No principal-line tracker or overlay was implemented, and no hardcoded curve or coordinate was introduced. This method-specific feasibility test is closed as blocked by capture/background conditions; it does not evaluate the paper's reported accuracy and does not claim anything about other palm lines.
+
+## Landmark-assisted local follow-up
+
+As a separate feasibility check, existing MediaPipe landmarks were used only to define each photo's rotated palm coordinate frame and a relative thumb/index start search region. A local grayscale ridge score then selected the start pixel and followed the strongest nearby image-supported direction; no fixed photo coordinate or synthetic curve was inserted. The test tool is `scripts/test-palm-landmark-principal-lines.mjs` and writes overlays only to a caller-provided local path.
+
+The resulting overlays did not recover the life line. Photo A followed an inward crease across the palm and stopped after 69 points; photo B followed a transverse crease toward the fingers and stopped after 70 points. Neither path followed the thumb-side arc toward the wrist. This mixed method is therefore also closed as a failed recovery experiment. The existing landmark/ONNX product path remains unchanged.
