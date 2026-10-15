@@ -27,8 +27,8 @@ create table if not exists public.referral_rewards (
 
 alter table public.referral_invites enable row level security;
 alter table public.referral_rewards enable row level security;
-revoke all on public.referral_invites from anon, authenticated;
-revoke all on public.referral_rewards from anon, authenticated;
+revoke all on public.referral_invites from public, anon, authenticated;
+revoke all on public.referral_rewards from public, anon, authenticated;
 grant all on public.referral_invites, public.referral_rewards to service_role;
 
 create index if not exists referral_invites_campaign_expiry_idx
@@ -41,8 +41,8 @@ create or replace function public.claim_referral_reward(
   p_recipient_session_hash text
 ) returns jsonb
 language plpgsql
-security definer
-set search_path = pg_catalog, public
+security invoker
+set search_path = ''
 as $$
 declare
   invite public.referral_invites%rowtype;
@@ -52,24 +52,24 @@ begin
     from public.referral_invites
    where realm = p_realm and campaign_key = p_campaign_key and token_hash = p_token_hash
    for update;
-  if not found or invite.revoked_at is not null then return jsonb_build_object('status', 'not_found'); end if;
-  if invite.expires_at <= now() then return jsonb_build_object('status', 'expired'); end if;
-  if invite.inviter_session_hash = p_recipient_session_hash then return jsonb_build_object('status', 'self_referral'); end if;
+  if not found or invite.revoked_at is not null then return pg_catalog.jsonb_build_object('status', 'not_found'); end if;
+  if invite.expires_at <= pg_catalog.now() then return pg_catalog.jsonb_build_object('status', 'expired'); end if;
+  if invite.inviter_session_hash = p_recipient_session_hash then return pg_catalog.jsonb_build_object('status', 'self_referral'); end if;
   if exists (select 1 from public.referral_rewards where realm = p_realm and campaign_key = p_campaign_key and recipient_session_hash = p_recipient_session_hash) then
-    return jsonb_build_object('status', 'duplicate_recipient');
+    return pg_catalog.jsonb_build_object('status', 'duplicate_recipient');
   end if;
   if exists (select 1 from public.referral_rewards where realm = p_realm and campaign_key = p_campaign_key and inviter_session_hash = invite.inviter_session_hash) then
-    return jsonb_build_object('status', 'campaign_exhausted');
+    return pg_catalog.jsonb_build_object('status', 'campaign_exhausted');
   end if;
   insert into public.referral_rewards (realm, campaign_key, invite_id, inviter_session_hash, recipient_session_hash)
   values (p_realm, p_campaign_key, invite.id, invite.inviter_session_hash, p_recipient_session_hash)
   returning id into reward_id;
-  return jsonb_build_object('status', 'claimed', 'reward_id', reward_id);
+  return pg_catalog.jsonb_build_object('status', 'claimed', 'reward_id', reward_id);
 exception when unique_violation then
   if exists (select 1 from public.referral_rewards where realm = p_realm and campaign_key = p_campaign_key and recipient_session_hash = p_recipient_session_hash) then
-    return jsonb_build_object('status', 'duplicate_recipient');
+    return pg_catalog.jsonb_build_object('status', 'duplicate_recipient');
   end if;
-  return jsonb_build_object('status', 'campaign_exhausted');
+  return pg_catalog.jsonb_build_object('status', 'campaign_exhausted');
 end;
 $$;
 
