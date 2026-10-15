@@ -18,7 +18,8 @@ export type ReferralLookupStatus =
   | { kind: "pending" }
   | { kind: "unavailable" };
 
-const STORE_TIMEOUT_MS = 1500;
+const STORE_TIMEOUT_MS = 8000;
+const STORE_FETCH_TIMEOUT_MS = 7500;
 
 type ReferralStoreFailureCode =
   | "disabled"
@@ -55,6 +56,30 @@ async function bounded<T>(operation: PromiseLike<T>): Promise<T> {
   }
 }
 
+const referralFetch: typeof fetch = async (input, init) => {
+  const controller = new AbortController();
+  let timedOut = false;
+  const callerSignal = init?.signal;
+  const abortFromCaller = () => controller.abort();
+  if (callerSignal) {
+    if (callerSignal.aborted) controller.abort();
+    else callerSignal.addEventListener("abort", abortFromCaller, { once: true });
+  }
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, STORE_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (timedOut) throw new Error("Referral store timeout");
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    callerSignal?.removeEventListener("abort", abortFromCaller);
+  }
+};
+
 function createReferralStore(): ReferralStoreClient | null {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey) {
@@ -63,7 +88,10 @@ function createReferralStore(): ReferralStoreClient | null {
   }
   try {
     const { url } = getSupabasePublicConfig();
-    return createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
+    return createClient(url, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: { fetch: referralFetch },
+    });
   } catch {
     logReferralStoreFailure("client_creation");
     return null;

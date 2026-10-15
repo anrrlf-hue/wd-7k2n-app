@@ -31,8 +31,13 @@ assert.match(service, /SUPABASE_SERVICE_ROLE_KEY/);
 assert.match(service, /return \{ kind: "unavailable" \}/);
 assert.match(service, /claim_referral_reward/);
 assert.match(service, /p_realm/);
-assert.match(service, /STORE_TIMEOUT_MS/);
+assert.match(service, /STORE_TIMEOUT_MS = 8000/);
+assert.match(service, /STORE_FETCH_TIMEOUT_MS = 7500/);
+assert.match(service, /signal: controller\.signal/);
 assert.match(service, /getReferralRewardStatus/);
+const client = fs.readFileSync(new URL("../src/lib/referral-client.ts", import.meta.url), "utf8");
+assert.match(client, /REFERRAL_CLIENT_TIMEOUT_MS = 10_000/);
+assert.match(client, /controller\.abort\(\)/);
 
 const premiumRoute = fs.readFileSync(new URL("../src/app/api/premium-report/route.ts", import.meta.url), "utf8");
 assert.doesNotMatch(premiumRoute, /raw\.participation/);
