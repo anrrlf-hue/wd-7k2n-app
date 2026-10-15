@@ -3,6 +3,7 @@ import { getSupabasePublicConfig } from "@/lib/supabase/config";
 import { getReferralRealm, isReferralEnabled, REFERRAL_CAMPAIGN, hashReferralValue } from "@/lib/referral";
 
 type ReferralStoreClient = SupabaseClient;
+type ReferralQueryResponse = { data: unknown; error: { status?: unknown; code?: unknown } | null };
 
 export type ReferralRewardStatus =
   | { kind: "claimed"; rewardId: string }
@@ -19,7 +20,15 @@ export type ReferralLookupStatus =
   | { kind: "unavailable" };
 
 const STORE_TIMEOUT_MS = 8000;
-const STORE_FETCH_TIMEOUT_MS = 7500;
+
+const SAFE_POSTGREST_ERROR_CODES = new Set([
+  "PGRST116",
+  "PGRST202",
+  "PGRST301",
+  "23505",
+  "42501",
+  "42883",
+]);
 
 type ReferralStoreFailureCode =
   | "disabled"
@@ -40,45 +49,37 @@ function referralConfigFlags() {
   };
 }
 
-function logReferralStoreFailure(code: ReferralStoreFailureCode) {
-  console.error("[referral-store-unavailable]", JSON.stringify({ code, ...referralConfigFlags() }));
+function safeStatus(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599 ? value : null;
 }
 
-async function bounded<T>(operation: PromiseLike<T>): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      Promise.resolve(operation),
-      new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error("Referral store timeout")), STORE_TIMEOUT_MS); }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+function safePostgrestCode(value: unknown): string | null {
+  return typeof value === "string" && SAFE_POSTGREST_ERROR_CODES.has(value) ? value : null;
 }
 
-const referralFetch: typeof fetch = async (input, init) => {
+function logReferralStoreFailure(code: ReferralStoreFailureCode, details: { status?: unknown; errorCode?: unknown; timedOut?: boolean } = {}) {
+  console.error("[referral-store-unavailable]", JSON.stringify({
+    code,
+    status: safeStatus(details.status),
+    errorCode: safePostgrestCode(details.errorCode),
+    timedOut: details.timedOut === true,
+    ...referralConfigFlags(),
+  }));
+}
+
+async function withReferralDeadline<T>(operation: (signal: AbortSignal) => PromiseLike<T>): Promise<{ result: T; timedOut: boolean }> {
   const controller = new AbortController();
   let timedOut = false;
-  const callerSignal = init?.signal;
-  const abortFromCaller = () => controller.abort();
-  if (callerSignal) {
-    if (callerSignal.aborted) controller.abort();
-    else callerSignal.addEventListener("abort", abortFromCaller, { once: true });
-  }
   const timer = setTimeout(() => {
     timedOut = true;
     controller.abort();
-  }, STORE_FETCH_TIMEOUT_MS);
+  }, STORE_TIMEOUT_MS);
   try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } catch (error) {
-    if (timedOut) throw new Error("Referral store timeout");
-    throw error;
+    return { result: await operation(controller.signal), timedOut };
   } finally {
     clearTimeout(timer);
-    callerSignal?.removeEventListener("abort", abortFromCaller);
   }
-};
+}
 
 function createReferralStore(): ReferralStoreClient | null {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -90,7 +91,6 @@ function createReferralStore(): ReferralStoreClient | null {
     const { url } = getSupabasePublicConfig();
     return createClient(url, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
-      global: { fetch: referralFetch },
     });
   } catch {
     logReferralStoreFailure("client_creation");
@@ -118,13 +118,13 @@ export async function createReferralInvite(input: {
   const realm = getReferralRealm();
   if (!store || !realm) return false;
   try {
-    const { error } = await bounded(store.from("referral_invites").insert({
+    const { result: { error } } = await withReferralDeadline(signal => store.from("referral_invites").insert({
       realm,
       campaign_key: REFERRAL_CAMPAIGN,
       token_hash: hashReferralValue(input.token),
       inviter_session_hash: hashReferralValue(input.inviterSessionId),
       expires_at: input.expiresAt,
-    }));
+    }).abortSignal(signal).retry(false));
     return !error;
   } catch { return false; }
 }
@@ -138,12 +138,12 @@ export async function claimReferralReward(input: {
   const realm = getReferralRealm();
   if (!store || !realm) return { kind: "unavailable" };
   try {
-    const { data, error } = await bounded(store.rpc("claim_referral_reward", {
+    const { result: { data, error } } = await withReferralDeadline(signal => store.rpc("claim_referral_reward", {
       p_realm: realm,
       p_campaign_key: REFERRAL_CAMPAIGN,
       p_token_hash: hashReferralValue(input.token),
       p_recipient_session_hash: hashReferralValue(input.recipientSessionId),
-    }));
+    }).abortSignal(signal).retry(false));
     if (error || !data || typeof data !== "object") return { kind: "unavailable" };
     const result = data as { status?: string; reward_id?: string };
     if (result.status === "claimed" && typeof result.reward_id === "string") return { kind: "claimed", rewardId: result.reward_id };
@@ -161,15 +161,17 @@ export async function getReferralRewardStatus(inviterSessionId: string): Promise
   const realm = getReferralRealm();
   if (!store || !realm) return { kind: "unavailable" };
   try {
-    const { data, error } = await bounded(store
+    const { result: { data, error } } = await withReferralDeadline<ReferralQueryResponse>(signal => store
       .from("referral_rewards")
       .select("id")
       .eq("campaign_key", REFERRAL_CAMPAIGN)
       .eq("realm", realm)
       .eq("inviter_session_hash", hashReferralValue(inviterSessionId))
+      .abortSignal(signal)
+      .retry(false)
       .maybeSingle());
     if (error) return { kind: "unavailable" };
-    return data?.id ? { kind: "eligible" } : { kind: "pending" };
+    return (data as { id?: string } | null)?.id ? { kind: "eligible" } : { kind: "pending" };
   } catch { return { kind: "unavailable" }; }
 }
 
@@ -190,7 +192,7 @@ export async function validateReferralInvite(input: { token: string; inviterSess
   const store = createReferralStore();
   if (!store) return "unavailable";
   try {
-    const { data, error } = await bounded(store
+    const { result: { data, error }, timedOut } = await withReferralDeadline<ReferralQueryResponse>(signal => store
       .from("referral_invites")
       .select("id")
       .eq("realm", realm)
@@ -199,14 +201,23 @@ export async function validateReferralInvite(input: { token: string; inviterSess
       .eq("inviter_session_hash", hashReferralValue(input.inviterSessionId))
       .is("revoked_at", null)
       .gt("expires_at", new Date().toISOString())
+      .abortSignal(signal)
+      .retry(false)
       .maybeSingle());
     if (error) {
-      logReferralStoreFailure("query_error");
+      logReferralStoreFailure(timedOut ? "timeout" : "query_error", {
+        status: error.status,
+        errorCode: error.code,
+        timedOut,
+      });
       return "unavailable";
     }
-    return data?.id ? "valid" : "invalid";
+    return (data as { id?: string } | null)?.id ? "valid" : "invalid";
   } catch (error) {
-    logReferralStoreFailure(error instanceof Error && error.message === "Referral store timeout" ? "timeout" : "query_error");
+    // Do not replace AbortError: Supabase uses it to stop retrying aborted GETs.
+    logReferralStoreFailure("query_error", {
+      timedOut: error instanceof Error && error.name === "AbortError",
+    });
     return "unavailable";
   }
 }
