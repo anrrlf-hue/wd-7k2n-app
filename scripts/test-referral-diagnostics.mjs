@@ -28,6 +28,7 @@ assert.deepEqual(diagnostic, {
   code: "config_missing",
   status: null,
   errorCode: null,
+  exceptionName: null,
   timedOut: false,
   enabled: true,
   realmConfigured: true,
