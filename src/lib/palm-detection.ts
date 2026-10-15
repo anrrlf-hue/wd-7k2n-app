@@ -784,6 +784,7 @@ export interface PalmAnalysisDebugVariant {
   maskHeight: number;
   mask: Uint8Array | null;
   observations: OnnxLineObservation[];
+  inputAdapter: "stretch" | "padded-1024";
 }
 
 export interface PalmAnalysisDebugSnapshot {
@@ -811,7 +812,7 @@ function debugCropTransform(landmarksPx: { x: number; y: number }[], isLeftHande
 }
 
 function debugVariant(result: OnnxPalmLineResult | null, width: number, height: number): PalmAnalysisDebugVariant | null {
-  return result ? { width, height, maskWidth: result.maskWidth, maskHeight: result.maskHeight, mask: result.mask ?? null, observations: result.observations } : null;
+  return result ? { width, height, maskWidth: result.maskWidth, maskHeight: result.maskHeight, mask: result.mask ?? null, observations: result.observations, inputAdapter: result.inputAdapter } : null;
 }
 
 /**
@@ -823,6 +824,7 @@ export async function analyzePalmFromCanvas(
   canvas: PalmCanvas,
   onPhase: (phase: PalmAnalysisPhase) => void = () => {},
   onDebug?: (snapshot: PalmAnalysisDebugSnapshot) => void,
+  options?: { inputAdapter?: "stretch" | "padded-1024" },
 ): Promise<PalmFacts> {
   onPhase("landmarks");
   const ctx = canvas.getContext("2d");
@@ -943,11 +945,12 @@ export async function analyzePalmFromCanvas(
 
   onPhase("lines");
   const threeLineStartedAt = performance.now();
-  const onnxRaw = await runPalmLineOnnx(rawPalmCrop, { cropWidth: rawPalmCrop.width, cropHeight: rawPalmCrop.height, referenceSpan: referenceSpan(rawCropLandmarks) });
+  const inputAdapter = options?.inputAdapter ?? "stretch";
+  const onnxRaw = await runPalmLineOnnx(rawPalmCrop, { cropWidth: rawPalmCrop.width, cropHeight: rawPalmCrop.height, referenceSpan: referenceSpan(rawCropLandmarks) }, inputAdapter);
   const rawDetectedBeforeFallback = onnxRaw?.observations.filter((o) => o.detected).length ?? 0;
   const enhancedAttempted = rawDetectedBeforeFallback < 3;
   if (enhancedAttempted) onPhase("enhanced");
-  const onnxEnhanced = enhancedAttempted ? await runPalmLineOnnx(enhancedPalmCrop, { cropWidth: enhancedPalmCrop.width, cropHeight: enhancedPalmCrop.height, referenceSpan: referenceSpan(palmCropLandmarks) }) : null;
+  const onnxEnhanced = enhancedAttempted ? await runPalmLineOnnx(enhancedPalmCrop, { cropWidth: enhancedPalmCrop.width, cropHeight: enhancedPalmCrop.height, referenceSpan: referenceSpan(palmCropLandmarks) }, inputAdapter) : null;
   onDebug?.({
     source: { width: canvas.width, height: canvas.height, landmarks: landmarksPx },
     raw: { transform: debugCropTransform(landmarksPx, handSide === "left", 100), result: debugVariant(onnxRaw, rawPalmCrop.width, rawPalmCrop.height) },

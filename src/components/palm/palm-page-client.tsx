@@ -580,6 +580,7 @@ export function PalmPageClient({
           return analyzer.current.analyze(canvas, signal, (phase: PalmAnalysisPhase) => markPhase(task, phase), {
             debug: debugCapture,
             onDebug: debugCapture ? (snapshot: PalmAnalysisDebugSnapshot) => window.dispatchEvent(new CustomEvent("palm-debug", { detail: snapshot })) : undefined,
+            inputAdapter: process.env.NODE_ENV !== "production" && new URLSearchParams(window.location.search).get("palmInput") === "padding" ? "padded-1024" : "stretch",
           });
         });
       if (!tasks.current.isCurrent(task)) return;

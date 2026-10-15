@@ -35,3 +35,16 @@ The bilateral result path previously rendered only `PalmBilateralSection`, so th
 - Existing synthetic customer DOM/API regression with the new bilateral assertion: passed.
 - Real-photo facts reinserted into the local API/UI without re-running recognition: the bilateral screen showed both hand observations and did not expose raw ratio fields.
 - Remaining: no claim of independent recognition accuracy; actual hand-photo quality and additional-line evaluation remain open. Local diagnostic artifacts are intentionally not committed.
+
+## Padded-input adapter experiment (separate branch)
+
+The upstream pseudo-label path at commit `bc48939f4deee6d8ff842bfde499396dab9c4830` uses integer-floor resize into a 1024 square with centered black padding, then produces the 512 training image; the web wrapper currently stretches directly to 512. This is an upstream pipeline/wrapper inconsistency, not proof of the failure cause. The reference is [`generate_pseudo_labels.py`](https://github.com/samuelwbarber/palm-line-reader/blob/bc48939f4deee6d8ff842bfde499396dab9c4830/pipeline/generate_pseudo_labels.py#L197-L219) and [`infer.py`](https://github.com/samuelwbarber/palm-line-reader/blob/bc48939f4deee6d8ff842bfde499396dab9c4830/pipeline/infer.py#L35-L51).
+
+On branch `exp/palm-padding-adapter-20261015`, an opt-in adapter reproduced the integer 1024 letterbox, returned scale/offset, and inverse-mapped model paths before measurements and overlays. Portrait, landscape, square, and mirrored synthetic coordinate round-trips passed.
+
+The two existing photos were run once with the adapter. Baseline → padded raw counts were:
+
+- Photo A: heart `1677 → 1380`, head `1143 → 814`, life `630 → 1084`; life normalized length `0.311 → 0.501`.
+- Photo B: heart `1109 → 909`, head `1406 → 661`, life `1233 → 1247`; life normalized length `0.483 → 0.526`.
+
+Source-frame overlays still placed the life path on the central vertical crease rather than the thumb-side arc. The increased life pixels/length therefore do not establish improvement; the anatomical guard remains unchanged and the candidate stays unconfirmed. Because the two-photo result did not improve the actual line location and other-line signals weakened, this branch does not change the default path or claim release quality.

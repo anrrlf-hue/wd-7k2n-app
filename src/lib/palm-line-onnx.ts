@@ -78,12 +78,62 @@ export interface OnnxPalmLineResult {
   mask?: Uint8Array;
   /** start/end are 0~1 in the source crop; measurements remain crop-pixel based. */
   coordinateSpace: "source-crop-normalized-0to1";
+  inputAdapter: "stretch" | "padded-1024";
 }
 
 export interface OnnxMeasurementContext {
   cropWidth: number;
   cropHeight: number;
   referenceSpan: number;
+  maskToCrop?: (point: { x: number; y: number }) => { x: number; y: number };
+}
+
+export interface PaddedInputTransform {
+  sourceWidth: number;
+  sourceHeight: number;
+  paddedSize: number;
+  resizedWidth: number;
+  resizedHeight: number;
+  scaleX: number;
+  scaleY: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+export function computePaddedInputTransform(sourceWidth: number, sourceHeight: number, size = 1024): PaddedInputTransform {
+  const ratio = Math.min(size / sourceWidth, size / sourceHeight);
+  const resizedWidth = Math.max(1, Math.floor(sourceWidth * ratio));
+  const resizedHeight = Math.max(1, Math.floor(sourceHeight * ratio));
+  const offsetX = Math.floor((size - resizedWidth) / 2);
+  const offsetY = Math.floor((size - resizedHeight) / 2);
+  return {
+    sourceWidth, sourceHeight, paddedSize: size, resizedWidth, resizedHeight,
+    scaleX: resizedWidth / sourceWidth, scaleY: resizedHeight / sourceHeight, offsetX, offsetY,
+  };
+}
+
+function createPaddedInput(source: CanvasImageSource & { width: number; height: number }, size = 1024) {
+  const transform = computePaddedInputTransform(source.width, source.height, size);
+  const canvas = typeof OffscreenCanvas !== "undefined"
+    ? new OffscreenCanvas(size, size)
+    : Object.assign(document.createElement("canvas"), { width: size, height: size });
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("palm input adapter canvas unavailable");
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, size, size);
+  context.drawImage(source, 0, 0, source.width, source.height, transform.offsetX, transform.offsetY, transform.resizedWidth, transform.resizedHeight);
+  return {
+    canvas,
+    transform,
+  };
+}
+
+export function paddedMaskToCrop(transform: PaddedInputTransform, point: { x: number; y: number }) {
+  const last = transform.paddedSize - 1;
+  return {
+    x: (point.x * last - transform.offsetX) / transform.scaleX,
+    y: (point.y * last - transform.offsetY) / transform.scaleY,
+  };
 }
 export function computeObservation(
   mask: Uint8Array,
@@ -128,7 +178,10 @@ export function computeObservation(
   }
   const toCropPoint = (index: number) => {
     const x = index % width, y = Math.floor(index / width);
-    return { x: x / Math.max(1, width - 1) * Math.max(1, context.cropWidth - 1), y: y / Math.max(1, height - 1) * Math.max(1, context.cropHeight - 1) };
+    const normalized = { x: x / Math.max(1, width - 1), y: y / Math.max(1, height - 1) };
+    return context.maskToCrop
+      ? context.maskToCrop(normalized)
+      : { x: normalized.x * Math.max(1, context.cropWidth - 1), y: normalized.y * Math.max(1, context.cropHeight - 1) };
   };
   const componentPoints = largest.map(toCropPoint);
   const observedBoundingBox = {
@@ -274,21 +327,26 @@ export function computeObservation(
  * 절대 throw하지 않는다 — 호출부는 Sobel 휴리스틱으로만 계속 진행할 수 있다.
  * 성공 시 반환되는 모든 수치는 실제 model output에서 계산된 값이다.
  */
-export async function runPalmLineOnnx(source: CanvasImageSource, context?: OnnxMeasurementContext): Promise<OnnxPalmLineResult | null> {
+export async function runPalmLineOnnx(source: CanvasImageSource, context?: OnnxMeasurementContext, inputAdapter: "stretch" | "padded-1024" = "stretch"): Promise<OnnxPalmLineResult | null> {
   try {
     const segmenter = await getSegmenter();
-    const { mask, width, height } = await segmenter.segment(source);
     const sourceRecord = source as CanvasImageSource & { width?: number; height?: number; naturalWidth?: number; naturalHeight?: number; videoWidth?: number; videoHeight?: number; displayWidth?: number; displayHeight?: number };
-    const sourceWidth = sourceRecord.width || sourceRecord.naturalWidth || sourceRecord.videoWidth || sourceRecord.displayWidth || width;
-    const sourceHeight = sourceRecord.height || sourceRecord.naturalHeight || sourceRecord.videoHeight || sourceRecord.displayHeight || height;
+    const sourceWidth = sourceRecord.width || sourceRecord.naturalWidth || sourceRecord.videoWidth || sourceRecord.displayWidth || 512;
+    const sourceHeight = sourceRecord.height || sourceRecord.naturalHeight || sourceRecord.videoHeight || sourceRecord.displayHeight || 512;
+    const padded = inputAdapter === "padded-1024" ? createPaddedInput(source as CanvasImageSource & { width: number; height: number }) : null;
+    const { mask, width, height } = await segmenter.segment(padded?.canvas ?? source);
+    const measurementContext = context ?? {
+      cropWidth: sourceWidth,
+      cropHeight: sourceHeight,
+      referenceSpan: Math.max(sourceWidth, sourceHeight),
+    };
+    const transformedContext = padded
+      ? { ...measurementContext, maskToCrop: (point: { x: number; y: number }) => paddedMaskToCrop(padded.transform, point) }
+      : measurementContext;
     const observations: OnnxLineObservation[] = (["heart_line", "head_line", "life_line"] as const).map((cls) =>
-      computeObservation(mask, width, height, cls, context ?? {
-        cropWidth: sourceWidth,
-        cropHeight: sourceHeight,
-        referenceSpan: Math.max(sourceWidth, sourceHeight),
-      }),
+      computeObservation(mask, width, height, cls, transformedContext),
     );
-    return { observations, maskWidth: width, maskHeight: height, mask, coordinateSpace: "source-crop-normalized-0to1" };
+    return { observations, maskWidth: width, maskHeight: height, mask, coordinateSpace: "source-crop-normalized-0to1", inputAdapter };
   } catch (err) {
     console.error("palm-line ONNX inference failed:", err);
     return null;

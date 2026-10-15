@@ -10,7 +10,7 @@ export class PalmWorkerClient {
     this.worker = null;
   }
 
-  analyze(canvas: HTMLCanvasElement, signal: AbortSignal, onPhase: (phase: PalmAnalysisPhase) => void, options?: { debug?: boolean; onDebug?: (snapshot: PalmAnalysisDebugSnapshot) => void }): Promise<PalmFacts> {
+  analyze(canvas: HTMLCanvasElement, signal: AbortSignal, onPhase: (phase: PalmAnalysisPhase) => void, options?: { debug?: boolean; onDebug?: (snapshot: PalmAnalysisDebugSnapshot) => void; inputAdapter?: "stretch" | "padded-1024" }): Promise<PalmFacts> {
     signal.throwIfAborted();
     if (typeof Worker === "undefined" || typeof OffscreenCanvas === "undefined") {
       return Promise.reject(new Error("이 브라우저에서는 손금 분석을 지원하지 않아요. 최신 Safari 또는 Chrome을 이용하거나 손금 없이 계속해주세요."));
@@ -43,7 +43,7 @@ export class PalmWorkerClient {
         const context = canvas.getContext("2d");
         if (!context) throw new Error("사진을 처리하지 못했어요.");
         const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-        worker.postMessage({ id, pixels, debug: options?.debug === true }, [pixels.data.buffer]);
+        worker.postMessage({ id, pixels, debug: options?.debug === true, inputAdapter: options?.inputAdapter }, [pixels.data.buffer]);
       } catch (reason) { fail(reason); }
     });
   }

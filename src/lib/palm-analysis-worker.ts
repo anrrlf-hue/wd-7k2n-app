@@ -3,7 +3,7 @@ import type { PalmAnalysisDebugSnapshot } from "./palm-detection";
 import { shouldCapturePalmDebug } from "./palm-debug-gate";
 
 // Classic worker: MediaPipe's WASM loader uses importScripts. Pixels stay local.
-self.onmessage = async (event: MessageEvent<{ id: number; pixels: ImageData; debug?: boolean }>) => {
+self.onmessage = async (event: MessageEvent<{ id: number; pixels: ImageData; debug?: boolean; inputAdapter?: "stretch" | "padded-1024" }>) => {
   const { id, pixels } = event.data;
   try {
     const canvas = new OffscreenCanvas(pixels.width, pixels.height);
@@ -17,7 +17,7 @@ self.onmessage = async (event: MessageEvent<{ id: number; pixels: ImageData; deb
         if (variant?.mask) transfer.push(variant.mask.buffer as ArrayBuffer);
       }
       self.postMessage({ id, debug: snapshot }, { transfer });
-    } : undefined);
+    } : undefined, { inputAdapter: event.data.inputAdapter });
     self.postMessage({ id, facts });
   } catch (error) {
     self.postMessage({ id, error: error instanceof Error ? error.message : "손금 분석을 완료하지 못했어요." });
