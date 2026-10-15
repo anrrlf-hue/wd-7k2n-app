@@ -5,7 +5,7 @@ import { Copy, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildServiceShare } from "@/lib/relationship-share";
 import { track } from "@/lib/analytics";
-import { ensureReferralSession } from "@/lib/referral-client";
+import { ensureReferralSession, fetchReferralRequest } from "@/lib/referral-client";
 
 const defaultShareData = buildServiceShare();
 const INVITE_STORAGE_KEY = "saju-app:referral-invite:v1";
@@ -60,7 +60,7 @@ export function ServiceShareCard({ trial = false, onCompleted }: { trial?: boole
     if (!preparation.current) {
       setPreparing(true);
       preparation.current = (async () => {
-        const response = await fetch("/api/referrals", { method: "POST", headers: { "Cache-Control": "no-store" } });
+        const response = await fetchReferralRequest("/api/referrals", { method: "POST", headers: { "Cache-Control": "no-store" } });
         const data = await response.json().catch(() => null) as { url?: string } | null;
         if (!response.ok || !data?.url) throw new ReferralUnavailableError("Referral store unavailable");
         const next = { ...defaultShareData, url: data.url };
@@ -80,7 +80,7 @@ export function ServiceShareCard({ trial = false, onCompleted }: { trial?: boole
       try { token = new URL(cachedUrl).searchParams.get("ref"); } catch { /* Treat malformed cached state as stale. */ }
       if (token) {
         await ensureReferralSession();
-        const response = await fetch(`/api/referrals?ref=${encodeURIComponent(token)}`, { headers: { "Cache-Control": "no-store" } });
+        const response = await fetchReferralRequest(`/api/referrals?ref=${encodeURIComponent(token)}`, { headers: { "Cache-Control": "no-store" } });
         const data = await response.json().catch(() => null) as { status?: string } | null;
         if (response.status === 503 || data?.status === "unavailable") throw new ReferralUnavailableError("Referral store unavailable");
         if (response.ok && data?.status === "valid") {
