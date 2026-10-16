@@ -2,11 +2,24 @@
 
 import Link from "next/link";
 import { CalendarDays, Check, Moon, Pencil, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StepBadge } from "@/components/diagnosis/step-badge";
+
+export function isValidBirthDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value && value >= "1930-01-01" && value <= "2020-12-31";
+}
+
+export function formatBirthDateInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
 
 export function BirthDateStep({
   value,
@@ -30,8 +43,13 @@ export function BirthDateStep({
   const [draftValue, setDraftValue] = useState(value);
   const [editing, setEditing] = useState(!value);
 
+  useEffect(() => {
+    setDraftValue(value);
+    setEditing(!value);
+  }, [value]);
+
   function confirmDate() {
-    if (!draftValue) return;
+    if (!isValidBirthDate(draftValue)) return;
     onChange(draftValue);
     setEditing(false);
   }
@@ -67,12 +85,16 @@ export function BirthDateStep({
               />
               <Input
                 id="birthDate"
-                type="date"
+                type="text"
+                inputMode="numeric"
+                autoComplete="bday"
+                placeholder="YYYY-MM-DD"
+                maxLength={10}
                 value={draftValue}
                 min="1930-01-01"
                 max="2020-12-31"
                 aria-describedby="birthDateHelp"
-                onChange={(e) => setDraftValue(e.target.value)}
+                onChange={(e) => setDraftValue(formatBirthDateInput(e.target.value))}
                 className="h-16 w-full border border-(--gold-soft) bg-background pl-12 pr-4 text-lg font-semibold text-foreground shadow-sm outline-none focus-visible:border-(--gold) focus-visible:ring-2 focus-visible:ring-(--gold) focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               />
             </div>

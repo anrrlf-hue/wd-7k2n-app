@@ -192,13 +192,18 @@ export function ServiceShareCard({ trial = false, onCompleted }: { trial?: boole
       <h3 className="font-semibold">{trial ? "링크 공유하고 프리미엄 무료 체험" : "운·돈 무료 사주 알려주기"}</h3>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{shareData.text}</p>
       <p className="mt-2 text-xs leading-5 text-muted-foreground">이름·생년월일·태어난 시각·손 사진·개인 풀이를 보내지 않습니다. 받는 사람은 자신의 무료 사주를 시작합니다.</p>
-      {trial && <p className="mt-2 text-sm leading-6">공유창 완료·복사만으로는 열리지 않습니다. 이 링크를 연 다른 익명 세션이 서버에서 무료 풀이를 실제 완료하면 확인할 수 있어요. 쿠키 삭제·다른 기기 자기추천은 같은 사람인지 판별하지 못합니다.</p>}
+      {trial && <div className="mt-2 space-y-1 text-sm leading-6">
+        <p>1. 아래 링크를 친구에게 보내세요.</p>
+        <p>2. 친구가 링크를 열고 자신의 무료 풀이를 끝내야 합니다.</p>
+        <p>3. 친구가 끝낸 뒤 이 화면의 <strong>공유 후 완료 확인</strong>을 누르세요.</p>
+        <p className="text-muted-foreground">링크를 만들거나 복사한 것만으로는 프리미엄이 열리지 않습니다. 다른 기기나 쿠키를 지운 브라우저는 같은 사람인지 확인하지 못할 수 있습니다.</p>
+      </div>}
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {nativeShare && <Button type="button" onClick={() => void share()} disabled={busy || preparing || (trial && !shareDataReady)} className="h-12 rounded-full"><Share2 className="size-4" />{preparing ? "공유 준비 중..." : busy ? "처리 중..." : trial ? "링크 공유하고 무료 체험" : "공유하기"}</Button>}
         <Button type="button" variant="outline" onClick={() => void copyLink()} disabled={busy || preparing || (trial && !shareDataReady)} className="h-12 rounded-full"><Copy className="size-4" />{preparing ? "공유 준비 중..." : trial ? "링크 복사하고 무료 체험" : "링크 복사"}</Button>
       </div>
       {trial && !shareDataReady && !preparing && <Button type="button" variant="outline" onClick={() => void prepareShareData().catch(() => { preparation.current = null; setNotice({ text: "공유 이벤트 저장소를 사용할 수 없어 무료 체험 공유를 준비하지 못했어요. 잠시 후 다시 시도해주세요.", error: true }); })} className="mt-2 h-11 w-full">공유 이벤트 다시 준비</Button>}
-      {trial && onCompleted && <Button type="button" variant="outline" onClick={() => void completeParticipation()} disabled={busy} className="mt-2 h-11 w-full">{shared ? "상대방 무료 풀이 완료 확인" : "무료 풀이 완료 여부 확인"}</Button>}
+      {trial && onCompleted && <Button type="button" variant="outline" onClick={() => void completeParticipation()} disabled={busy} className="mt-2 h-11 w-full">{shared ? "공유 후 완료 확인" : "친구 풀이 완료 확인"}</Button>}
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{nativeShare ? "기기 공유창에서 카카오톡 등 사용할 앱을 선택해주세요." : "이 브라우저에서는 링크를 복사해 카카오톡 등 원하는 앱에 붙여넣어주세요."}</p>
       {(!trial || shareDataReady) && <label className="mt-3 block text-xs text-muted-foreground">공유할 주소
         <input ref={linkInput} readOnly value={shareData.url} onFocus={event => event.currentTarget.select()} className="mt-1 h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-sm text-foreground" />
