@@ -1,7 +1,7 @@
 import { TEN_GOD_GROUP, type SajuFacts, type TenGodGroup } from "@/lib/saju-facts";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import { gwaWa } from "@/lib/korean-particle";
-import { buildCustomerReadingPlan, renderCustomerPlanCopy } from "@/lib/customer-reading-plan";
+import { buildCustomerReadingPlan, renderCustomerPlanCopy, renderCustomerPremiumCopy } from "@/lib/customer-reading-plan";
 
 type Theme = "self" | "relationship" | "money" | "work" | "life";
 type God = keyof typeof GOD;
@@ -33,6 +33,7 @@ const isGod = (v?: string): v is God => Boolean(v && Object.hasOwn(GOD, v));
 export function buildNatalNarrativeFrame(facts: SajuFacts) {
   const plan = buildCustomerReadingPlan(facts);
   const planCopy = renderCustomerPlanCopy(facts, plan);
+  const premiumCopy = renderCustomerPremiumCopy(facts, plan);
   const pillars = facts.pillars.filter(p => facts.hasTimeInput || p.pillar !== "hour");
   const month = pillars.find(p => p.pillar === "month"), day = pillars.find(p => p.pillar === "day");
   const hour = pillars.find(p => p.pillar === "hour");
@@ -53,7 +54,7 @@ export function buildNatalNarrativeFrame(facts: SajuFacts) {
     work: `월주 ${month?.ganzhi ?? "미확인"}/${month?.stemTenGod ?? "미확인"}/${workGod ?? "미확인"}; 일간 ${facts.dayStem}; 드러난 식상 ${counts.식상}, 비겁 ${counts.비겁}, 인성 ${counts.인성}`,
     life: `드러난 식상 ${counts.식상}, 인성 ${counts.인성}; ${facts.dayStrengthReliable ? `강약 ${({ strong: "강한 편", weak: "약한 편", neutral: "중화" })[facts.dayStrength]}` : "강약 미사용"}; 생활 리듬의 상징 해석, 의료 진단 아님`,
   };
-  return { facts, stem, counts, leaders, month, day, hour, workGod, closeGod, fireMeeting, evidence, plan, planCopy };
+  return { facts, stem, counts, leaders, month, day, hour, workGod, closeGod, fireMeeting, evidence, plan, planCopy, premiumCopy };
 }
 export type NatalNarrativeFrame = ReturnType<typeof buildNatalNarrativeFrame>;
 

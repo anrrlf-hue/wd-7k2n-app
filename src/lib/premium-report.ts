@@ -402,7 +402,7 @@ export function buildPremiumReport(input: {
     if (area === "wellbeing") continue;
     const connection = integration[area];
     const palmText = connection?.plan.passages.map(passage => passage.text).join("\n\n");
-    const planParagraphs = area === "love_relationship" ? customer.frame.planCopy.relationship : area === "money" ? customer.frame.planCopy.money : customer.frame.planCopy.work;
+    const planParagraphs = area === "love_relationship" ? customer.frame.premiumCopy.relationship : area === "money" ? customer.frame.premiumCopy.money : customer.frame.premiumCopy.work;
     reading.paragraphs = [...planParagraphs, ...(palmText ? [palmText] : [])];
     reading.headline = area === "money" ? "얻은 가치와 생활에 남기는 조건" : area === "work" ? "실력이 쓰이는 환경과 끝내는 방식" : "가까움에서 서로의 선택이 남는 방식";
     reading.opportunity = ""; reading.caution = ""; reading.tip = "";
