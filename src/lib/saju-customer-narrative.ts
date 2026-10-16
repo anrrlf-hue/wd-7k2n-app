@@ -473,5 +473,5 @@ export function buildCustomerPremiumNarrative(facts: SajuFacts) {
         "협업에서는 자신의 방식만 지키거나 모두 맞추는 양극단보다, 이미 책임진 몫과 함께 조정할 몫을 구별하는 일이 중요합니다. 그 구분이 있어야 신뢰와 자기 기준을 동시에 지킬 수 있습니다.",
       ];
   return { frame: f, summary: premiumSummary,
-    overall: [overall, inner], love: [relationship?.deeper ?? close.deeper], money: [acquisition, management, expense], work: premiumWork };
+    overall: f.planCopy.overall, love: [relationship?.deeper ?? close.deeper], money: [acquisition, management, expense], work: premiumWork };
 }

@@ -67,6 +67,16 @@ for (const item of cases) {
   if (!item.facts.hasTimeInput) assert.doesNotMatch(item.free.snapshot.text, /강한 편|약한 편|격국은|용신은/);
 }
 
+const case1995 = cases.find((item) => item.input.id === "1995");
+const case1988 = cases.find((item) => item.input.id === "1988");
+assert.match(case1995.premium.overall[0], /임수에게 목은 생각을 말이나 결과물로 꺼내는 식상에 해당합니다/);
+assert.match(case1995.premium.overall[0], /을목이 천간에 두 번/);
+assert.match(case1995.premium.overall[1], /기토 정관은 질서와 평가 기준/);
+assert.doesNotMatch(case1995.premium.overall.join("\n"), /당신은 생각을 여러 결과로 펼쳐 보며/);
+assert.match(case1988.premium.overall[0], /관성은 맡은 약속과 책임의 기준/);
+assert.match(case1988.premium.overall[0], /비겁은 자기 판단과 독립성/);
+assert.doesNotMatch(case1988.premium.overall.join("\n"), /강한 편|약한 편|용신은|격국은/);
+
 function bodyText(item) {
   const freeFields = Object.values(item.free).filter((value) => value && typeof value === "object" && "text" in value);
   const premiumFields = [...(item.premium.summary ? [item.premium.summary] : []), ...(item.premium.overall ?? []), ...(item.premium.love ?? []), ...(item.premium.work ?? []), ...(item.premium.money ?? [])];
