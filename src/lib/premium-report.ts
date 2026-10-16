@@ -17,7 +17,7 @@ import { buildIntegratedPalmReading } from "@/lib/integrated-palm-reading";
 import { buildPremiumEditorialPlan } from "@/lib/premium-editorial-plan";
 import { premiumAnnualThread, premiumClosing, premiumOverallEvidence } from "@/lib/premium-domain-story";
 import { buildCustomerPremiumNarrative } from "@/lib/saju-customer-narrative";
-import { renderCustomerPremiumAnnualIntroduction } from "@/lib/customer-reading-plan";
+import { renderCustomerPremiumAnnualIntroduction, renderCustomerPremiumAnnualMethod } from "@/lib/customer-reading-plan";
 import { validateReadingPlan } from "@/lib/reading-plan";
 import { describeReadingEvidence } from "@/lib/reading-evidence-display";
 
@@ -433,7 +433,7 @@ export function buildPremiumReport(input: {
     palmConnections,
     annualIntroduction: renderCustomerPremiumAnnualIntroduction(facts),
     annualBackground: background.length ? `현재의 큰 흐름에는 ${background.map(g => `‘${PERSONAL_GROUP_LABEL[g]}’`).join(", ")}의 의미가 놓여 있습니다. 이를 한 해의 배경으로 두고, 달마다 달라지는 주제를 따로 살펴봅니다.` : null,
-    annualMethod: `${yearContext} 월별 흐름은 매월 중순의 세운·월운을 기준으로 묶었습니다. 절기 경계와 기간 중 큰 운의 전환일은 세밀하게 나누지 않았습니다.${facts.hasTimeInput ? "" : " 출생시간을 몰라 큰 운의 배경과 강약에 따른 보완은 생략했습니다."}`,
+    annualMethod: renderCustomerPremiumAnnualMethod(facts, yearContext),
     note: `${READING_GUIDE} 풀이 속 장면은 실제 개인 경험을 확인한 진술이 아니며, 월별 상징은 사건·수입·건강·수명의 예고로 보지 않습니다.`,
   };
 }

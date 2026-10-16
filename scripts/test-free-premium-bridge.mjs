@@ -11,6 +11,7 @@ const connected = buildPremiumReport({ facts, freeReport, referenceDate: new Dat
 const disconnected = buildPremiumReport({ facts, referenceDate: new Date("2026-10-16T00:00:00Z") });
 
 assert.doesNotMatch(connected.annualIntroduction, /달마다|월별|매월 중순|12개월/);
+assert.doesNotMatch(connected.annualMethod ?? "", /달마다|월별|매월 중순|12개월/);
 assert.match(connected.annualIntroduction, /2026년/);
 assert.match(connected.annualIntroduction, /2027년/);
 assert.notEqual(connected.annualIntroduction.match(/2026년[^.]*\./)?.[0], connected.annualIntroduction.match(/2027년[^.]*\./)?.[0]);
@@ -35,6 +36,7 @@ const facts1988 = computeSajuFacts({ year: 1988, month: 11, day: 23, hour: null,
 const free1988 = buildFreeSajuReport(facts1988);
 const premium1988 = buildPremiumReport({ facts: facts1988, freeReport: free1988, referenceDate: new Date("2026-10-16T00:00:00Z") });
 assert.doesNotMatch(premium1988.annualIntroduction, /달마다|월별|매월 중순|12개월/);
+assert.doesNotMatch(premium1988.annualMethod ?? "", /달마다|월별|매월 중순|12개월/);
 assert.match(premium1988.annualIntroduction, /2026년/);
 assert.match(premium1988.annualIntroduction, /2027년/);
 assert.notEqual(premium1988.annualIntroduction.match(/2026년[^.]*\./)?.[0], premium1988.annualIntroduction.match(/2027년[^.]*\./)?.[0]);

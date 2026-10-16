@@ -34,6 +34,17 @@ export function renderCustomerPremiumAnnualIntroduction(facts: SajuFacts): strin
   return "2026년에는 드러난 표현을 실제 결과로 옮길 때 무엇을 확인받을지 먼저 정하면 시도가 쓰임으로 이어질 조건이 선명해집니다. 2027년에는 반응과 평가를 다음 선택에 반영하되, 계속 맡을 범위와 조정할 범위를 나누는 방식이 중요합니다.";
 }
 
+export function renderCustomerPremiumAnnualMethod(facts: SajuFacts, yearContext: string): string {
+  const month = facts.pillars.find((pillar) => pillar.pillar === "month");
+  const springMyoWater = month?.branchHanja === "卯" && facts.dayElement === "수";
+  const expression = facts.outputStarCount >= facts.officerStarCount;
+  const focus = springMyoWater || expression
+    ? "표현과 평가가 실제 결과로 이어지는 조건을 중심으로 연결했습니다."
+    : "책임과 자기결정이 서로의 범위를 침범하지 않는 조건을 중심으로 연결했습니다.";
+  const timeNote = facts.hasTimeInput ? "" : " 출생시간이 확인되지 않아 시주와 대운에 따른 세부 강약은 확정하지 않았습니다.";
+  return `${yearContext} ${focus} 특정 사건·수입·건강을 예고하거나 개인의 경험을 단정하지 않고, 확인된 원국과 세운의 공통 상징을 선택의 조건으로 읽었습니다.${timeNote}`;
+}
+
 function evidence(id: string, source: string, value: string | number | boolean | null) {
   return { id, kind: "calculated" as const, source, value };
 }
