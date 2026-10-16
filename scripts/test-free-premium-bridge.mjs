@@ -10,6 +10,11 @@ const freeReport = buildFreeSajuReport(facts);
 const connected = buildPremiumReport({ facts, freeReport, referenceDate: new Date("2026-10-16T00:00:00Z") });
 const disconnected = buildPremiumReport({ facts, referenceDate: new Date("2026-10-16T00:00:00Z") });
 
+assert.doesNotMatch(connected.annualIntroduction, /달마다|월별|매월 중순|12개월/);
+assert.match(connected.annualIntroduction, /2026년/);
+assert.match(connected.annualIntroduction, /2027년/);
+assert.notEqual(connected.annualIntroduction.match(/2026년[^.]*\./)?.[0], connected.annualIntroduction.match(/2027년[^.]*\./)?.[0]);
+
 assert.deepEqual(connected.overall.paragraphs, disconnected.overall.paragraphs);
 assert.ok(connected.domains.every((domain) => domain.paragraphs.length === 2));
 assert.ok(connected.domains.every((domain) => !domain.paragraphs.some((paragraph) => /장면 실제|장면 기준|자리 잘해|자리 책임/.test(paragraph))));
@@ -29,6 +34,11 @@ assert.doesNotMatch(premiumMoney, /^돈에서는 새 장비가 있으면[\s\S]*�
 const facts1988 = computeSajuFacts({ year: 1988, month: 11, day: 23, hour: null, minute: null, gender: "여" });
 const free1988 = buildFreeSajuReport(facts1988);
 const premium1988 = buildPremiumReport({ facts: facts1988, freeReport: free1988, referenceDate: new Date("2026-10-16T00:00:00Z") });
+assert.doesNotMatch(premium1988.annualIntroduction, /달마다|월별|매월 중순|12개월/);
+assert.match(premium1988.annualIntroduction, /2026년/);
+assert.match(premium1988.annualIntroduction, /2027년/);
+assert.notEqual(premium1988.annualIntroduction.match(/2026년[^.]*\./)?.[0], premium1988.annualIntroduction.match(/2027년[^.]*\./)?.[0]);
+assert.match(premium1988.annualIntroduction, /책임|독립|재량|자기 결정/);
 const premium1988Text = premium1988.domains.map((domain) => `${domain.key}: ${domain.paragraphs.join(" ")}`).join("\n");
 assert.match(premium1988Text, /독립성|재량|공동 자원|공동지출/, "1988 premium keeps responsibility/independence domain distinctions");
 for (const domain of premium1988.domains) {
