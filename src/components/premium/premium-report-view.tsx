@@ -70,7 +70,7 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
       <h3 className="mt-2 text-xl font-semibold">{report.annual.startLabel} ~ {report.annual.endLabel}</h3>
       <p className="mt-3 text-base leading-8 text-muted-foreground">{report.annualIntroduction}</p>
       {report.annualBackground && <p className="mt-3 text-sm leading-7 text-muted-foreground">{report.annualBackground}</p>}
-      {report.annualMethod && <details className="mt-3 text-sm text-muted-foreground"><summary className="cursor-pointer">월별 흐름을 읽은 기준</summary><p className="mt-2 leading-6">{report.annualMethod}</p></details>}
+      {report.annualMethod && <details className="mt-3 text-sm text-muted-foreground"><summary className="cursor-pointer">연간 흐름을 읽은 기준</summary><p className="mt-2 leading-6">{report.annualMethod}</p></details>}
       {highlights && <div aria-label="1년의 주요 구간" className="mt-5 space-y-5">
         {highlights.map(period => <article id={`premium-period-${report.periods.indexOf(period)}`} key={period.months[0]} className="scroll-mt-5 rounded-2xl bg-accent p-4">
           <p className="text-sm text-(--gold)">{period.label}</p>
@@ -80,23 +80,6 @@ export function PremiumReportView({ report }: { report: PremiumReport }) {
           <details className="mt-3"><summary className="cursor-pointer text-sm">이 구간을 읽은 근거</summary><p className="mt-2 text-sm leading-7 text-muted-foreground">{customerReadingBasis(period.basis, period.interpretation?.evidence)}</p></details>
         </article>)}
       </div>}
-      <details open={!highlights} className="mt-5 border-t border-border pt-4">
-      <summary className="cursor-pointer text-sm font-medium">12개월 전체 흐름 펼쳐보기</summary>
-      <ol aria-label="12개월 흐름" className="mt-5 space-y-4">
-        {report.periods.map(period => <li id={highlights?.includes(period) ? undefined : `premium-period-${report.periods.indexOf(period)}`} key={period.months[0]} className="scroll-mt-5 rounded-2xl border border-border p-4">
-          <p className="text-sm font-semibold text-(--gold)">{period.label}</p>
-          <h4 className="mt-2 text-lg leading-7 font-semibold">{period.headline}</h4>
-          {highlights?.includes(period)
-            ? <a href={`#premium-period-${report.periods.indexOf(period)}`} className="mt-3 inline-block text-sm text-(--gold) underline underline-offset-4">위 주요 구간의 해설로 이동</a>
-            : narrative(period)}
-          <details className="mt-3 border-t border-border pt-3">
-            <summary className="cursor-pointer text-sm font-medium">이 시기로 읽은 이유 · 관계·재물·일</summary>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">{customerReadingBasis(period.basis, period.interpretation?.evidence)}</p>
-            {period.domains.map(domain => <p key={domain.key} className="mt-3 text-sm leading-7"><strong>{domain.label} · </strong>{domain.text}</p>)}
-          </details>
-        </li>)}
-      </ol>
-      </details>
     </section>
     {report.closing && <section aria-label="풀이를 마치며" className="rounded-3xl border border-(--gold-soft) bg-card p-5">
       <h3 className="text-lg font-semibold">기억할 한 가지</h3>

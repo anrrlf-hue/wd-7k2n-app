@@ -51,13 +51,21 @@ for (const [i, birth] of births.entries()) {
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report }));
   const readerBody = [report.summary, ...report.overall.paragraphs, ...report.domains.flatMap(d => d.paragraphs), ...report.periods.map(p => p.reading)].join(" ");
   assert.doesNotMatch(readerBody, /반드시|확정된 미래|실제 수입이 늘어납니다/);
-  // The exact monthly symbols are now visible so adjacent months with the
-  // same five-group theme can still explain their 정/편 and position changes.
-  assert.ok(report.periods.every(p => p.symbols && p.basis.includes(p.symbols.month.ganzhi) && html.includes(p.symbols.month.ganzhi)));
+  // The generator still computes all months, while the customer view shows
+  // only the selected major intervals to keep the annual section readable.
+  assert.ok(report.periods.every(p => p.symbols && p.basis.includes(p.symbols.month.ganzhi)));
+  assert.ok(report.annualHighlights.every(label => {
+    const period = report.periods.find(p => p.months[0] === label);
+    return period && html.includes(period.basis);
+  }));
+  assert.ok(!html.includes("12개월 전체 흐름 펼쳐보기"));
   assert.ok(html.includes("1년의 주요 구간"));
   assert.equal(html.split(report.note).length - 1, 1, "uncertainty notice in one place");
   assert.ok(!html.includes("<table"), "annual content cannot be just a stage table");
-  for (const period of report.periods) assert.ok(html.includes(period.basis));
+  for (const label of report.annualHighlights) {
+    const period = report.periods.find(p => p.months[0] === label);
+    assert.ok(period && html.includes(period.basis));
+  }
   for (const d of report.domains) {
     if (d.tip) assert.ok(html.indexOf(d.paragraphs[0]) < html.indexOf(d.tip));
     assert.equal(d.paragraphs.length, d.key === "money" ? 3 : d.key === "work" ? 3 : d.key === "love_relationship" ? 2 : 1,

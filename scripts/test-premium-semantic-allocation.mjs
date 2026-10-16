@@ -155,8 +155,8 @@ for (const day of [1, 7]) {
       'the same stem ten-god must become a different decision when branch, year and natal relation change');
   }
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report }));
-  assert.ok(html.includes('12개월 전체 흐름 펼쳐보기'));
-  assert.ok(html.includes('월운'));
+  assert.ok(html.includes('1년의 주요 구간'));
+  assert.ok(!html.includes('12개월 전체 흐름 펼쳐보기'));
   assert.doesNotMatch(report.annualMethod, /세운|천간|지지|원국/);
   assert.ok(!report.overall.paragraphs.join(' ').includes('작은 결과를 보여준 뒤'), 'the overall reading must not spend the work scene');
   assert.doesNotMatch(report.overall.paragraphs.join(' '), /전체 풀이의 중심|원국의 서로 다른 자리|맥락으로 삼/);

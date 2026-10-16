@@ -27,5 +27,9 @@ const birthDateSource = fs.readFileSync("src/components/diagnosis/birth-date-ste
 assert.match(birthDateSource, /bg-\[\#fffaf0\]/);
 assert.match(birthDateSource, /text-slate-900/);
 assert.match(birthDateSource, /placeholder:text-slate-500/);
+const premiumViewSource = fs.readFileSync("src/components/premium/premium-report-view.tsx", "utf8");
+assert.doesNotMatch(premiumViewSource, /12개월 전체 흐름 펼쳐보기/);
+assert.doesNotMatch(premiumViewSource, /aria-label=\"12개월 흐름\"/);
+assert.match(premiumViewSource, /aria-label=\"1년의 주요 구간\"/);
 
 console.log("PASS readable customer copy: Saju and premium output avoids internal jargon and long sentences");
