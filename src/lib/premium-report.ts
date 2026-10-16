@@ -126,7 +126,7 @@ function premiumEvidenceBasis(facts: SajuFacts, area: "overall" | "relationship"
       : facts.outputStarCount >= 2
         ? "표현한 결과를 반복해서 고치고 맡을 범위를 정하는 모습"
         : facts.officerStarCount > 0
-          ? "약속한 일을 끝내고 책임과 수정 권한을 함께 확인하는 모습"
+          ? "약속한 일을 끝내고 맡은 일과 바꿀 수 있는 범위를 함께 확인하는 모습"
           : "익숙한 일을 이어 가면서 새로 배울 한 가지를 고르는 모습";
   return `이 부분은 ${reason}을 근거로 읽었습니다.`;
 }
@@ -365,10 +365,10 @@ function readablePeriodReading(month: SajuAnnualOutlook["months"][number], symbo
 
 function readableOverallContext(facts: SajuFacts): string {
   if (facts.outputStarCount > 0 && facts.resourceStarCount > 0) {
-    return "관계에서는 상대의 반응을 듣고, 돈에서는 계속 감당할 비용을 정하며, 일에서는 반복할 기준을 정할 때 이 흐름이 생활에 남습니다.";
+    return "관계에서는 상대의 반응을 듣고, 돈에서는 계속 감당할 비용을 정하며, 일에서는 반복할 기준을 정할 때 이 방식이 일상에서 이어집니다.";
   }
   if (facts.officerStarCount > 0 && facts.peerStarCount > 0) {
-    return "출생시간이 없어 세부 시기는 확정하지 않고, 관계에서는 공동 약속과 개인 시간을, 일에서는 책임과 수정 권한을, 돈에서는 공동지출과 개인 자원을 나누어 살펴봅니다.";
+    return "출생시간이 없어 세부 시기는 확정하지 않고, 관계에서는 공동 약속과 개인 시간을, 일에서는 맡은 일과 바꿀 수 있는 범위를, 돈에서는 공동지출과 각자 쓸 돈을 나누어 살펴봅니다.";
   }
   if (facts.wealthStarCount > 0) {
     return "내가 한 일이 실제 쓰임과 생활의 가치로 이어지는 흐름입니다. 반응의 크기보다 반복해서 쓸 수 있는 결과와 감당할 비용을 함께 확인해 보세요.";
