@@ -32,4 +32,17 @@ assert.doesNotMatch(premiumViewSource, /12개월 전체 흐름 펼쳐보기/);
 assert.doesNotMatch(premiumViewSource, /aria-label=\"12개월 흐름\"/);
 assert.match(premiumViewSource, /aria-label=\"1년의 주요 구간\"/);
 
+const secondInput = { year: 1990, month: 11, day: 23, hour: null, minute: null, gender: "여" };
+const secondFacts = computeSajuFacts(secondInput);
+const secondFree = buildFreeSajuReport(secondFacts);
+const secondPremium = buildPremiumReport({ facts: secondFacts, referenceDate: new Date("2026-10-13T00:00:00Z") });
+const domainText = report => report.domains.map(domain => domain.paragraphs.join(" ")).join("\n");
+assert.notEqual(domainText(premium), domainText(secondPremium), "premium domains must preserve case-specific meaning");
+assert.notEqual(free.strengths.map(item => item.detail).join(" "), secondFree.strengths.map(item => item.detail).join(" "), "free strengths must preserve case-specific meaning");
+assert.notEqual(free.cautions.map(item => item.detail).join(" "), secondFree.cautions.map(item => item.detail).join(" "), "free cautions must preserve case-specific meaning");
+const highlighted = report => report.periods.filter(period => report.annualHighlights?.includes(period.months[0])).map(period => period.reading.replace(/\d{4}년 \d{1,2}월에는 /g, ""));
+assert.notEqual(new Set(highlighted(premium)).size, 1, "highlight readings must not be the same after removing dates");
+const visiblePremium = [premium.summary, premium.overall.paragraphs.join(" "), domainText(premium), ...highlighted(premium)].join(" ");
+assert.doesNotMatch(visiblePremium, /원국|인성|식상|관성|비겁|재성|대운|세운|천간|지지|별 개수/);
+
 console.log("PASS readable customer copy: Saju and premium output avoids internal jargon and long sentences");

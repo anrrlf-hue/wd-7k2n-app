@@ -15,11 +15,10 @@ import { isPalmFactsUsable, normalizePalmFactsObservation } from "@/lib/palm-fac
 import { READING_GUIDE } from "@/lib/reading-guide";
 import { buildIntegratedPalmReading } from "@/lib/integrated-palm-reading";
 import { buildPremiumEditorialPlan } from "@/lib/premium-editorial-plan";
-import { premiumAnnualThread, premiumClosing, premiumOverallEvidence } from "@/lib/premium-domain-story";
+import { premiumAnnualThread, premiumClosing } from "@/lib/premium-domain-story";
 import { buildCustomerPremiumNarrative } from "@/lib/saju-customer-narrative";
 import { renderCustomerPremiumAnnualIntroduction, renderCustomerPremiumAnnualMethod } from "@/lib/customer-reading-plan";
 import { validateReadingPlan } from "@/lib/reading-plan";
-import { describeReadingEvidence } from "@/lib/reading-evidence-display";
 
 export const PREMIUM_REPORT_VERSION = "natal-customer-reading-2026-10-v15" as const;
 export interface PremiumReading {
@@ -102,15 +101,34 @@ function natalPlacement(facts: SajuFacts, group: string): string {
 }
 
 function premiumEvidenceBasis(facts: SajuFacts, area: "overall" | "relationship" | "money" | "work"): string {
-  const counts = `비겁 ${facts.peerStarCount} · 식상 ${facts.outputStarCount} · 재성 ${facts.wealthStarCount} · 관성 ${facts.officerStarCount} · 인성 ${facts.resourceStarCount}`;
   if (area === "overall") {
-    return `중심 일간 ${facts.dayStem} · 오행 ${Object.entries(facts.fiveElements).map(([key, value]) => `${key} ${value}`).join(" · ")} · ${facts.dayStrengthReliable ? `강약 ${facts.dayStrengthGrade}` : "출생시간 미상으로 강약 보완 제외"}. ${counts}`;
+    const reason = facts.outputStarCount > 0 && facts.resourceStarCount > 0
+      ? "배운 내용을 이해한 뒤 말·글·행동으로 옮기는 모습"
+      : facts.officerStarCount > 0 && facts.peerStarCount > 0
+        ? "맡은 약속을 지키면서도 자기 판단을 남겨 두려는 모습"
+        : facts.wealthStarCount > 0
+          ? "내가 한 일을 실제 쓰임과 생활의 가치로 바꾸는 모습"
+          : "생각을 정리하고 생활에서 직접 확인하는 모습";
+    return `이 풀이는 ${reason}을 중심으로 읽었습니다.`;
   }
-  const group = area === "relationship" ? "비겁·인성" : area === "money" ? "재성·식상" : "관성·식상";
-  const pillarLabel = (pillar: string) => ({ year: "해의 자리", month: "달의 자리", day: "태어난 날의 자리", hour: "태어난 시간의 자리" }[pillar] ?? pillar);
-  const placements = area === "money" ? facts.wealthStarPillars.map(pillarLabel) : area === "work" ? facts.officerStarPillars.map(pillarLabel) : facts.keyRelations.length ? ["관계의 핵심 결합"] : [];
-  const placementText = placements.length ? `${[...new Set(placements)].join(" · ")}${area === "relationship" ? "을" : "를"} 함께 ` : "배치 없이 ";
-  return `${group}의 ${placementText}별 개수로 확인한 계산 근거. 원국 분포: ${counts}.`;
+  const reason = area === "relationship"
+    ? facts.officerStarCount > 0 && facts.peerStarCount > 0
+      ? "약속을 지키는 꾸준함과 자기 선택을 함께 살피는 모습"
+      : facts.resourceStarCount > 0
+        ? "상대의 말을 이해한 뒤 내 마음을 말하려는 모습"
+        : "함께한 경험에서 각자의 선택을 나누는 모습"
+    : area === "money"
+      ? facts.outputStarCount > 0 && facts.wealthStarCount > 0
+        ? "내가 만든 결과를 다른 사람의 필요와 맞추고 대가를 정하는 모습"
+        : facts.resourceStarCount > 0
+          ? "배운 것을 생활에 적용하고 필요한 지출을 고르는 모습"
+          : "내 몫과 함께 부담할 비용을 구분하는 모습"
+      : facts.outputStarCount >= 2
+        ? "표현한 결과를 반복해서 고치고 맡을 범위를 정하는 모습"
+        : facts.officerStarCount > 0
+          ? "약속한 일을 끝내고 책임과 수정 권한을 함께 확인하는 모습"
+          : "익숙한 일을 이어 가면서 새로 배울 한 가지를 고르는 모습";
+  return `이 부분은 ${reason}을 근거로 읽었습니다.`;
 }
 
 type DaeunArea = "overall" | "love" | "money" | "work";
@@ -330,10 +348,52 @@ function readablePeriodReading(month: SajuAnnualOutlook["months"][number], symbo
         : groups.includes("인성")
           ? "배운 것을 내 생활에 맞게 쓰는 일"
           : "내 선택과 다른 사람의 생각을 맞추는 일";
-  const action = facts.outputStarCount > 0
-    ? "작게 해 본 뒤 결과를 보고 다음 방법을 정해 보세요."
-    : "해야 할 일을 한두 가지로 줄여 먼저 시작해 보세요.";
+  const actions = facts.outputStarCount > facts.officerStarCount
+    ? [
+      "먼저 한 문장이나 작은 결과로 보여 주고, 상대의 반응을 기록해 보세요.",
+      "완성도를 더 높이기 전에 한 번 사용해 보며 바꿀 점을 하나만 고르세요.",
+      "잘된 부분은 남기고, 다음 시도에서 바꿀 부분은 하나만 정해 보세요.",
+    ]
+    : [
+      "해야 할 일을 한두 가지로 줄이고, 내가 정할 범위를 먼저 적어 보세요.",
+      "약속한 일과 내가 바꿀 수 있는 일을 나누어 적은 뒤 하나씩 확인해 보세요.",
+      "시간과 돈을 먼저 정해 둔 뒤, 끝낸 일과 다음에 미룰 일을 구분해 보세요.",
+    ];
+  const action = actions[Math.abs(month.year + month.month) % actions.length];
   return `${month.label}에는 ${topic}을 살펴보세요. ${action} 잘된 점 하나와 바꿀 점 하나만 적어도 충분합니다.`;
+}
+
+function readableOverallContext(facts: SajuFacts): string {
+  if (facts.outputStarCount > 0 && facts.resourceStarCount > 0) {
+    return "관계에서는 상대의 반응을 듣고, 돈에서는 계속 감당할 비용을 정하며, 일에서는 반복할 기준을 정할 때 이 흐름이 생활에 남습니다.";
+  }
+  if (facts.officerStarCount > 0 && facts.peerStarCount > 0) {
+    return "출생시간이 없어 세부 시기는 확정하지 않고, 관계에서는 공동 약속과 개인 시간을, 일에서는 책임과 수정 권한을, 돈에서는 공동지출과 개인 자원을 나누어 살펴봅니다.";
+  }
+  if (facts.wealthStarCount > 0) {
+    return "내가 한 일이 실제 쓰임과 생활의 가치로 이어지는 흐름입니다. 반응의 크기보다 반복해서 쓸 수 있는 결과와 감당할 비용을 함께 확인해 보세요.";
+  }
+  return "생각을 정리한 뒤 생활에서 직접 확인하는 흐름입니다. 한 번에 답을 정하기보다 작은 선택을 해 보고 다음에 고칠 점을 남겨 보세요.";
+}
+
+function readablePeriodBasis(symbols: AnnualMonthSymbols, facts: SajuFacts): string {
+  const groups = [symbols.month.stemTenGod, symbols.month.branchTenGod]
+    .map(god => god ? TEN_GOD_GROUP[god] : null).filter(Boolean);
+  const topic = groups.includes("식상")
+    ? "생각을 말과 결과로 보여 주는 일"
+    : groups.includes("재성")
+      ? "시간과 돈을 나누어 쓰는 일"
+      : groups.includes("관성")
+        ? "약속과 맡은 일을 지키는 일"
+        : groups.includes("인성")
+          ? "배운 것을 생활에 쓰는 일"
+          : "내 선택과 다른 사람의 생각을 맞추는 일";
+  const natalReason = facts.outputStarCount > facts.officerStarCount
+    ? "내 생각을 먼저 시험하고 결과를 보며 고치는 흐름"
+    : facts.officerStarCount > 0
+      ? "맡은 일과 내가 정할 범위를 나누는 흐름"
+      : "준비한 내용과 직접 해 본 결과를 비교하는 흐름";
+  return `이 시기에는 ${topic}을 살펴보도록 골랐습니다. ${natalReason}과 그 시기의 변화를 함께 비교해 읽었습니다.`;
 }
 
 /** Equal contextual readings may be grouped, but a year boundary remains visible.
@@ -363,7 +423,7 @@ export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts,
     periods.push({
       label: month.label, months: [month.label], headline: interpretation.headline,
       reading: readablePeriodReading(month, symbols, facts),
-      basis: `계산된 세운 ${symbols.year.ganzhi} · 월운 ${symbols.month.ganzhi}. 함께 읽은 근거: ${describeReadingEvidence(interpreted)}. 이 상징의 전통적 의미를 이 달의 이야기로 읽었습니다.`,
+      basis: readablePeriodBasis(symbols, facts),
       domains: [], interpretation, symbols,
     });
     previousSignature = signature;
@@ -410,18 +470,13 @@ export function buildPremiumReport(input: {
   const integration = hasPalms ? buildIntegratedPalmReading(facts, input.leftPalm!, input.rightPalm!, input.dominantHand!, editorial) : {};
   const periods = buildPremiumPeriods(annual, facts, { leftPalm: input.leftPalm, rightPalm: input.rightPalm, dominantHand: input.dominantHand });
   const currentDaeunBasis = facts.currentDaeun
-    ? ` 현재 대운 ${facts.currentDaeun.ganzhi}(${facts.currentDaeun.stemTenGod}/${facts.currentDaeun.branchTenGod})을 함께 읽었습니다.`
-    : " 출생시간이 확인되지 않아 대운 기반 시기 해석은 제외했습니다.";
-  const overallBase = natalLeaders(facts)[0] === "관성"
-    ? [
-      "원국의 중심에는 맡은 역할을 끝까지 지키고 신뢰를 쌓는 기준이 놓여 있습니다. 잘해냈다는 평가보다 어떤 약속을 계속 맡을지, 누구의 기대까지 책임질지를 스스로 정해야 삶의 방향이 흐려지지 않습니다.",
-      "책임감은 강점이지만 모든 요청에 같은 무게로 답할 필요는 없습니다. 지킬 약속과 조정할 약속을 나누고, 일을 잘하는 사람이라는 이름 뒤에 쉬어야 할 시간을 남길 때 신뢰가 오래 갑니다.",
-    ]
-    : customer.overall;
-  overall.paragraphs = [...overallBase, buildOverallContext(facts)];
+    ? ` 현재의 큰 흐름에서는 ${groupsForDaeun(facts).map(group => GROUP_LABEL[group] ?? "생활의 변화").join(", ")}의 의미를 함께 참고했습니다.`
+    : " 출생시간이 확인되지 않아 큰 흐름과 세부 시기는 제외했습니다.";
+  const overallBase = customer.overall;
+  overall.paragraphs = [...overallBase, readableOverallContext(facts)];
   overall.basis = premiumEvidenceBasis(facts, "overall") + currentDaeunBasis;
-  const overallEvidence = premiumOverallEvidence(editorial);
-  if (overallEvidence) overall.basis += ` ${overallEvidence}`;
+  // Customer basis is intentionally phrased as a reason for the reading;
+  // internal evidence labels remain available to the calculation layer only.
   overall.headline = "자기 중심과 마음속의 다른 바람";
   overall.opportunity = "";
   overall.caution = "";
@@ -436,7 +491,6 @@ export function buildPremiumReport(input: {
     reading.opportunity = ""; reading.caution = ""; reading.tip = "";
     reading.observationNote = null;
     reading.basis = premiumEvidenceBasis(facts, area === "love_relationship" ? "relationship" : area) + currentDaeunBasis;
-    if (connection) reading.basis += ` 함께 읽은 주요선: ${describeReadingEvidence(connection.plan.evidence)}.`;
   }
   const priorSignals = hasPalms ? buildTripleCompare(facts, (input.dominantHand === "left" ? input.leftPalm! : input.rightPalm!).onnxLines, null) : [];
   const joint = integration.overall;

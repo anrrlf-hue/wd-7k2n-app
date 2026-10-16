@@ -53,7 +53,8 @@ for (const [i, birth] of births.entries()) {
   assert.doesNotMatch(readerBody, /반드시|확정된 미래|실제 수입이 늘어납니다/);
   // The generator still computes all months, while the customer view shows
   // only the selected major intervals to keep the annual section readable.
-  assert.ok(report.periods.every(p => p.symbols && p.basis.includes(p.symbols.month.ganzhi)));
+  assert.ok(report.periods.every(p => p.symbols && p.basis.length >= 30));
+  assert.doesNotMatch(report.periods.map(p => p.basis).join(" "), /원국|인성|식상|관성|비겁|재성|대운|세운|천간|지지|별 개수/);
   assert.ok(report.annualHighlights.every(label => {
     const period = report.periods.find(p => p.months[0] === label);
     return period && html.includes(period.basis);
@@ -73,9 +74,9 @@ for (const [i, birth] of births.entries()) {
     assert.equal(new Set(d.paragraphs).size, d.paragraphs.length, "each passage contributes a distinct explanation");
     for (const text of d.paragraphs) assert.equal(html.split(text).length - 1, 1, "every passage is rendered once");
     if (d.key === "money") {
-      assert.match(d.paragraphs[0], /돈을 벌고 쓰는 일/);
-      assert.match(d.paragraphs[1], /작은 금액/);
-      assert.match(d.paragraphs[2], /사람과 함께/);
+       assert.match(d.paragraphs[0], /재물의 획득|돈을 벌고 쓰는 일/);
+       assert.match(d.paragraphs[1], /보유에서는|유지에서는|공동 비용/);
+       assert.match(d.paragraphs[2], /지출에서는|비용/);
     }
     assert.equal(d.opportunity, "", "the same example is not repeated in a second card");
     assert.equal(d.caution, "", "the already explained caution is not repeated below");

@@ -123,10 +123,10 @@ for (const day of [1, 7]) {
   for (const [index, period] of report.periods.entries()) {
     const month = report.annual.months[index];
     assert.deepEqual(period.symbols, describeAnnualMonthSymbols(facts, month));
-    assert.match(period.basis, new RegExp(period.symbols.month.ganzhi));
-    assert.match(period.basis, new RegExp(period.symbols.year.ganzhi));
+    assert.match(period.basis, /이 시기에는|이 부분은/);
+    assert.doesNotMatch(period.basis, /원국|인성|식상|관성|비겁|재성|대운|세운|천간|지지|별 개수/);
     assert.ok(period.interpretation.passages.every(p => p.evidenceIds.every(id => period.interpretation.evidence.some(e => e.id === id))));
-    assert.match(period.basis, /이 달 천간:.*이 달 지지:/);
+    assert.match(period.basis, /함께 비교해 읽었습니다/);
     assert.doesNotMatch(displayed[index], /정재이|편재이|문제과|결과으로|결과을|설명를|부분로/);
     if (period.symbols.month.stemTenGod === period.symbols.month.branchTenGod) {
       assert.ok(!period.headline.includes(' · '), 'one exact symbol must have one topic, not a doubled heading');
@@ -160,12 +160,12 @@ for (const day of [1, 7]) {
   assert.doesNotMatch(report.annualMethod, /세운|천간|지지|원국/);
   assert.ok(!report.overall.paragraphs.join(' ').includes('작은 결과를 보여준 뒤'), 'the overall reading must not spend the work scene');
   assert.doesNotMatch(report.overall.paragraphs.join(' '), /전체 풀이의 중심|원국의 서로 다른 자리|맥락으로 삼/);
-  assert.match(report.overall.basis, /일간.*오행.*강약/,
-    'the calculated natal facts remain inspectable in the folded basis');
+  assert.match(report.overall.basis, /이 풀이는 .*중심으로 읽었습니다/,
+    'the customer basis explains why the overall reading was chosen');
   const love = report.domains.find(d => d.key === 'love_relationship').paragraphs.join(' ');
   const money = report.domains.find(d => d.key === 'money').paragraphs.join(' ');
   const work = report.domains.find(d => d.key === 'work').paragraphs.join(' ');
-  assert.match(money, /돈을 벌고 쓰는 일|시간과 돈/);
+  assert.match(money, /재물의 획득|보유에서는|지출에서는|시간과 돈/);
   const moneyParagraphs = report.domains.find(d => d.key === 'money').paragraphs;
   assert.equal(moneyParagraphs.length, 3);
   assert.ok(moneyParagraphs.slice(1).every(text => text.length > 40),
