@@ -1,7 +1,7 @@
 import { TEN_GOD_GROUP, type SajuFacts, type TenGodGroup } from "@/lib/saju-facts";
 import type { FreeSajuReport, ReportParagraph } from "@/lib/free-report-schema";
 import { gwaWa } from "@/lib/korean-particle";
-import { buildCustomerReadingPlan } from "@/lib/customer-reading-plan";
+import { buildCustomerReadingPlan, renderCustomerPlanCopy } from "@/lib/customer-reading-plan";
 
 type Theme = "self" | "relationship" | "money" | "work" | "life";
 type God = keyof typeof GOD;
@@ -32,6 +32,7 @@ const isGod = (v?: string): v is God => Boolean(v && Object.hasOwn(GOD, v));
  * hidden stems, unknown hours and unused relations never acquire extra weight. */
 export function buildNatalNarrativeFrame(facts: SajuFacts) {
   const plan = buildCustomerReadingPlan(facts);
+  const planCopy = renderCustomerPlanCopy(facts, plan);
   const pillars = facts.pillars.filter(p => facts.hasTimeInput || p.pillar !== "hour");
   const month = pillars.find(p => p.pillar === "month"), day = pillars.find(p => p.pillar === "day");
   const hour = pillars.find(p => p.pillar === "hour");
@@ -52,7 +53,7 @@ export function buildNatalNarrativeFrame(facts: SajuFacts) {
     work: `월주 ${month?.ganzhi ?? "미확인"}/${month?.stemTenGod ?? "미확인"}/${workGod ?? "미확인"}; 일간 ${facts.dayStem}; 드러난 식상 ${counts.식상}, 비겁 ${counts.비겁}, 인성 ${counts.인성}`,
     life: `드러난 식상 ${counts.식상}, 인성 ${counts.인성}; ${facts.dayStrengthReliable ? `강약 ${({ strong: "강한 편", weak: "약한 편", neutral: "중화" })[facts.dayStrength]}` : "강약 미사용"}; 생활 리듬의 상징 해석, 의료 진단 아님`,
   };
-  return { facts, stem, counts, leaders, month, day, hour, workGod, closeGod, fireMeeting, evidence, plan };
+  return { facts, stem, counts, leaders, month, day, hour, workGod, closeGod, fireMeeting, evidence, plan, planCopy };
 }
 export type NatalNarrativeFrame = ReturnType<typeof buildNatalNarrativeFrame>;
 
@@ -88,9 +89,7 @@ function centerLegacy(frame: NatalNarrativeFrame): string {
 
 */
 function center(frame: NatalNarrativeFrame): string {
-  const { stem: s, plan } = frame;
-  const theme = plan.themes[0];
-  return `${s.name}\uC778 \uB2F9\uC2E0\uC758 \uC911\uC2EC\uC740 ${s.center}\uC73C\uB85C \uC77D\uD799\uB2C8\uB2E4. \uD575\uC2EC\uC8FC\uC81C\uB294 '${theme.title}'\uC774\uBA70, ${theme.meaning}. ${theme.opposite}.`;
+  return frame.planCopy.center;
 }
 
 function disposition(frame: NatalNarrativeFrame): string {
@@ -307,15 +306,6 @@ export function buildCustomerFreeNarrative(facts: SajuFacts): Omit<FreeSajuRepor
   const close = CLOSE[f.closeGod ? TEN_GOD_GROUP[f.closeGod] : "비겁"];
   const relationship = relationshipReading(f);
   const work = workReading(f);
-  const planText = (domain: "relationship" | "work" | "money") => {
-    const allocation = f.plan.allocations.find((item) => item.domain === domain);
-    return allocation ? ` ${allocation.scene}에서 ${allocation.choice}` : "";
-  };
-  relationship.social += planText("relationship");
-  relationship.intimate += planText("relationship");
-  work.environment += planText("work");
-  work.team += planText("work");
-  work.solo += planText("work");
   const paragraph = (theme: Theme, text: string): ReportParagraph => ({ text, evidence: f.evidence[theme] });
   const wealth = c.재성 > 0 && c.식상 > 0
     ? c.재성 >= 3
@@ -382,12 +372,12 @@ export function buildCustomerFreeNarrative(facts: SajuFacts): Omit<FreeSajuRepor
   const timeNote = !facts.hasTimeInput
     ? " 출생시간이 확인되지 않아 시간에 따라 달라질 수 있는 강약과 시기는 확정하지 않고 읽었습니다."
     : "";
-  return { plan: f.plan, snapshot: paragraph("self", center(f) + timeNote), temperament: paragraph("self", disposition(f)),
-    relationshipStyle: paragraph("relationship", relationship?.social ?? close.social), loveStyle: paragraph("relationship", relationship?.intimate ?? close.intimate),
+  return { snapshot: paragraph("self", center(f) + timeNote), temperament: paragraph("self", disposition(f)),
+    relationshipStyle: paragraph("relationship", f.planCopy.relationship[0]), loveStyle: paragraph("relationship", f.planCopy.relationship[1]),
     lifeRhythm: paragraph("life", c.식상 > 0 && c.식상 === c.인성 ? "생활에는 혼자 이해하며 마음을 놓는 시간과 밖으로 표현하며 활기를 얻는 시간이 함께 있습니다. 충분히 알고 시작했어도 직접 하는 동안 다른 즐거움이 생깁니다. 사람을 만난 뒤 조용히 머물고 싶은 날과 혼자 있다가 나누고 싶은 날이 달라도 자기 리듬의 한 모습으로 읽습니다." : c.식상 > c.인성 ? "생활에서는 머릿속에 있던 것을 밖으로 꺼낼 때 활기가 생기는 쪽입니다. 새로 해 본 날의 즐거움과 익숙한 곳에 돌아와 쉬는 안도감이 함께 필요합니다. 하루를 알차게 채웠어도 좋아하는 순간이 없었다면 바쁜 정도와 만족의 이유는 달랐을 수 있습니다." : "생활에서는 조용히 생각을 모으고 익숙한 시간을 되찾을 때 마음이 정돈되는 쪽입니다. 사람을 만난 날에도 혼자 머물며 자기 느낌을 알아볼 시간이 소중합니다. 편한 반복 안에서 좋아하는 일이 사라졌다면 쉬는 시간의 길이보다 그 안에 남은 즐거움을 돌아보게 됩니다."),
-     wealthStructure: paragraph("money", wealth + planText("money")), earningStyle: paragraph("money", earning), keepingStyle: paragraph("money", keeping), leakPattern: paragraph("money", spending),
+     wealthStructure: paragraph("money", f.planCopy.money[0]), earningStyle: paragraph("money", f.planCopy.money[1]), keepingStyle: paragraph("money", keeping), leakPattern: paragraph("money", spending),
     bigMoneyAffinity: paragraph("money", c.재성 > 0 ? "큰 기회에서는 표현한 것이 더 넓은 쓰임을 얻는 설렘을 읽습니다. 많은 사람에게 닿는 것과 자신이 아끼는 차이를 깊게 남기는 것은 다른 만족입니다. 관심의 크기만으로 재물의 성과를 정하지 않으며, 실제 투자 결과는 이 풀이로 판단하지 않습니다." : "큰 기회는 규모의 매력과 자신의 생활에 남는 의미를 함께 읽습니다. 낯선 것을 많이 얻는 설렘과 오래 감당할 수 있다는 안심은 다릅니다. 계산된 재물 상징만으로 투자 성과나 자산의 크기를 정하지 않습니다."),
-    jobOrientation: paragraph("work", work.environment), teamStrength: paragraph("work", work.team), soloStrength: paragraph("work", work.solo),
+     jobOrientation: paragraph("work", f.planCopy.work[0]), teamStrength: paragraph("work", f.planCopy.work[1]), soloStrength: paragraph("work", work.solo),
     peopleAndMoney: paragraph("money", c.재성 > 0 ? "사람과 돈이 만나는 곳에서는 함께 누린 기쁨과 각자 남긴 가치가 다를 수 있습니다. 같은 것을 좋아해 마련했어도 쓰는 횟수나 소중한 부분은 서로 다릅니다. 내가 고른 좋은 점을 설명하는 시간 옆에 상대가 실제로 즐긴 한 순간을 들을 때 함께 쓰는 의미가 깊어집니다." : c.비겁 > 0 ? "가까운 사람과 돈을 함께 쓰면 자기 취향과 함께 누리는 즐거움이 만납니다. 모두에게 좋은 것을 고르고 싶어도 각자 자주 쓰는 부분은 다를 수 있습니다. 같은 비용을 냈다는 사실보다 서로 필요했던 것이 존중받았는지가 오래 남는 만족을 가릅니다." : "사람에게 받은 도움과 돈을 쓰는 선택이 겹치면 고마움이 판단에 함께 들어옵니다. 좋은 뜻을 받아들이는 마음이 추천된 물건까지 좋아해야 한다는 뜻은 아닙니다. 따뜻한 관계 안에서도 자신의 생활에 필요한 쓰임을 남길 수 있습니다."),
      decisionStyle: paragraph("self", decision), opportunityStyle: paragraph("work", opportunityReading(f)),
     strengths, cautions, evidenceExplainer: Object.entries(f.evidence).map(([area, evidence]) => `${area}: ${evidence}`).join("\n"),
@@ -482,6 +472,6 @@ export function buildCustomerPremiumNarrative(facts: SajuFacts) {
         "잘 맞는 환경은 익숙한 역할을 안정적으로 이어 가면서도 새로 배울 한 가지를 분명히 주는 곳입니다. 역할이 계속 바뀌는데 기준이나 결과를 확인할 기회가 없으면 적응력보다 피로가 먼저 남을 수 있습니다.",
         "협업에서는 자신의 방식만 지키거나 모두 맞추는 양극단보다, 이미 책임진 몫과 함께 조정할 몫을 구별하는 일이 중요합니다. 그 구분이 있어야 신뢰와 자기 기준을 동시에 지킬 수 있습니다.",
       ];
-  return { frame: f, plan: f.plan, summary: premiumSummary,
+  return { frame: f, summary: premiumSummary,
     overall: [overall, inner], love: [relationship?.deeper ?? close.deeper], money: [acquisition, management, expense], work: premiumWork };
 }

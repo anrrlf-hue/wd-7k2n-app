@@ -96,14 +96,14 @@ assert.doesNotMatch(premiumSerialized, /쓰임과 교환와|현재 대운을 계
 assert.doesNotMatch(text(reports[3], "money"), /이미 눈에 보이는 기회가 여러 번 생겨도/);
 
 const workTexts = reports.map((report) => text(report, "work"));
-assert.ok(workTexts.some((value) => value.includes("정해진 모양")), "work: expression case retained");
-assert.ok(workTexts.some((value) => value.includes("이미 쌓은 결과")), "work: accumulated-results case retained");
-assert.ok(workTexts.some((value) => value.includes("자기 판단을 빠르게")), "work: action-and-judgment case retained");
+assert.ok(workTexts.some((value) => value.includes("초안을 먼저 보여")), "work: expression case retained");
+assert.ok(workTexts.some((value) => value.includes("실제 고객이나 동료")), "work: accumulated-results case retained");
+assert.ok(workTexts.some((value) => value.includes("선택할 재량")), "work: action-and-judgment case retained");
 
 const moneyTexts = reports.map((report) => text(report, "money"));
-assert.ok(moneyTexts.some((value) => value.includes("정당한 대가")), "money: trust-to-compensation case retained");
-assert.ok(moneyTexts.some((value) => value.includes("정당한 대가")), "money: trust-to-compensation case retained");
-assert.ok(moneyTexts.some((value) => value.includes("자기 표현")), "money: expression-to-use case retained");
+assert.ok(moneyTexts.some((value) => value.includes("실제 생활에서 불편")), "money: practical-cost case retained");
+assert.ok(moneyTexts.some((value) => value.includes("공동지출")), "money: shared-cost case retained");
+assert.ok(moneyTexts.some((value) => value.includes("표현을 위해")), "money: expression-to-use case retained");
 
 const premiumMoney = reports.map((report) => report.premium.domains.find((domain) => domain.key === "money")?.paragraphs.join("\n") ?? "");
 const premiumWork = reports.map((report) => report.premium.domains.find((domain) => domain.key === "work")?.paragraphs.join("\n") ?? "");

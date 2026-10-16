@@ -11,7 +11,7 @@ const connected = buildPremiumReport({ facts, freeReport, referenceDate: new Dat
 const disconnected = buildPremiumReport({ facts, referenceDate: new Date("2026-10-16T00:00:00Z") });
 
 assert.deepEqual(connected.overall.paragraphs, disconnected.overall.paragraphs);
-assert.ok(connected.overall.paragraphs.some((paragraph) => paragraph.includes("표현과 반응")));
-assert.ok(connected.domains.every((domain) => domain.paragraphs.some((paragraph) => paragraph.includes("장면"))));
+assert.ok(connected.domains.every((domain) => domain.paragraphs.length === 2));
+assert.ok(connected.domains.every((domain) => !domain.paragraphs.some((paragraph) => /장면 실제|장면 기준|자리 잘해|자리 책임/.test(paragraph))));
 
 console.log("free-premium bridge: passed");

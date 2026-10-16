@@ -358,10 +358,6 @@ function annualHighlights(periods: PremiumPeriod[]): string[] {
   return selected.map(p => p.months[0]);
 }
 
-function expandCustomerPlanForPremium(plan: NonNullable<ReturnType<typeof buildCustomerPremiumNarrative>["plan"]>): string[] {
-  return plan.themes.flatMap((theme) => theme.conditions.map((condition) => `${theme.title}: ${condition} ${theme.opposite}`));
-}
-
 export function buildPremiumReport(input: {
   facts: SajuFacts;
   freeReport?: FreeSajuReport;
@@ -394,7 +390,7 @@ export function buildPremiumReport(input: {
       "책임감은 강점이지만 모든 요청에 같은 무게로 답할 필요는 없습니다. 지킬 약속과 조정할 약속을 나누고, 일을 잘하는 사람이라는 이름 뒤에 쉬어야 할 시간을 남길 때 신뢰가 오래 갑니다.",
     ]
     : customer.overall;
-  overall.paragraphs = [...overallBase, buildOverallContext(facts), ...expandCustomerPlanForPremium(customer.plan)];
+  overall.paragraphs = [...overallBase, buildOverallContext(facts)];
   overall.basis = premiumEvidenceBasis(facts, "overall") + currentDaeunBasis;
   const overallEvidence = premiumOverallEvidence(editorial);
   if (overallEvidence) overall.basis += ` ${overallEvidence}`;
@@ -406,8 +402,8 @@ export function buildPremiumReport(input: {
     if (area === "wellbeing") continue;
     const connection = integration[area];
     const palmText = connection?.plan.passages.map(passage => passage.text).join("\n\n");
-    const allocation = customer.plan.allocations.find((item) => item.domain === (area === "love_relationship" ? "relationship" : area));
-    reading.paragraphs = [...buildIntegratedDomainParagraphs(area, facts, palmText), ...(allocation ? [`${allocation.scene} ${allocation.choice}`] : [])];
+    const planParagraphs = area === "love_relationship" ? customer.frame.planCopy.relationship : area === "money" ? customer.frame.planCopy.money : customer.frame.planCopy.work;
+    reading.paragraphs = [...planParagraphs, ...(palmText ? [palmText] : [])];
     reading.headline = area === "money" ? "얻은 가치와 생활에 남기는 조건" : area === "work" ? "실력이 쓰이는 환경과 끝내는 방식" : "가까움에서 서로의 선택이 남는 방식";
     reading.opportunity = ""; reading.caution = ""; reading.tip = "";
     reading.observationNote = null;
