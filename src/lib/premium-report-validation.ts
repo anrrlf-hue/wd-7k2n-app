@@ -23,7 +23,7 @@ const interpretation = z.object({
 });
 const renderableReport = z.object({
   version: z.enum(["annual-reading-2026-10-v2", "context-reading-2026-10-v3", "personal-reading-2026-10-v4", "integrated-reading-2026-10-v5", "coherent-reading-2026-10-v6", "edited-reading-2026-10-v7", "evidence-reading-2026-10-v8", "distinct-reading-2026-10-v9", "decision-reading-2026-10-v10", "lived-reading-2026-10-v11", "connected-reading-2026-10-v12", "year-connected-reading-2026-10-v13", PREMIUM_REPORT_VERSION]),
-  title: z.literal("프리미엄 통합 연간 리포트"), summary: text, note: text,
+  title: z.literal("프리미엄 통합 풀이"), summary: text, note: text,
   overall: reading,
   domains: z.array(reading.extend({ key: z.enum(keys), label: text })).length(3).refine(items => items.every((item, i) => item.key === keys[i])),
   annual,

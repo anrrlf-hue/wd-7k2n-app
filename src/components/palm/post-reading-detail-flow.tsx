@@ -186,7 +186,7 @@ export function PostReadingDetailFlow({ birthInput, personalityInput, leftPalmFa
     {stage === "premium" && <AnalyticsView event="premium_report_viewed" />}
     {stage === "ready" && <section className="rounded-3xl border border-(--gold-soft) bg-card p-5">
       <div className="flex items-center gap-2 text-(--gold)"><Crown className="size-4" /><p className="section-eyebrow">프리미엄</p></div>
-      <h2 className="mt-2 text-xl leading-8 font-semibold">프리미엄 깊은풀이 · 나의 12개월</h2>
+      <h2 className="mt-2 text-xl leading-8 font-semibold">프리미엄 통합 풀이</h2>
       <p className="mt-2 text-sm leading-7 text-muted-foreground">무료 요약에서 더 나아가, 관계·재물·직장에서 같은 기질이 다르게 드러나는 장면과 구체적인 보완 방법을 읽습니다. 12개월의 흐름을 비교하고, 양손에서 실제로 읽힌 특징이 있으면 사주와 함께 살펴봅니다.</p>
       {eligible && <Button size="lg" onClick={() => void loadPremium()} className="mt-4 h-14 w-full rounded-full text-base">{refreshRequested ? "새 리포트 다시 요청" : premiumReport ? "프리미엄 무료 체험 다시 보기" : "프리미엄 무료 체험 보기"}</Button>}
       {trialState === "checking" && <p role="status" className="mt-3 text-sm">이 풀이의 이벤트 참여를 확인하고 있어요.</p>}

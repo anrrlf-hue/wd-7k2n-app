@@ -150,22 +150,26 @@ const DAEUN_READINGS: Record<string, DaeunReading> = {
 
 function daeunReading(facts: SajuFacts, area: DaeunArea): string {
   const current = daeunPair(facts);
-  if (!current) return "현재 대운을 계산할 수 없어 원국의 신호만으로 읽었습니다.";
+  if (!current) return `출생시간이 확인되지 않아 대운의 시기는 제외하고, 원국에서 확인된 ${area === "money" ? "수입과 지출의 기준" : area === "work" ? "역할과 결정 방식" : area === "love" ? "약속과 관계의 경계" : "중심 기질"}만 읽었습니다.`;
   const key = `${current.daeun.stemTenGod}|${current.daeun.branchTenGod}`;
   const exact = DAEUN_READINGS[key];
   if (exact) return `현재 ${current.daeun.ganzhi} 대운의 ${current.daeun.stemTenGod}·${current.daeun.branchTenGod} 조합은 ${exact[area]}`;
-  const groups = current.groups.map(group => GROUP_LABEL[group]).join("와 ");
+  const groups = current.groups.map(group => GROUP_LABEL[group]).join("·");
   return `현재 ${current.daeun.ganzhi} 대운의 ${current.daeun.stemTenGod}·${current.daeun.branchTenGod} 조합은 ${groups}의 문제를 함께 드러냅니다. 이 시기에 익숙한 원국의 장점을 어떤 조건으로 이어갈지 확인하는 흐름입니다.`;
 }
 
 function buildOverallContext(facts: SajuFacts): string {
   const current = daeunPair(facts);
   const leaders = natalLeaders(facts);
-  if (leaders[0] === "관성") return current ? daeunReading(facts, "overall") : "현재 대운을 계산할 수 없어 원국의 책임 기준만으로 읽었습니다.";
+  if (leaders[0] === "관성") return current ? daeunReading(facts, "overall") : "확인된 원국에서는 맡은 책임의 기준과 자신의 한계를 함께 세우는 일이 중심입니다.";
   if (leaders[0] === "인성") {
-    return `원국에서는 ${natalPlacement(facts, "인성")}의 인성처럼 이유를 이해하고 충분한 바탕을 만든 뒤 움직이는 힘이 중심입니다. 많이 아는 것보다 무엇을 실제 경험으로 옮길지 정할 때 자기 중심이 선명해집니다. ${current ? daeunReading(facts, "overall") : "현재 대운을 계산할 수 없어 원국의 이해와 준비를 중심으로 읽었습니다."}`;
+    return `원국에서는 ${natalPlacement(facts, "인성")}의 인성처럼 이유를 이해하고 충분한 바탕을 만든 뒤 움직이는 힘이 중심입니다. 많이 아는 것보다 무엇을 실제 경험으로 옮길지 정할 때 자기 중심이 선명해집니다. ${current ? daeunReading(facts, "overall") : "확인된 원국에서는 이해한 내용을 자신의 말과 경험으로 옮길 때 배움이 생활에 남습니다."}`;
   }
-  if (!current) return "현재 대운을 계산할 수 없어 원국의 중심 긴장만으로 읽었습니다.";
+  if (!current) {
+    if (facts.peerStarCount >= 2) return "확인된 원국에서는 주변의 기대와 자기 선택을 함께 다루는 힘이 중심입니다. 여러 요구를 모두 떠안기보다 직접 결정할 범위와 도움을 받을 범위를 나눌 때 중심이 선명해집니다.";
+    if (facts.wealthStarCount > 0) return "확인된 원국에서는 맡은 역할과 실제 생활에 남는 가치가 이어지는 과정이 중심입니다. 책임을 다하는 방식과 자신의 몫을 받는 조건을 함께 확인할 때 방향이 구체화됩니다.";
+    return "확인된 원국에서는 익숙한 기준과 새로 달라진 바람을 함께 살피는 태도가 중심입니다. 경험으로 확인한 부분을 현재의 선택 기준으로 남길 때 풀이가 생활에 닿습니다.";
+  }
   if (facts.outputStarCount > 0 && facts.wealthStarCount > 0) {
     return `원국에서는 내놓은 결과가 실제 쓰임과 보상으로 이어지는 과정이 중심입니다. ${daeunReading(facts, "overall")} 결과를 넓히기 전에 지속할 범위와 자기 몫을 함께 정하는 긴장으로 읽습니다.`;
   }
@@ -178,7 +182,7 @@ function buildOverallContext(facts: SajuFacts): string {
 function buildLoveContext(facts: SajuFacts): string {
   const current = daeunPair(facts);
   if (facts.outputStarCount + facts.wealthStarCount > facts.resourceStarCount + facts.officerStarCount) {
-    const period = current ? `현재의 큰 흐름에서는 사람과 결과가 만나는 장면이 커집니다.` : "현재 대운이 계산되지 않아 원국의 표현과 교환 신호만 읽습니다.";
+    const period = current ? `현재의 큰 흐름에서는 사람과 결과가 만나는 장면이 커집니다.` : "출생시간이 확인되지 않아 시기 대신 원국의 표현과 교환 신호만 읽습니다.";
     return `${period} 반응이 다를 때에는 잘된 점 하나와 아쉬운 점 하나를 따로 말해 보세요. 한쪽의 취향을 다른 쪽의 거절로 바꾸지 않을 때 가까움이 오래 갑니다.`;
   }
   if (facts.officerStarCount > facts.resourceStarCount) {
@@ -212,6 +216,9 @@ function buildWorkContext(facts: SajuFacts): string {
 
 function premiumDomainBase(area: "love_relationship" | "money" | "work", facts: SajuFacts): string[] {
   if (area === "love_relationship") {
+    if (facts.outputStarCount + facts.wealthStarCount > facts.resourceStarCount + facts.officerStarCount && facts.dayElement === "화") return [
+      "관계에서는 함께 움직이며 바로 반응을 주고받는 장면이 가까움을 키웁니다. 먼저 제안하고 분위기를 살리는 힘이 있지만, 빠르게 정한 즐거움이 상대에게도 같은 속도로 편한지는 따로 확인해야 합니다. 열정이 의무가 되지 않도록 각자의 회복 시간까지 관계의 일부로 남겨야 합니다.",
+    ];
     if (facts.outputStarCount + facts.wealthStarCount > facts.resourceStarCount + facts.officerStarCount) return [
       "관계에서는 좋아하는 것을 함께 만들고 반응을 주고받는 과정이 가까움을 키웁니다. 표현한 것을 상대가 실제로 쓰거나 즐기는 모습을 보면 자신의 취향이 관계 밖으로도 이어졌다는 보람이 생깁니다. 다만 상대의 반응을 얻기 위해 내가 좋아한 부분까지 바꾸지는 않는 편이 좋습니다.",
     ];
@@ -229,6 +236,11 @@ function premiumDomainBase(area: "love_relationship" | "money" | "work", facts: 
       "유지에서는 다른 사람의 기대와 내 생활에 남길 자원을 분리해야 합니다. 좋은 뜻으로 맡은 일이 계속 무급의 추가 부담으로 늘어나지 않게 선을 정할 필요가 있으며, 도와주고 싶은 마음과 계속 부담할 의무는 다릅니다.",
       "지출에서는 새 준비물을 늘리기 전에 이미 가진 것으로 작은 결과를 만들어 보는 편이 맞습니다. 실행 뒤 실제로 부족했던 것만 추가하면 기대와 필요를 구분할 수 있고, 준비하는 안심을 생활의 결과로 착각하는 일도 줄어듭니다.",
     ];
+    if (facts.outputStarCount >= facts.wealthStarCount && facts.dayElement === "화") return [
+      "획득에서는 먼저 움직여 만든 결과를 상대의 필요에 맞게 다듬는 힘이 교환의 가치로 이어집니다. 수입이 생긴 뒤에는 도구·광고·공동 비용에 한꺼번에 넓히기보다 다음 시도에 남겨 둘 여유를 먼저 떼어 두어야 추진력이 생활을 압박하지 않습니다.",
+      "유지에서는 빠르게 커진 기회와 생활의 회복 시간을 함께 계산해야 합니다. 결과를 더 넓히는 데 모두 재투입하기보다 다음에도 감당할 몫을 남길 때 추진력이 지속 가능한 자원으로 남습니다.",
+      "지출에서는 시작을 돕는 도구와 실제로 반복해서 쓰는 도구를 구분하는 일이 중요합니다. 처음의 열정에 맞춰 모두 갖추기보다 한 번 실행한 뒤 다음 비용을 정하면 선택의 속도와 생활의 여유가 함께 보존됩니다.",
+    ];
     if (facts.outputStarCount >= facts.wealthStarCount) return [
       "획득에서는 표현한 결과가 실제 필요와 만날 때 교환의 가치가 커집니다. 반응을 넓히는 즐거움은 기회를 키우지만, 관심이 곧 지속 가능한 대가라는 뜻은 아니므로 내 시간에 남는 몫을 함께 계산해야 합니다.",
       "유지에서는 함께 만든 결과를 다시 키울 자원과 지금 생활에 남길 자원을 따로 두어야 합니다. 사람의 관심이 커져도 내 시간을 모두 내놓을 필요는 없으며, 확장하고 싶은 마음과 쉬어야 하는 생활을 함께 고려해야 합니다.",
@@ -241,9 +253,15 @@ function premiumDomainBase(area: "love_relationship" | "money" | "work", facts: 
     ];
   }
   if (facts.officerStarCount > facts.outputStarCount) return [
+    ...(facts.dayElement === "화" ? [
+      "일에서는 책임을 맡는 속도와 결과를 완성하는 속도가 함께 빨라질 수 있어, 기준을 지키면서도 조정할 시점을 미리 정하는 일이 중요합니다. 신뢰받는 만큼 즉시 해결하려는 힘을 전문성으로 남기려면 다음 요청을 받을 조건까지 말해야 합니다.",
+      "환경에서는 요구의 우선순위와 실제 결정권이 한 문장 안에서 맞아야 합니다. 책임만 먼저 커지면 추진력이 피로로 바뀌므로, 어느 범위까지 직접 판단하고 어디서 협의할지 정할 수 있는 자리가 맞습니다.",
+      "협업에서는 문제를 먼저 붙잡는 장점과 동료가 자기 몫을 찾을 시간을 함께 남겨야 합니다. 내가 빠르게 해결한 부분과 다음 사람이 이어 갈 부분을 구분할 때 믿음직함이 한 사람에게 고정되지 않습니다.",
+    ] : [
     "일에서는 맡은 기준을 지키고 책임의 범위를 분명히 하는 힘이 중심입니다. 성실함은 신뢰를 쌓지만, 잘할수록 더 맡겨지는 구조에서는 자신의 한계를 말하기 어려워질 수 있으므로 완료 기준을 먼저 정해야 합니다.",
     "환경에서는 평가 기준과 결정 권한이 함께 주어지는 자리가 맞습니다. 책임만 있고 수정할 권한이 없다면 신뢰가 소진으로 바뀔 수 있고, 반대로 기준이 분명하면 꾸준함이 전문성으로 남습니다.",
     "협업에서는 먼저 맡은 범위와 추가 요청의 절차를 합의하는 것이 중요합니다. 결과를 끝낸 뒤 다음 책임을 별도로 선택해야 오래 일할 수 있으며, 모두를 대신 해결하는 방식만이 믿음직함은 아닙니다.",
+    ]),
   ];
   if (facts.outputStarCount > facts.officerStarCount) return [
     "일에서는 생각을 결과물로 꺼내고 반응을 받아 다시 다듬는 힘이 중심입니다. 새로운 시도를 빠르게 만드는 장점이 있지만, 반응을 모두 따라가면 처음의 취향을 잃을 수 있어 완벽한 첫 결과보다 다음 버전으로 이어지는 실험이 실력이 됩니다.",
@@ -365,7 +383,7 @@ export function buildPremiumReport(input: {
   const periods = buildPremiumPeriods(annual, facts, { leftPalm: input.leftPalm, rightPalm: input.rightPalm, dominantHand: input.dominantHand });
   const currentDaeunBasis = facts.currentDaeun
     ? ` 현재 대운 ${facts.currentDaeun.ganzhi}(${facts.currentDaeun.stemTenGod}/${facts.currentDaeun.branchTenGod})을 함께 읽었습니다.`
-    : " 현재 대운은 계산되지 않았습니다.";
+    : " 출생시간이 확인되지 않아 대운 기반 시기 해석은 제외했습니다.";
   const overallBase = natalLeaders(facts)[0] === "관성"
     ? [
       "원국의 중심에는 맡은 역할을 끝까지 지키고 신뢰를 쌓는 기준이 놓여 있습니다. 잘해냈다는 평가보다 어떤 약속을 계속 맡을지, 누구의 기대까지 책임질지를 스스로 정해야 삶의 방향이 흐려지지 않습니다.",
@@ -404,7 +422,7 @@ export function buildPremiumReport(input: {
     ? [...new Set([TEN_GOD_GROUP[facts.currentDaeun.stemTenGod], TEN_GOD_GROUP[facts.currentDaeun.branchTenGod]].filter(Boolean))] : [];
   return {
     version: PREMIUM_REPORT_VERSION,
-    title: "프리미엄 통합 연간 리포트",
+    title: "프리미엄 통합 풀이",
     summary: customer.summary,
     overall, domains, annual, periods,
     profileRule: natal.rule,
