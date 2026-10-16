@@ -213,6 +213,42 @@ function pillarsWithTenGod(pillars: PillarFact[], stars: Set<string>): PillarFac
 
 const PEAK_STAGES = new Set(["건록", "제왕"]);
 
+function compactWithoutUnknownTime(compact: string, keyRelations: string[], gwimunRelations: string[]): string {
+  const lines = compact
+    .replace(/(\d{4}\.\d{2}\.\d{2}) 12:00/g, "$1 \uC2DC\uAC04 \uBBF8\uC0C1")
+    .split("\n");
+  const output: string[] = [];
+  let inPillars = false;
+  let inRelations = false;
+  let inDaeun = false;
+  const relationText = [...keyRelations, ...gwimunRelations].join(" | ") || "\uD655\uC778\uB41C \uAD00\uACC4 \uC5C6\uC74C";
+
+  for (const line of lines) {
+    if (line.startsWith("## ")) {
+      inPillars = line === "## \uC6D0\uAD6D";
+      inRelations = line === "## \uAD00\uACC4";
+      inDaeun = line.startsWith("## \uB300\uC6B4");
+      if (inRelations) {
+        output.push("## \uAD00\uACC4", relationText);
+        continue;
+      }
+      if (inDaeun) {
+        output.push("## \uB300\uC6B4", "\uCD9C\uC0DD\uC2DC\uAC04 \uBBF8\uC0C1\uC73C\uB85C \uB300\uC6B4 \uC2DC\uAE30 \uD574\uC11D\uC744 \uC81C\uC678\uD568");
+        continue;
+      }
+    }
+    if (inRelations || inDaeun) continue;
+    if (line.startsWith("\uC77C\uAC04 ")) {
+      output.push(line.replace(/ \uAC15\uC57D: .*$/, " \uAC15\uC57D: \uBBF8\uD655\uC778 \uACA9: \uBBF8\uD655\uC778 \uC6A9\uC2E0: -"));
+    } else if (inPillars && line.includes("|")) {
+      output.push(line.replace(/^\s*[^|]*\|\s*/, ""));
+    } else {
+      output.push(line);
+    }
+  }
+  return output.join("\n");
+}
+
 export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
   const genderKo: Gender = input.gender;
 
@@ -336,7 +372,7 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
         : result.advanced.dayStrength.strength === "weak"
           ? "약함"
           : "중화",
-    geukguk: result.advanced.geukguk,
+    geukguk: input.hour === null ? "\uBBF8\uD655\uC778" : result.advanced.geukguk,
     // 출생시간 미상에서는 임시 12시가 정밀 용신에 섞일 수 있으므로 노출하지 않는다.
     yongsin: input.hour === null ? [] : result.advanced.yongsin,
     fiveElements,
@@ -371,7 +407,7 @@ export function computeSajuFacts(input: SajuFactsInput): SajuFacts {
     // 미상일 땐 그 시 열/시각을 사실로 쓰지 말라는 경고를 앞에 붙인다.
     compactText:
       input.hour === null
-        ? `※ 출생 시간을 몰라 아래 "시" 열과 "12:00" 표기는 계산 편의상 넣은 임시값입니다. 시주(시 기둥)와 관련된 어떤 내용도 사실로 언급하지 마세요.\n\n${result.toCompact()}`
+        ? compactWithoutUnknownTime(result.toCompact(), keyRelations, gwimunRelations)
         : result.toCompact(),
     daeunAnalysis: null,
     currentAge: result.currentAge,

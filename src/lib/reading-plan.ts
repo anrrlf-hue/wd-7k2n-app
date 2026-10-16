@@ -14,8 +14,26 @@ export interface ReadingPassage {
   evidenceIds: string[];
 }
 
+export interface ReadingTheme {
+  id: string;
+  title: string;
+  meaning: string;
+  opposite: string;
+  conditions: string[];
+  evidenceIds: string[];
+}
+
+export interface ReadingDomainAllocation {
+  domain: "relationship" | "work" | "money";
+  scene: string;
+  choice: string;
+  evidenceIds: string[];
+}
+
 export interface ReadingPlan {
   headline: string;
+  themes?: ReadingTheme[];
+  allocations?: ReadingDomainAllocation[];
   passages: ReadingPassage[];
   evidence: ReadingEvidence[];
   limits: string[];

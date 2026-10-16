@@ -5,6 +5,7 @@ import { normalizePalmFactsObservation, type PalmFacts } from "@/lib/palm-facts"
 import { computeSajuFacts } from "@/lib/saju-facts";
 import { enrichSajuFacts } from "@/lib/oh-my-saju-adapter";
 import { buildPremiumReport } from "@/lib/premium-report";
+import { buildFreeSajuReport } from "@/lib/free-report-mock";
 import { SAJU_FOCUS_VALUES } from "@/lib/saju-focus";
 import { MBTI_TYPES } from "@/lib/mbti-facts";
 import { issuePremiumTrial, verifyPremiumTrial } from "@/lib/premium-trial";
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
     if (raw.trialAction !== undefined) return NextResponse.json({ error: "요청을 확인하지 못했어요." }, { status: 400 });
     const shallow = computeSajuFacts(parsed.data);
     const facts = parsed.data.hour === null ? shallow : enrichSajuFacts(shallow, parsed.data);
-    const report = buildPremiumReport({ facts,
+    const report = buildPremiumReport({ facts, freeReport: buildFreeSajuReport(facts),
       leftPalm: parsed.data.leftPalmFacts ? normalizePalmFactsObservation(parsed.data.leftPalmFacts as PalmFacts) : null,
       rightPalm: parsed.data.rightPalmFacts ? normalizePalmFactsObservation(parsed.data.rightPalmFacts as PalmFacts) : null,
       dominantHand: parsed.data.dominantHand });
