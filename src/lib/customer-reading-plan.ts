@@ -21,7 +21,13 @@ export interface PremiumPlanCopy {
 }
 
 export function renderCustomerPremiumAnnualIntroduction(facts: SajuFacts): string {
-  return "2026년에는 생각을 작은 결과로 옮겨 보세요. 2027년에는 반응을 보고 계속할 일과 바꿀 일을 나누어 보세요.";
+  if (facts.outputStarCount > facts.officerStarCount) {
+    return "2026년에는 생각을 작은 결과로 옮겨 보세요. 2027년에는 반응을 보고 계속할 일과 바꿀 일을 나누어 보세요.";
+  }
+  if (facts.officerStarCount > 0) {
+    return "2026년에는 맡은 일과 내 시간을 함께 지켜 보세요. 2027년에는 그대로 지킬 약속과 바꿀 약속을 나누어 보세요.";
+  }
+  return "2026년에는 생활에 필요한 일부터 차근차근 확인해 보세요. 2027년에는 해 본 결과를 보고 계속할 일과 줄일 일을 나누어 보세요.";
 }
 
 export function renderCustomerPremiumAnnualMethod(facts: SajuFacts, yearContext: string): string {

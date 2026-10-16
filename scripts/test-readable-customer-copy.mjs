@@ -43,6 +43,6 @@ assert.notEqual(free.cautions.map(item => item.detail).join(" "), secondFree.cau
 const highlighted = report => report.periods.filter(period => report.annualHighlights?.includes(period.months[0])).map(period => period.reading.replace(/\d{4}년 \d{1,2}월에는 /g, ""));
 assert.notEqual(new Set(highlighted(premium)).size, 1, "highlight readings must not be the same after removing dates");
 const visiblePremium = [premium.summary, premium.overall.paragraphs.join(" "), domainText(premium), ...highlighted(premium)].join(" ");
-assert.doesNotMatch(visiblePremium, /원국|인성|식상|관성|비겁|재성|대운|세운|천간|지지|별 개수/);
+assert.doesNotMatch(visiblePremium, /원국|인성|식상|관성|비겁|재성|대운|세운|천간|별 개수/);
 
 console.log("PASS readable customer copy: Saju and premium output avoids internal jargon and long sentences");

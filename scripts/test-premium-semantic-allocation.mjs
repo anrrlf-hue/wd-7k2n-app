@@ -165,7 +165,7 @@ for (const day of [1, 7]) {
   const love = report.domains.find(d => d.key === 'love_relationship').paragraphs.join(' ');
   const money = report.domains.find(d => d.key === 'money').paragraphs.join(' ');
   const work = report.domains.find(d => d.key === 'work').paragraphs.join(' ');
-  assert.match(money, /재물의 획득|보유에서는|지출에서는|시간과 돈/);
+  assert.match(money, /돈을 버는 방법|모은 돈을 지킬 때|돈을 쓰는 습관|재물의 획득|시간과 돈/);
   const moneyParagraphs = report.domains.find(d => d.key === 'money').paragraphs;
   assert.equal(moneyParagraphs.length, 3);
   assert.ok(moneyParagraphs.slice(1).every(text => text.length > 40),

@@ -74,9 +74,9 @@ for (const [i, birth] of births.entries()) {
     assert.equal(new Set(d.paragraphs).size, d.paragraphs.length, "each passage contributes a distinct explanation");
     for (const text of d.paragraphs) assert.equal(html.split(text).length - 1, 1, "every passage is rendered once");
     if (d.key === "money") {
-       assert.match(d.paragraphs[0], /재물의 획득|돈을 벌고 쓰는 일/);
+       assert.match(d.paragraphs[0], /먼저 움직여 일을 시작|재물의 획득|돈을 벌고 쓰는 일/);
        assert.match(d.paragraphs[1], /보유에서는|유지에서는|공동 비용/);
-       assert.match(d.paragraphs[2], /지출에서는|비용/);
+       assert.match(d.paragraphs[2], /돈을 쓰는 습관|지출에서는|비용/);
     }
     assert.equal(d.opportunity, "", "the same example is not repeated in a second card");
     assert.equal(d.caution, "", "the already explained caution is not repeated below");

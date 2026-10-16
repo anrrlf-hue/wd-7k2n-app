@@ -471,7 +471,7 @@ export function buildPremiumReport(input: {
   const periods = buildPremiumPeriods(annual, facts, { leftPalm: input.leftPalm, rightPalm: input.rightPalm, dominantHand: input.dominantHand });
   const currentDaeunBasis = facts.currentDaeun
     ? ` 현재의 큰 흐름에서는 ${groupsForDaeun(facts).map(group => GROUP_LABEL[group] ?? "생활의 변화").join(", ")}의 의미를 함께 참고했습니다.`
-    : " 출생시간이 확인되지 않아 큰 흐름과 세부 시기는 제외했습니다.";
+    : " 출생시간이 없어 큰 흐름은 넓게 보고, 각 시기에 확인할 생활 선택만 읽었습니다.";
   const overallBase = customer.overall;
   overall.paragraphs = [...overallBase, readableOverallContext(facts)];
   overall.basis = premiumEvidenceBasis(facts, "overall") + currentDaeunBasis;
@@ -487,7 +487,7 @@ export function buildPremiumReport(input: {
     const palmText = connection?.plan.passages.map(passage => passage.text).join("\n\n");
     const planParagraphs = area === "love_relationship" ? customer.love : area === "money" ? customer.money : customer.work;
     reading.paragraphs = [...planParagraphs, ...(palmText ? [palmText] : [])];
-    reading.headline = area === "money" ? "얻은 가치와 생활에 남기는 조건" : area === "work" ? "실력이 쓰이는 환경과 끝내는 방식" : "가까움에서 서로의 선택이 남는 방식";
+    reading.headline = area === "money" ? "돈을 버는 방법·모은 돈을 지키는 방법·돈을 쓰는 습관" : area === "work" ? "일하는 방식" : "관계를 만드는 방법";
     reading.opportunity = ""; reading.caution = ""; reading.tip = "";
     reading.observationNote = null;
     reading.basis = premiumEvidenceBasis(facts, area === "love_relationship" ? "relationship" : area) + currentDaeunBasis;
