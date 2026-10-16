@@ -203,7 +203,7 @@ export function ServiceShareCard({ trial = false, onCompleted }: { trial?: boole
         <Button type="button" variant="outline" onClick={() => void copyLink()} disabled={busy || preparing || (trial && !shareDataReady)} className="h-12 rounded-full"><Copy className="size-4" />{preparing ? "공유 준비 중..." : trial ? "링크 복사하고 무료 체험" : "링크 복사"}</Button>
       </div>
       {trial && !shareDataReady && !preparing && <Button type="button" variant="outline" onClick={() => void prepareShareData().catch(() => { preparation.current = null; setNotice({ text: "공유 이벤트 저장소를 사용할 수 없어 무료 체험 공유를 준비하지 못했어요. 잠시 후 다시 시도해주세요.", error: true }); })} className="mt-2 h-11 w-full">공유 이벤트 다시 준비</Button>}
-      {trial && onCompleted && <Button type="button" variant="outline" onClick={() => void completeParticipation()} disabled={busy} className="mt-2 h-11 w-full">{shared ? "공유 후 완료 확인" : "친구 풀이 완료 확인"}</Button>}
+      {trial && onCompleted && <Button type="button" variant="outline" onClick={() => void completeParticipation()} disabled={busy} className="mt-2 h-11 w-full">내 프리미엄 열렸는지 확인하기</Button>}
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{nativeShare ? "기기 공유창에서 카카오톡 등 사용할 앱을 선택해주세요." : "이 브라우저에서는 링크를 복사해 카카오톡 등 원하는 앱에 붙여넣어주세요."}</p>
       {(!trial || shareDataReady) && <label className="mt-3 block text-xs text-muted-foreground">공유할 주소
         <input ref={linkInput} readOnly value={shareData.url} onFocus={event => event.currentTarget.select()} className="mt-1 h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-sm text-foreground" />

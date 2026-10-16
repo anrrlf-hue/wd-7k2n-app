@@ -32,6 +32,7 @@ export default function ManagementPage() {
   const [gender, setGender] = useState<"남" | "여">("남");
   const [sijin, setSijin] = useState<SijinId>("unknown");
   const [message, setMessage] = useState<string | null>(null);
+  const [hasSavedPremium, setHasSavedPremium] = useState(false);
 
   function refresh() {
     setPeople(loadSavedPeople());
@@ -42,6 +43,7 @@ export default function ManagementPage() {
     queueMicrotask(() => {
       if (!mounted) return;
       refresh();
+      try { setHasSavedPremium(Boolean(sessionStorage.getItem("saju-app:integrated-premium:v1"))); } catch { setHasSavedPremium(false); }
       setLoaded(true);
     });
     const onChange = () => refresh();
@@ -158,6 +160,19 @@ export default function ManagementPage() {
               </Button>
             </>
           )}
+        </section>
+
+        <section className="mt-5 rounded-3xl border border-(--gold-soft) bg-card p-5">
+          <p className="section-eyebrow">내 프리미엄</p>
+          <h2 className="mt-2 text-lg font-semibold">프리미엄 풀이를 다시 보는 곳</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {hasSavedPremium
+              ? "이 브라우저에 저장된 프리미엄 풀이가 있어요. 사주 결과로 돌아가 내 프리미엄 보기를 눌러주세요."
+              : "아직 이 브라우저에서 확인된 프리미엄 풀이가 없어요. 친구에게 링크를 보내고 무료 풀이가 끝난 뒤 자격을 확인하세요."}
+          </p>
+          <Button asChild className="mt-4 h-11 w-full rounded-full">
+            <Link href="/diagnosis?mode=free&focus=overall&start=free">사주 결과에서 내 프리미엄 확인</Link>
+          </Button>
         </section>
 
         <section className="mt-5 rounded-3xl border border-border bg-card p-5">
