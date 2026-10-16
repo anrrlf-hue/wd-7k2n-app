@@ -2,7 +2,7 @@ import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
 import { normalizePalmFactsObservation } from "@/lib/palm-facts";
 import type { DominantHand } from "@/lib/palm-bilateral";
 import { validateReadingPlan, type ReadingPlan } from "@/lib/reading-plan";
-import { palmPersonalLineReading } from "@/lib/palm-customer-reading";
+import { isPalmLineAccepted, palmPersonalLineReading } from "@/lib/palm-customer-reading";
 
 const LINES = { headLine: "두뇌선", heartLine: "감정선", lifeLine: "생명선" } as const;
 type LineKey = keyof typeof LINES;
@@ -35,16 +35,26 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
     const facts = hand === "left" ? left : right;
     for (const key of Object.keys(LINES) as LineKey[]) {
       const line = facts.onnxLines?.[key];
-      for (const field of ["detected", "length", "curve", "depthStrength", "sourceVariant", "rawDetected", "enhancedDetected", "endpointEvidence", "pathCompleteness", "attributeSupport"] as const) {
+      const accepted = isPalmLineAccepted(facts, key);
+      const fields = accepted
+        ? ["detected", "length", "curve", "depthStrength", "sourceVariant", "rawDetected", "enhancedDetected", "endpointEvidence", "pathCompleteness", "attributeSupport"] as const
+        : ["detected"] as const;
+      for (const field of fields) {
         const rawValue = line?.[field];
         const value = rawValue == null ? null : typeof rawValue === "object" ? JSON.stringify(rawValue) : rawValue;
         plan.evidence.push({ id: `${hand}.${key}.${field}`, kind: "observed", source: `${hand}PalmFacts.onnxLines.${key}.${field}`, value });
       }
+      if (!accepted) plan.evidence.push({ id: `${hand}.${key}.accepted`, kind: "observed", source: `${hand}PalmFacts.lineFeatures.${key}.accepted`, value: false });
     }
   }
-  const refs = (key: LineKey) => (["left", "right"] as const).flatMap(hand => ["detected", "length", "curve", "depthStrength", "sourceVariant", "rawDetected", "enhancedDetected", "endpointEvidence", "pathCompleteness", "attributeSupport"].map(field => `${hand}.${key}.${field}`));
-  const usableHead = palmPersonalLineReading("headLine", head);
-  const usableHeart = palmPersonalLineReading("heartLine", heart);
+  const refs = (key: LineKey) => (["left", "right"] as const).flatMap(hand => {
+    const facts = hand === "left" ? left : right;
+    return isPalmLineAccepted(facts, key)
+      ? ["detected", "length", "curve", "depthStrength", "sourceVariant", "rawDetected", "enhancedDetected", "endpointEvidence", "pathCompleteness", "attributeSupport"].map(field => `${hand}.${key}.${field}`)
+      : [`${hand}.${key}.detected`, `${hand}.${key}.accepted`];
+  });
+  const usableHead = isPalmLineAccepted(primary, "headLine") ? palmPersonalLineReading("headLine", head) : null;
+  const usableHeart = isPalmLineAccepted(primary, "heartLine") ? palmPersonalLineReading("heartLine", heart) : null;
   const curvedHead = head?.curve === "완만한 곡선";
   const curvedHeart = heart?.curve === "완만한 곡선";
   if (usableHead && usableHeart) {
@@ -61,18 +71,21 @@ export function buildPalmContextReading(left: PalmFacts, right: PalmFacts, domin
   for (const key of Object.keys(LINES) as LineKey[]) {
     const l = left.onnxLines?.[key], r = right.onnxLines?.[key];
     const line = primary.onnxLines?.[key];
-    const ld = describe(l), rd = describe(r);
+    const leftAccepted = isPalmLineAccepted(left, key), rightAccepted = isPalmLineAccepted(right, key);
+    const ld = leftAccepted ? describe(l) : "line not confirmed";
+    const rd = rightAccepted ? describe(r) : "line not confirmed";
     const observation = ld === rd ? `${LINES[key]}은 양손에서 ${ld}으로 분류됐습니다.` : `${LINES[key]}은 왼손에서 ${ld}, 오른손에서 ${rd}으로 분류됐습니다.`;
     plan.passages.push({ id: `${key}-observation`, kind: "observation", text: observation, evidenceIds: refs(key) });
-    if (!line?.detected) {
+    if (!isPalmLineAccepted(primary, key)) {
       plan.passages.push({ id: `${key}-unread`, kind: "observation", text: `${label}의 ${LINES[key]}을 충분히 읽지 못해 이 선의 해석은 보류합니다.`, evidenceIds: refs(key) });
       continue;
     }
+    if (!line) continue;
     const reading = lineNarrative(key, line);
     if (reading) plan.passages.push({ id: `${key}-reading`, kind: "traditional", text: reading, evidenceIds: refs(key) });
-    if (palmPersonalLineReading(key, l) && palmPersonalLineReading(key, r) && l?.curve === r?.curve) {
+    if (leftAccepted && rightAccepted && l?.curve === r?.curve) {
       plan.passages.push({ id: `${key}-bilateral-common`, kind: "observation", text: `${LINES[key]}은 두 사진에서 같은 방향(${l?.curve ?? "확인 안 됨"})으로 보입니다. 두 손에서 공통으로 읽힌 특징입니다.`, evidenceIds: refs(key) });
-    } else if (palmPersonalLineReading(key, l) && palmPersonalLineReading(key, r) && l?.curve !== r?.curve) {
+    } else if (leftAccepted && rightAccepted && l?.curve !== r?.curve) {
       plan.passages.push({ id: `${key}-bilateral-difference`, kind: "observation", text: `${LINES[key]}은 두 사진에서 서로 다른 방향으로 보입니다. 사진 각도와 조명의 영향도 있어 실제로 변했다는 뜻으로 해석하지 않습니다.`, evidenceIds: refs(key) });
     }
   }

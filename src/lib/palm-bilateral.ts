@@ -1,7 +1,7 @@
 import { buildPalmContextReading } from "@/lib/palm-context-reading";
 import { normalizePalmFactsObservation } from "@/lib/palm-facts";
 import type { PalmFacts, OnnxLineDetail } from "@/lib/palm-facts";
-import { palmCustomerLimits, palmPersonalLineReading, palmLineObservation } from "@/lib/palm-customer-reading";
+import { isPalmLineAccepted, palmCustomerLimits, palmPersonalLineReading, palmLineObservation } from "@/lib/palm-customer-reading";
 
 export type DominantHand = "left" | "right";
 export const PALM_READING_VERSION = "bilateral-reading-v8-life-geometry-guard";
@@ -29,7 +29,8 @@ function observed(line: OnnxLineDetail | null | undefined): string {
   return palmLineObservation(line ?? undefined);
 }
 
-function observedFor(key: "headLine" | "heartLine" | "lifeLine", line: OnnxLineDetail | null | undefined): string {
+function observedFor(key: "headLine" | "heartLine" | "lifeLine", accepted: boolean, line: OnnxLineDetail | null | undefined): string {
+  if (!accepted) return "line not confirmed";
   if (key === "lifeLine" && line?.anatomicalStatus !== "supported") return "생명선은 엄지 쪽 실제 경로가 충분히 확인되지 않아 개인 관찰에서 보류했습니다.";
   return observed(line);
 }
@@ -49,14 +50,14 @@ export function buildPalmBilateralReading(left: PalmFacts, right: PalmFacts, dom
     ["heartLine", "감정선 · 마음을 주고받는 방식"],
     ["lifeLine", "생명선 · 생활과 활동 리듬"],
   ] as const) {
-    const l = observedFor(key, left.onnxLines?.[key]), r = observedFor(key, right.onnxLines?.[key]);
-    const primaryText = palmPersonalLineReading(key, current.onnxLines?.[key]);
+    const leftAccepted = isPalmLineAccepted(left, key), rightAccepted = isPalmLineAccepted(right, key);
+    const l = observedFor(key, leftAccepted, left.onnxLines?.[key]), r = observedFor(key, rightAccepted, right.onnxLines?.[key]);
+    const primaryText = isPalmLineAccepted(current, key) ? palmPersonalLineReading(key, current.onnxLines?.[key]) : null;
     const other = dominantHand === "right" ? left : right;
     const otherLabel = dominantHand === "right" ? "왼손" : "오른손";
-    const reading = primaryText ?? palmPersonalLineReading(key, other.onnxLines?.[key]);
+    const reading = primaryText ?? (isPalmLineAccepted(other, key) ? palmPersonalLineReading(key, other.onnxLines?.[key]) : null);
     if (!reading) continue;
-    const leftText = palmPersonalLineReading(key, left.onnxLines?.[key]), rightText = palmPersonalLineReading(key, right.onnxLines?.[key]);
-    const bothReadable = left.imageQuality === "good" && right.imageQuality === "good" && leftText && rightText;
+    const bothReadable = leftAccepted && rightAccepted;
     let text: string;
     if (bothReadable && left.onnxLines?.[key].curve !== right.onnxLines?.[key].curve) {
       text = key === "headLine"

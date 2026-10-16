@@ -5,6 +5,16 @@ export type PalmLineKey = keyof typeof PALM_LINE_NAMES;
 export interface PalmCustomerPassage { key: string; title: string; text: string; observation: string }
 export type SecondaryObservationState = "observed" | "not_observed" | "error" | "unsupported" | "unconfirmed";
 
+/** Customer prose may use only a line accepted by both recognition stages. */
+export function isPalmLineAccepted(facts: PalmFacts, key: PalmLineKey): boolean {
+  if (facts.imageQuality !== "good" || facts.onnxLines?.modelExecuted !== true) return false;
+  const line = facts.onnxLines[key];
+  const feature = facts.lineFeatures.find(item => item.name === PALM_LINE_NAMES[key]);
+  if (!feature?.detected || !line?.detected || !line.curve || line.attributeSupport?.curve === "not_supported") return false;
+  if (key === "lifeLine" && line.anatomicalStatus !== undefined && line.anatomicalStatus !== "supported") return false;
+  return true;
+}
+
 export function secondaryObservationState(key: "fate" | "sun" | "wealth", signal?: SecondaryPalmLineSignal): SecondaryObservationState {
   if (key !== "fate") return "unsupported";
   if (signal?.assessment === "observed") return signal.status === "clear" && signal.corroborated ? "observed" : "unconfirmed";
@@ -82,7 +92,7 @@ export function buildPalmCustomerPassages(facts: PalmFacts): PalmCustomerPassage
   if (handOverview) passages.push(handOverview);
   for (const key of Object.keys(PALM_LINE_NAMES) as PalmLineKey[]) {
     const line = facts.onnxLines?.modelExecuted ? facts.onnxLines[key] : undefined;
-    const text = palmPersonalLineReading(key, line);
+    const text = isPalmLineAccepted(facts, key) ? palmPersonalLineReading(key, line) : null;
     if (text) passages.push({ key, title: `${PALM_LINE_NAMES[key]} · ${key === "headLine" ? "생각과 결정" : key === "heartLine" ? "마음을 주고받는 방식" : "생활과 활동 리듬"}`, text, observation: palmLineObservation(line) });
   }
   // Landmark ratios and secondary candidates have no validated interpretive
@@ -92,7 +102,7 @@ export function buildPalmCustomerPassages(facts: PalmFacts): PalmCustomerPassage
 
 export function palmCustomerLimits(facts: PalmFacts): string[] {
   const notes: string[] = [];
-  const missing = (Object.keys(PALM_LINE_NAMES) as PalmLineKey[]).filter(key => !palmPersonalLineReading(key, facts.onnxLines?.[key]));
+  const missing = (Object.keys(PALM_LINE_NAMES) as PalmLineKey[]).filter(key => !isPalmLineAccepted(facts, key));
   if (missing.length) notes.push(`${missing.map(key => PALM_LINE_NAMES[key]).join("·")}은 이번 사진에서 개인 풀이에 쓸 모양을 충분히 확인하지 못했습니다. 선이 없다는 뜻은 아닙니다.`);
   const fate = secondaryObservationState("fate", facts.secondaryLines?.fate);
   if (fate === "observed" && !facts.secondaryLines?.fate.candidateObservation) notes.push("운명선 후보는 확인됐지만 저장된 정보에 위치와 구간의 연결 범위가 없어 개인 풀이를 보류했습니다.");
