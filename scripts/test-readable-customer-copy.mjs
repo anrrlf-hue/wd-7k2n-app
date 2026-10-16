@@ -21,7 +21,7 @@ const customerText = [
 assert.doesNotMatch(customerText, /원국|인성|식상|관성|비견|재성|대운|세운|천간|지지/);
 assert.doesNotMatch(customerText, /壬辰|丙午|丁未/);
 assert.ok(customerText.split("\n").every((line) => line.split(/[.!?。！？]/).every((sentence) => sentence.trim().length < 115)));
-assert.match(free.snapshot.text, /태어난 정보|생각|표현/);
+assert.match(free.snapshot.text, /설명|이해|직접/);
 assert.match(premium.annualMethod ?? "", /쉽게|확인|살펴/);
 const birthDateSource = fs.readFileSync("src/components/diagnosis/birth-date-step.tsx", "utf8");
 assert.match(birthDateSource, /bg-\[\#fffaf0\]/);
