@@ -73,7 +73,7 @@ export function BirthDateStep({
       </p>
 
       <div className="mystic-card mt-6 flex flex-col gap-3 border-(--gold-soft) p-4 sm:mt-8 sm:p-5">
-        <Label htmlFor="birthDate" className="text-base font-semibold text-(--gold)">
+        <Label htmlFor="birthDate" className="text-base font-semibold text-foreground">
           생년월일
         </Label>
         {editing ? (
@@ -95,7 +95,7 @@ export function BirthDateStep({
                 max="2020-12-31"
                 aria-describedby="birthDateHelp"
                 onChange={(e) => setDraftValue(formatBirthDateInput(e.target.value))}
-                className="h-16 w-full border border-(--gold-soft) bg-background pl-12 pr-4 text-lg font-semibold text-foreground shadow-sm outline-none focus-visible:border-(--gold) focus-visible:ring-2 focus-visible:ring-(--gold) focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="h-16 w-full border-2 border-amber-400 bg-[#fffaf0] pl-12 pr-4 text-lg font-semibold text-slate-900 placeholder:text-slate-500 shadow-sm outline-none focus-visible:border-amber-600 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               />
             </div>
             <p id="birthDateHelp" className="text-xs leading-5 text-muted-foreground">

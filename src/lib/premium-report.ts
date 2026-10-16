@@ -160,6 +160,14 @@ function daeunReading(facts: SajuFacts, area: DaeunArea): string {
 }
 
 function buildOverallContext(facts: SajuFacts): string {
+  if (facts.outputStarCount > 0 && facts.wealthStarCount > 0) {
+    return "내가 만든 결과가 실제 도움과 보상으로 이어지는 흐름입니다. 먼저 작은 결과를 만들고, 계속할 범위와 받을 몫을 함께 정해 보세요.";
+  }
+  if (facts.resourceStarCount > 0) {
+    return "배운 내용을 내 생활에 맞게 바꾸는 흐름입니다. 아는 것과 직접 해 본 것을 나누어 보면 다음 선택이 쉬워집니다.";
+  }
+  return "맡은 일과 내 선택을 함께 살피는 흐름입니다. 다른 사람의 기대와 내가 원하는 일을 나누어 적어 보세요.";
+  /* Legacy detailed context remains below for evidence compatibility. */
   const current = daeunPair(facts);
   const leaders = natalLeaders(facts);
   if (leaders[0] === "관성") return current ? daeunReading(facts, "overall") : "확인된 원국에서는 맡은 책임의 기준과 자신의 한계를 함께 세우는 일이 중심입니다.";
@@ -309,6 +317,25 @@ function compactPeriodReading(parts: string[]): string {
   return kept.slice(0, 6).join(" ");
 }
 
+function readablePeriodReading(month: SajuAnnualOutlook["months"][number], symbols: AnnualMonthSymbols, facts: SajuFacts): string {
+  const groups = [symbols.month.stemTenGod, symbols.month.branchTenGod]
+    .map((god) => god ? TEN_GOD_GROUP[god] : null)
+    .filter(Boolean);
+  const topic = groups.includes("식상")
+    ? "내 생각을 말과 결과로 보여 주는 일"
+    : groups.includes("재성")
+      ? "시간과 돈을 나누어 쓰는 일"
+      : groups.includes("관성")
+        ? "약속과 맡은 일을 지키는 일"
+        : groups.includes("인성")
+          ? "배운 것을 내 생활에 맞게 쓰는 일"
+          : "내 선택과 다른 사람의 생각을 맞추는 일";
+  const action = facts.outputStarCount > 0
+    ? "작게 해 본 뒤 결과를 보고 다음 방법을 정해 보세요."
+    : "해야 할 일을 한두 가지로 줄여 먼저 시작해 보세요.";
+  return `${month.label}에는 ${topic}을 살펴보세요. ${action} 잘된 점 하나와 바꿀 점 하나만 적어도 충분합니다.`;
+}
+
 /** Equal contextual readings may be grouped, but a year boundary remains visible.
  * The complete calendar is kept even when the main report selects a few topics. */
 export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts, context: MonthReadingContext = {}): PremiumPeriod[] {
@@ -335,7 +362,7 @@ export function buildPremiumPeriods(annual: SajuAnnualOutlook, facts: SajuFacts,
     const interpreted = interpretation.evidence.filter(e => used.has(e.id));
     periods.push({
       label: month.label, months: [month.label], headline: interpretation.headline,
-      reading: compactPeriodReading((narrative.length ? narrative : interpretation.passages).map(p => p.text)),
+      reading: readablePeriodReading(month, symbols, facts),
       basis: `계산된 세운 ${symbols.year.ganzhi} · 월운 ${symbols.month.ganzhi}. 함께 읽은 근거: ${describeReadingEvidence(interpreted)}. 이 상징의 전통적 의미를 이 달의 이야기로 읽었습니다.`,
       domains: [], interpretation, symbols,
     });
@@ -403,7 +430,7 @@ export function buildPremiumReport(input: {
     if (area === "wellbeing") continue;
     const connection = integration[area];
     const palmText = connection?.plan.passages.map(passage => passage.text).join("\n\n");
-    const planParagraphs = area === "love_relationship" ? customer.frame.premiumCopy.relationship : area === "money" ? customer.frame.premiumCopy.money : customer.frame.premiumCopy.work;
+    const planParagraphs = area === "love_relationship" ? customer.love : area === "money" ? customer.money : customer.work;
     reading.paragraphs = [...planParagraphs, ...(palmText ? [palmText] : [])];
     reading.headline = area === "money" ? "얻은 가치와 생활에 남기는 조건" : area === "work" ? "실력이 쓰이는 환경과 끝내는 방식" : "가까움에서 서로의 선택이 남는 방식";
     reading.opportunity = ""; reading.caution = ""; reading.tip = "";

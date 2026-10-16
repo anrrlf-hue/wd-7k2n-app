@@ -373,7 +373,7 @@ export function buildCustomerFreeNarrative(facts: SajuFacts): Omit<FreeSajuRepor
   const timeNote = !facts.hasTimeInput
     ? " 출생시간이 확인되지 않아 시간에 따라 달라질 수 있는 강약과 시기는 확정하지 않고 읽었습니다."
     : "";
-  return { snapshot: paragraph("self", center(f) + timeNote), temperament: paragraph("self", disposition(f)),
+  const result = { snapshot: paragraph("self", center(f) + timeNote), temperament: paragraph("self", disposition(f)),
     relationshipStyle: paragraph("relationship", f.planCopy.relationship[0]), loveStyle: paragraph("relationship", f.planCopy.relationship[1]),
     lifeRhythm: paragraph("life", c.식상 > 0 && c.식상 === c.인성 ? "생활에는 혼자 이해하며 마음을 놓는 시간과 밖으로 표현하며 활기를 얻는 시간이 함께 있습니다. 충분히 알고 시작했어도 직접 하는 동안 다른 즐거움이 생깁니다. 사람을 만난 뒤 조용히 머물고 싶은 날과 혼자 있다가 나누고 싶은 날이 달라도 자기 리듬의 한 모습으로 읽습니다." : c.식상 > c.인성 ? "생활에서는 머릿속에 있던 것을 밖으로 꺼낼 때 활기가 생기는 쪽입니다. 새로 해 본 날의 즐거움과 익숙한 곳에 돌아와 쉬는 안도감이 함께 필요합니다. 하루를 알차게 채웠어도 좋아하는 순간이 없었다면 바쁜 정도와 만족의 이유는 달랐을 수 있습니다." : "생활에서는 조용히 생각을 모으고 익숙한 시간을 되찾을 때 마음이 정돈되는 쪽입니다. 사람을 만난 날에도 혼자 머물며 자기 느낌을 알아볼 시간이 소중합니다. 편한 반복 안에서 좋아하는 일이 사라졌다면 쉬는 시간의 길이보다 그 안에 남은 즐거움을 돌아보게 됩니다."),
      wealthStructure: paragraph("money", f.planCopy.money[0]), earningStyle: paragraph("money", f.planCopy.money[1]), keepingStyle: paragraph("money", keeping), leakPattern: paragraph("money", spending),
@@ -383,6 +383,64 @@ export function buildCustomerFreeNarrative(facts: SajuFacts): Omit<FreeSajuRepor
      decisionStyle: paragraph("self", decision), opportunityStyle: paragraph("work", opportunityReading(f)),
     strengths, cautions, evidenceExplainer: Object.entries(f.evidence).map(([area, evidence]) => `${area}: ${evidence}`).join("\n"),
     nextMove: flow(false), timingShift: flow(true) };
+  const simple = buildReadableFreeCopy(facts);
+  return {
+    ...result,
+    snapshot: { ...result.snapshot, text: simple.snapshot + timeNote },
+    temperament: { ...result.temperament, text: simple.temperament },
+    relationshipStyle: { ...result.relationshipStyle, text: simple.relationship },
+    loveStyle: { ...result.loveStyle, text: simple.loveStyle },
+    lifeRhythm: { ...result.lifeRhythm, text: simple.lifeRhythm },
+    wealthStructure: { ...result.wealthStructure, text: simple.wealthStructure },
+    earningStyle: { ...result.earningStyle, text: simple.earningStyle },
+    keepingStyle: { ...result.keepingStyle, text: simple.keepingStyle },
+    leakPattern: { ...result.leakPattern, text: simple.leakPattern },
+    bigMoneyAffinity: { ...result.bigMoneyAffinity, text: simple.bigMoneyAffinity },
+    jobOrientation: { ...result.jobOrientation, text: simple.jobOrientation },
+    teamStrength: { ...result.teamStrength, text: simple.teamStrength },
+    soloStrength: { ...result.soloStrength, text: simple.soloStrength },
+    peopleAndMoney: { ...result.peopleAndMoney, text: simple.peopleAndMoney },
+    decisionStyle: { ...result.decisionStyle, text: simple.decisionStyle },
+    opportunityStyle: { ...result.opportunityStyle, text: simple.opportunityStyle },
+    strengths: result.strengths.map((item, index) => ({ ...item, title: simple.strengthTitles[index], detail: simple.strengthDetails[index] })),
+    cautions: result.cautions.map((item, index) => ({ ...item, title: simple.cautionTitles[index], detail: simple.cautionDetails[index] })),
+  };
+}
+
+function buildReadableFreeCopy(facts: SajuFacts) {
+  const learning = facts.resourceStarCount > 0;
+  const expression = facts.outputStarCount > 0;
+  const money = facts.wealthStarCount > 0;
+  const responsibility = facts.officerStarCount > 0;
+  const shared = facts.peerStarCount > 0;
+  return {
+    snapshot: learning
+      ? "배운 내용을 먼저 이해한 뒤, 내 말과 행동으로 바꾸는 힘이 있습니다. 천천히 생각해도 직접 해 본 결과를 남기면 다음 생각이 더 잘 정리됩니다."
+      : "내 생각을 직접 해 보고, 결과를 보며 고치는 힘이 있습니다. 한 번에 완벽하게 하려 하기보다 작은 일부터 시작하면 방향이 더 잘 보입니다.",
+    temperament: expression
+      ? "마음속 생각을 밖으로 보여 줄 때 힘이 납니다. 다만 다른 사람의 반응을 너무 오래 기다리면 내 생각보다 남의 말이 더 크게 들릴 수 있습니다."
+      : "신중하게 생각한 뒤 움직이는 편입니다. 준비는 도움이 되지만, 작은 일부터 해 보면 마음이 더 편해질 수 있습니다.",
+    relationship: "관계에서는 상대의 말을 바로 고치려 하기보다 먼저 들어 주는 것이 좋습니다. 내가 이해한 내용을 짧게 말하면 서로의 뜻을 맞추기 쉽습니다. 모르는 부분은 짐작하지 말고 다시 물어보세요.",
+    loveStyle: "좋아하는 사람에게도 내 마음을 숨기지 않는 연습이 필요합니다. 완벽한 답을 찾기보다 지금 느낀 한 가지를 먼저 말해 보세요. 더 생각할 시간이 필요하면 그 사실도 함께 알려 주세요.",
+    lifeRhythm: expression
+      ? "새로운 일을 해 본 뒤 익숙한 곳에서 쉬는 시간이 함께 필요합니다. 하루에 작은 즐거움 하나를 넣으면 생활의 힘이 오래 갑니다. 바쁜 날에도 잠깐 멈추는 시간을 미리 정해 두세요."
+      : "혼자 조용히 생각하는 시간과 몸을 움직이는 시간이 모두 필요합니다. 일을 작은 순서로 나누면 하루가 덜 복잡해집니다. 끝낸 일을 표시하면 다음 일을 시작하기도 쉽습니다.",
+    wealthStructure: money ? "돈을 쓸 때는 필요한 것과 갖고 싶은 것을 나누어 보세요. 목적과 계속 드는 비용을 함께 적으면 더 안전하게 고를 수 있습니다." : "돈을 다룰 때는 먼저 생활에 꼭 필요한 것을 살펴보는 편이 좋습니다. 큰 결정보다 작은 금액으로 먼저 확인해 보세요.",
+    earningStyle: expression ? "내가 만든 결과나 설명이 다른 사람에게 도움이 될 때 기회가 생길 수 있습니다. 잘하는 일을 한 문장으로 설명해 두면 좋습니다." : "맡은 일을 꾸준히 끝내면 신뢰가 쌓입니다. 내가 할 수 있는 범위와 받을 대가를 처음부터 말해 두세요.",
+    keepingStyle: responsibility ? "약속과 책임을 지키려는 마음이 강합니다. 모든 일을 혼자 맡지 말고, 도움을 받을 일도 미리 정하세요." : "생활을 편하게 만드는 작은 규칙이 도움이 됩니다. 꼭 필요한 일부터 하고 나머지는 나중에 정해도 됩니다.",
+    leakPattern: "새로운 선택을 앞두고 너무 많은 정보를 찾으면 결정이 늦어질 수 있습니다. 작은 범위로 먼저 해 보고 결과를 확인하세요.",
+    bigMoneyAffinity: "큰 돈의 기회가 보여도 바로 결정하지 마세요. 누가 무엇을 부담하는지와 내게 남는 것이 무엇인지 먼저 확인하세요.",
+    jobOrientation: responsibility ? "기준과 약속이 분명한 곳에서 실력이 잘 보입니다. 내 책임과 내 결정권이 어디까지인지 확인하세요. 모호한 부탁은 시작 전에 다시 물어보는 것이 좋습니다." : "내 방식으로 결과를 만들 수 있는 곳에서 힘이 납니다. 목표와 마감일을 작게 나누면 더 쉽게 시작할 수 있습니다. 끝낸 뒤 무엇을 바꿀지도 미리 정해 보세요.",
+    teamStrength: shared ? "함께할 때는 각자 맡을 일을 처음에 정하면 편합니다. 다른 사람의 몫까지 모두 책임지지 않아도 됩니다." : "함께할 때는 내 생각을 짧고 분명하게 말하는 것이 도움이 됩니다. 모르는 것은 바로 물어보세요.",
+    soloStrength: "혼자 할 때는 시작 전에 끝낼 기준을 한 줄로 적어 보세요. 해야 할 일이 줄어들고 집중하기 쉬워집니다.",
+    peopleAndMoney: "사람과 돈이 함께 얽힌 일은 좋은 뜻만으로 정하지 마세요. 시간, 비용, 맡을 일을 미리 적으면 서로 편합니다.",
+    decisionStyle: "결정할 때는 선택지를 두세 개로 줄여 보세요. 가장 중요한 조건 하나를 정하면 내 선택을 설명하기 쉬워집니다. 너무 피곤한 날에는 결정을 하루 미루어도 괜찮습니다.",
+    opportunityStyle: "새 기회는 크게 벌리기보다 작은 시험으로 시작하세요. 직접 해 본 뒤 계속할지 정하면 후회가 줄어듭니다.",
+    strengthTitles: ["생각을 깊게 보는 힘", "내 방식으로 해 보는 힘", "사람의 마음을 살피는 힘"],
+    strengthDetails: ["바로 답하지 않아도 차분히 생각한 뒤 더 좋은 방법을 찾을 수 있습니다.", "남의 방법을 그대로 따르기보다 내 상황에 맞게 바꾸어 볼 수 있습니다.", "상대의 말을 듣고 필요한 도움을 알아차릴 수 있습니다."],
+    cautionTitles: ["혼자 너무 오래 생각하지 않기", "모든 일을 내 몫으로 받지 않기", "작게 시작하기"],
+    cautionDetails: ["생각이 길어질 때는 지금 할 수 있는 일 하나를 골라 먼저 해 보세요. 해 본 뒤 다시 생각하면 마음도 가벼워지고, 다음에 고칠 점도 쉽게 보입니다.", "도움이 필요한 일을 혼자 맡지 마세요. 맡을 일과 도움받을 일을 미리 나누면 서로의 부담이 줄어들고, 약속도 오래 지킬 수 있습니다.", "완벽한 준비를 기다리지 마세요. 작은 시험으로 확인한 뒤 다음 방법을 정하면 실수도 배움이 되고, 큰 결정을 서두르지 않아도 됩니다."],
+  };
 }
 
 /** Premium owns tensions and consequences; it does not reprint free paragraphs. */
@@ -473,6 +531,24 @@ export function buildCustomerPremiumNarrative(facts: SajuFacts) {
         "잘 맞는 환경은 익숙한 역할을 안정적으로 이어 가면서도 새로 배울 한 가지를 분명히 주는 곳입니다. 역할이 계속 바뀌는데 기준이나 결과를 확인할 기회가 없으면 적응력보다 피로가 먼저 남을 수 있습니다.",
         "협업에서는 자신의 방식만 지키거나 모두 맞추는 양극단보다, 이미 책임진 몫과 함께 조정할 몫을 구별하는 일이 중요합니다. 그 구분이 있어야 신뢰와 자기 기준을 동시에 지킬 수 있습니다.",
       ];
-  return { frame: f, summary: premiumSummary,
-    overall: f.planCopy.overall, love: [relationship?.deeper ?? close.deeper], money: [acquisition, management, expense], work: premiumWork };
+  return { frame: f,
+    summary: "내 생각을 실제 행동으로 옮기고, 해 본 결과를 보며 다음 선택을 고르는 흐름입니다.",
+    overall: [
+      "배운 내용을 내 말로 바꾸는 힘이 있습니다. 먼저 이해한 뒤 작은 행동으로 옮기면 생각이 더 분명해집니다.",
+      "모든 것을 더 알아야 시작할 수 있는 것은 아닙니다. 아는 것과 모르는 것을 나누고, 작은 결과부터 확인해 보세요.",
+    ],
+    love: [
+      "가까운 사람과는 마음을 짐작하기보다 짧게 물어보는 것이 좋습니다. 서로의 바람을 한 가지씩 말하면 오해가 줄어듭니다.",
+      "상대를 돕는 일과 내 몫을 지키는 일은 함께 할 수 있습니다. 약속을 정할 때 시간과 힘의 한계도 같이 말해 보세요.",
+    ],
+    money: [
+      "돈을 벌고 쓰는 일은 내 시간과 힘을 어떻게 쓸지 정하는 일과 이어집니다. 내가 만든 결과와 받을 몫을 미리 적어 보세요.",
+      "새 기회가 보여도 바로 크게 움직이지 마세요. 작은 금액과 짧은 기간으로 먼저 확인하면 더 안전합니다.",
+      "사람과 함께 하는 돈 문제는 역할과 비용을 먼저 나누어야 합니다. 좋은 뜻만 믿지 말고 약속을 글로 남기세요.",
+    ],
+    work: [
+      "일에서는 맡은 일의 끝을 분명히 하고, 더 좋은 방법이 있으면 짧게 제안해 보세요. 결과와 과정이 함께 보일 때 신뢰가 쌓입니다.",
+      "내가 결정할 수 있는 범위를 처음에 확인하세요. 책임만 커지고 선택할 수 없다면 오래 버티기 어렵습니다.",
+      "잘한 일을 반복해서 보여 주면 새로운 일을 맡을 때도 내 방식이 더 잘 전달됩니다.",
+    ] };
 }

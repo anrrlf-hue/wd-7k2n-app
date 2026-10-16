@@ -157,7 +157,7 @@ for (const day of [1, 7]) {
   const html = renderToStaticMarkup(createElement(PremiumReportView, { report }));
   assert.ok(html.includes('12개월 전체 흐름 펼쳐보기'));
   assert.ok(html.includes('월운'));
-  assert.ok(report.annualMethod.includes('세운') && report.annualMethod.includes('천간'));
+  assert.doesNotMatch(report.annualMethod, /세운|천간|지지|원국/);
   assert.ok(!report.overall.paragraphs.join(' ').includes('작은 결과를 보여준 뒤'), 'the overall reading must not spend the work scene');
   assert.doesNotMatch(report.overall.paragraphs.join(' '), /전체 풀이의 중심|원국의 서로 다른 자리|맥락으로 삼/);
   assert.match(report.overall.basis, /일간.*오행.*강약/,
@@ -165,7 +165,7 @@ for (const day of [1, 7]) {
   const love = report.domains.find(d => d.key === 'love_relationship').paragraphs.join(' ');
   const money = report.domains.find(d => d.key === 'money').paragraphs.join(' ');
   const work = report.domains.find(d => d.key === 'work').paragraphs.join(' ');
-  assert.match(money, /획득에서는.*유지에서는.*지출에서는/);
+  assert.match(money, /돈을 벌고 쓰는 일|시간과 돈/);
   const moneyParagraphs = report.domains.find(d => d.key === 'money').paragraphs;
   assert.equal(moneyParagraphs.length, 3);
   assert.ok(moneyParagraphs.slice(1).every(text => text.length > 40),

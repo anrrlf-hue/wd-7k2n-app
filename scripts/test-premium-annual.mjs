@@ -60,14 +60,14 @@ for (const [i, birth] of births.entries()) {
   for (const period of report.periods) assert.ok(html.includes(period.basis));
   for (const d of report.domains) {
     if (d.tip) assert.ok(html.indexOf(d.paragraphs[0]) < html.indexOf(d.tip));
-    assert.equal(d.paragraphs.length, d.key === "money" ? 3 : d.key === "work" ? 3 : 1,
+    assert.equal(d.paragraphs.length, d.key === "money" ? 3 : d.key === "work" ? 3 : d.key === "love_relationship" ? 2 : 1,
       "money separates earning, retention and spending; work separates environment, teamwork, solo standards and the personal tension");
     assert.equal(new Set(d.paragraphs).size, d.paragraphs.length, "each passage contributes a distinct explanation");
     for (const text of d.paragraphs) assert.equal(html.split(text).length - 1, 1, "every passage is rendered once");
     if (d.key === "money") {
-      assert.match(d.paragraphs[0], /획득에서는/);
-      assert.match(d.paragraphs[1], /유지에서는/);
-      assert.match(d.paragraphs[2], /지출에서는/);
+      assert.match(d.paragraphs[0], /돈을 벌고 쓰는 일/);
+      assert.match(d.paragraphs[1], /작은 금액/);
+      assert.match(d.paragraphs[2], /사람과 함께/);
     }
     assert.equal(d.opportunity, "", "the same example is not repeated in a second card");
     assert.equal(d.caution, "", "the already explained caution is not repeated below");
@@ -78,7 +78,7 @@ for (const [i, birth] of births.entries()) {
   const sharedCore = new Set([report.overall, ...report.domains].flatMap(d => [d.caution, d.basis]));
   const overlap = [...new Set(prose(freeReport).filter(s => s.length >= 40 && !sharedCore.has(s)))].filter(s => copy.includes(s));
   assert.equal(overlap.length, 0);
-  if (!facts.hasTimeInput) { assert.equal(report.annualBackground, null); assert.ok(report.annualMethod.includes("출생시간")); }
+  if (!facts.hasTimeInput) { assert.equal(report.annualBackground, null); assert.match(report.annualMethod, /태어난 시간을 몰라|출생시간/); }
   out.push(`## 샘플 ${i + 1} · ${JSON.stringify(birth)}`, `무료 원문: ${freeReport.snapshot.text}`, `수정 전 총운: ${before.corePatterns.join(" ")}`, `수정 전 재물: ${before.domains.find(d => d.key === "money").experiment}`, `수정 전 직장: ${before.domains.find(d => d.key === "work").experiment}`, `### 새 요약\n${report.summary}`);
   for (const [name, reading] of [["총운", report.overall], ...report.domains.map(d => [d.label, d])]) out.push(`### ${name}\n${reading.headline}`, ...reading.paragraphs, `기회: ${reading.opportunity}`, `주의: ${reading.caution}`, `접힌 쉬운 근거: ${reading.basis}`, `선택적 짧은 참고: ${reading.tip}`);
   out.push("### 연간 흐름", report.annualIntroduction, report.annualBackground || "시간 미상으로 큰 운 배경 생략");

@@ -21,28 +21,12 @@ export interface PremiumPlanCopy {
 }
 
 export function renderCustomerPremiumAnnualIntroduction(facts: SajuFacts): string {
-  const month = facts.pillars.find((pillar) => pillar.pillar === "month");
-  const springMyoWater = month?.branchHanja === "卯" && facts.dayElement === "수";
-  const expression = facts.outputStarCount >= facts.officerStarCount;
-
-  if (springMyoWater) {
-    return "2026년에는 표현을 넓히기보다 사용자가 이해할 결과와 평가 기준을 함께 확인할 때, 새로운 시도가 실제 쓰임으로 이어지는 조건이 선명해집니다. 2027년에는 반응을 다음 시도로 옮길 때 처음의 아이디어와 평가받을 기준을 다시 확인하고, 반복해서 맡을 범위와 조정할 범위를 나누는 선택이 중요합니다.";
-  }
-  if (!expression) {
-    return "2026년에는 맡은 책임을 지키는 것과 모든 결정을 대신하는 것을 구분해야 합니다. 공동 약속과 개인 선택의 기준을 나누면 신뢰를 지키면서도 자기 판단을 남길 수 있습니다. 2027년에는 책임이 커질수록 완료 기준과 방법을 바꿀 재량을 함께 확인하고, 도움을 받을 범위와 스스로 결정할 범위를 나누는 선택이 중요합니다.";
-  }
-  return "2026년에는 드러난 표현을 실제 결과로 옮길 때 무엇을 확인받을지 먼저 정하면 시도가 쓰임으로 이어질 조건이 선명해집니다. 2027년에는 반응과 평가를 다음 선택에 반영하되, 계속 맡을 범위와 조정할 범위를 나누는 방식이 중요합니다.";
+  return "2026년에는 생각을 작은 결과로 옮겨 보세요. 2027년에는 반응을 보고 계속할 일과 바꿀 일을 나누어 보세요.";
 }
 
 export function renderCustomerPremiumAnnualMethod(facts: SajuFacts, yearContext: string): string {
-  const month = facts.pillars.find((pillar) => pillar.pillar === "month");
-  const springMyoWater = month?.branchHanja === "卯" && facts.dayElement === "수";
-  const expression = facts.outputStarCount >= facts.officerStarCount;
-  const focus = springMyoWater || expression
-    ? "표현과 평가가 실제 결과로 이어지는 조건을 중심으로 연결했습니다."
-    : "책임과 자기결정이 서로의 범위를 침범하지 않는 조건을 중심으로 연결했습니다.";
-  const timeNote = facts.hasTimeInput ? "" : " 출생시간이 확인되지 않아 시주와 대운에 따른 세부 강약은 확정하지 않았습니다.";
-  return `${yearContext} ${focus} 특정 사건·수입·건강을 예고하거나 개인의 경험을 단정하지 않고, 확인된 원국과 세운의 공통 상징을 선택의 조건으로 읽었습니다.${timeNote}`;
+  const timeNote = facts.hasTimeInput ? "" : " 태어난 시간을 몰라 큰 흐름은 참고로만 봤습니다.";
+  return `태어난 정보와 해마다 달라지는 흐름을 살펴, 생활에서 확인할 수 있는 선택으로 바꾸어 적었습니다. 특정 사건이나 돈을 미리 정하지 않습니다.${timeNote}`;
 }
 
 function evidence(id: string, source: string, value: string | number | boolean | null) {

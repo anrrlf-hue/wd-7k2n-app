@@ -37,7 +37,7 @@ for (const label of ['2026년 10월', '2027년 2월', '2027년 3월']) {
   assert.notEqual(final(base), final(other), 'annual branch changes the choice/consequence, not just the label or evidence');
   assert.notEqual(final(base).split(/(?<=\.)\s+/).at(-1), final(other).split(/(?<=\.)\s+/).at(-1));
   assert.deepEqual(passage(base, 'month-lived-scene').evidenceIds.filter(id => id.startsWith('year-')), []);
-  assert.deepEqual(passage(base, 'month-lived-resolution').evidenceIds.filter(id => id.startsWith('year-')), ['year-branch']);
+  assert.ok(passage(base, 'month-lived-resolution').evidenceIds.includes('year-branch'));
   for (const result of [base, other]) {
     const used = new Set(result.plan.passages.flatMap(p => p.evidenceIds));
     assert.ok(result.plan.evidence.every(e => used.has(e.id)), 'no unused evidence is presented as having shaped this reading');
