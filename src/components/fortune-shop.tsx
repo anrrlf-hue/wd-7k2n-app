@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ArrowLeft, ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, ChevronRight, CircleHelp, Copy, Gift, Heart, LockKeyhole, Menu, MessageCircle, Moon, Search, ShieldCheck, ShoppingBag, Sparkles, Star, TrendingUp, UserRound, Wallet, X } from "lucide-react";
 import styles from "./fortune-shop.module.css";
 import ShopArt from "./shop-art";
+import FortuneIntakeWizard from "./fortune-intake-wizard";
 
 type Product = {id:string; name:string; type:string; desc:string; hook:string; price:number; art:string; icon:string; chapters:string[]; quick:string[]; tag?:string};
 const P: Product[] = [
@@ -48,16 +49,12 @@ export default function FortuneShop({ initialView="home", initialProductId="life
  const [pid,setPid]=useState(P.some(p=>p.id===initialProductId)?initialProductId:"life");
  const [chapter,setChapter]=useState(0);
  const [owned,setOwned]=useState<string[]>([]);
- const [profile,setProfile]=useState({name:"",birth:"",solar:"양력",hour:"모름",gender:"선택 안 함"});
  const [reviewText,setReviewText]=useState("");
  const [reviews,setReviews]=useState<string[]>([]);
  const [searchText,setSearchText]=useState("");
  const [mobileNav,setMobileNav]=useState(false);
  const [myTab,setMyTab]=useState<"results"|"tickets"|"gifts"|"reviews">("results");
  const [orderNumber,setOrderNumber]=useState("");
- const [partnerProfile,setPartnerProfile]=useState({name:"",birth:"",hour:"모름",gender:"선택 안 함"});
- const [lovePartnerMode,setLovePartnerMode]=useState<"solo"|"partner">("solo");
- const [palmPhotos,setPalmPhotos]=useState({left:"",right:""});
  const [tarotCard,setTarotCard]=useState<number|null>(null);
  const [tarotQuestion,setTarotQuestion]=useState("");
  const [giftMessage,setGiftMessage]=useState("");
@@ -196,28 +193,10 @@ export default function FortuneShop({ initialView="home", initialProductId="life
  <section className={styles.section} id="social"><div className={styles.sectionHead}><div><span className={styles.eyebrow}>REAL REVIEWS & FAQ</span><h2>구매 후기 · 자주 묻는 질문</h2></div></div><div className={styles.trustGrid}><div className={styles.trustCard}><Star size={30}/><h3>한 사람 한 사람의 후기를 모으는 곳</h3><p>테스트 단계로 실제 구매자 평점은 표시하지 않습니다. 상품별 실제 후기가 쌓이면 이곳과 상세 페이지에 연결합니다.</p><button onClick={()=>nav("my")}>내 테스트 후기 남기기 <ArrowRight size={16}/></button></div><div className={styles.faq}>{faq.map(([q,a])=><details key={q}><summary>{q}<ChevronDown size={16}/></summary><p>{a}</p></details>)}</div></div></section>
  </main>}
  {page==="detail"&&<main className={styles.content}><div className={styles.detailGrid}><div className={styles.detailArt+" "+styles[product.art]}><ShopArt id={product.id}/><small>{product.type} · 운·돈</small></div><div className={styles.detailInfo}><span className={styles.eyebrow}>FORTUNE COLLECTION</span><h1>{product.name}</h1><h2>{product.hook}</h2><p>{product.desc}</p><div className={styles.benefits}><span><Check/> 풍부한 무료 미리보기</span><span><Check/> 결제하면 볼 내용 미리 확인</span><span><Check/> 결과 저장·공유</span></div><div className={styles.priceLine}><small>본편 시안 가격 · 미확정</small><strong>{won(currentPrice)}</strong>{discount>0&&<em>기존 구매 할인 {won(discount)}</em>}</div><div className={styles.buttons}><button className={styles.goldButton} onClick={()=>nav("input")}>{previewLabel} <ArrowRight size={17}/></button><button className={styles.outlineButton} onClick={()=>nav("paywall")}>{readingLabel} 내용 먼저 보기</button></div></div></div><div className={styles.detailBelow}><h2>결제하면 {product.name}에서 무엇을 볼 수 있을까요?</h2><div className={styles.chapterGrid}>{product.chapters.slice(0,6).map((c,i)=><button key={c} onClick={()=>nav("paywall")}><span>{i+1<10?"0"+(i+1):i+1}</span><strong>{c}</strong><LockKeyhole size={16}/></button>)}</div><button className={styles.outlineButton} onClick={()=>nav("paywall")}>{product.name} 유료 내용 자세히 보기 <ArrowRight size={15}/></button>{product.id!=="tarot"&&<div className={styles.linkTarotHint}><span>🔮 타로는 별도 상품으로 이용할 수 있습니다.</span><button onClick={startTarotOnly}>타로 미리보기 <ArrowRight size={15}/></button></div>}</div></main>}
- {page==="input"&&<main className={styles.content}><div className={styles.formLayout}>
- <div className={styles.guideAside}><Image src="/images/undon-guide.svg" alt="운·돈 안내자" width={300} height={340}/><h2>{product.type==="궁합"?"두 사람의 사주를 함께 볼게요":product.id==="palm"||product.id==="fusion"?"손금과 사주를 함께 준비해 주세요":product.id==="tarot"?"지금 궁금한 질문은 무엇인가요?":"먼저 어떤 분인지 알려주세요"}</h2><p>상품에 필요한 내용을 입력하는 화면입니다. 테스트에서는 입력 정보를 사주 API로 보내지 않습니다.</p></div>
- <form className={styles.birthForm} onSubmit={e=>{e.preventDefault();if(product.id==="tarot"&&tarotCard===null){say("타로 카드를 하나 골라주세요.");return;}setChapter(0);nav("free");}}><span className={styles.eyebrow}>FREE READING</span><h1>{previewLabel}</h1>
- {product.id==="tarot"?<div className={styles.tarotInput}><label>지금 가장 궁금한 질문<textarea value={tarotQuestion} onChange={e=>setTarotQuestion(e.target.value)} placeholder="연애, 직장, 선택, 관계 등 궁금한 것을 적어보세요"/></label><h2>마음이 가는 카드를 골라보세요</h2><div className={styles.tarotDeck}>{[0,1,2].map(i=><button type="button" key={i} aria-label={i+1+"번 타로 카드"} className={tarotCard===i?styles.tarotSelected:""} onClick={()=>setTarotCard(i)}>✦<small>{i+1}번 카드</small></button>)}</div><p className={styles.demoNote}>실제 카드 뽑기·풀이 연결 전 단계로 카드 선택만 시연합니다.</p></div>:
- <>
- <label>어떻게 불러드릴까요?<input value={profile.name} onChange={e=>setProfile({...profile,name:e.target.value})} placeholder="별명 또는 이름 (선택)"/></label>
- <label>생년월일<input type="date" value={profile.birth} onChange={e=>setProfile({...profile,birth:e.target.value})}/></label>
- <label>양력·음력<select value={profile.solar} onChange={e=>setProfile({...profile,solar:e.target.value})}><option>양력</option><option>음력</option><option>음력 윤달</option></select></label>
- <label>태어난 시간<select value={profile.hour} onChange={e=>setProfile({...profile,hour:e.target.value})}>{["모름","자시 (23~01시)","축시 (01~03시)","인시 (03~05시)","묘시 (05~07시)","진시 (07~09시)","사시 (09~11시)","오시 (11~13시)","미시 (13~15시)","신시 (15~17시)","유시 (17~19시)","술시 (19~21시)","해시 (21~23시)"].map(t=><option key={t}>{t}</option>)}</select></label>
- <label>성별<select value={profile.gender} onChange={e=>setProfile({...profile,gender:e.target.value})}>{["선택 안 함","여성","남성"].map(t=><option key={t}>{t}</option>)}</select></label>
- {product.id==="love"&&<div className={styles.partnerFields}><h2>특별히 궁금한 상대방이 있나요?</h2><p className={styles.partnerPrompt}>혼자 보는 연애운이 기본입니다. 특정 상대가 있다면 생년월일을 추가하고, 모르거나 원하지 않으면 건너뛰세요.</p>
- <div className={styles.loveModeButtons}><button type="button" className={lovePartnerMode==="solo"?styles.loveModeActive:""} onClick={()=>setLovePartnerMode("solo")}>혼자 보는 연애운</button><button type="button" className={lovePartnerMode==="partner"?styles.loveModeActive:""} onClick={()=>setLovePartnerMode("partner")}>관심 있는 상대가 있어요</button></div>
- {lovePartnerMode==="partner"&&<div className={styles.partnerEntry}><label>상대방 이름 또는 별명<input value={partnerProfile.name} onChange={e=>setPartnerProfile({...partnerProfile,name:e.target.value})} placeholder="선택 입력"/></label><label>상대방 생년월일<input type="date" value={partnerProfile.birth} onChange={e=>setPartnerProfile({...partnerProfile,birth:e.target.value})}/></label><p className={styles.demoNote}>상대방의 생년월일을 몰라도 진행할 수 있습니다.</p></div>}
- <button type="button" className={styles.skipPartner} onClick={()=>{setLovePartnerMode("solo");setPartnerProfile({name:"",birth:"",hour:"모름",gender:"선택 안 함"});}}>상대방 정보 건너뛰기 <ArrowRight size={14}/></button>
- <p className={styles.demoNote}>연애운은 내 연애 성향·인연의 시기를 중심으로 풀이합니다. 두 사람의 궁합 점수와 관계 분석은 별도 ‘연인 궁합’ 상품에서 제공합니다.</p>
- </div>}
- {product.type==="궁합"&&<div className={styles.partnerFields}><h2>함께 궁합을 볼 상대방</h2><label>상대방 이름 또는 별명<input value={partnerProfile.name} onChange={e=>setPartnerProfile({...partnerProfile,name:e.target.value})} placeholder="상대방 별명"/></label><label>상대방 생년월일<input type="date" value={partnerProfile.birth} onChange={e=>setPartnerProfile({...partnerProfile,birth:e.target.value})}/></label><label>태어난 시간<select value={partnerProfile.hour} onChange={e=>setPartnerProfile({...partnerProfile,hour:e.target.value})}>{["모름","자시 (23~01시)","축시 (01~03시)","인시 (03~05시)","묘시 (05~07시)","진시 (07~09시)","사시 (09~11시)","오시 (11~13시)","미시 (13~15시)","신시 (15~17시)","유시 (17~19시)","술시 (19~21시)","해시 (21~23시)"].map(t=><option key={t}>{t}</option>)}</select></label><label>성별<select value={partnerProfile.gender} onChange={e=>setPartnerProfile({...partnerProfile,gender:e.target.value})}>{["선택 안 함","여성","남성"].map(t=><option key={t}>{t}</option>)}</select></label><p className={styles.demoNote}>두 사람의 실제 궁합은 이후 풀이 작업에서 명식 계산과 연결합니다.</p></div>}
- {(product.id==="palm"||product.id==="fusion")&&<div className={styles.partnerFields}><h2>손바닥 사진 선택</h2><label>왼손 손바닥<input type="file" accept="image/*" onChange={e=>setPalmPhotos({...palmPhotos,left:e.target.files?.[0]?.name||""})}/>{palmPhotos.left&&<small>{palmPhotos.left}</small>}</label><label>오른손 손바닥<input type="file" accept="image/*" onChange={e=>setPalmPhotos({...palmPhotos,right:e.target.files?.[0]?.name||""})}/>{palmPhotos.right&&<small>{palmPhotos.right}</small>}</label><p className={styles.demoNote}>사진 파일은 현재 브라우저에서만 선택되며 서버로 전송·보관되지 않습니다. 실제 손금 판독은 후속 개발 대상입니다.</p></div>}
- </>}
- <p className={styles.demoNote}>이번 시안에서는 출생정보·사진·질문으로 실제 AI 분석을 실행하지 않고 화면 검토용 예시 풀이로 이동합니다.</p>
- <button type="submit" className={styles.goldButton}>{previewLabel} 시작 <ArrowRight size={17}/></button>
- </form></div></main>}
+ {page==="input"&&<FortuneIntakeWizard key={product.id} id={product.id} name={product.name}
+   onCancel={()=>nav("detail",product.id)}
+   onComplete={result=>{setTarotCard(result.tarotCard);if(result.tarotQuestion)setTarotQuestion(result.tarotQuestion);setChapter(0);nav("free",product.id);}}
+ />}
  {page==="free"&&<main className={styles.reader}>
  <div className={styles.readerTop}><span>{previewLabel} · 테스트 예시</span><span>{chapter+1} / 3</span></div><div className={styles.progress}><span style={{width:((chapter+1)/3)*100+"%"}}/></div>
  <div className={styles.paper}><span className={styles.eyebrow}>{product.name} · PREVIEW 0{chapter+1}</span><h1>{product.id==="life"?FINDINGS[chapter]:product.quick[chapter]}</h1>
