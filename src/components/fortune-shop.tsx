@@ -45,7 +45,6 @@ export default function FortuneShop({ initialView="home" }: { initialView?: stri
  const [bundleSize,setBundleSize]=useState<3|5>(3);
  const [selectedRelation,setSelectedRelation]=useState("compatibility");
  const [pairedTopic,setPairedTopic]=useState("wealth");
- const [activeLinkedTopic,setActiveLinkedTopic]=useState<string|null>(null);
  const [pid,setPid]=useState("life");
  const [chapter,setChapter]=useState(0);
  const [owned,setOwned]=useState<string[]>([]);
@@ -75,21 +74,22 @@ export default function FortuneShop({ initialView="home" }: { initialView?: stri
  {id:"reunion",name:"이별·재회운",icon:"💌",saju:"reunion",summary:"관계의 반복 패턴은 사주로 읽고, 지금 연락할지 기다릴지를 타로로 살펴봅니다.",questions:["지금 먼저 연락한다면 어떤 대화를 준비할까?","이 관계에 미련이 남은 이유는 뭘까?","지금 나에게 필요한 선택은?"]}
  ];
  const paired=pairedIdeas.find(t=>t.id===pairedTopic)||pairedIdeas[0];
- function openLinkedTarot(topic?:string){const idea=pairedIdeas.find(x=>x.id===(topic||pairedTopic))||pairedIdeas[0];setActiveLinkedTopic(idea.id);setTarotQuestion(idea.questions[0]);setTarotCard(null);setPid("tarot");nav("input","tarot");}
- function beginPaired(){setActiveLinkedTopic(pairedTopic);setTarotQuestion(paired.questions[0]);setTarotCard(null);setPid(paired.saju);setChapter(0);nav("input",paired.saju);}
- function startTarotOnly(){setActiveLinkedTopic(null);setTarotQuestion("");setTarotCard(null);setPid("tarot");nav("input","tarot");}
+ function recommendTarot(topic?:string){const idea=pairedIdeas.find(x=>x.id===(topic||pairedTopic))||pairedIdeas[0];setTarotQuestion(idea.questions[0]);setTarotCard(null);productOpen("tarot");}
+ function startTarotOnly(){setTarotQuestion("");setTarotCard(null);productOpen("tarot");}
  const heroSlides=[{id:"life",eyebrow:"대표 운세 · 전통사주 무료체험",title:"내 사주는 어디로 향하고 있을까?",sub:"평생 심층사주에서 타고난 기질부터 인생의 큰 변화까지 확인해 보세요."},{id:"year",eyebrow:"2027 신년운세",title:"내년엔 어떤 일이 기다리고 있을까?",sub:"12개월의 흐름, 돈과 인연의 시기까지. 먼저 무료로 확인하세요."},{id:"compatibility",eyebrow:"궁합 전문 · 관계의 모든 것",title:"우리 둘은 얼마나 잘 맞을까?",sub:"연인부터 가족과 동업까지, 관계마다 다른 궁합 풀이를 만나보세요."}];
  const hero=heroSlides[heroIndex];
  const bundleIds=bundleSize===3?["life","wealth","year"]:["life","wealth","year","compatibility","love"];
  const discount=pid==="fusion" ? (owned.includes("life")?5000:0)+(owned.includes("palm")?5000:0):0;
  const currentPrice=Math.max(9800,product.price-discount);
+ const previewLabel=product.id==="life"?"전통사주 미리보기":product.name+" 미리보기";
+ const readingLabel=product.name+" 보기";
  useEffect(()=>{try{setOwned(JSON.parse(localStorage.getItem("undon-demo-access")||"[]"));setReviews(JSON.parse(localStorage.getItem("undon-demo-reviews")||"[]"));}catch{}},[]);
  useEffect(()=>{
  const onBack=()=>{const u=new URL(window.location.href), p=u.pathname.split("/").filter(Boolean); const v=p[0]==="explore"&&p[1]?p[1]:"home";setPage(v as Page);const item=u.searchParams.get("item");if(item&&P.some(p=>p.id===item))setPid(item);};
  onBack();window.addEventListener("popstate",onBack);return()=>window.removeEventListener("popstate",onBack);
  },[]);
  function nav(to:Page,id?:string){const path=to==="home"?"/":"/explore/"+to;const query=id||(["detail","input","free","paywall","full"].includes(to)?pid:"");window.history.pushState({view:to},"",path+(query?"?item="+encodeURIComponent(query):""));setPage(to);setMobileNav(false);window.scrollTo(0,0);}
- function productOpen(id:string){setActiveLinkedTopic(null);setPid(id);setChapter(0);nav("detail",id);}
+ function productOpen(id:string){setPid(id);setChapter(0);nav("detail",id);}
  function section(id:string){const routes:Record<string,Page>={popular:"popular",paired:"paired",new:"paired",relations:"relations",all:"all",free:"freeHub",classic:"classic",love:"loveHub",scenario:"scenario",bundle:"bundles",social:"reviews",featured:"classic",money:"money",special:"special"};nav(routes[id]||"all");}
  function unlockBundle(){const next=Array.from(new Set([...owned,...bundleIds]));setOwned(next);localStorage.setItem("undon-demo-access",JSON.stringify(next));nav("my");say("테스트 패키지 본편이 열렸습니다");}
  function unlock(){const next=Array.from(new Set([...owned,pid]));setOwned(next);localStorage.setItem("undon-demo-access",JSON.stringify(next));setChapter(0);nav("full");}
@@ -103,7 +103,7 @@ export default function FortuneShop({ initialView="home" }: { initialView?: stri
  <button className={styles.hamburger} aria-label="메뉴" onClick={()=>setMobileNav(!mobileNav)}>{mobileNav?<X/>:<Menu/>}</button>
  <button className={styles.logo} onClick={()=>nav("home")} aria-label="운돈 홈"><span className={styles.logoDisc}>운</span><strong>운·돈</strong><small>사주·운세 전문</small></button>
  <nav className={mobileNav?styles.mainNav+" "+styles.open:styles.mainNav} aria-label="상단 메뉴">
- <button onClick={()=>nav("today")}>투데이</button><button onClick={()=>section("popular")}>인기차트</button><button onClick={()=>section("paired")}>사주+타로</button><button onClick={()=>section("relations")}>연애·궁합</button><button onClick={()=>section("free")}>무료</button><button onClick={()=>section("all")}>전체 상품</button>
+ <button onClick={()=>nav("today")}>투데이</button><button onClick={()=>section("popular")}>인기차트</button><button onClick={()=>productOpen("tarot")}>타로</button><button onClick={()=>section("relations")}>연애·궁합</button><button onClick={()=>section("free")}>무료</button><button onClick={()=>section("all")}>전체 상품</button>
  </nav><div className={styles.headerTools}><button aria-label="선물" onClick={()=>nav("gift")}><Gift size={20}/></button><button aria-label="내 결과" onClick={()=>nav("my")}><UserRound size={20}/></button></div>
  </div></header>
  {page!=="home"&&<div className={styles.backline}><button onClick={()=>nav("home")}><ArrowLeft size={16}/> 운·돈 홈</button><span className={styles.testTag}>테스트 화면 · 실제 결제 없음</span></div>}
@@ -115,34 +115,31 @@ export default function FortuneShop({ initialView="home" }: { initialView?: stri
    <div className={styles.heroVisual}><div className={styles.heroArt}><ShopArt id={hero.id}/></div><Image src="/images/undon-guide.svg" alt="운·돈 안내자" className={styles.heroGuide} width={420} height={450} priority/></div>
   </div>
  </section>
- <section className={styles.quickRow} aria-label="빠른 서비스"><button onClick={()=>section("popular")}><TrendingUp/> 인기차트</button><button onClick={()=>section("paired")}><Sparkles/> 사주+타로</button><button onClick={()=>section("free")}><Moon/> 무료운세</button><button onClick={()=>nav("gift")}><Gift/> 선물하기</button><button onClick={()=>nav("my")}><BookOpen/> 내 운세</button></section>
+ <section className={styles.quickRow} aria-label="빠른 서비스"><button onClick={()=>section("popular")}><TrendingUp/> 인기차트</button><button onClick={startTarotOnly}><Sparkles/> 타로</button><button onClick={()=>section("free")}><Moon/> 무료운세</button><button onClick={()=>nav("gift")}><Gift/> 선물하기</button><button onClick={()=>nav("my")}><BookOpen/> 내 운세</button></section>
  <section className={styles.section} id="featured"><div className={styles.sectionHead}><div><span className={styles.eyebrow}>대표 서비스</span><h2>지금 나에게 필요한 사주는?</h2></div><p>전통·평생사주 · 궁합 · 신년운세</p></div><div className={styles.featuredGrid}>{FEATURED.map(id=>{const p=P.find(v=>v.id===id)!;return <button key={id} className={styles.featuredCard} onClick={()=>productOpen(id)}><span className={styles.cardLabel}>{p.tag||"신년 운세"}</span><div className={styles.featuredIllustration}><ShopArt id={id}/></div><div className={styles.featuredCopy}><h3>{p.name}</h3><p>{p.hook}</p><span className={styles.cardMore}>무료로 먼저 보기 <ChevronRight size={16}/></span></div></button>})}</div></section>
  <section className={styles.homeDirectory}><div className={styles.sectionHead}><div><span className={styles.eyebrow}>운·돈 탐색</span><h2>관심 있는 운세부터 골라보세요</h2></div></div>
  <div className={styles.directoryGrid}>{[
- ["인기차트 TOP 5","popular","많이 주목받는 운세"],["사주+타로 함께 보기","paired","돈·연애·취업의 현실 고민"],
+ ["인기차트 TOP 5","popular","많이 주목받는 운세"],["타로","tarot","현재 고민과 카드 풀이"],
  ["전통·평생사주","classic","인생의 전체 흐름"],["재물·취업·사업","money","돈과 일의 시기"],
  ["연애·결혼·재회","loveHub","사랑과 인연"],["궁합 전문관","relations","연인·부부·친구·동업·가족"],
  ["손금·타로","special","양손과 카드풀이"],["무료 운세","freeHub","오늘과 무료 미리보기"],
  ["패키지·선물","bundles","묶음 구매·선물"],["후기·FAQ","reviews","구매 전 궁금증"]
- ].map(([label,id,desc])=><button key={id} onClick={()=>nav(id as Page)}><strong>{label}</strong><small>{desc}</small><ChevronRight size={17}/></button>)}</div></section>
- <section className={styles.homeTeaser}><div><span className={styles.eyebrow}>SAJU × TAROT</span><h2>사주 보고, 타로로 한 번 더</h2><p>재물·연애·취업·사업 같은 현실적인 고민을 두 가지 방식으로 살펴보세요.</p></div><button onClick={()=>section("paired")}>사주+타로 조합 보기 <ArrowRight size={16}/></button></section>
+ ].map(([label,id,desc])=><button key={id} onClick={()=>id==="tarot"?startTarotOnly():nav(id as Page)}><strong>{label}</strong><small>{desc}</small><ChevronRight size={17}/></button>)}</div></section>
+ <section className={styles.homeTeaser}><div><span className={styles.eyebrow}>SUGGESTED FOR YOU</span><h2>함께 보면 좋은 운세</h2><p>재물운·연애운·취업운과 타로는 각각 따로 볼 수 있습니다. 궁금한 상품만 골라보세요.</p></div><button onClick={()=>section("paired")}>추천 운세 보기 <ArrowRight size={16}/></button></section>
  </main>}
  {page==="popular"&&<main className={styles.explorePage}><div className={styles.exploreHeader}><span className={styles.eyebrow}>POPULAR</span><h1>인기차트 TOP 5</h1><p>인기 운세를 비교해 보세요. 현재는 실제 판매 순위가 아닌 시연 추천 목록입니다.</p><button onClick={()=>nav("home")}><ArrowLeft size={15}/> 운·돈 홈</button></div>
  <section className={styles.section+" "+styles.topSection} id="popular"><div className={styles.sectionHead}><div><span className={styles.eyebrow}>RANKING · TOP 5</span><h2>요즘 가장 주목받는 운세</h2><p>무엇부터 볼지 고민될 때</p></div><span className={styles.sampleNote}>현재는 추천 순서 · 실제 판매 순위 아님</span></div><div className={styles.ranks}>{POPULAR.map((id,i)=>{const p=P.find(v=>v.id===id)!;return <button key={id} onClick={()=>productOpen(id)}><b>{i+1}</b><span className={styles.rankSymbol}><ShopArt id={id} mini/></span><span><strong>{p.name}</strong><small>{p.hook}</small></span><ChevronRight size={19}/></button>})}</div></section><section className={styles.section}><div className={styles.sectionHead}><div><h2>상품을 골라보세요</h2></div></div>{productTiles(["life","year","love","wealth","compatibility"])}</section>
  </main>}
  {page==="paired"&&<main className={styles.explorePage+" "+styles.pairedPage}>
- <div className={styles.exploreHeader}><span className={styles.eyebrow}>SAJU × TAROT</span><h1>사주로 흐름을 보고, 타로로 지금을 묻다</h1><p>재물·연애·취업·사업·재회 중 지금 가장 궁금한 고민을 골라보세요.</p><button onClick={()=>nav("home")}><ArrowLeft size={15}/> 운·돈 홈</button></div>
- <section className={styles.section}><div className={styles.sectionHead}><div><span className={styles.eyebrow}>CHOOSE YOUR QUESTION</span><h2>어떤 고민이 가장 궁금하세요?</h2></div></div>
+ <div className={styles.exploreHeader}><span className={styles.eyebrow}>RELATED FORTUNES</span><h1>함께 보면 좋은 운세</h1><p>사주와 타로는 서로 다른 상품입니다. 원하는 것부터 하나씩 선택해 볼 수 있어요.</p><button onClick={()=>nav("home")}><ArrowLeft size={15}/> 운·돈 홈</button></div>
+ <section className={styles.section}><div className={styles.sectionHead}><div><span className={styles.eyebrow}>CHOOSE YOUR FORTUNE</span><h2>어떤 고민이 궁금하세요?</h2></div></div>
  <div className={styles.pairedTopics}>{pairedIdeas.map(t=><button key={t.id} className={pairedTopic===t.id?styles.pairedTopicActive:""} onClick={()=>setPairedTopic(t.id)}><span>{t.icon}</span><strong>{t.name}</strong></button>)}</div>
- <div className={styles.pairedExplanation}><h3>{paired.icon} {paired.name} 함께 보기</h3><p>{paired.summary}</p></div>
+ <div className={styles.pairedExplanation}><h3>{paired.icon} {paired.name}</h3><p>{paired.summary}</p></div>
  <div className={styles.pairedSteps}>
- <div className={styles.pairedStep}><div className={styles.pairedStepTop}><span>1단계 · SAJU</span><span>먼저 나의 흐름 살펴보기</span></div><div className={styles.pairedVisual}><ShopArt id={paired.saju}/></div><h3>{P.find(p=>p.id===paired.saju)?.name}</h3><p>태어난 사주를 바탕으로 내 성향과 삶의 변화 시기를 먼저 알아봅니다.</p><span className={styles.pairedStepStatus}><Check size={15}/> 사주 미리보기부터 시작</span></div>
- <div className={styles.pairedStep}><div className={styles.pairedStepTop}><span>2단계 · TAROT</span><span>다음으로 지금 고민을 묻기</span></div><div className={styles.pairedVisual}><ShopArt id="tarot"/></div><h3>내 고민 타로 리딩</h3><p>사주를 읽고 나서 현재 고민하는 선택을 질문으로 만들고 카드를 직접 골라봅니다.</p><span className={styles.pairedStepStatus}><ArrowRight size={15}/> 사주 이후 타로 선택으로 이동</span></div>
+  <div className={styles.pairedStep}><div className={styles.pairedStepTop}><span>사주 상품</span><span>독립 체험</span></div><div className={styles.pairedVisual}><ShopArt id={paired.saju}/></div><h3>{P.find(p=>p.id===paired.saju)?.name}</h3><p>생년월일을 바탕으로 이 분야의 성향과 시기를 살펴보는 독립 상품입니다.</p><button className={styles.goldButton} onClick={()=>productOpen(paired.saju)}>{P.find(p=>p.id===paired.saju)?.name} 미리보기 <ArrowRight size={16}/></button></div>
+  <div className={styles.pairedStep}><div className={styles.pairedStepTop}><span>타로 상품</span><span>독립 체험</span></div><div className={styles.pairedVisual}><ShopArt id="tarot"/></div><h3>타로</h3><p>생년월일 입력 없이 현재 궁금한 질문을 정하고 카드를 골라보는 독립 상품입니다.</p><button className={styles.outlineButton} onClick={startTarotOnly}>타로 미리보기 <ArrowRight size={16}/></button></div>
  </div>
- <div className={styles.pairedFooter}><strong>같이 보면 무엇이 좋은가요?</strong><p><b>사주:</b> 타고난 성향과 시기를 살펴보고, <b>타로:</b> 지금 눈앞에 놓인 고민을 질문합니다.</p>
- <div className={styles.pairedQuestions}><span>예를 들어 이런 질문으로 이어집니다</span>{paired.questions.map(q=><span key={q}>“{q}”</span>)}</div>
- <div className={styles.pairedMainActions}><button className={styles.goldButton} onClick={beginPaired}>사주+타로 함께 시작하기 <ArrowRight size={17}/></button><button className={styles.outlineButton} onClick={startTarotOnly}>타로만 보기 <ArrowRight size={16}/></button></div>
- <p className={styles.demoNote}>현재는 화면과 이용 순서 확인용입니다. 고객별 사주·타로 AI 해석은 다음 작업에서 연결합니다. 실제 결제는 없습니다.</p></div>
+ <div className={styles.pairedFooter}><strong>각각 따로 이용할 수 있습니다.</strong><p>사주를 구매하지 않아도 타로를 바로 이용할 수 있고, 타로를 보지 않아도 사주 본편을 볼 수 있습니다. 다른 상품 추천은 선택 사항입니다.</p><div className={styles.pairedQuestions}><span>타로에서 이런 질문을 골라볼 수 있어요</span>{paired.questions.map(q=><span key={q}>“{q}”</span>)}</div><p className={styles.demoNote}>현재는 개별 상품의 화면 시연입니다. 실제 AI 해석과 실결제는 연결되지 않았습니다.</p></div>
  </section></main>}
  {page==="classic"&&<main className={styles.explorePage}><div className={styles.exploreHeader}><span className={styles.eyebrow}>SAJU</span><h1>전통사주·평생 심층사주</h1><p>나의 성향부터 10년 대운과 인생의 전환점까지.</p><button onClick={()=>nav("home")}><ArrowLeft size={15}/> 운·돈 홈</button></div>
  <section className={styles.section} id="classic"><div className={styles.sectionHead}><div><span className={styles.eyebrow}>S A J U</span><h2>정통 사주 · 인생 운세</h2><p>한 해의 흐름부터 평생의 전환점까지</p></div></div>{productTiles(["life","year","wealth","job"])}</section>
