@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import FortuneShop from "@/components/fortune-shop";
 
 const screens = new Set([
-  "popular", "new", "classic", "money", "loveHub", "relations", "special",
+  "popular", "paired", "classic", "money", "loveHub", "relations", "special",
   "scenario", "all", "freeHub", "bundles", "reviews",
   "detail", "input", "free", "paywall", "full", "my", "gift", "today", "bundle",
 ]);
