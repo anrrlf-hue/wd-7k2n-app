@@ -25,7 +25,7 @@ check(!shop.includes("무료 사주풀이 시작"), "Generic saju CTA leaked int
 check(!shop.includes("activeLinkedTopic") && !shop.includes("openLinkedTarot"), "Old forced saju -> tarot path remains.");
 check(!shop.includes('type:"돈과일"'), "Invalid customer-facing money-work category.");
 check(!shop.includes("i%3===0?") && shop.includes("chapterTeaser(c)") && shop.includes("chapterSymbol(c)"), "Repeated generic premium teaser or duplicated cover artwork detected.");
-check(shop.includes("Array.isArray(saved)") && shop.includes("catch{setOwned([])}"), "Corrupted local demo storage could break user flow.");
+check(shop.includes("Array.isArray(saved)") && /catch\\{setOwned\\(\\[\\]\\);?\\}/.test(shop), "Corrupted local demo storage could break user flow.");
 for (const part of ["detail","input","free","paywall","full","my","today","gift","popular","relations","all"]) {
   check(shop.includes('page==="'+part+'"'), "Missing page: " + part);
 }
