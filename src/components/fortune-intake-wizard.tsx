@@ -75,7 +75,7 @@ export default function FortuneIntakeWizard({id,name,onComplete,onCancel}:{
     <div className={styles.progress}><div style={{width:((index+1)/steps.length*100)+"%"}}/></div>
   </div>
   <div className={styles.chat}>
-   <div className={styles.intro}><span><Sparkles size={16}/> 운·돈 안내자</span><p>반가워요! {name}을 살펴볼게요. 제가 하나씩 여쭤볼 테니 편하게 대답해 주세요.</p></div>
+   <div className={styles.intro}><span><Sparkles size={16}/> 운·돈 안내자</span><p>반가워요! 오늘은 {name} 미리보기를 함께 준비해 볼게요. 제가 하나씩 여쭤볼 테니 편하게 대답해 주세요.</p></div>
    {recent.map((s,i)=><div key={s.key+"-"+i} className={styles.exchange}>
       <div className={styles.guideMini}><Image src="/images/undon-guide.svg" width={46} height={48} alt="운돈 안내자"/> <span>{s.question}</span></div>
       <div className={styles.yourReply}>{readable(s,draft)}</div>
@@ -90,7 +90,7 @@ export default function FortuneIntakeWizard({id,name,onComplete,onCancel}:{
     {step.kind==="file"&&<div className={styles.filePick}><label>{value?"선택됨: "+value:"여기를 눌러 사진 선택하기"}<input type="file" accept="image/*" onChange={e=>setValue(step.key,e.target.files?.[0]?.name||"")}/></label><small>현재 시연에서는 서버 업로드가 없으며 사진을 고르지 않아도 진행할 수 있습니다.</small></div>}
    </div>
    <div className={styles.actions}><button type="button" className={styles.prev} disabled={index===0} onClick={()=>setIndex(i=>Math.max(0,i-1))}><ChevronLeft size={16}/> 이전 질문</button><button type="button" disabled={!canNext} className={styles.next} onClick={advance}>{index===steps.length-1?name+" 미리보기 보기":step.optional&&!value?"건너뛰고 다음":"답변하고 다음"} <ArrowRight size={16}/></button></div>
-   <button type="button" className={styles.demo} onClick={()=>onComplete({tarotCard:draft.tarotCard,tarotQuestion:draft.tarotQuestion,name:draft.name,birth:draft.birth,gender:draft.gender,calendar:draft.calendar,hour:draft.hour,partnerChoice:draft.partnerChoice,partnerBirth:draft.partnerBirth})}>입력 없이 테스트용 예시 결과 보기</button>
+   <button type="button" className={styles.demo} onClick={()=>onComplete({tarotCard:draft.tarotCard,tarotQuestion:draft.tarotQuestion,name:draft.name,birth:draft.birth,gender:draft.gender,calendar:draft.calendar,hour:draft.hour,partnerChoice:draft.partnerChoice,partnerBirth:draft.partnerBirth})}>테스트용 예시 결과 바로 보기 (실제 풀이 아님)</button>
   </div>
   <p className={styles.privacy}><ShieldCheck size={15}/> 현재는 UI 시연 중입니다. 입력한 정보는 별도 저장하거나 사주 API로 전송하지 않습니다.</p>
  </main>;
