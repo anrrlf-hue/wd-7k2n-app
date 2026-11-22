@@ -3,8 +3,8 @@ import { AmbientBgm } from "@/components/ambient-bgm";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "운·돈 · 타고난 흐름을 현실로",
-  description: "사주와 손금에서 시작해 지금의 나에게 맞는 현실적인 돈의 방향까지 연결하는 무료 재물운 진단",
+  title: "운·돈 | 평생사주 · 궁합 · 재물운 · 손금 · 타로",
+  description: "내 사주 무료 미리보기부터 평생 심층사주, 연인·부부·친구 궁합, 재물운, 신년운세, 손금과 타로까지 한곳에서 즐기는 운세 쇼핑 플랫폼",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
