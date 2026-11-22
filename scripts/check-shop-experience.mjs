@@ -20,6 +20,7 @@ check(shop.includes("결제 없이 {readingLabel}"), "Missing explicit no-charge
 check(shop.includes('product.id==="tarot"') && shop.includes("타로 미리보기"), "Tarot product must have its own flow.");
 check(shop.includes("startTarotOnly") && !shop.includes("beginPaired"), "Tarot must not require completing saju first.");
 check(shop.includes('page==="paired"') && !shop.includes('page==="new"'), "Repurposed new arrivals must not return.");
+check(shop.includes("오늘의 운세") && shop.includes("내일의 운세") && shop.includes("fortuneDay"), "Today and tomorrow must both exist as independent free tabs.");
 check(!shop.includes("무료 사주풀이 시작"), "Generic saju CTA leaked into other product screens.");
 check(!shop.includes("activeLinkedTopic") && !shop.includes("openLinkedTarot"), "Old forced saju -> tarot path remains.");
 check(!shop.includes('type:"돈과일"'), "Invalid customer-facing money-work category.");
