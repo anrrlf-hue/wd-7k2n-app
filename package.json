@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/check-shop-experience.mjs && next build",
+    "test:fortune-ux": "node scripts/check-shop-experience.mjs",
     "start": "next start",
     "lint": "eslint",
     "test:finance-regressions": "node scripts/test-finance-regressions.mjs",
