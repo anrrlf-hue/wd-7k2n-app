@@ -115,3 +115,19 @@
 .followupTarot p{color:#705e53;font-size:14px;line-height:1.6;margin:0 0 18px}
 @media(max-width:750px){.pairedTopics{grid-template-columns:repeat(3,minmax(0,1fr))}.pairedSteps{gap:13px}.pairedStep h3{font-size:21px}.pairedVisual{height:173px}}
 @media(max-width:640px){.pairedTopics{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.pairedTopics button{min-height:65px;padding:10px}.pairedTopics button span{font-size:22px}.pairedTopics button strong{font-size:12px}.pairedExplanation{padding:16px}.pairedExplanation h3{font-size:18px}.pairedExplanation p{font-size:13px}.pairedSteps{grid-template-columns:1fr;gap:13px}.pairedVisual{height:165px}.pairedStep{padding:12px}.pairedStep h3{font-size:21px}.pairedStep p{font-size:13px}.pairedFooter{padding:17px}.loveModeButtons{grid-template-columns:1fr}.linkTarotHint{flex-direction:column;align-items:stretch}.linkTarotHint button{justify-content:center}.followupTarot{padding:19px}}
+
+
+/* Combined reading is a single sequential customer journey, not parallel CTAs. */
+.pairedStepStatus{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:#8d5641;background:#f7eddc;border-radius:10px;padding:11px 12px;margin-top:auto}
+.pairedQuestions{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0 20px}
+.pairedQuestions>span:first-child{flex-basis:100%;font-size:12px;font-weight:800;color:#7f614d}
+.pairedQuestions>span:not(:first-child){padding:8px 11px;background:#fffaf0;border:1px solid #dec8a8;border-radius:9px;color:#6e594b;font-size:12px;line-height:1.5}
+.pairedMainActions{display:flex;flex-wrap:wrap;gap:13px;align-items:center;margin-top:19px}
+.pairedMainActions .goldButton{min-width:245px}
+.pairedMainActions .outlineButton{min-width:130px}
+.pairedReadingExtra{margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:13px 16px;background:#f5eada;border:1px solid #e4c9aa;border-radius:12px}
+.pairedReadingExtra span{font-size:13px;color:#745d4d}
+.pairedReadingExtra button{display:flex;align-items:center;gap:5px;background:transparent;border:0;color:#96513b;font-size:13px;font-weight:800}
+.tarotResultNotice{padding:20px;margin:22px 0;background:#f8eddc;border:1px solid #d9bb92;border-radius:14px;color:#5d4539}
+.tarotResultNotice strong{font-size:16px}.tarotResultNotice p{font-size:14px;margin:7px 0;line-height:1.6}.tarotResultNotice small{font-size:12px;color:#81695b}
+@media(max-width:640px){.pairedMainActions{flex-direction:column;align-items:stretch}.pairedMainActions .goldButton,.pairedMainActions .outlineButton{width:100%;min-width:0}.pairedReadingExtra{flex-direction:column;align-items:flex-start}}
