@@ -39,13 +39,13 @@ const faq = [
 ];
 type Page = "home"|"detail"|"input"|"free"|"paywall"|"full"|"my"|"gift"|"today"|"bundle"|"popular"|"paired"|"relations"|"all"|"freeHub"|"classic"|"loveHub"|"money"|"special"|"scenario"|"bundles"|"reviews";
 const won=(n:number)=> n.toLocaleString("ko-KR")+"원";
-export default function FortuneShop({ initialView="home" }: { initialView?: string }){
+export default function FortuneShop({ initialView="home", initialProductId="life" }: { initialView?: string; initialProductId?: string }){
  const [page,setPage]=useState<Page>(initialView as Page);
  const [heroIndex,setHeroIndex]=useState(0);
  const [bundleSize,setBundleSize]=useState<3|5>(3);
  const [selectedRelation,setSelectedRelation]=useState("compatibility");
  const [pairedTopic,setPairedTopic]=useState("wealth");
- const [pid,setPid]=useState("life");
+ const [pid,setPid]=useState(P.some(p=>p.id===initialProductId)?initialProductId:"life");
  const [chapter,setChapter]=useState(0);
  const [owned,setOwned]=useState<string[]>([]);
  const [profile,setProfile]=useState({name:"",birth:"",solar:"양력",hour:"모름",gender:"선택 안 함"});
