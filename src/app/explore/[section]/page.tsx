@@ -7,8 +7,10 @@ const screens = new Set([
   "detail", "input", "free", "paywall", "full", "my", "gift", "today", "bundle",
 ]);
 
-export default async function ExplorePage({ params }: PageProps<"/explore/[section]">) {
+export default async function ExplorePage({ params, searchParams }: PageProps<"/explore/[section]">) {
   const { section } = await params;
+  const query = await searchParams;
   if (!screens.has(section)) notFound();
-  return <FortuneShop initialView={section} />;
+  const initialProductId = typeof query.item === "string" ? query.item : "life";
+  return <FortuneShop initialView={section} initialProductId={initialProductId} />;
 }
