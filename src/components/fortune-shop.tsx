@@ -74,7 +74,6 @@ export default function FortuneShop({ initialView="home" }: { initialView?: stri
  {id:"reunion",name:"이별·재회운",icon:"💌",saju:"reunion",summary:"관계의 반복 패턴은 사주로 읽고, 지금 연락할지 기다릴지를 타로로 살펴봅니다.",questions:["지금 먼저 연락한다면 어떤 대화를 준비할까?","이 관계에 미련이 남은 이유는 뭘까?","지금 나에게 필요한 선택은?"]}
  ];
  const paired=pairedIdeas.find(t=>t.id===pairedTopic)||pairedIdeas[0];
- function recommendTarot(topic?:string){const idea=pairedIdeas.find(x=>x.id===(topic||pairedTopic))||pairedIdeas[0];setTarotQuestion(idea.questions[0]);setTarotCard(null);productOpen("tarot");}
  function startTarotOnly(){setTarotQuestion("");setTarotCard(null);productOpen("tarot");}
  const heroSlides=[{id:"life",eyebrow:"대표 운세 · 전통사주 무료체험",title:"내 사주는 어디로 향하고 있을까?",sub:"평생 심층사주에서 타고난 기질부터 인생의 큰 변화까지 확인해 보세요."},{id:"year",eyebrow:"2027 신년운세",title:"내년엔 어떤 일이 기다리고 있을까?",sub:"12개월의 흐름, 돈과 인연의 시기까지. 먼저 무료로 확인하세요."},{id:"compatibility",eyebrow:"궁합 전문 · 관계의 모든 것",title:"우리 둘은 얼마나 잘 맞을까?",sub:"연인부터 가족과 동업까지, 관계마다 다른 궁합 풀이를 만나보세요."}];
  const hero=heroSlides[heroIndex];
@@ -97,7 +96,33 @@ export default function FortuneShop({ initialView="home" }: { initialView?: stri
  function submitReview(){if(!reviewText.trim())return;const next=[reviewText.trim(),...reviews].slice(0,20);setReviews(next);localStorage.setItem("undon-demo-reviews",JSON.stringify(next));setReviewText("");say("이 기기의 시연 후기에 추가했습니다");}
  function share(){const s="운·돈 사주 쇼핑 테스트 시안";if(navigator.share){navigator.share({title:s,url:location.origin}).catch(()=>{});}else if(navigator.clipboard){navigator.clipboard.writeText(location.origin).then(()=>say("사이트 링크가 복사되었습니다")).catch(()=>say("주소창에서 링크를 복사해 주세요"));}}
  function productTiles(ids:string[]){return <div className={styles.catalogGrid}>{ids.map(id=>{const p=P.find(x=>x.id===id);if(!p)return null;return <button key={id} className={styles.catalogCard} onClick={()=>productOpen(id)}><div className={styles.catalogArt}><ShopArt id={id}/></div><div className={styles.catalogDetails}><div className={styles.catalogMeta}>{p.tag||p.type+" 운세"} · 미리보기 제공</div><h3>{p.name}</h3><p>{p.hook}</p><span>{p.name} 알아보기 <ArrowRight size={14}/></span></div></button>})}</div>}
- function intro(){return product.id==="life" ? ["사주를 펼치면 가장 먼저 확인하는 것은 네 기둥과 그 사이의 균형입니다. 같은 태어난 해라도 월·일·시에 따라 해석의 중심이 달라집니다.","겉으로 보여주는 모습과 혼자 있을 때의 마음이 꼭 같지는 않습니다. 이번 무료 읽기에서는 그 간격을 먼저 다뤄 봅니다.","지금까지의 선택이 앞으로의 변화를 읽는 출발점이 됩니다. 이어지는 본편에서는 재물·일·관계와 시기별 전환점을 확인할 수 있습니다."] : [product.hook+" "+product.desc+"을 중심으로 살펴보는 첫 번째 장입니다.", "두 번째 장에서는 첫 장보다 더 구체적으로 성향과 서로 다른 선택의 이유를 다룹니다. 실제 서비스에서는 입력한 자료를 바탕으로 고객마다 다른 원고가 작성됩니다.", "이번 무료 미리보기는 여기까지입니다. 본편에 들어 있는 구체적인 주제와 시각 자료를 아래에서 미리 살펴볼 수 있습니다."];}
+ function intro():string[]{
+   if(product.id==="life") return [
+     "이름이 같아도 생년월일과 태어난 시각에 따라 사주 원국이 달라집니다. 시연 화면에서는 어떤 요소가 인생 풀이에 사용되는지 소개합니다.",
+     "바깥에서 보여주는 내 모습과 혼자 있을 때의 마음을 비교해 보는 내용입니다. 고객별 실제 해석은 명식 계산 이후 연결됩니다.",
+     "지난 선택과 앞으로의 흐름을 살펴볼 차례입니다. 평생 심층사주 유료 본편에서는 10년 대운, 재물, 인연과 중요한 시기를 다룹니다."
+   ];
+   if(product.id==="tarot") return [
+     "선택한 카드를 중심으로 지금 질문과 연결되는 상징을 먼저 읽습니다. 실제 서비스에서는 고객이 뽑은 카드의 종류와 위치를 기반으로 풀이합니다.",
+     "두 번째 미리보기에서는 현재의 마음과 선택 사이에서 어떤 질문을 던질 수 있을지 살펴봅니다. 고객별 카드 해석은 아직 연결되지 않았습니다.",
+     "마지막 미리보기에서는 카드가 보여주는 상황의 관점을 정리합니다. 타로 본편에서는 지금 고민을 더 구체적으로 다루는 내용을 볼 수 있습니다."
+   ];
+   if(product.id==="palm"||product.id==="fusion") return [
+     "왼손과 오른손을 함께 살펴보는 이유부터 시작합니다. 실제 손바닥 사진 판독은 추후 본 기능에 연결됩니다.",
+     "양손에서 관찰한 서로 다른 선의 형태와 특징이 풀이에서 어떻게 해석되는지 보여주는 시연 예시입니다.",
+     "정통 손금 또는 종합심층 본편에서는 분석된 손의 특징을 중심으로 자세한 내용을 확인하도록 구성했습니다."
+   ];
+   if(product.type==="궁합") return [
+     product.hook+" 첫 번째 미리보기에서는 두 사람의 관계 유형과 어떤 영역을 분석하는지 소개합니다.",
+     "다음 내용은 두 사람의 성향과 대화 방식에서 나타날 수 있는 차이를 살펴보는 예시입니다. 실제 궁합 점수는 아직 계산하지 않습니다.",
+     "마지막 미리보기에서는 이 관계를 깊이 있게 살펴볼 항목을 안내합니다. 결제 후에는 선택한 궁합 상품의 본편을 열람하는 구조입니다."
+   ];
+   return [
+     product.hook+" 먼저 이 운세에서 무엇을 살펴볼 수 있는지 소개합니다.",
+     product.name+"은 인생의 이 영역에 관한 성향과 흐름을 자세히 다루는 상품입니다. 고객별 실제 사주 해석은 별도로 연결됩니다.",
+     "이 미리보기 이후 "+product.name+"의 유료 본편에서 중요한 시기와 관련 내용을 자세히 확인할 수 있습니다."
+   ];
+ }
  return <div className={styles.site}>
  <header className={styles.header}><div className={styles.headerInner}>
  <button className={styles.hamburger} aria-label="메뉴" onClick={()=>setMobileNav(!mobileNav)}>{mobileNav?<X/>:<Menu/>}</button>
