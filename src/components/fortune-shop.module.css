@@ -131,3 +131,9 @@
 .tarotResultNotice{padding:20px;margin:22px 0;background:#f8eddc;border:1px solid #d9bb92;border-radius:14px;color:#5d4539}
 .tarotResultNotice strong{font-size:16px}.tarotResultNotice p{font-size:14px;margin:7px 0;line-height:1.6}.tarotResultNotice small{font-size:12px;color:#81695b}
 @media(max-width:640px){.pairedMainActions{flex-direction:column;align-items:stretch}.pairedMainActions .goldButton,.pairedMainActions .outlineButton{width:100%;min-width:0}.pairedReadingExtra{flex-direction:column;align-items:flex-start}}
+
+/* Separate daily free readings, without forcing a fixed one-day view */
+.fortuneDayTabs{display:flex;justify-content:center;gap:11px;margin:22px auto 12px;max-width:460px}
+.fortuneDayTabs button{flex:1;border:1px solid #c7a781;background:#fffdfa;color:#795748;border-radius:12px;padding:12px 15px;font-size:14px;font-weight:800;cursor:pointer}
+.fortuneDayTabs button.daySelected{background:#864e3d;color:#fff9ec;border-color:#864e3d;box-shadow:0 5px 15px #593a242a}
+@media(max-width:640px){.fortuneDayTabs{gap:7px;margin-top:15px}.fortuneDayTabs button{font-size:13px;padding:11px}}
