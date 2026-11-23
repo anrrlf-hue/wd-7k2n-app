@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/check-shop-experience.mjs && next build",
+    "build": "node scripts/check-r42-preview.mjs && next build",
     "test:fortune-ux": "node scripts/check-shop-experience.mjs",
     "start": "next start",
     "lint": "eslint",
     "test:finance-regressions": "node scripts/test-finance-regressions.mjs",
-    "deploy:prod": "npx -y vercel@59.23.2 --prod --yes"
+    "deploy:prod": "npx -y vercel@59.23.2 --prod --yes",
+    "test:r42-preview": "node scripts/check-r42-preview.mjs"
   },
   "dependencies": {
     "@fullstackfamily/manseryeok": "^1.0.8",
