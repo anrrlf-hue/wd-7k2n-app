@@ -1,5 +1,2 @@
-import FortuneShop from "@/components/fortune-shop";
-
-export default function Home() {
-  return <FortuneShop />;
-}
+import StudyApp from '@/components/study-app';
+export default function Home(){return <StudyApp section="home" item="life"/>;}
