@@ -1,7 +1,7 @@
 import type {ProductId} from '@/lib/r37/catalog';
 export type ShopProduct={id:ProductId;name:string;tag:string;intro:string;hall:string;art:string};
 export const offerings:ShopProduct[]=[
- {id:'life',name:'평생 심층사주',tag:'인생',intro:'인생의 결을 깊이 읽는 이야기',hall:'classic',art:'year'},
+ {id:'life',name:'전반적인 인생 사주',tag:'인생',intro:'인생의 결을 깊이 읽는 이야기',hall:'classic',art:'year'},
  {id:'year',name:'신년운세',tag:'새해',intro:'다가오는 한 해의 중요한 순간',hall:'classic',art:'year'},
  {id:'love',name:'연애운',tag:'인연',intro:'사랑의 시작과 마음의 흐름',hall:'relations',art:'love'},
  {id:'marriage',name:'결혼운',tag:'결혼',intro:'함께 살아갈 두 사람의 방향',hall:'relations',art:'compat'},
