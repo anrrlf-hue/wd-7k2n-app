@@ -11,7 +11,7 @@ const empty:IntakeResult={name:'',gender:'',birth:'',calendar:'양력',hour:'',i
 const hours=['태어난 시간 모름','자시 23~01시','축시 01~03시','인시 03~05시','묘시 05~07시','진시 07~09시','사시 09~11시','오시 11~13시','미시 13~15시','신시 15~17시','유시 17~19시','술시 19~21시','해시 21~23시'];
 const paired=new Set<ProductId>(['compatibility','spouse','friend','partner','coworker','family']);
 const pick=(key:InputKey,question:string,choices:string[],optional=false):Step=>({key,question,choices,kind:'pick',optional});
-function buildSteps(id:ProductId,v:IntakeResult):Step[]{
+function buildSteps(id:ProductId,v:IntakeResult,consultation=false):Step[]{
  if(id==='palm'||id==='fusion')return [{key:'leftPalm',question:'두 손의 모습을 먼저 살펴볼까요?',kind:'unsupported',hint:'정통 손금의 실제 양손 판독은 검증 중입니다. 현재 새로운 결과 생성은 제공하지 않습니다.'}];
  if(id==='tarot')return [{key:'tarotQuestion',question:'어떤 이야기가 가장 궁금하세요?',kind:'text'},{key:'tarotCard',question:'마음이 끌리는 카드를 한 장 골라주세요.',kind:'card'}];
  const steps:Step[]=[
@@ -32,7 +32,7 @@ function buildSteps(id:ProductId,v:IntakeResult):Step[]{
    steps.push({key:'partnerHour',question:'그분의 출생 시간도 아시나요?',kind:'hour',optional:true});
   }
  }
- steps.push({key:'issue',question:'마지막으로, 지금 가장 궁금한 이야기를 들려주세요.',kind:'note',optional:true,hint:'특별한 고민이 없다면 전반적인 흐름을 보셔도 됩니다.'});
+ if(consultation){steps.push({key:'tarotQuestion',question:'타로로 살펴볼 현실적인 질문을 한 가지만 적어주세요.',kind:'note',hint:'한 가지 상황에 대해 구체적으로 적어주세요.'});steps.push({key:'tarotCard',question:'마음이 끌리는 카드를 한 장 골라주세요.',kind:'card'});}
  return steps;
 }
 /** Accept YYYYMMDD, YYYY-MM-DD, YYYY.MM.DD, or YYYY/MM/DD, then send strict ISO dates to the existing calculation API. */
@@ -46,14 +46,14 @@ function normalizedBirth(raw:string):string|null {
  return `${digits.slice(0,4)}-${digits.slice(4,6)}-${digits.slice(6,8)}`;
 }
 type Draw={drawId:string;cards:{id:number;reversed:boolean;position:string}[];signature:string};
-export default function StudyChat({product,onClose,onComplete}:{product:ProductId;onClose:()=>void;onComplete:(v:IntakeResult)=>void}){
+export default function StudyChat({product,consultation=false,onClose,onComplete}:{product:ProductId;consultation?:boolean;onClose:()=>void;onComplete:(v:IntakeResult)=>void}){
  const [draft,setDraft]=useState<IntakeResult>(empty),[step,setStep]=useState(0),[draw,setDraw]=useState<Draw|null>(null),[error,setError]=useState('');
  const messages=useRef<HTMLDivElement>(null);
  const nearBottom=useRef(true);
  const [showLatest,setShowLatest]=useState(false);
  const onConversationScroll=()=>{const el=messages.current;if(!el)return;nearBottom.current=el.scrollHeight-el.scrollTop-el.clientHeight<68;setShowLatest(!nearBottom.current);};
  const jumpLatest=()=>{const el=messages.current;if(!el)return;nearBottom.current=true;el.scrollTo({top:el.scrollHeight,behavior:'smooth'});setShowLatest(false);};
- const stages=useMemo(()=>buildSteps(product,draft),[product,draft.partnerBirth,draft.partnerChoice]);
+ const stages=useMemo(()=>buildSteps(product,draft,consultation),[product,consultation,draft.partnerBirth,draft.partnerChoice]);
  const active=stages[Math.min(step,stages.length-1)];
  const value=draft[active.key];
  const disabledProduct=active.kind==='unsupported';
@@ -69,7 +69,7 @@ export default function StudyChat({product,onClose,onComplete}:{product:ProductI
   else setStep(x=>x+1);
  };
  useEffect(()=>{if(!messages.current||!nearBottom.current)return;messages.current.scrollTo({top:messages.current.scrollHeight,behavior:'smooth'});},[step]);
- useEffect(()=>{if(product!=='tarot')return;let alive=true;fetch('/api/shop/tarot',{method:'POST',headers:{'content-type':'application/json'}}).then(r=>r.json()).then(x=>{if(!x.drawId||!Array.isArray(x.cards)||x.cards.length!==3||!x.signature)throw Error('DRAW_FAILED');if(alive)setDraw(x);}).catch(()=>{if(alive)setError('카드를 준비하지 못했습니다. 다시 시도해 주세요.');});return()=>{alive=false;};},[product]);
+ useEffect(()=>{if(product!=='tarot'&&!consultation)return;let alive=true;fetch('/api/shop/tarot',{method:'POST',headers:{'content-type':'application/json'}}).then(r=>r.json()).then(x=>{if(!x.drawId||!Array.isArray(x.cards)||x.cards.length!==3||!x.signature)throw Error('DRAW_FAILED');if(alive)setDraw(x);}).catch(()=>{if(alive)setError('카드를 준비하지 못했습니다. 다시 시도해 주세요.');});return()=>{alive=false;};},[product,consultation]);
  const answered=(s:Step)=>{const val=draft[s.key];return val===null||val===''?'건너뛰었어요':s.key==='tarotCard'?`${Number(val)+1}번 카드`:String(val);};
  return <main className="ud-chat" aria-label={`${labelOf(product)} 안내 대화`}>
   <div className="ud-chat-background" role="img" aria-label="중후한 서재에서 마주 앉은 여성 안내인"/>
@@ -86,7 +86,7 @@ export default function StudyChat({product,onClose,onComplete}:{product:ProductI
    {active.kind==='date'&&<label className="ud-date-field"><CalendarDays size={18}/><input aria-label={active.question} type="text" inputMode="numeric" autoComplete="off" placeholder="예: 19800510 (8자리 직접 입력)" maxLength={10} value={String(value??'')} onChange={e=>put(active.key,e.target.value.replace(/[^\d.\/-]/g,''))} onBlur={()=>{const iso=normalizedBirth(String(value??''));if(iso)put(active.key,iso)}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();next();}}}/></label>}
    {active.kind==='pick'&&<div className="ud-answer-choices">{active.choices?.map(o=><button type="button" aria-pressed={value===o} key={o} className={value===o?'selected':''} onClick={()=>put(active.key,o)}>{o}</button>)}</div>}
    {active.kind==='hour'&&<div className="ud-time-choices">{hours.map(o=><button type="button" aria-pressed={value===o} key={o} className={value===o?'selected':''} onClick={()=>put(active.key,o)}><Clock size={13}/>{o}</button>)}</div>}
-   {active.kind==='note'&&<><textarea rows={3} maxLength={2000} aria-label={active.question} placeholder="예: 요즘 앞으로의 진로가 궁금합니다." value={String(value??'')} onChange={e=>put(active.key,e.target.value)}/><button type="button" className="ud-general-choice" onClick={()=>put('issue','전반적인 사주를 읽어주세요')}>전반적인 흐름을 살펴봐 주세요</button></>}
+   {active.kind==='note'&&<><textarea rows={3} maxLength={300} aria-label={active.question} placeholder="예: 요즘 앞으로의 진로가 궁금합니다." value={String(value??'')} onChange={e=>put(active.key,e.target.value)}/></>}
    {active.kind==='card'&&<div className="ud-answer-choices">{[0,1,2].map(i=><button type="button" key={i} disabled={!draw} className={draft.tarotCard===i?'selected':''} onClick={()=>put('tarotCard',i)}>✧ {i+1}번 카드</button>)}{error&&<p role="alert">{error}</p>}</div>}
    {active.kind==='unsupported'&&<p className="ud-unavailable">실제 사진 관측이 검증된 후 제공할 예정입니다.</p>}
    <button type="button" className="ud-next" disabled={!isValid} onClick={next}>{disabledProduct?'검증 중인 상품입니다':step===stages.length-1?'나의 풀이 시작하기':'다음 이야기로'}<ArrowRight size={18}/></button>
