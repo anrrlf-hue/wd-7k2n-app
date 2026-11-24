@@ -60,3 +60,13 @@
 .ud-cover-wealth{background-image:url('/images/r42-wealth-card.webp')!important;background-position:center center;background-size:cover!important;filter:none!important}
 .ud-cover-year{background-image:url('/images/r42-lifetime-card.webp')!important;background-position:center center;background-size:cover!important;filter:none!important}
 .ud-cover-love,.ud-cover-compat{background-image:url('/images/r42-love-card.webp')!important;background-position:center center;background-size:cover!important;filter:none!important}
+
+/* R43 consultation/navigation: preserve approved R42 illustration assets and placement */
+.ud-choose-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:780px;margin:24px auto}
+.ud-choose-card,.ud-consult-options a{display:flex;align-items:center;gap:8px;background:linear-gradient(155deg,#33232b,#1b151e);border:1px solid #a07c56;border-radius:13px;padding:20px 15px;color:#f8e5cc;text-decoration:none}
+.ud-choose-card{flex-direction:column;align-items:flex-start;min-height:110px}
+.ud-choose-card b{font:700 17px 'Noto Serif KR',serif}.ud-choose-card small{color:#ccb9a5}.ud-choose-card svg{margin-left:auto;color:#dfb46c}
+.ud-consult-intro{max-width:780px;margin:25px auto 30px;padding:25px;border:1px solid #82614d;background:linear-gradient(135deg,#301e2b,#18121b);border-radius:16px;color:#f7e8d7}
+.ud-consult-intro h2{font:700 22px 'Noto Serif KR',serif;color:#f3d8ac}.ud-consult-intro p{line-height:1.9;color:#ebdccb}.ud-consult-intro small{color:#c1ae9b}
+.ud-consult-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:17px}.ud-consult-options svg{flex-shrink:0;margin-left:auto}
+@media(max-width:540px){.ud-choose-grid,.ud-consult-options{grid-template-columns:1fr}.ud-consult-intro{margin:20px 12px;padding:20px}.ud-choose-grid{margin:15px 12px}.ud-choose-card{min-height:85px}}
