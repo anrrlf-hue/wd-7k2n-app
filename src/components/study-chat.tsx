@@ -35,6 +35,16 @@ function buildSteps(id:ProductId,v:IntakeResult):Step[]{
  steps.push({key:'issue',question:'마지막으로, 지금 가장 궁금한 이야기를 들려주세요.',kind:'note',optional:true,hint:'특별한 고민이 없다면 전반적인 흐름을 보셔도 됩니다.'});
  return steps;
 }
+/** Accept YYYYMMDD, YYYY-MM-DD, YYYY.MM.DD, or YYYY/MM/DD, then send strict ISO dates to the existing calculation API. */
+function normalizedBirth(raw:string):string|null {
+ const digits=raw.replace(/\D/g,'');
+ if(!/^\d{8}$/.test(digits))return null;
+ const year=Number(digits.slice(0,4)),month=Number(digits.slice(4,6)),day=Number(digits.slice(6,8));
+ if(year<1901||year>2048||month<1||month>12||day<1||day>31)return null;
+ const dt=new Date(Date.UTC(year,month-1,day));
+ if(dt.getUTCFullYear()!==year||dt.getUTCMonth()+1!==month||dt.getUTCDate()!==day)return null;
+ return `${digits.slice(0,4)}-${digits.slice(4,6)}-${digits.slice(6,8)}`;
+}
 type Draw={drawId:string;cards:{id:number;reversed:boolean;position:string}[];signature:string};
 export default function StudyChat({product,onClose,onComplete}:{product:ProductId;onClose:()=>void;onComplete:(v:IntakeResult)=>void}){
  const [draft,setDraft]=useState<IntakeResult>(empty),[step,setStep]=useState(0),[draw,setDraw]=useState<Draw|null>(null),[error,setError]=useState('');
@@ -47,10 +57,17 @@ export default function StudyChat({product,onClose,onComplete}:{product:ProductI
  const active=stages[Math.min(step,stages.length-1)];
  const value=draft[active.key];
  const disabledProduct=active.kind==='unsupported';
- const isValid=active.kind==='card'?draft.tarotCard!==null&&!!draw:!disabledProduct&&(active.optional||String(value??'').trim()!=='');
+ const isValid=active.kind==='card'?draft.tarotCard!==null&&!!draw:active.kind==='date'?(active.optional&&!String(value??'').trim()||Boolean(normalizedBirth(String(value??'')))):!disabledProduct&&(active.optional||String(value??'').trim()!=='');
  const put=(key:InputKey,v:string|number|null)=>setDraft(p=>({...p,[key]:v}));
  const back=()=>step===0?onClose():setStep(x=>x-1);
- const next=()=>{if(!isValid)return;if(step+1===stages.length){onComplete({...draft,tarotDraw:draw??undefined});}else setStep(x=>x+1);};
+ const next=()=>{
+  if(!isValid)return;
+  const typedDate=active.kind==='date'&&String(value??'').trim()?normalizedBirth(String(value)):null;
+  const updated=typedDate?{...draft,[active.key]:typedDate}:draft;
+  if(typedDate)setDraft(updated);
+  if(step+1===stages.length){onComplete({...updated,tarotDraw:draw??undefined});}
+  else setStep(x=>x+1);
+ };
  useEffect(()=>{if(!messages.current||!nearBottom.current)return;messages.current.scrollTo({top:messages.current.scrollHeight,behavior:'smooth'});},[step]);
  useEffect(()=>{if(product!=='tarot')return;let alive=true;fetch('/api/shop/tarot',{method:'POST',headers:{'content-type':'application/json'}}).then(r=>r.json()).then(x=>{if(!x.drawId||!Array.isArray(x.cards)||x.cards.length!==3||!x.signature)throw Error('DRAW_FAILED');if(alive)setDraw(x);}).catch(()=>{if(alive)setError('카드를 준비하지 못했습니다. 다시 시도해 주세요.');});return()=>{alive=false;};},[product]);
  const answered=(s:Step)=>{const val=draft[s.key];return val===null||val===''?'건너뛰었어요':s.key==='tarotCard'?`${Number(val)+1}번 카드`:String(val);};
@@ -66,7 +83,7 @@ export default function StudyChat({product,onClose,onComplete}:{product:ProductI
   {showLatest&&<button type="button" className="ud-chat-jump" onClick={jumpLatest}>최근 대화로 ↓</button>}
   <div className="ud-answer-panel">{active.hint&&<p className="ud-hint">{active.hint}</p>}
    {active.kind==='text'&&<input autoFocus aria-label={active.question} placeholder="답변을 입력해 주세요" value={String(value??'')} onChange={e=>put(active.key,e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();next();}}}/>}
-   {active.kind==='date'&&<label className="ud-date-field"><CalendarDays size={18}/><input aria-label={active.question} type="date" min="1901-01-01" max="2048-12-31" value={String(value??'')} onChange={e=>put(active.key,e.target.value)}/></label>}
+   {active.kind==='date'&&<label className="ud-date-field"><CalendarDays size={18}/><input aria-label={active.question} type="text" inputMode="numeric" autoComplete="off" placeholder="예: 19800510 (8자리 직접 입력)" maxLength={10} value={String(value??'')} onChange={e=>put(active.key,e.target.value.replace(/[^\d.\/-]/g,''))} onBlur={()=>{const iso=normalizedBirth(String(value??''));if(iso)put(active.key,iso)}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();next();}}}/></label>}
    {active.kind==='pick'&&<div className="ud-answer-choices">{active.choices?.map(o=><button type="button" aria-pressed={value===o} key={o} className={value===o?'selected':''} onClick={()=>put(active.key,o)}>{o}</button>)}</div>}
    {active.kind==='hour'&&<div className="ud-time-choices">{hours.map(o=><button type="button" aria-pressed={value===o} key={o} className={value===o?'selected':''} onClick={()=>put(active.key,o)}><Clock size={13}/>{o}</button>)}</div>}
    {active.kind==='note'&&<><textarea rows={3} maxLength={2000} aria-label={active.question} placeholder="예: 요즘 앞으로의 진로가 궁금합니다." value={String(value??'')} onChange={e=>put(active.key,e.target.value)}/><button type="button" className="ud-general-choice" onClick={()=>put('issue','전반적인 사주를 읽어주세요')}>전반적인 흐름을 살펴봐 주세요</button></>}
